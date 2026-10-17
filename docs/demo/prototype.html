@@ -90,6 +90,8 @@ button { cursor: pointer; }
 .tile.is-none .art { filter: grayscale(.85) opacity(.55); }
 .tile-name { font-weight: 700; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
 .tile-meta { font-size: 12px; color: var(--muted); }
+.tile-code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.tile-code { font-size: 12px; font-weight: 500; }
 .tile-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
 .price { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 500; }
 .slots { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -305,39 +307,40 @@ const PROVIDERS = {
 };
 const ERA_ORDER = ['Diamante e Perla', 'XY', 'Sole e Luna', 'Spada e Scudo', 'Scarlatto e Violetto', 'Mega Evoluzione'];
 
+// code: sigla del set stampata in basso a sinistra (null nelle ere che non la stampano); num: numero stampato.
 // rank: usato per ordinare per rarità; art: stile del segnaposto; cm/tcp: prezzi base EUR/USD (null = nessuna fonte).
 const CARDS = [
-  { id: 'en-dp-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'Diamante e Perla', set: 'DP', num: '52/130', rarity: 'Non comune', rank: 2, art: 'basic', hue: 215,
+  { id: 'en-dp-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'Diamante e Perla', set: 'DP', code: null, num: '52/130', rarity: 'Non comune', rank: 2, art: 'basic', hue: 215,
     variants: [{ type: 'normal', cm: 0.45, tcp: 0.38, conf: 'alta' }, { type: 'reverse', cm: 1.9, tcp: 2.2, conf: 'media' }] },
-  { id: 'en-xy-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'XY', set: 'XY', num: '94/146', rarity: 'Comune', rank: 1, art: 'basic', hue: 205,
+  { id: 'en-xy-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'XY', set: 'XY', code: null, num: '94/146', rarity: 'Comune', rank: 1, art: 'basic', hue: 205,
     variants: [{ type: 'normal', cm: 0.15, tcp: 0.12, conf: 'alta' }, { type: 'reverse', cm: 0.6, tcp: 0.75, conf: 'media' }] },
-  { id: 'en-xy-mawileex', lang: 'en', query: 'q-en', name: 'Mawile-EX', era: 'XY', set: 'XY4', num: '68/119', rarity: 'Rara Holo EX', rank: 4, art: 'ex', hue: 320,
+  { id: 'en-xy-mawileex', lang: 'en', query: 'q-en', name: 'Mawile-EX', era: 'XY', set: 'XY4', code: null, num: '68/119', rarity: 'Rara Holo EX', rank: 4, art: 'ex', hue: 320,
     variants: [{ type: 'holo', cm: 3.5, tcp: 4.2, conf: 'alta' }] },
-  { id: 'en-xy-mmawileex', lang: 'en', query: 'q-en', name: 'M Mawile-EX', era: 'XY', set: 'XY4', num: '69/119', rarity: 'Rara Holo EX', rank: 4, art: 'ex', hue: 300,
+  { id: 'en-xy-mmawileex', lang: 'en', query: 'q-en', name: 'M Mawile-EX', era: 'XY', set: 'XY4', code: null, num: '69/119', rarity: 'Rara Holo EX', rank: 4, art: 'ex', hue: 300,
     variants: [{ type: 'holo', cm: 4.8, tcp: 5.6, conf: 'alta' }] },
-  { id: 'en-xy-mmawileex-fa', lang: 'en', query: 'q-en', name: 'M Mawile-EX (Full Art)', era: 'XY', set: 'XY4', num: '115/119', rarity: 'Ultra Rara', rank: 6, art: 'fa', hue: 280,
+  { id: 'en-xy-mmawileex-fa', lang: 'en', query: 'q-en', name: 'M Mawile-EX (Full Art)', era: 'XY', set: 'XY4', code: null, num: '115/119', rarity: 'Ultra Rara', rank: 6, art: 'fa', hue: 280,
     variants: [{ type: 'holo', cm: 18.0, tcp: 22.5, conf: 'alta' }] },
-  { id: 'en-sm-mawilegx', lang: 'en', query: 'q-en', name: 'Mawile-GX', era: 'Sole e Luna', set: 'SM', num: '141/214', rarity: 'Rara Holo GX', rank: 4, art: 'ex', hue: 340,
+  { id: 'en-sm-mawilegx', lang: 'en', query: 'q-en', name: 'Mawile-GX', era: 'Sole e Luna', set: 'SM', code: null, num: '141/214', rarity: 'Rara Holo GX', rank: 4, art: 'ex', hue: 340,
     variants: [{ type: 'holo', cm: 2.2, tcp: 2.6, conf: 'alta' }] },
-  { id: 'en-sm-mawilegx-fa', lang: 'en', query: 'q-en', name: 'Mawile-GX (Full Art)', era: 'Sole e Luna', set: 'SM', num: '203/214', rarity: 'Ultra Rara', rank: 6, art: 'fa', hue: 250,
+  { id: 'en-sm-mawilegx-fa', lang: 'en', query: 'q-en', name: 'Mawile-GX (Full Art)', era: 'Sole e Luna', set: 'SM', code: null, num: '203/214', rarity: 'Ultra Rara', rank: 6, art: 'fa', hue: 250,
     variants: [{ type: 'holo', cm: 9.5, tcp: 11.0, conf: 'alta' }] },
-  { id: 'en-swsh-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'Spada e Scudo', set: 'SWSH', num: '133/198', rarity: 'Comune', rank: 1, art: 'basic', hue: 195,
+  { id: 'en-swsh-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'Spada e Scudo', set: 'SWSH', code: null, num: '133/198', rarity: 'Comune', rank: 1, art: 'basic', hue: 195,
     variants: [{ type: 'normal', cm: 0.1, tcp: 0.1, conf: 'alta' }, { type: 'reverse', cm: 0.45, tcp: 0.55, conf: 'media' }] },
-  { id: 'en-sv-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'Scarlatto e Violetto', set: 'SV', num: '120/182', rarity: 'Comune', rank: 1, art: 'basic', hue: 225,
+  { id: 'en-sv-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'Scarlatto e Violetto', set: 'SV', code: 'PAR', num: '120/182', rarity: 'Comune', rank: 1, art: 'basic', hue: 225,
     variants: [{ type: 'normal', cm: 0.12, tcp: 0.1, conf: 'alta' }, { type: 'reverse', cm: 0.5, tcp: 0.6, conf: 'media' }] },
-  { id: 'en-sv-mawile-ir', lang: 'en', query: 'q-en', name: 'Mawile (Illustrazione Rara)', era: 'Scarlatto e Violetto', set: 'SV', num: '196/182', rarity: 'Illustrazione Rara', rank: 5, art: 'ir', hue: 40,
+  { id: 'en-sv-mawile-ir', lang: 'en', query: 'q-en', name: 'Mawile (Illustrazione Rara)', era: 'Scarlatto e Violetto', set: 'SV', code: 'PAR', num: '196/182', rarity: 'Illustrazione Rara', rank: 5, art: 'ir', hue: 40,
     variants: [{ type: 'holo', cm: 6.9, tcp: 7.8, conf: 'alta' }] },
-  { id: 'en-me-megamawileex', lang: 'en', query: 'q-en', name: 'Mega Mawile ex', era: 'Mega Evoluzione', set: 'ME', num: '78/132', rarity: 'Doppia Rara', rank: 4, art: 'ex', hue: 330,
+  { id: 'en-me-megamawileex', lang: 'en', query: 'q-en', name: 'Mega Mawile ex', era: 'Mega Evoluzione', set: 'ME', code: 'MEG', num: '78/132', rarity: 'Doppia Rara', rank: 4, art: 'ex', hue: 330,
     variants: [{ type: 'holo', cm: 3.9, tcp: 4.5, conf: 'alta' }] },
-  { id: 'en-me-megamawileex-sir', lang: 'en', query: 'q-en', name: 'Mega Mawile ex (SIR)', era: 'Mega Evoluzione', set: 'ME', num: '171/132', rarity: 'Illustrazione Speciale Rara', rank: 7, art: 'sir', hue: 315,
+  { id: 'en-me-megamawileex-sir', lang: 'en', query: 'q-en', name: 'Mega Mawile ex (SIR)', era: 'Mega Evoluzione', set: 'ME', code: 'MEG', num: '171/132', rarity: 'Illustrazione Speciale Rara', rank: 7, art: 'sir', hue: 315,
     variants: [{ type: 'holo', cm: 48.0, tcp: 56.0, conf: 'alta' }] },
-  { id: 'ja-xy-mmawileex', lang: 'ja', query: 'q-ja', name: 'MクチートEX', era: 'XY', set: 'XY4 JP', num: '058/088', rarity: 'RR', rank: 4, art: 'ex', hue: 300,
+  { id: 'ja-xy-mmawileex', lang: 'ja', query: 'q-ja', name: 'MクチートEX', era: 'XY', set: 'XY4 JP', code: 'XY4', num: '058/088', rarity: 'RR', rank: 4, art: 'ex', hue: 300,
     variants: [{ type: 'holo', cm: 6.5, tcp: null, conf: 'media' }, { type: 'firstEdition', cm: 9.0, tcp: null, conf: 'media' }] },
-  { id: 'ja-sv-mawile', lang: 'ja', query: 'q-ja', name: 'クチート', era: 'Scarlatto e Violetto', set: 'SV JP', num: '061/101', rarity: 'C', rank: 1, art: 'basic', hue: 210,
+  { id: 'ja-sv-mawile', lang: 'ja', query: 'q-ja', name: 'クチート', era: 'Scarlatto e Violetto', set: 'SV JP', code: 'SV5a', num: '061/101', rarity: 'C', rank: 1, art: 'basic', hue: 210,
     variants: [{ type: 'normal', cm: 0.3, tcp: null, conf: 'bassa' }, { type: 'reverse', cm: null, tcp: null, conf: 'bassa' }] },
-  { id: 'ja-me-megamawileex', lang: 'ja', query: 'q-ja', name: 'メガクチートex', era: 'Mega Evoluzione', set: 'M JP', num: '044/063', rarity: 'RR', rank: 4, art: 'ex', hue: 335,
+  { id: 'ja-me-megamawileex', lang: 'ja', query: 'q-ja', name: 'メガクチートex', era: 'Mega Evoluzione', set: 'M JP', code: 'M2a', num: '044/063', rarity: 'RR', rank: 4, art: 'ex', hue: 335,
     variants: [{ type: 'holo', cm: 2.8, tcp: null, conf: 'media' }] },
-  { id: 'ja-me-megamawileex-sar', lang: 'ja', query: 'q-ja', name: 'メガクチートex (SAR)', era: 'Mega Evoluzione', set: 'M JP', num: '088/063', rarity: 'SAR', rank: 7, art: 'sir', hue: 290,
+  { id: 'ja-me-megamawileex-sar', lang: 'ja', query: 'q-ja', name: 'メガクチートex (SAR)', era: 'Mega Evoluzione', set: 'M JP', code: 'M2a', num: '088/063', rarity: 'SAR', rank: 7, art: 'sir', hue: 290,
     variants: [{ type: 'holo', cm: 35.0, tcp: null, conf: 'media' }] },
 ];
 const CARD_BY_ID = Object.fromEntries(CARDS.map(c => [c.id, c]));
@@ -363,6 +366,15 @@ function esc(value) {
  */
 function vkey(cardId, type) {
   return cardId + '|' + type;
+}
+
+/**
+ * Compone il codice stampato in basso a sinistra sulla carta (sigla del set + numero).
+ * @param {object} card - Carta del catalogo.
+ * @returns {string} Codice nel formato "M2a 044/063", oppure solo il numero se la sigla manca.
+ */
+function printedCode(card) {
+  return [card.code, card.num].filter(Boolean).join(' ');
 }
 
 /**
@@ -653,7 +665,7 @@ function artHtml(card, variantType) {
     <div class="art-top"><span>${esc(card.name)}</span><span>${esc(card.rarity.length <= 4 ? card.rarity : '')}</span></div>
     ${lang}${first}
     <div class="art-window">${mawileSvg(mega)}</div>
-    <div class="art-bot"><span>${esc(card.set)}</span><span>${esc(card.num)}</span></div>
+    <div class="art-bot"><span>${esc(printedCode(card))}</span><span></span></div>
   </div>`;
 }
 
@@ -702,7 +714,7 @@ function renderCollection() {
   const q = f.q.trim().toLowerCase();
   let cards = trackedCards().filter(c => {
     if (f.lang !== 'all' && c.lang !== f.lang) return false;
-    if (q && !(c.name.toLowerCase().includes(q) || c.set.toLowerCase().includes(q) || c.rarity.toLowerCase().includes(q))) return false;
+    if (q && !(c.name.toLowerCase().includes(q) || c.set.toLowerCase().includes(q) || printedCode(c).toLowerCase().includes(q) || c.rarity.toLowerCase().includes(q))) return false;
     const s = cardSummary(c);
     if (f.owned === 'owned' && s.copies === 0) return false;
     if (f.owned === 'missing' && s.owned >= s.slots) return false;
@@ -712,6 +724,7 @@ function renderCollection() {
     era: (a, b) => ERA_ORDER.indexOf(a.era) - ERA_ORDER.indexOf(b.era) || a.lang.localeCompare(b.lang),
     price: (a, b) => (cardSummary(b).refEur ?? -1) - (cardSummary(a).refEur ?? -1),
     rarity: (a, b) => b.rank - a.rank,
+    code: (a, b) => (a.code ? 0 : 1) - (b.code ? 0 : 1) || (a.code || '').localeCompare(b.code || '') || parseInt(a.num, 10) - parseInt(b.num, 10),
     name: (a, b) => a.name.localeCompare(b.name, 'it'),
   };
   cards = cards.slice().sort(sorters[f.sort] || sorters.era);
@@ -724,13 +737,14 @@ function renderCollection() {
     return `<button class="tile ${s.copies === 0 ? 'is-none' : ''}" data-open="${esc(c.id)}">
       ${artHtml(c, bestType)}
       <div class="tile-name">${esc(c.name)}</div>
-      <div class="tile-meta">${esc(c.era)} · ${esc(c.rarity)}</div>
+      <div class="tile-code">${esc(printedCode(c))}</div>
+      <div class="tile-meta">${esc(c.rarity)} · ${c.lang === 'ja' ? 'JP' : 'EN'}</div>
       <div class="tile-foot"><span class="slots ${cls}" title="Varianti possedute / varianti che vuoi">${s.owned}/${s.slots}</span><span class="price">${s.refEur == null ? '—' : 'da ' + fmtEur(s.refEur)}</span></div>
     </button>`;
   }).join('');
 
   el.innerHTML = `
-    <input class="search" id="search" type="search" placeholder="Cerca nome, set o rarità" value="${esc(f.q)}" autocomplete="off" maxlength="40">
+    <input class="search" id="search" type="search" placeholder="Cerca nome, codice (es. M2a 044) o rarità" value="${esc(f.q)}" autocomplete="off" maxlength="40">
     <div class="filters">
       ${chip('owned', 'all', 'Tutte')}${chip('owned', 'owned', 'Possedute')}${chip('owned', 'missing', 'Mancanti')}
       ${chip('lang', 'all', 'EN + JP')}${chip('lang', 'en', 'EN')}${chip('lang', 'ja', 'JP')}
@@ -738,6 +752,7 @@ function renderCollection() {
         <option value="era" ${f.sort === 'era' ? 'selected' : ''}>Ordina: era</option>
         <option value="price" ${f.sort === 'price' ? 'selected' : ''}>Ordina: prezzo</option>
         <option value="rarity" ${f.sort === 'rarity' ? 'selected' : ''}>Ordina: rarità</option>
+        <option value="code" ${f.sort === 'code' ? 'selected' : ''}>Ordina: codice</option>
         <option value="name" ${f.sort === 'name' ? 'selected' : ''}>Ordina: nome</option>
       </select>
     </div>
@@ -757,7 +772,7 @@ function renderMissing() {
     .sort((a, b) => ERA_ORDER.indexOf(a.card.era) - ERA_ORDER.indexOf(b.card.era))
     .map(m => `<button class="li" data-open="${esc(m.card.id)}">
       ${artHtml(m.card, m.v.type)}
-      <div><div class="li-title">${esc(m.card.name)}</div><div class="li-sub">${esc(VARIANT_LABEL[m.v.type])} · ${esc(m.card.era)} · ${m.card.lang.toUpperCase()}</div></div>
+      <div><div class="li-title">${esc(m.card.name)}</div><div class="li-sub"><span class="mono">${esc(printedCode(m.card))}</span> · ${esc(VARIANT_LABEL[m.v.type])} · ${m.card.lang === 'ja' ? 'JP' : 'EN'}</div></div>
       <span class="price">${m.eur == null ? '<span class="conf bassa">manuale</span>' : fmtEur(m.eur)}</span>
     </button>`).join('');
   el.innerHTML = `
@@ -938,9 +953,9 @@ function renderDetail(cardId, previewType) {
       <div class="detail-hero">
         ${artHtml(card, pv)}
         <dl class="meta">
+          <div><dt>Codice</dt><dd class="mono">${esc(printedCode(card))}</dd></div>
           <div><dt>Era</dt><dd>${esc(card.era)}</dd></div>
           <div><dt>Set</dt><dd>${esc(card.set)}</dd></div>
-          <div><dt>Numero</dt><dd>${esc(card.num)}</dd></div>
           <div><dt>Rarità</dt><dd>${esc(card.rarity)}</dd></div>
           <div><dt>Lingua</dt><dd>${card.lang === 'ja' ? 'Giapponese' : 'Inglese'}</dd></div>
         </dl>
