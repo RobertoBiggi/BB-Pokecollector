@@ -1,5 +1,53 @@
 # Piano — App Android offline per tracciare carte Pokémon (Mawile / Mega Mawile)
 
+## ▶ Step attuale: feedback demo v1 → codice carta stampato
+
+L'utente ha visto la demo ([artifact](https://claude.ai/artifact/8VdKkXWB3pcTJbBSKh53tt), `docs/demo/prototype.html`) e ha confermato due cose: **ogni variante è uno slot** e la **griglia** è perfetta. Chiede di aggiungere il **codice carta stampato in basso a sinistra** (es. `M2a 001/123`).
+
+**Modifiche alla demo** (`docs/demo/prototype.html`):
+- Ogni carta in `CARDS` riceve `code` (sigla del set stampata, es. `M2a`, `SV4a`, `MEW`, `PAL`) e `num` nel formato stampato `001/123`. Le carte delle ere senza sigla stampata (prima di Sole e Luna) mostrano solo il numero.
+- Funzione `printedCode(card)` → `"M2a 001/123"`; la uso in:
+  - **illustrazione**: in basso a sinistra, come sulla carta vera (al posto dell'attuale set/numero separati);
+  - **tile della griglia**: riga meta `M2a 001/123 · Doppia Rara` in font mono, con l'era spostata nel dettaglio;
+  - **dettaglio**: voce "Codice" in cima alla lista dei metadati;
+  - **Mancanti**: nel sottotitolo di ogni riga.
+- Ricerca anche per codice (es. digitando "m2a" o "001/").
+- Nuovo ordinamento "Ordina: codice" (sigla, poi numero).
+- Bump di `STORE_KEY` non necessario: i dati catalogo stanno nel codice, non nello stato salvato.
+
+**Modifiche al piano Android** (sezioni sotto):
+- `card`: aggiungo `set_code` (sigla stampata, nullable) e `printed_number` (`001/123`). Li ricavo da TCGdex: `set.abbreviation.official` (EN) oppure l'id del set JP (es. `M2a`), più `localId` e `set.cardCount.official`.
+- UI: codice sempre visibile su tile, dettaglio e mancanti; ricerca e ordinamento per codice.
+- Va confermato sulle risposte reali di TCGdex che la sigla JP corrisponda all'id del set: se non è così, serve una tabella di mappatura `set_id → codice` in `VariantMapper`/`SetCodeMapper`.
+
+**Verifica**: stesso script Playwright della v1 (390px, light/dark, zero errori console, nessun overflow) + screenshot della griglia e del dettaglio per controllare il codice in basso a sinistra; ripubblico sullo stesso artifact, poi commit + push su `ccr-da55776b-conrjq`.
+
+**Dopo il via libera dell'utente sulla demo** → Milestone 1 (scaffold Kotlin/Compose + CI GitHub Actions).
+
+---
+
+## ▶ Step attuale: demo con prototipo cliccabile
+
+Prima di scrivere codice Kotlin, l'utente vuole una demo per controllare che siamo allineati su UX e idee. Scelta fatta: **prototipo web cliccabile** che simula l'app sul telefono. Va pubblicato come Artifact privato (link da aprire sul telefono) e versionato in `docs/demo/prototype.html`.
+
+**Contenuto** (un solo file HTML, mobile-first, tema chiaro/scuro, niente dipendenze esterne):
+- **Collezione**: griglia di carte con illustrazioni segnaposto disegnate in CSS. Non posso garantire le vere immagini TCGdex da qui: le mostro con stile per tipo Acciaio/Folletto ed effetto shimmer su holo/reverse, per far vedere la variante. Badge "possedute/slot", filtri (lingua EN/JP, posseduto/mancante, rarità), ordinamento per prezzo/numero, ricerca.
+- **Dettaglio carta**: immagine grande, rarità, set, lista varianti (Normal/Holo/Reverse/1st Ed.) con stepper +/- quantità, condizione, toggle "la voglio", prezzi per fonte (Cardmarket EUR, TCGplayer USD) con data e badge di confidenza, inserimento di un prezzo manuale e link "Apri su Cardmarket".
+- **Mancanti**: lista degli slot mancanti con costo stimato totale.
+- **Statistiche**: % di completamento (globale, EN, JP), valore della collezione in EUR e USD, numero di copie.
+- **Impostazioni**: query tracciate (`Mawile` EN, `クチート` JP), ordine dei provider prezzi, campo chiave API (finto), export/import backup.
+- **Aggiorna prezzi (simulato)**: barra di avanzamento e log della catena di fallback. Esempio: TCGdex ✓, un 429 → passa a PokemonPriceTracker, una carta JP senza dati → "prezzo manuale consigliato". Al termine si aggiorna la data dell'"ultimo prezzo".
+- **Interruttore "Modalità aereo"**: mostra il banner offline, disabilita gli aggiornamenti e lascia tutto navigabile, per far vedere il comportamento offline.
+- Lo stato (quantità, wanted, prezzi simulati) resta salvato in `localStorage` con try/catch, così la demo "ricorda" le modifiche.
+
+**Dati**: una dozzina di carte Mawile / Mega Mawile EN + JP (es. Mawile, Mawile-GX, M Mawile-EX, Mega Mawile ex, クチート, メガクチートex). Set, numeri e prezzi sono **di esempio**, e la demo lo dice chiaramente con una nota "dati fittizi: nella vera app arrivano da TCGdex".
+
+**Passi**: `Artifact quickstart` (intent other) → carico lo skill `artifact-design` → scrivo `docs/demo/prototype.html` → pubblico l'Artifact → commit + push su `ccr-da55776b-conrjq`.
+
+**Verifica**: apro il file con Playwright/Chromium (preinstallato) a 390px di larghezza, faccio screenshot di ogni schermata, controllo che non ci siano errori in console e che il flusso aggiorna prezzi / modalità aereo / quantità funzioni. Poi raccolgo il feedback dell'utente e aggiorno il piano Android di conseguenza.
+
+---
+
 ## Contesto
 
 Il repo `Card-collection` è vuoto (solo `README.md`). Serve un'app **Android nativa** che:
@@ -50,7 +98,7 @@ Mappatura varianti in `VariantMapper`: NORMAL↔`normal`/`avg,trend`; HOLO↔`ho
 | Tabella | Campi principali |
 |---|---|
 | `tracked_query` | id, label, language (`en`/`ja`), name_pattern, enabled |
-| `card` | id (`en:swsh11-091`), language, set_id, set_name, number, name, rarity, release_date, illustrator, image_url, image_low_path, image_high_path, catalog_updated_at |
+| `card` | id (`en:swsh11-091`), language, set_id, set_name, **set_code** (sigla stampata, es. `M2a`), number, **printed_number** (`001/123`), name, rarity, release_date, illustrator, image_url, image_low_path, image_high_path, catalog_updated_at |
 | `card_variant` | id, card_id FK, type (NORMAL/HOLO/REVERSE/FIRST_EDITION/W_PROMO/OTHER), **wanted** (default true) |
 | `collection_entry` | id, variant_id FK, condition (NM/LP/MP/HP/DMG), quantity ≥ 0, notes |
 | `price_snapshot` | id, variant_id FK, source, currency, low, mid, trend, market, avg7, avg30, source_updated_at, fetched_at, confidence |
