@@ -1,0 +1,211 @@
+package com.robertobiggi.cardcollection.data.repo
+
+import android.content.ContentResolver
+import android.net.Uri
+import androidx.room.withTransaction
+import com.robertobiggi.cardcollection.core.backup.BackupEntry
+import com.robertobiggi.cardcollection.core.backup.BackupQuery
+import com.robertobiggi.cardcollection.core.backup.CardRecord
+import com.robertobiggi.cardcollection.core.backup.CollectionFileV2
+import com.robertobiggi.cardcollection.core.backup.CollectionFiles
+import com.robertobiggi.cardcollection.core.backup.CollectionImportResult
+import com.robertobiggi.cardcollection.core.backup.CollectionInfo
+import com.robertobiggi.cardcollection.core.backup.ImageExport
+import com.robertobiggi.cardcollection.core.backup.ImportedCollection
+import com.robertobiggi.cardcollection.core.backup.PriceRecord
+import com.robertobiggi.cardcollection.data.image.ImageStore
+import com.robertobiggi.cardcollection.data.local.AppDatabase
+import com.robertobiggi.cardcollection.data.local.CardEntity
+import com.robertobiggi.cardcollection.data.local.CollectionCardEntity
+import com.robertobiggi.cardcollection.data.local.CollectionEntity
+import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
+import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
+import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.time.Instant
+
+/** Esito dell'import di una collezione. */
+data class ImportOutcome(val message: String, val collectionId: Long?)
+
+/**
+ * Esporta e importa singole collezioni in file JSON (con o senza immagini) scelti dall'utente
+ * tramite Storage Access Framework.
+ */
+class TransferRepository(
+    private val db: AppDatabase,
+    private val resolver: ContentResolver,
+    private val catalog: CatalogRepository,
+    private val collections: CollectionRepository,
+    private val images: ImageStore,
+) {
+    private val catalogDao = db.catalogDao()
+
+    /**
+     * Esporta una collezione: ricerche, carte del catalogo, quantità, ultimi prezzi e prezzi manuali.
+     * @param collectionId Long - collezione da esportare.
+     * @param uri Uri - file scelto con ACTION_CREATE_DOCUMENT.
+     * @param imageExport ImageExport - quali immagini incorporare.
+     * @return String - messaggio di esito per l'utente.
+     */
+    suspend fun export(collectionId: Long, uri: Uri, imageExport: ImageExport): String = withContext(Dispatchers.IO) {
+        val collection = catalogDao.getCollection(collectionId) ?: return@withContext "Collezione non trovata."
+        val memberships = catalogDao.membershipsOf(collectionId)
+        val cards = memberships.mapNotNull { m -> catalogDao.getCard(m.cardId)?.let { it to m.hidden } }
+        val cardIds = cards.map { it.first.id }
+        val variants = cardIds.chunked(SQL_CHUNK).flatMap { catalogDao.variantsOf(it) }
+        val snapshots = variants.map { it.id }.chunked(SQL_CHUNK).flatMap { db.priceDao().snapshotsOf(it) }
+
+        val records = cards.map { (card, hidden) ->
+            val low = if (imageExport != ImageExport.NONE) images.read(card.imageLowPath)?.let(CollectionFiles::encodeImage) else null
+            val high = if (imageExport == ImageExport.LOW_AND_HIGH) images.read(card.imageHighPath)?.let(CollectionFiles::encodeImage) else null
+            card.toRecord(variants.filter { it.cardId == card.id }.map { it.type }, hidden, low, high)
+        }
+        val prices = snapshots.groupBy { it.variantId }.flatMap { (_, list) ->
+            val manual = list.filter { it.source == CollectionFiles.MANUAL_SOURCE }
+            val latestMarket = list.lastOrNull { it.source != CollectionFiles.MANUAL_SOURCE }
+            (manual + listOfNotNull(latestMarket)).map { it.toRecord() }
+        }
+        val file = CollectionFileV2(
+            exportedAt = Instant.now().toString(),
+            info = CollectionInfo(collection.name, catalogDao.queriesOf(collectionId).map { BackupQuery(it.language, it.pattern, it.enabled) }),
+            cards = records,
+            entries = db.collectionDao().entriesOf(collectionId).map { BackupEntry(it.variantId, it.quantity, it.condition, it.wanted, it.notes) },
+            prices = prices,
+        )
+        try {
+            val stream = resolver.openOutputStream(uri, "wt") ?: return@withContext "Impossibile aprire il file."
+            stream.use { CollectionFiles.write(file, it) }
+            val withImages = records.count { it.imageLow != null || it.imageHigh != null }
+            "Collezione esportata: ${records.size} carte" + if (imageExport != ImageExport.NONE) ", $withImages con immagine." else "."
+        } catch (e: IOException) {
+            "Salvataggio non riuscito: ${e.message}"
+        } catch (e: SecurityException) {
+            "Permesso negato per il file scelto."
+        }
+    }
+
+    /**
+     * Importa un file come nuova collezione. Accetta file schema 2 (con o senza immagini) e i backup
+     * della prima versione.
+     * @param uri Uri - file scelto con ACTION_OPEN_DOCUMENT.
+     * @return ImportOutcome - messaggio per l'utente e id della collezione creata.
+     */
+    suspend fun import(uri: Uri): ImportOutcome = withContext(Dispatchers.IO) {
+        val result = try {
+            val stream = resolver.openInputStream(uri) ?: return@withContext ImportOutcome("File non disponibile.", null)
+            stream.use { CollectionFiles.read(it) }
+        } catch (e: IOException) {
+            return@withContext ImportOutcome("Lettura non riuscita: ${e.message}", null)
+        } catch (e: SecurityException) {
+            return@withContext ImportOutcome("Permesso negato per il file scelto.", null)
+        }
+        when (result) {
+            is CollectionImportResult.Error -> ImportOutcome(result.message, null)
+            is CollectionImportResult.Ok -> {
+                val id = apply(result.collection)
+                val imagesSaved = saveImages(result.collection)
+                val message = buildString {
+                    append("Collezione \"${result.collection.name}\" importata: ${result.collection.cards.size} carte")
+                    if (imagesSaved > 0) append(", $imagesSaved immagini")
+                    append('.')
+                    if (result.collection.cards.isEmpty()) append(" Premi \"Aggiorna catalogo\" per scaricare le carte.")
+                    if (result.skipped > 0) append(" ${result.skipped} voci non valide ignorate.")
+                }
+                ImportOutcome(message, id)
+            }
+        }
+    }
+
+    /**
+     * Scrive la collezione importata nel database in un'unica transazione.
+     * Le carte già presenti nel catalogo non vengono sovrascritte.
+     * @param imported ImportedCollection - dati validati.
+     * @return Long - id della nuova collezione.
+     */
+    private suspend fun apply(imported: ImportedCollection): Long = db.withTransaction {
+        val id = catalogDao.insertCollection(CollectionEntity(name = collections.uniqueName(imported.name), createdAt = System.currentTimeMillis()))
+        imported.queries.forEach {
+            catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = it.language, pattern = it.pattern, enabled = it.enabled))
+        }
+        imported.cards.forEach { c ->
+            if (catalogDao.getCard(c.card.id) == null) catalog.saveCard(c.card, legacyQueryId = 0)
+            catalogDao.insertMembership(CollectionCardEntity(id, c.card.id, null, c.hidden))
+        }
+        db.collectionDao().upsertEntries(
+            imported.entries.map { CollectionEntryEntity(id, it.variantId, it.quantity, it.condition, it.wanted, it.notes) },
+        )
+        val priceDao = db.priceDao()
+        imported.prices.forEach { p ->
+            if (priceDao.countSnapshot(p.variantId, p.source, p.fetchedAt) == 0) {
+                priceDao.insertSnapshot(
+                    PriceSnapshotEntity(
+                        variantId = p.variantId,
+                        source = p.source,
+                        eur = p.eur,
+                        eurLow = p.eurLow,
+                        eurAvg30 = p.eurAvg30,
+                        usd = p.usd,
+                        usdLow = p.usdLow,
+                        sourceUpdatedAt = p.sourceUpdatedAt,
+                        fetchedAt = p.fetchedAt,
+                        confidence = p.confidence,
+                    ),
+                )
+                priceDao.pruneSnapshots(p.variantId, PriceRepository.KEEP_SNAPSHOTS)
+            }
+        }
+        id
+    }
+
+    /**
+     * Salva le immagini incluse nel file per le carte che non ne hanno ancora una.
+     * @param imported ImportedCollection - dati validati.
+     * @return Int - numero di carte per cui è stata salvata un'immagine.
+     */
+    private suspend fun saveImages(imported: ImportedCollection): Int {
+        var count = 0
+        for (c in imported.cards) {
+            if (c.imageLow == null && c.imageHigh == null) continue
+            val current = catalogDao.getCard(c.card.id) ?: continue
+            val low = current.imageLowPath ?: c.imageLow?.let { images.write(c.card.id, ImageStore.Quality.LOW, it) }
+            val high = current.imageHighPath ?: c.imageHigh?.let { images.write(c.card.id, ImageStore.Quality.HIGH, it) }
+            if (low != current.imageLowPath || high != current.imageHighPath) {
+                catalogDao.setImagePaths(c.card.id, low, high)
+                count++
+            }
+        }
+        return count
+    }
+
+    /**
+     * Converte una carta del database nel record del file.
+     * @receiver CardEntity - carta.
+     * @param variants List<String> - nomi delle varianti.
+     * @param hidden Boolean - true se tolta dalla collezione.
+     * @param low String? - immagine piccola in base64.
+     * @param high String? - immagine grande in base64.
+     * @return CardRecord - record esportabile.
+     */
+    private fun CardEntity.toRecord(variants: List<String>, hidden: Boolean, low: String?, high: String?) = CardRecord(
+        id = id, language = language, tcgdexId = tcgdexId, name = name, setId = setId, setName = setName,
+        setCode = setCode, serieId = serieId, serieName = serieName, localId = localId, printedNumber = printedNumber,
+        rarity = rarity, releaseDate = releaseDate, illustrator = illustrator, imageUrl = imageUrl,
+        variants = variants, hidden = hidden, imageLow = low, imageHigh = high,
+    )
+
+    /**
+     * Converte un prezzo salvato nel record del file.
+     * @receiver PriceSnapshotEntity - prezzo.
+     * @return PriceRecord - record esportabile.
+     */
+    private fun PriceSnapshotEntity.toRecord() = PriceRecord(
+        variantId = variantId, source = source, eur = eur, eurLow = eurLow, eurAvg30 = eurAvg30, usd = usd,
+        usdLow = usdLow, sourceUpdatedAt = sourceUpdatedAt, fetchedAt = fetchedAt, confidence = confidence,
+    )
+
+    private companion object {
+        const val SQL_CHUNK = 500
+    }
+}
