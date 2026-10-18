@@ -67,21 +67,51 @@ TCGdex usa `0` per "nessun dato": i valori nulli o pari a zero vengono scartati.
 
 La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`: aggiungerne una richiede solo l'implementazione e l'inserimento in `PriceRepository`. Quando non c'è un prezzo nuovo resta l'ultimo salvato, oppure il prezzo manuale.
 
-## Modello dati (Room, versione 1)
+## Modello dati (Room, versione 2)
 
 | Tabella | Contenuto |
 |---|---|
-| `tracked_query` | ricerche per nome e lingua; le iniziali sono Mawile (EN) e クチート (JP) |
-| `card` | catalogo: set, sigla, numero stampato, rarità, serie, data, illustratore, URL e percorsi delle immagini |
+| `collection` | collezioni create dall'utente; alla prima installazione c'è "Mawile" |
+| `tracked_query` | ricerche per nome e lingua **di una collezione** |
+| `card` | catalogo condiviso: set, sigla, numero stampato, rarità, serie, data, illustratore, URL e percorsi delle immagini (`queryId` è un campo storico della v1) |
 | `card_variant` | una riga per variante (slot) |
-| `collection_entry` | **dati utente**: quantità, condizione, "la voglio", note. Nessun vincolo verso il catalogo, così il backup si importa anche prima del sync |
-| `price_snapshot` | storico prezzi: ultimi 10 per variante, con fonte, data e affidabilità |
-| `price_run` | registro degli aggiornamenti prezzi |
+| `collection_card` | appartenenza carta ↔ collezione: `queryId` (ricerca che l'ha aggiunta, null se a mano o importata) e `hidden` (tolta dall'utente, il sync non la riaggiunge) |
+| `collection_entry` | **dati utente per collezione**: quantità, condizione, "la voglio", note. Nessun vincolo verso il catalogo |
+| `price_snapshot` | storico prezzi condiviso: ultimi 10 per variante, con fonte, data e affidabilità |
+| `price_run` | registro degli aggiornamenti prezzi, con la collezione |
 
-Il sync del catalogo aggiorna solo `card` e `card_variant`: non tocca mai i dati dell'utente.
+Una carta è visibile in una collezione se non è nascosta e se è stata aggiunta a mano oppure da una ricerca attiva. Il sync del catalogo aggiorna solo `card`, `card_variant` e i collegamenti: non tocca mai i dati dell'utente.
+
+**Migrazione 1 → 2** (`Migrations.SQL_1_2`): crea la collezione "Mawile" con id 1, sposta lì ricerche e quantità e collega le carte tramite il vecchio `queryId`. `MigrationTest` la esegue su SQLite (JVM) e confronta il risultato con lo schema che Room esporta in `app/schemas/` durante la stessa build.
+
+## File JSON di una collezione (schema 2)
+
+```json
+{
+  "schema": 2, "app": "card-collection", "type": "collection", "exportedAt": "…",
+  "info":    { "name": "Mawile", "queries": [{ "language": "en", "pattern": "Mawile", "enabled": true }] },
+  "cards":   [{ "id": "en:me03-032", "language": "en", "tcgdexId": "me03-032", "name": "Mawile",
+                "setId": "me03", "setName": "Perfect Order", "setCode": "POR", "localId": "032",
+                "printedNumber": "032/088", "variants": ["NORMAL", "REVERSE"], "hidden": false,
+                "imageLow": "<base64, facoltativa>", "imageHigh": "<base64, facoltativa>" }],
+  "entries": [{ "variantId": "en:me03-032|NORMAL", "quantity": 2, "condition": "NM", "wanted": true }],
+  "prices":  [{ "variantId": "en:me03-032|NORMAL", "source": "TCGdex", "eur": 0.03, "usd": 0.11,
+                "fetchedAt": 1760000000000, "confidence": "HIGH" }]
+}
+```
+
+- **Export:** senza immagini, con immagini piccole oppure con piccole e grandi. Nel file vanno l'ultimo prezzo di mercato e tutti i prezzi manuali di ogni variante.
+- **Import:** crea sempre una nuova collezione, con nome reso unico se serve. Le carte già presenti nel catalogo non vengono sovrascritte; le immagini incluse si usano solo per le carte che non ne hanno.
+- **Validazione:**
+  - lettura in streaming con limite di 40 MB e al massimo 5.000 carte;
+  - id e varianti controllati, con lunghezze troncate;
+  - immagini accettate solo se WebP, PNG o JPEG entro 3 MB;
+  - voci e prezzi tenuti solo se riferiti a carte del file.
+- **Compatibilità:** il backup schema 1 della prima versione viene importato come "Collezione importata"; le carte arrivano al primo "Aggiorna catalogo".
 
 ## Flussi
 
+0. **Navigazione:** l'elenco delle collezioni apre una collezione con le schede Carte, Mancanti, Statistiche e Gestione. Catalogo e prezzi si aggiornano per la collezione aperta, con lavori unici per collezione.
 1. **Aggiorna catalogo:**
    1. ricerca per ogni query attiva;
    2. dettaglio di ogni carta e del suo set (con cache);
@@ -106,7 +136,7 @@ Il sync del catalogo aggiorna solo `card` e `card_variant`: non tocca mai i dati
 - **Risposte API:** limite di 2 MB; JSON tollerante ai campi sconosciuti ma con i tipi controllati.
 - **Database:** solo query Room parametrizzate.
 - **Input utente:** ricerche limitate a 2-40 caratteri ammessi, prezzi manuali a 0-99999,99, quantità a 0-999.
-- **Import del backup:** dimensione massima 2 MB, schema verificato; le voci non valide vengono scartate e contate.
+- **Import dei file JSON:** limite 40 MB in streaming, schema verificato, immagini controllate per formato e dimensione; le voci non valide vengono scartate e contate.
 
 ## Build e verifica
 
