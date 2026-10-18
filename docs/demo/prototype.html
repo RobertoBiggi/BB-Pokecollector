@@ -1,0 +1,1382 @@
+<title>Mawile Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: colonna "telefono" centrata (max 480px), app bar sticky in alto, nav fissa in basso, dettaglio come foglio a tutto schermo. */
+:root {
+  --bg: #eceff4;
+  --surface: #ffffff;
+  --surface-2: #e2e6ee;
+  --fg: #181c26;
+  --muted: #5a6274;
+  --line: #d2d7e1;
+  --accent: #b0245d;      /* rosa Folletto */
+  --accent-soft: #f6dfe8;
+  --accent-fg: #ffffff;
+  --steel: #64748f;       /* grigio Acciaio */
+  --ok: #1d7f55;
+  --warn: #9a6512;
+  --bad: #b8372b;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --nav-h: 64px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1218; --surface: #181d27; --surface-2: #222937; --fg: #e7eaf1; --muted: #98a1b4;
+    --line: #2c3442; --accent: #ef6d9f; --accent-soft: #3a1d2a; --accent-fg: #1b0912; --steel: #8e9cb6;
+    --ok: #4cc28a; --warn: #e2aa4c; --bad: #f06c5f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1218; --surface: #181d27; --surface-2: #222937; --fg: #e7eaf1; --muted: #98a1b4;
+  --line: #2c3442; --accent: #ef6d9f; --accent-soft: #3a1d2a; --accent-fg: #1b0912; --steel: #8e9cb6;
+  --ok: #4cc28a; --warn: #e2aa4c; --bad: #f06c5f; color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--surface); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app { max-width: 480px; margin: 0 auto; min-height: 100%; background: var(--bg); position: relative; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 16px); }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* App bar */
+.appbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); padding-block: 10px; display: flex; align-items: center; gap: 10px; }
+.appbar-title { flex: 1; min-width: 0; }
+.appbar h1 { font-family: var(--font-display); font-weight: 800; font-size: 21px; line-height: 1.1; margin: 0; letter-spacing: -0.01em; }
+.appbar .sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; flex: none; }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn[aria-pressed="true"] { background: var(--fg); color: var(--surface); border-color: var(--fg); }
+.btn-primary { height: 40px; padding: 0 14px; border-radius: 12px; border: 0; background: var(--accent); color: var(--accent-fg); font-weight: 700; display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+.btn-primary svg { width: 18px; height: 18px; }
+.btn { height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; }
+.btn-sm { height: 30px; padding: 0 10px; font-size: 13px; border-radius: 8px; }
+
+/* Banner */
+.banner { display: flex; gap: 10px; align-items: flex-start; padding-block: 10px; font-size: 13px; border-bottom: 1px solid var(--line); }
+.banner p { margin: 0; flex: 1; min-width: 0; }
+.banner--demo { background: var(--accent-soft); }
+.banner--offline { background: var(--fg); color: var(--surface); }
+.banner button { background: none; border: 0; padding: 0 4px; font-weight: 700; color: inherit; }
+
+/* Viste */
+.view { padding-block: 14px; display: grid; gap: 14px; }
+.section-title { font-family: var(--font-display); font-weight: 600; font-size: 17px; margin: 4px 0 0; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+
+/* Filtri */
+.search { width: 100%; height: 42px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); padding: 0 12px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--surface); border-color: var(--fg); }
+.select { height: 32px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); padding: 0 10px; font-size: 13px; font-weight: 600; }
+.count-line { font-size: 13px; color: var(--muted); }
+
+/* Griglia carte */
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 440px) { .grid { gap: 14px; } }
+.tile { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 8px; display: grid; gap: 8px; align-content: start; }
+.tile.is-none .art { filter: grayscale(.85) opacity(.55); }
+.tile-name { font-weight: 700; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
+.tile-meta { font-size: 12px; color: var(--muted); }
+.tile-code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.tile-code { font-size: 12px; font-weight: 500; }
+.tile-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.price { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 500; }
+.slots { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-variant-numeric: tabular-nums; }
+.slots.full { background: var(--ok); color: var(--surface); }
+.slots.partial { background: var(--accent-soft); color: var(--accent); }
+
+/* Illustrazione carta disegnata in CSS (segnaposto dell'immagine TCGdex) */
+.art { --h: 220; position: relative; aspect-ratio: 63 / 88; max-width: 100%; border-radius: 8px; overflow: hidden; isolation: isolate;
+  background: linear-gradient(160deg, hsl(var(--h) 22% 78%), hsl(var(--h) 18% 58%)); border: 5px solid #e9cf63; color: #1d1f26; display: flex; flex-direction: column; }
+.art--ex { background: linear-gradient(160deg, hsl(var(--h) 45% 36%), hsl(calc(var(--h) + 40) 40% 22%)); border-color: #c8ccd6; color: #fff; }
+.art--fa, .art--sir { border-color: #d9dde6; color: #fff; background: conic-gradient(from 210deg at 60% 40%, hsl(var(--h) 70% 55%), hsl(calc(var(--h) + 60) 70% 60%), hsl(calc(var(--h) + 140) 60% 55%), hsl(var(--h) 70% 55%)); }
+.art--ir { border-color: #eceff4; background: radial-gradient(circle at 30% 30%, hsl(var(--h) 80% 80%), hsl(calc(var(--h) + 30) 55% 55%)); }
+.art-top { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 6px 0; font-weight: 800; font-size: 10px; gap: 4px; }
+.art-top span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.art-window { margin: 4px 6px; flex: 1; border-radius: 3px; background: rgba(255,255,255,.28); display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.art--fa .art-window, .art--sir .art-window, .art--ir .art-window { background: transparent; box-shadow: none; margin: 0; }
+.art-window svg { width: 74%; height: auto; }
+.art-bot { display: flex; justify-content: space-between; padding: 0 6px 4px; font-size: 8px; font-family: var(--font-mono); gap: 4px; }
+.art-badge { position: absolute; top: 18px; right: 6px; font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; background: #1d1f26; color: #fff; z-index: 3; }
+.art-badge.first { top: auto; bottom: 16px; left: 6px; right: auto; background: #fff; color: #1d1f26; border: 1px solid #1d1f26; }
+.art.v-holo::after, .art.v-reverse::after, .art.v-firstEdition::after {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: color-dodge; opacity: .55;
+  background: linear-gradient(115deg, transparent 20%, #ff9ad5 32%, #9ee7ff 44%, #fff59e 56%, transparent 68%); background-size: 250% 250%;
+  animation: shimmer 4s linear infinite;
+}
+.art.v-reverse::after { opacity: .7; -webkit-mask: radial-gradient(ellipse 46% 36% at 50% 46%, transparent 98%, #000 100%); mask: radial-gradient(ellipse 46% 36% at 50% 46%, transparent 98%, #000 100%); }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+@media (prefers-reduced-motion: reduce) { .art::after { animation: none !important; background-position: 40% 0 !important; } }
+
+/* Dettaglio */
+.sheet { position: fixed; inset: 0; z-index: 40; background: var(--bg); overflow-y: auto; overscroll-behavior: contain; padding-top: env(safe-area-inset-top, 0px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }
+.sheet-inner { max-width: 480px; margin: 0 auto; }
+.sheet-bar { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--line); padding-block: 10px; display: flex; align-items: center; gap: 10px; }
+.sheet-bar h2 { margin: 0; font-family: var(--font-display); font-size: 18px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detail-hero { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.meta { display: grid; gap: 6px; margin: 0; font-size: 13px; }
+.meta div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 6px; }
+.meta dt { color: var(--muted); }
+.meta dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.links a { font-size: 13px; font-weight: 600; color: var(--accent); }
+.vlist { display: grid; gap: 10px; }
+.vrow { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 10px; }
+.vrow.is-unwanted { opacity: .6; }
+.vrow-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vname { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; }
+.dot.owned { background: var(--ok); }
+.switch { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+.vrow-qty { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stepper button { width: 38px; height: 36px; border: 0; background: var(--surface-2); font-size: 18px; font-weight: 700; }
+.stepper output { min-width: 40px; text-align: center; font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+.prices { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.pbox { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
+.pbox .lbl { font-size: 11px; color: var(--muted); font-weight: 600; }
+.pbox .val { font-family: var(--font-mono); font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.pbox .val.none { color: var(--muted); font-size: 13px; }
+.pfoot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.conf { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
+.conf.alta { color: var(--ok); } .conf.media { color: var(--warn); } .conf.bassa, .conf.vecchio { color: var(--bad); } .conf.manuale { color: var(--steel); }
+.spark { width: 84px; height: 24px; flex: none; }
+.spark path { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.spark circle { fill: var(--accent); }
+.manual-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.manual-form input { width: 110px; height: 34px; border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; background: var(--surface); font-family: var(--font-mono); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.err { font-size: 12px; color: var(--bad); margin: 0; }
+
+/* Liste */
+.list { display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.li { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; width: 100%; }
+.li:first-child { border-top: 0; }
+.li .art { border-width: 2px; border-radius: 4px; }
+.li .art .art-top, .li .art .art-bot, .li .art .art-badge { display: none; }
+.li-title { font-weight: 700; font-size: 14px; overflow-wrap: anywhere; }
+.li-sub { font-size: 12px; color: var(--muted); }
+.summary { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 4px; }
+.summary .big { font-family: var(--font-display); font-weight: 800; font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+/* Statistiche */
+.ring-wrap { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.ring { width: 120px; height: 120px; }
+.ring .track { fill: none; stroke: var(--surface-2); stroke-width: 12; }
+.ring .bar { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 60px 60px; }
+.ring text { fill: var(--fg); font-family: var(--font-display); font-weight: 800; font-size: 24px; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 2px; min-width: 0; }
+.stat .v { font-family: var(--font-mono); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bars { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.bar-row { display: grid; gap: 4px; }
+.bar-row .top { display: flex; justify-content: space-between; font-size: 13px; gap: 8px; }
+.bar-row .top span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+.track-h { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.track-h > div { height: 100%; background: var(--accent); border-radius: 999px; }
+
+/* Impostazioni */
+.card-box { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+.row { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; }
+.row > .grow { flex: 1; min-width: 0; }
+.field { height: 38px; border: 1px solid var(--line); border-radius: 10px; padding: 0 10px; background: var(--surface); min-width: 0; }
+textarea.field { height: 120px; padding: 8px 10px; font-family: var(--font-mono); font-size: 12px; width: 100%; resize: vertical; }
+.prov { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding-block: 6px; border-top: 1px solid var(--line); }
+.prov:first-of-type { border-top: 0; }
+.prov .n { font-family: var(--font-mono); color: var(--muted); }
+.prov .name { font-weight: 700; }
+.prov .desc { font-size: 12px; color: var(--muted); }
+.prov-actions { display: flex; gap: 4px; align-items: center; }
+
+/* Nav in basso */
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+.nav-inner { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); height: var(--nav-h); }
+.nav button { border: 0; background: none; display: grid; place-items: center; align-content: center; gap: 2px; font-size: 11px; font-weight: 600; color: var(--muted); }
+.nav button svg { width: 22px; height: 22px; }
+.nav button[aria-current="page"] { color: var(--accent); }
+
+/* Pannello aggiornamento prezzi */
+.run { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.run-inner { max-width: 480px; margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 18px 18px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,.18); padding-block: 14px; display: grid; gap: 10px; }
+.progress { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.progress > div { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+.log { max-height: 38vh; overflow-y: auto; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; background: var(--surface-2); border-radius: 10px; padding: 8px 10px; display: grid; gap: 3px; }
+.log .ok { color: var(--ok); } .log .warn { color: var(--warn); } .log .bad { color: var(--bad); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 14px); z-index: 60; background: var(--fg); color: var(--surface); padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 600; max-width: min(92vw, 440px); }
+.empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+</style>
+
+<div class="app" id="app">
+  <header class="appbar gutter">
+    <div class="appbar-title">
+      <h1>Mawile Tracker</h1>
+      <div class="sub" id="lastUpdate">—</div>
+    </div>
+    <button class="icon-btn" id="btnOffline" aria-pressed="false" aria-label="Modalità aereo" title="Simula modalità aereo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10.5 3.5c0-.8.7-1.5 1.5-1.5s1.5.7 1.5 1.5V9l7.5 4.5V16l-7.5-2.5V18l2 1.5V21L12 20l-3.5 1v-1.5l2-1.5v-4.5L3 16v-2.5L10.5 9z"/></svg>
+    </button>
+    <button class="btn-primary" id="btnRefresh">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+      Aggiorna
+    </button>
+  </header>
+  <div class="banner banner--offline gutter" id="offlineBanner" hidden>
+    <p><strong>Modalità aereo.</strong> Stai vedendo immagini, quantità e ultimi prezzi salvati sul telefono. L'aggiornamento prezzi torna disponibile con la rete.</p>
+  </div>
+  <div class="banner banner--demo gutter" id="demoBanner">
+    <p><strong>Demo con dati di esempio.</strong> Set, numeri, immagini e prezzi sono inventati. Nell'app vera carte e immagini arrivano da TCGdex e i prezzi dalle fonti configurate. Le modifiche restano salvate in questo browser.</p>
+    <button id="btnDemoClose" aria-label="Chiudi avviso">✕</button>
+  </div>
+
+  <main id="views">
+    <section class="view gutter" id="view-collection"></section>
+    <section class="view gutter" id="view-missing" hidden></section>
+    <section class="view gutter" id="view-stats" hidden></section>
+    <section class="view gutter" id="view-settings" hidden></section>
+  </main>
+</div>
+
+<nav class="nav" aria-label="Sezioni">
+  <div class="nav-inner">
+    <button data-tab="collection" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7.5" height="10" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="10" rx="1.5"/><rect x="3" y="15.5" width="7.5" height="5.5" rx="1.5"/><rect x="13.5" y="15.5" width="7.5" height="5.5" rx="1.5"/></svg>
+      Collezione
+    </button>
+    <button data-tab="missing">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="2" stroke-dasharray="3 2.4"/><path d="M9 12h6"/></svg>
+      Mancanti
+    </button>
+    <button data-tab="stats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      Statistiche
+    </button>
+    <button data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+      Impostazioni
+    </button>
+  </div>
+</nav>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></div>
+
+<div class="run" id="runPanel" hidden>
+  <div class="run-inner gutter">
+    <div class="row">
+      <strong id="runTitle">Aggiornamento prezzi</strong>
+      <button class="btn btn-sm" id="btnRunClose">Chiudi</button>
+    </div>
+    <div class="progress"><div id="runBar"></div></div>
+    <div class="hint" id="runStatus"></div>
+    <div class="log" id="runLog" aria-live="polite"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+'use strict';
+
+/* ------------------------------------------------------------------ *
+ *  Dati di esempio (nell'app vera arrivano da TCGdex e dai provider)  *
+ * ------------------------------------------------------------------ */
+
+const STORE_KEY = 'mawile-tracker-demo-v1';
+const DAY = 864e5;
+const NOW = Date.now();
+
+const VARIANT_LABEL = { normal: 'Normal', holo: 'Holo', reverse: 'Reverse holo', firstEdition: '1st Edition' };
+const PROVIDERS = {
+  tcgdex: { name: 'TCGdex', desc: 'Cardmarket EUR + TCGplayer USD · gratis, senza chiave' },
+  pokemontcg: { name: 'pokemontcg.io', desc: 'Solo carte EN · chiave opzionale' },
+  ppt: { name: 'PokemonPriceTracker', desc: 'EN + JP · serve chiave gratuita (100 crediti/giorno)' },
+};
+const ERA_ORDER = ['Diamante e Perla', 'XY', 'Sole e Luna', 'Spada e Scudo', 'Scarlatto e Violetto', 'Mega Evoluzione'];
+
+// code: sigla del set stampata in basso a sinistra (null nelle ere che non la stampano); num: numero stampato.
+// rank: usato per ordinare per rarità; art: stile del segnaposto; cm/tcp: prezzi base EUR/USD (null = nessuna fonte).
+const CARDS = [
+  { id: 'en-dp-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'Diamante e Perla', set: 'DP', code: null, num: '52/130', rarity: 'Non comune', rank: 2, art: 'basic', hue: 215,
+    variants: [{ type: 'normal', cm: 0.45, tcp: 0.38, conf: 'alta' }, { type: 'reverse', cm: 1.9, tcp: 2.2, conf: 'media' }] },
+  { id: 'en-xy-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'XY', set: 'XY', code: null, num: '94/146', rarity: 'Comune', rank: 1, art: 'basic', hue: 205,
+    variants: [{ type: 'normal', cm: 0.15, tcp: 0.12, conf: 'alta' }, { type: 'reverse', cm: 0.6, tcp: 0.75, conf: 'media' }] },
+  { id: 'en-xy-mawileex', lang: 'en', query: 'q-en', name: 'Mawile-EX', era: 'XY', set: 'XY4', code: null, num: '68/119', rarity: 'Rara Holo EX', rank: 4, art: 'ex', hue: 320,
+    variants: [{ type: 'holo', cm: 3.5, tcp: 4.2, conf: 'alta' }] },
+  { id: 'en-xy-mmawileex', lang: 'en', query: 'q-en', name: 'M Mawile-EX', era: 'XY', set: 'XY4', code: null, num: '69/119', rarity: 'Rara Holo EX', rank: 4, art: 'ex', hue: 300,
+    variants: [{ type: 'holo', cm: 4.8, tcp: 5.6, conf: 'alta' }] },
+  { id: 'en-xy-mmawileex-fa', lang: 'en', query: 'q-en', name: 'M Mawile-EX (Full Art)', era: 'XY', set: 'XY4', code: null, num: '115/119', rarity: 'Ultra Rara', rank: 6, art: 'fa', hue: 280,
+    variants: [{ type: 'holo', cm: 18.0, tcp: 22.5, conf: 'alta' }] },
+  { id: 'en-sm-mawilegx', lang: 'en', query: 'q-en', name: 'Mawile-GX', era: 'Sole e Luna', set: 'SM', code: null, num: '141/214', rarity: 'Rara Holo GX', rank: 4, art: 'ex', hue: 340,
+    variants: [{ type: 'holo', cm: 2.2, tcp: 2.6, conf: 'alta' }] },
+  { id: 'en-sm-mawilegx-fa', lang: 'en', query: 'q-en', name: 'Mawile-GX (Full Art)', era: 'Sole e Luna', set: 'SM', code: null, num: '203/214', rarity: 'Ultra Rara', rank: 6, art: 'fa', hue: 250,
+    variants: [{ type: 'holo', cm: 9.5, tcp: 11.0, conf: 'alta' }] },
+  { id: 'en-swsh-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'Spada e Scudo', set: 'SWSH', code: null, num: '133/198', rarity: 'Comune', rank: 1, art: 'basic', hue: 195,
+    variants: [{ type: 'normal', cm: 0.1, tcp: 0.1, conf: 'alta' }, { type: 'reverse', cm: 0.45, tcp: 0.55, conf: 'media' }] },
+  { id: 'en-sv-mawile', lang: 'en', query: 'q-en', name: 'Mawile', era: 'Scarlatto e Violetto', set: 'SV', code: 'PAR', num: '120/182', rarity: 'Comune', rank: 1, art: 'basic', hue: 225,
+    variants: [{ type: 'normal', cm: 0.12, tcp: 0.1, conf: 'alta' }, { type: 'reverse', cm: 0.5, tcp: 0.6, conf: 'media' }] },
+  { id: 'en-sv-mawile-ir', lang: 'en', query: 'q-en', name: 'Mawile (Illustrazione Rara)', era: 'Scarlatto e Violetto', set: 'SV', code: 'PAR', num: '196/182', rarity: 'Illustrazione Rara', rank: 5, art: 'ir', hue: 40,
+    variants: [{ type: 'holo', cm: 6.9, tcp: 7.8, conf: 'alta' }] },
+  { id: 'en-me-megamawileex', lang: 'en', query: 'q-en', name: 'Mega Mawile ex', era: 'Mega Evoluzione', set: 'ME', code: 'MEG', num: '78/132', rarity: 'Doppia Rara', rank: 4, art: 'ex', hue: 330,
+    variants: [{ type: 'holo', cm: 3.9, tcp: 4.5, conf: 'alta' }] },
+  { id: 'en-me-megamawileex-sir', lang: 'en', query: 'q-en', name: 'Mega Mawile ex (SIR)', era: 'Mega Evoluzione', set: 'ME', code: 'MEG', num: '171/132', rarity: 'Illustrazione Speciale Rara', rank: 7, art: 'sir', hue: 315,
+    variants: [{ type: 'holo', cm: 48.0, tcp: 56.0, conf: 'alta' }] },
+  { id: 'ja-xy-mmawileex', lang: 'ja', query: 'q-ja', name: 'MクチートEX', era: 'XY', set: 'XY4 JP', code: 'XY4', num: '058/088', rarity: 'RR', rank: 4, art: 'ex', hue: 300,
+    variants: [{ type: 'holo', cm: 6.5, tcp: null, conf: 'media' }, { type: 'firstEdition', cm: 9.0, tcp: null, conf: 'media' }] },
+  { id: 'ja-sv-mawile', lang: 'ja', query: 'q-ja', name: 'クチート', era: 'Scarlatto e Violetto', set: 'SV JP', code: 'SV5a', num: '061/101', rarity: 'C', rank: 1, art: 'basic', hue: 210,
+    variants: [{ type: 'normal', cm: 0.3, tcp: null, conf: 'bassa' }, { type: 'reverse', cm: null, tcp: null, conf: 'bassa' }] },
+  { id: 'ja-me-megamawileex', lang: 'ja', query: 'q-ja', name: 'メガクチートex', era: 'Mega Evoluzione', set: 'M JP', code: 'M2a', num: '044/063', rarity: 'RR', rank: 4, art: 'ex', hue: 335,
+    variants: [{ type: 'holo', cm: 2.8, tcp: null, conf: 'media' }] },
+  { id: 'ja-me-megamawileex-sar', lang: 'ja', query: 'q-ja', name: 'メガクチートex (SAR)', era: 'Mega Evoluzione', set: 'M JP', code: 'M2a', num: '088/063', rarity: 'SAR', rank: 7, art: 'sir', hue: 290,
+    variants: [{ type: 'holo', cm: 35.0, tcp: null, conf: 'media' }] },
+];
+const CARD_BY_ID = Object.fromEntries(CARDS.map(c => [c.id, c]));
+
+/* ------------------------------------------------------------------ *
+ *  Utilità                                                             *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Esegue l'escape dei caratteri HTML per inserire testo in sicurezza dentro innerHTML.
+ * @param {*} value - Valore da mostrare (viene convertito in stringa).
+ * @returns {string} Testo con &, <, >, " e ' sostituiti dalle entità HTML.
+ */
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+/**
+ * Costruisce la chiave univoca di una variante (equivalente di card_variant.id).
+ * @param {string} cardId - Id della carta.
+ * @param {string} type - Tipo di variante (normal, holo, reverse, firstEdition).
+ * @returns {string} Chiave nel formato "cardId|type".
+ */
+function vkey(cardId, type) {
+  return cardId + '|' + type;
+}
+
+/**
+ * Compone il codice stampato in basso a sinistra sulla carta (sigla del set + numero).
+ * @param {object} card - Carta del catalogo.
+ * @returns {string} Codice nel formato "M2a 044/063", oppure solo il numero se la sigla manca.
+ */
+function printedCode(card) {
+  return [card.code, card.num].filter(Boolean).join(' ');
+}
+
+/**
+ * Crea un generatore pseudo-casuale deterministico a partire da una stringa (mulberry32).
+ * Serve a generare uno storico prezzi di esempio stabile tra un caricamento e l'altro.
+ * @param {string} seedText - Testo da cui ricavare il seme.
+ * @returns {function(): number} Funzione che restituisce numeri in [0, 1).
+ */
+function seededRandom(seedText) {
+  let h = 1779033703;
+  for (let i = 0; i < seedText.length; i++) h = Math.imul(h ^ seedText.charCodeAt(i), 3432918353);
+  let a = h >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Arrotonda un prezzo a due decimali.
+ * @param {number} n - Prezzo da arrotondare.
+ * @returns {number} Prezzo arrotondato al centesimo.
+ */
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+const fmtEurIntl = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+const fmtUsdIntl = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'USD' });
+const fmtDateIntl = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short' });
+const fmtDateTimeIntl = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+/**
+ * Formatta un importo in euro.
+ * @param {number|null} n - Importo, oppure null se assente.
+ * @returns {string} Importo formattato, oppure "—" se assente.
+ */
+function fmtEur(n) {
+  return n == null ? '—' : fmtEurIntl.format(n);
+}
+
+/**
+ * Formatta un importo in dollari.
+ * @param {number|null} n - Importo, oppure null se assente.
+ * @returns {string} Importo formattato, oppure "—" se assente.
+ */
+function fmtUsd(n) {
+  return n == null ? '—' : fmtUsdIntl.format(n);
+}
+
+/**
+ * Restituisce una promessa che si risolve dopo un certo tempo (per simulare la rete).
+ * @param {number} ms - Millisecondi di attesa.
+ * @returns {Promise<void>} Promessa risolta allo scadere del tempo.
+ */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/* ------------------------------------------------------------------ *
+ *  Stato (equivalente semplificato del database Room)                  *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Crea lo stato iniziale della demo: quantità di esempio, slot desiderati e storico prezzi.
+ * @returns {object} Stato completo con qty, cond, wanted, prices, query, provider e impostazioni.
+ */
+function initialState() {
+  const prices = {};
+  for (const card of CARDS) {
+    for (const v of card.variants) {
+      const key = vkey(card.id, v.type);
+      const rnd = seededRandom(key);
+      const history = [];
+      if (v.cm != null || v.tcp != null) {
+        let drift = 1 + (rnd() - 0.5) * 0.2;
+        for (let i = 5; i >= 0; i--) {
+          drift *= 1 + (rnd() - 0.5) * 0.08;
+          history.push({
+            t: NOW - (6 + i * 7) * DAY,
+            eur: v.cm == null ? null : round2(Math.max(0.05, v.cm * drift)),
+            usd: v.tcp == null ? null : round2(Math.max(0.05, v.tcp * drift)),
+            src: card.lang === 'ja' ? 'PokemonPriceTracker' : 'TCGdex',
+            conf: v.conf,
+          });
+        }
+      }
+      prices[key] = history;
+    }
+  }
+  const qty = {
+    [vkey('en-dp-mawile', 'normal')]: 1,
+    [vkey('en-xy-mawile', 'normal')]: 2,
+    [vkey('en-xy-mawile', 'reverse')]: 1,
+    [vkey('en-xy-mmawileex', 'holo')]: 1,
+    [vkey('en-sm-mawilegx', 'holo')]: 1,
+    [vkey('en-sv-mawile', 'normal')]: 3,
+    [vkey('en-me-megamawileex', 'holo')]: 1,
+    [vkey('ja-me-megamawileex', 'holo')]: 1,
+  };
+  return {
+    version: 1,
+    qty,
+    cond: {},
+    wanted: { [vkey('en-dp-mawile', 'reverse')]: false },
+    prices,
+    queries: [
+      { id: 'q-en', lang: 'en', pattern: 'Mawile', enabled: true, demo: true },
+      { id: 'q-ja', lang: 'ja', pattern: 'クチート', enabled: true, demo: true },
+    ],
+    providers: [
+      { id: 'tcgdex', enabled: true },
+      { id: 'pokemontcg', enabled: true },
+      { id: 'ppt', enabled: true },
+    ],
+    pptKey: '',
+    runs: [{ t: NOW - 6 * DAY, ok: 18, fallback: 2, fail: 1, aborted: false }],
+    offline: false,
+    demoClosed: false,
+    tab: 'collection',
+    filter: { owned: 'all', lang: 'all', sort: 'era', q: '' },
+  };
+}
+
+/**
+ * Carica lo stato salvato nel browser; se manca o è corrotto usa lo stato iniziale.
+ * @returns {object} Stato dell'applicazione.
+ */
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.version === 1) return Object.assign(initialState(), parsed);
+    }
+  } catch (e) { /* storage non disponibile: si riparte dai dati di esempio */ }
+  return initialState();
+}
+
+/**
+ * Salva lo stato corrente nel browser (best effort, ignora gli errori di storage).
+ * @returns {void}
+ */
+function saveState() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* ignorato */ }
+}
+
+let state = loadState();
+let running = false;
+let openCardId = null;
+let manualOpenKey = null;
+
+/* ------------------------------------------------------------------ *
+ *  Logica di dominio                                                   *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Elenca le carte che appartengono a una query di ricerca attiva.
+ * @returns {object[]} Carte tracciate.
+ */
+function trackedCards() {
+  const active = new Set(state.queries.filter(q => q.enabled).map(q => q.id));
+  return CARDS.filter(c => active.has(c.query));
+}
+
+/**
+ * Restituisce le copie possedute di una variante.
+ * @param {string} key - Chiave della variante.
+ * @returns {number} Quantità posseduta (0 se nessuna).
+ */
+function qtyOf(key) {
+  return state.qty[key] || 0;
+}
+
+/**
+ * Indica se una variante conta come slot della collezione.
+ * @param {string} key - Chiave della variante.
+ * @returns {boolean} true se la variante è desiderata (default true).
+ */
+function isWanted(key) {
+  return state.wanted[key] !== false;
+}
+
+/**
+ * Trova l'ultimo snapshot di prezzo che contiene un valore nel campo richiesto.
+ * @param {string} key - Chiave della variante.
+ * @param {'eur'|'usd'} field - Valuta richiesta.
+ * @returns {object|null} Snapshot più recente con quel valore, oppure null.
+ */
+function latestSnap(key, field) {
+  const list = state.prices[key] || [];
+  for (let i = list.length - 1; i >= 0; i--) if (list[i][field] != null) return list[i];
+  return null;
+}
+
+/**
+ * Calcola i numeri di sintesi di una carta: slot desiderati, slot posseduti, copie e prezzo di riferimento.
+ * @param {object} card - Carta del catalogo.
+ * @returns {{slots:number, owned:number, copies:number, refEur:number|null}} Riepilogo della carta.
+ */
+function cardSummary(card) {
+  let slots = 0, owned = 0, copies = 0, refEur = null;
+  for (const v of card.variants) {
+    const key = vkey(card.id, v.type);
+    const q = qtyOf(key);
+    copies += q;
+    if (isWanted(key)) {
+      slots++;
+      if (q > 0) owned++;
+    }
+    const s = latestSnap(key, 'eur');
+    if (s && (refEur == null || s.eur < refEur)) refEur = s.eur;
+  }
+  return { slots, owned, copies, refEur };
+}
+
+/**
+ * Calcola le statistiche su un gruppo di carte: completamento, valore e costo dei mancanti.
+ * @param {object[]} cards - Carte da considerare.
+ * @returns {object} slots, owned, copies, valueEur, valueUsd, missing (lista), missingEur, missingUnknown.
+ */
+function computeStats(cards) {
+  const out = { slots: 0, owned: 0, copies: 0, valueEur: 0, valueUsd: 0, missing: [], missingEur: 0, missingUnknown: 0 };
+  for (const card of cards) {
+    for (const v of card.variants) {
+      const key = vkey(card.id, v.type);
+      const q = qtyOf(key);
+      const eur = latestSnap(key, 'eur');
+      const usd = latestSnap(key, 'usd');
+      out.copies += q;
+      if (eur) out.valueEur += q * eur.eur;
+      if (usd) out.valueUsd += q * usd.usd;
+      if (!isWanted(key)) continue;
+      out.slots++;
+      if (q > 0) { out.owned++; continue; }
+      out.missing.push({ card, v, key, eur: eur ? eur.eur : null });
+      if (eur) out.missingEur += eur.eur; else out.missingUnknown++;
+    }
+  }
+  return out;
+}
+
+/**
+ * Restituisce la data dell'ultimo aggiornamento prezzi riuscito.
+ * @returns {number|null} Timestamp in millisecondi, oppure null se non c'è.
+ */
+function lastPriceTime() {
+  const run = state.runs.find(r => !r.aborted);
+  return run ? run.t : null;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Componenti grafici                                                  *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Disegna l'emblema stilizzato di Mawile (testa + grande mascella posteriore) in SVG.
+ * @param {boolean} mega - true per la versione Mega (doppia mascella).
+ * @returns {string} Markup SVG.
+ */
+function mawileSvg(mega) {
+  const jaw = 'M52 50 C 58 14, 94 10, 93 38 C 92 54, 76 62, 60 60 Z';
+  const teeth = '<path d="M64 56 l3 -6 l3 6 M72 57 l3 -6 l3 6 M80 54 l3 -6 l3 5" fill="#f6f2e6" stroke="none"/>';
+  const second = mega ? `<path d="M50 54 C 40 18, 6 14, 8 40 C 9 56, 24 64, 40 62 Z" fill="#26232a"/>` : '';
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">
+    ${second}<path d="${jaw}" fill="#26232a"/>${teeth}
+    <circle cx="44" cy="64" r="20" fill="#f1d88a"/>
+    <path d="M28 54 C 34 40, 54 40, 60 52 C 52 48, 36 48, 28 54 Z" fill="#26232a"/>
+    <circle cx="38" cy="64" r="3" fill="#c0283f"/><circle cx="51" cy="64" r="3" fill="#c0283f"/>
+    <path d="M40 74 q4 3 8 0" stroke="#7a5b2a" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+
+/**
+ * Genera il segnaposto dell'immagine di una carta con l'effetto della variante scelta.
+ * @param {object} card - Carta del catalogo.
+ * @param {string} variantType - Variante da mostrare (determina holo/reverse/1st edition).
+ * @returns {string} Markup HTML dell'illustrazione.
+ */
+function artHtml(card, variantType) {
+  const mega = /mega|^m |mクチート|メガ/i.test(card.name);
+  const lang = card.lang === 'ja' ? '<span class="art-badge">JP</span>' : '';
+  const first = variantType === 'firstEdition' ? '<span class="art-badge first">1st ED</span>' : '';
+  return `<div class="art art--${esc(card.art)} v-${esc(variantType)}" style="--h:${Number(card.hue) || 0}" role="img" aria-label="${esc(card.name + ' · ' + VARIANT_LABEL[variantType])}">
+    <div class="art-top"><span>${esc(card.name)}</span><span>${esc(card.rarity.length <= 4 ? card.rarity : '')}</span></div>
+    ${lang}${first}
+    <div class="art-window">${mawileSvg(mega)}</div>
+    <div class="art-bot"><span>${esc(printedCode(card))}</span><span></span></div>
+  </div>`;
+}
+
+/**
+ * Disegna una sparkline SVG con lo storico prezzi in euro di una variante.
+ * @param {string} key - Chiave della variante.
+ * @returns {string} Markup SVG, oppure stringa vuota se i punti sono meno di due.
+ */
+function sparkline(key) {
+  const pts = (state.prices[key] || []).filter(s => s.eur != null).slice(-10);
+  if (pts.length < 2) return '';
+  const w = 84, h = 24, pad = 3;
+  const vals = pts.map(p => p.eur);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = max - min || 1;
+  const xy = vals.map((v, i) => [pad + i * (w - 2 * pad) / (vals.length - 1), h - pad - (v - min) / span * (h - 2 * pad)]);
+  const d = xy.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const last = xy[xy.length - 1];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" aria-label="Andamento ultimi ${vals.length} prezzi"><path d="${d}"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.4"/></svg>`;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Rendering delle viste                                               *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Aggiorna l'intestazione: sottotitolo con l'ultimo aggiornamento, stato offline e pulsanti.
+ * @returns {void}
+ */
+function renderHeader() {
+  const t = lastPriceTime();
+  document.getElementById('lastUpdate').textContent = t ? 'Prezzi aggiornati il ' + fmtDateTimeIntl.format(t) : 'Prezzi mai aggiornati';
+  document.getElementById('btnOffline').setAttribute('aria-pressed', String(state.offline));
+  document.getElementById('offlineBanner').hidden = !state.offline;
+  document.getElementById('demoBanner').hidden = !!state.demoClosed;
+  document.getElementById('btnRefresh').disabled = state.offline || running;
+}
+
+/**
+ * Disegna la vista Collezione con ricerca, filtri, ordinamento e griglia delle carte.
+ * @returns {void}
+ */
+function renderCollection() {
+  const el = document.getElementById('view-collection');
+  const f = state.filter;
+  const q = f.q.trim().toLowerCase();
+  let cards = trackedCards().filter(c => {
+    if (f.lang !== 'all' && c.lang !== f.lang) return false;
+    if (q && !(c.name.toLowerCase().includes(q) || c.set.toLowerCase().includes(q) || printedCode(c).toLowerCase().includes(q) || c.rarity.toLowerCase().includes(q))) return false;
+    const s = cardSummary(c);
+    if (f.owned === 'owned' && s.copies === 0) return false;
+    if (f.owned === 'missing' && s.owned >= s.slots) return false;
+    return true;
+  });
+  const sorters = {
+    era: (a, b) => ERA_ORDER.indexOf(a.era) - ERA_ORDER.indexOf(b.era) || a.lang.localeCompare(b.lang),
+    price: (a, b) => (cardSummary(b).refEur ?? -1) - (cardSummary(a).refEur ?? -1),
+    rarity: (a, b) => b.rank - a.rank,
+    code: (a, b) => (a.code ? 0 : 1) - (b.code ? 0 : 1) || (a.code || '').localeCompare(b.code || '') || parseInt(a.num, 10) - parseInt(b.num, 10),
+    name: (a, b) => a.name.localeCompare(b.name, 'it'),
+  };
+  cards = cards.slice().sort(sorters[f.sort] || sorters.era);
+
+  const chip = (group, value, label) => `<button class="chip" data-filter="${group}" data-value="${value}" aria-pressed="${f[group] === value}">${label}</button>`;
+  const tiles = cards.map(c => {
+    const s = cardSummary(c);
+    const cls = s.slots === 0 ? '' : s.owned >= s.slots ? 'full' : s.owned > 0 ? 'partial' : '';
+    const bestType = (c.variants.find(v => qtyOf(vkey(c.id, v.type)) > 0) || c.variants[0]).type;
+    return `<button class="tile ${s.copies === 0 ? 'is-none' : ''}" data-open="${esc(c.id)}">
+      ${artHtml(c, bestType)}
+      <div class="tile-name">${esc(c.name)}</div>
+      <div class="tile-code">${esc(printedCode(c))}</div>
+      <div class="tile-meta">${esc(c.rarity)} · ${c.lang === 'ja' ? 'JP' : 'EN'}</div>
+      <div class="tile-foot"><span class="slots ${cls}" title="Varianti possedute / varianti che vuoi">${s.owned}/${s.slots}</span><span class="price">${s.refEur == null ? '—' : 'da ' + fmtEur(s.refEur)}</span></div>
+    </button>`;
+  }).join('');
+
+  el.innerHTML = `
+    <input class="search" id="search" type="search" placeholder="Cerca nome, codice (es. M2a 044) o rarità" value="${esc(f.q)}" autocomplete="off" maxlength="40">
+    <div class="filters">
+      ${chip('owned', 'all', 'Tutte')}${chip('owned', 'owned', 'Possedute')}${chip('owned', 'missing', 'Mancanti')}
+      ${chip('lang', 'all', 'EN + JP')}${chip('lang', 'en', 'EN')}${chip('lang', 'ja', 'JP')}
+      <select class="select" id="sortSel" aria-label="Ordina">
+        <option value="era" ${f.sort === 'era' ? 'selected' : ''}>Ordina: era</option>
+        <option value="price" ${f.sort === 'price' ? 'selected' : ''}>Ordina: prezzo</option>
+        <option value="rarity" ${f.sort === 'rarity' ? 'selected' : ''}>Ordina: rarità</option>
+        <option value="code" ${f.sort === 'code' ? 'selected' : ''}>Ordina: codice</option>
+        <option value="name" ${f.sort === 'name' ? 'selected' : ''}>Ordina: nome</option>
+      </select>
+    </div>
+    <div class="count-line">${cards.length} carte · il badge indica varianti possedute su varianti che vuoi</div>
+    ${cards.length ? `<div class="grid">${tiles}</div>` : '<div class="empty">Nessuna carta con questi filtri.</div>'}
+  `;
+}
+
+/**
+ * Disegna la vista Mancanti: riepilogo del costo stimato e lista degli slot senza copie.
+ * @returns {void}
+ */
+function renderMissing() {
+  const el = document.getElementById('view-missing');
+  const st = computeStats(trackedCards());
+  const items = st.missing
+    .sort((a, b) => ERA_ORDER.indexOf(a.card.era) - ERA_ORDER.indexOf(b.card.era))
+    .map(m => `<button class="li" data-open="${esc(m.card.id)}">
+      ${artHtml(m.card, m.v.type)}
+      <div><div class="li-title">${esc(m.card.name)}</div><div class="li-sub"><span class="mono">${esc(printedCode(m.card))}</span> · ${esc(VARIANT_LABEL[m.v.type])} · ${m.card.lang === 'ja' ? 'JP' : 'EN'}</div></div>
+      <span class="price">${m.eur == null ? '<span class="conf bassa">manuale</span>' : fmtEur(m.eur)}</span>
+    </button>`).join('');
+  el.innerHTML = `
+    <div class="summary">
+      <span class="eyebrow">Ti mancano</span>
+      <span class="big">${st.missing.length} varianti</span>
+      <span class="hint">Costo stimato ${fmtEur(st.missingEur)} (Cardmarket trend)${st.missingUnknown ? ` · ${st.missingUnknown} senza prezzo, da inserire a mano` : ''}</span>
+    </div>
+    ${st.missing.length ? `<div class="list">${items}</div>` : '<div class="empty">Collezione completa. Ottimo lavoro!</div>'}
+    <p class="hint">Le varianti che hai segnato come "non la voglio" non compaiono qui e non contano nel completamento.</p>
+  `;
+}
+
+/**
+ * Disegna la vista Statistiche: anello di completamento, valore e barre per lingua ed era.
+ * @returns {void}
+ */
+function renderStats() {
+  const el = document.getElementById('view-stats');
+  const cards = trackedCards();
+  const st = computeStats(cards);
+  const pct = st.slots ? Math.round(st.owned / st.slots * 100) : 0;
+  const circ = 2 * Math.PI * 50;
+  const bar = (label, group) => {
+    const g = computeStats(group);
+    const p = g.slots ? g.owned / g.slots * 100 : 0;
+    return `<div class="bar-row"><div class="top"><span>${esc(label)}</span><span>${g.owned}/${g.slots}</span></div><div class="track-h"><div style="width:${p.toFixed(1)}%"></div></div></div>`;
+  };
+  const langs = [['Inglese (EN)', 'en'], ['Giapponese (JP)', 'ja']]
+    .map(([l, code]) => [l, cards.filter(c => c.lang === code)]).filter(([, g]) => g.length);
+  const eras = ERA_ORDER.map(e => [e, cards.filter(c => c.era === e)]).filter(([, g]) => g.length);
+  const runs = state.runs.slice(0, 5).map(r => `<div class="bar-row"><div class="top"><span>${fmtDateTimeIntl.format(r.t)}</span><span>${r.aborted ? 'interrotto' : `${r.ok} ok · ${r.fallback} fallback · ${r.fail} senza dati`}</span></div></div>`).join('');
+
+  el.innerHTML = `
+    <div class="ring-wrap">
+      <svg class="ring" viewBox="0 0 120 120" aria-label="Completamento ${pct}%">
+        <circle class="track" cx="60" cy="60" r="50"/>
+        <circle class="bar" cx="60" cy="60" r="50" stroke-dasharray="${(circ * pct / 100).toFixed(1)} ${circ.toFixed(1)}"/>
+        <text x="60" y="68" text-anchor="middle">${pct}%</text>
+      </svg>
+      <div><span class="eyebrow">Completamento</span><div class="summary" style="border:0;padding:0;background:none"><span class="big">${st.owned} / ${st.slots}</span><span class="hint">varianti possedute su quelle che vuoi</span></div></div>
+    </div>
+    <div class="tiles">
+      <div class="stat"><span class="eyebrow">Valore EUR</span><span class="v">${fmtEur(st.valueEur)}</span><span class="hint">Cardmarket trend</span></div>
+      <div class="stat"><span class="eyebrow">Valore USD</span><span class="v">${fmtUsd(st.valueUsd)}</span><span class="hint">TCGplayer market</span></div>
+      <div class="stat"><span class="eyebrow">Copie</span><span class="v">${st.copies}</span><span class="hint">doppioni compresi</span></div>
+      <div class="stat"><span class="eyebrow">Mancanti</span><span class="v">${fmtEur(st.missingEur)}</span><span class="hint">${st.missing.length} varianti</span></div>
+    </div>
+    <h2 class="section-title">Per lingua</h2>
+    <div class="bars">${langs.map(([l, g]) => bar(l, g)).join('')}</div>
+    <h2 class="section-title">Per era</h2>
+    <div class="bars">${eras.map(([e, g]) => bar(e, g)).join('')}</div>
+    <h2 class="section-title">Ultimi aggiornamenti prezzi</h2>
+    <div class="bars">${runs || '<span class="hint">Nessun aggiornamento.</span>'}</div>
+    <p class="hint">EUR e USD restano separati: l'app non converte le valute.</p>
+  `;
+}
+
+/**
+ * Disegna la vista Impostazioni: query tracciate, ordine dei provider, chiave API e backup.
+ * @returns {void}
+ */
+function renderSettings() {
+  const el = document.getElementById('view-settings');
+  const queries = state.queries.map(q => `<div class="row">
+      <div class="grow"><strong>${esc(q.pattern)}</strong> <span class="hint">· ${q.lang === 'ja' ? 'Giapponese' : 'Inglese'}${q.demo ? '' : ' · nuova (scaricata al prossimo "Aggiorna catalogo")'}</span></div>
+      <label class="switch"><input type="checkbox" data-query="${esc(q.id)}" ${q.enabled ? 'checked' : ''}> attiva</label>
+    </div>`).join('');
+  const provs = state.providers.map((p, i) => `<div class="prov">
+      <span class="n">${i + 1}</span>
+      <div><div class="name">${esc(PROVIDERS[p.id].name)}</div><div class="desc">${esc(PROVIDERS[p.id].desc)}</div></div>
+      <div class="prov-actions">
+        <button class="btn btn-sm" data-prov-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Sposta su">↑</button>
+        <button class="btn btn-sm" data-prov-down="${i}" ${i === state.providers.length - 1 ? 'disabled' : ''} aria-label="Sposta giù">↓</button>
+        <input type="checkbox" data-prov-toggle="${i}" ${p.enabled ? 'checked' : ''} aria-label="Attiva ${esc(PROVIDERS[p.id].name)}" style="width:18px;height:18px;accent-color:var(--accent)">
+      </div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <h2 class="section-title">Carte tracciate</h2>
+    <div class="card-box">
+      ${queries}
+      <form class="row" id="queryForm" novalidate>
+        <select class="field" id="qLang" aria-label="Lingua"><option value="en">EN</option><option value="ja">JP</option></select>
+        <input class="field grow" id="qPattern" placeholder="Nome Pokémon, es. Sableye" maxlength="40" autocomplete="off">
+        <button class="btn" type="submit">Aggiungi</button>
+      </form>
+      <p class="err" id="qErr" hidden></p>
+      <p class="hint">Ogni ricerca prende tutte le carte che contengono quel nome (es. "Mawile" trova anche Mawile-GX, M Mawile-EX e Mega Mawile ex). Se disattivi la ricerca JP, le carte giapponesi spariscono dalla collezione ma le quantità restano salvate.</p>
+    </div>
+
+    <h2 class="section-title">Fonti prezzi</h2>
+    <div class="card-box">
+      ${provs}
+      <p class="hint">Per ogni variante l'app prova le fonti in quest'ordine e si ferma alla prima che risponde. Se una fonte blocca (429/403) per 3 volte, viene messa in pausa per 6 ore. cardmarket.com non viene mai contattato direttamente.</p>
+      <label class="eyebrow" for="pptKey">Chiave PokemonPriceTracker</label>
+      <div class="row">
+        <input class="field grow" id="pptKey" type="password" placeholder="Incolla la chiave gratuita" value="${esc(state.pptKey)}" autocomplete="off" maxlength="80">
+        <button class="btn" id="btnSaveKey">Salva</button>
+      </div>
+      <p class="hint">Senza chiave le carte giapponesi tengono l'ultimo prezzo o quello manuale. Nell'app vera la chiave viene cifrata con l'Android Keystore. In questa demo basta un testo qualsiasi di almeno 8 caratteri.</p>
+    </div>
+
+    <h2 class="section-title">Backup</h2>
+    <div class="card-box">
+      <div class="row"><span class="grow hint">Esporta quantità, varianti desiderate, prezzi manuali e impostazioni. Nell'app vera scegli tu dove salvare il file JSON.</span><button class="btn" id="btnExport">Esporta</button></div>
+      <textarea class="field" id="backupText" placeholder="Il JSON del backup appare qui. Per importare, incollalo e premi Importa." spellcheck="false"></textarea>
+      <div class="row"><button class="btn" id="btnCopy">Copia</button><button class="btn" id="btnImport">Importa</button><button class="btn" id="btnReset">Ripristina demo</button></div>
+      <p class="hint" id="backupMsg"></p>
+    </div>
+  `;
+}
+
+/**
+ * Disegna il foglio di dettaglio di una carta: immagine, dati, varianti con quantità e prezzi.
+ * @param {string} cardId - Id della carta da mostrare.
+ * @param {string} [previewType] - Variante da mostrare nell'immagine grande.
+ * @returns {void}
+ */
+function renderDetail(cardId, previewType) {
+  const card = CARD_BY_ID[cardId];
+  if (!card) return;
+  const sheet = document.getElementById('sheet');
+  const pv = previewType && card.variants.some(v => v.type === previewType) ? previewType : card.variants[0].type;
+  const seg = card.variants.map(v => `<button class="chip" data-preview="${esc(v.type)}" aria-pressed="${v.type === pv}">${esc(VARIANT_LABEL[v.type])}</button>`).join('');
+  const searchTerm = encodeURIComponent(card.lang === 'ja' ? card.name : card.name.replace(/\s*\(.*\)$/, ''));
+  const rows = card.variants.map(v => {
+    const key = vkey(card.id, v.type);
+    const q = qtyOf(key);
+    const wanted = isWanted(key);
+    const eur = latestSnap(key, 'eur');
+    const usd = latestSnap(key, 'usd');
+    const last = (state.prices[key] || []).slice(-1)[0];
+    const stale = last && NOW - last.t > 30 * DAY;
+    const confCls = !last ? 'bassa' : last.conf;
+    const confLbl = !last ? 'nessun dato' : last.conf === 'manuale' ? 'manuale' : 'affidabilità ' + last.conf;
+    const cond = state.cond[key] || 'NM';
+    const condOpts = ['NM', 'LP', 'MP', 'HP', 'DMG'].map(c => `<option ${c === cond ? 'selected' : ''}>${c}</option>`).join('');
+    const manual = manualOpenKey === key
+      ? `<form class="manual-form" data-manual-form="${esc(key)}" novalidate>
+           <input inputmode="decimal" placeholder="es. 2,50" aria-label="Prezzo manuale in euro" maxlength="9" id="manual-${esc(key.replace('|', '-'))}">
+           <span class="hint">€</span><button class="btn btn-sm" type="submit">Salva</button><button class="btn btn-sm" type="button" data-manual-cancel>Annulla</button>
+         </form><p class="err" data-manual-err hidden></p>`
+      : `<button class="btn btn-sm" data-manual="${esc(key)}">Inserisci prezzo manuale</button>`;
+    return `<div class="vrow ${wanted ? '' : 'is-unwanted'}">
+      <div class="vrow-head">
+        <span class="vname"><span class="dot ${q > 0 ? 'owned' : ''}"></span>${esc(VARIANT_LABEL[v.type])}</span>
+        <label class="switch"><input type="checkbox" data-wanted="${esc(key)}" ${wanted ? 'checked' : ''}> la voglio</label>
+      </div>
+      <div class="vrow-qty">
+        <div class="stepper" role="group" aria-label="Copie possedute">
+          <button data-qty="${esc(key)}" data-delta="-1" aria-label="Togli una copia">−</button>
+          <output>${q}</output>
+          <button data-qty="${esc(key)}" data-delta="1" aria-label="Aggiungi una copia">+</button>
+        </div>
+        <select class="select" data-cond="${esc(key)}" aria-label="Condizione">${condOpts}</select>
+        <span class="hint">${q === 0 ? (wanted ? 'Ti manca' : 'Non la cerchi') : q > 1 ? `${q - 1} doppion${q - 1 === 1 ? 'e' : 'i'}` : 'Posseduta'}</span>
+      </div>
+      <div class="prices">
+        <div class="pbox"><span class="lbl">Cardmarket · trend</span><span class="val ${eur ? '' : 'none'}">${eur ? fmtEur(eur.eur) : 'nessun prezzo'}</span></div>
+        <div class="pbox"><span class="lbl">TCGplayer · market</span><span class="val ${usd ? '' : 'none'}">${usd ? fmtUsd(usd.usd) : card.lang === 'ja' ? 'non venduta' : 'nessun prezzo'}</span></div>
+      </div>
+      <div class="pfoot">
+        <span>${last ? `${fmtDateIntl.format(last.t)} · ${esc(last.src)}` : 'Mai trovato: inserisci un prezzo manuale'}</span>
+        <span class="conf ${stale ? 'vecchio' : esc(confCls)}">${stale ? 'vecchio' : esc(confLbl)}</span>
+        ${sparkline(key)}
+      </div>
+      ${manual}
+    </div>`;
+  }).join('');
+
+  sheet.innerHTML = `<div class="sheet-inner">
+    <div class="sheet-bar gutter">
+      <button class="icon-btn" id="btnBack" aria-label="Indietro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h2 id="sheetTitle">${esc(card.name)}</h2>
+    </div>
+    <div class="view gutter">
+      <div class="detail-hero">
+        ${artHtml(card, pv)}
+        <dl class="meta">
+          <div><dt>Codice</dt><dd class="mono">${esc(printedCode(card))}</dd></div>
+          <div><dt>Era</dt><dd>${esc(card.era)}</dd></div>
+          <div><dt>Set</dt><dd>${esc(card.set)}</dd></div>
+          <div><dt>Rarità</dt><dd>${esc(card.rarity)}</dd></div>
+          <div><dt>Lingua</dt><dd>${card.lang === 'ja' ? 'Giapponese' : 'Inglese'}</dd></div>
+        </dl>
+      </div>
+      <div class="seg" aria-label="Anteprima variante">${seg}</div>
+      <div class="links">
+        <a href="https://www.cardmarket.com/it/Pokemon/Products/Search?searchString=${searchTerm}" target="_blank" rel="noopener noreferrer">Apri su Cardmarket ↗</a>
+        <a href="https://www.tcgplayer.com/search/pokemon/product?q=${searchTerm}" target="_blank" rel="noopener noreferrer">Apri su TCGplayer ↗</a>
+      </div>
+      <h3 class="section-title">Varianti</h3>
+      <div class="vlist">${rows}</div>
+      <p class="hint">Ogni variante è uno slot della collezione. Togli "la voglio" alle varianti che non ti interessano: non conteranno come mancanti.</p>
+    </div>
+  </div>`;
+}
+
+/**
+ * Ridisegna tutte le viste e, se aperto, il dettaglio carta.
+ * @param {string} [previewType] - Variante da mantenere nell'anteprima del dettaglio.
+ * @returns {void}
+ */
+function renderAll(previewType) {
+  renderHeader();
+  renderCollection();
+  renderMissing();
+  renderStats();
+  renderSettings();
+  if (openCardId) renderDetail(openCardId, previewType);
+  showTab(state.tab);
+}
+
+/**
+ * Mostra una scheda della navigazione in basso e nasconde le altre.
+ * @param {string} tab - Nome della scheda (collection, missing, stats, settings).
+ * @returns {void}
+ */
+function showTab(tab) {
+  for (const name of ['collection', 'missing', 'stats', 'settings']) {
+    document.getElementById('view-' + name).hidden = name !== tab;
+  }
+  document.querySelectorAll('.nav button').forEach(b => {
+    if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+}
+
+/**
+ * Mostra un breve messaggio in sovrimpressione.
+ * @param {string} text - Testo del messaggio.
+ * @returns {void}
+ */
+function toast(text) {
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Aggiornamento prezzi simulato (catena di fallback)                  *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Prova una singola fonte di prezzo per una variante e simula l'esito della chiamata.
+ * @param {string} providerId - Id del provider (tcgdex, pokemontcg, ppt).
+ * @param {object} card - Carta del catalogo.
+ * @param {object} v - Variante con i prezzi base.
+ * @param {object} ctx - Contesto del run (contatori 429, circuit breaker).
+ * @returns {{status:'ok'|'skip'|'fail', note:string, eur?:number|null, usd?:number|null}} Esito del tentativo.
+ */
+function tryProvider(providerId, card, v, ctx) {
+  const key = vkey(card.id, v.type);
+  const drift = () => 1 + (Math.random() - 0.5) * 0.1;
+  const prevEur = latestSnap(key, 'eur')?.eur ?? v.cm;
+  const prevUsd = latestSnap(key, 'usd')?.usd ?? v.tcp;
+  const value = (prev, base) => (base == null || prev == null ? null : round2(Math.max(0.05, prev * drift())));
+  if (providerId === 'tcgdex') {
+    if (ctx.breaker) return { status: 'skip', note: 'TCGdex in pausa' };
+    if (card.lang === 'ja') return { status: 'skip', note: 'TCGdex: nessun prezzo per le carte JP' };
+    if (Math.random() < 0.14) {
+      ctx.fails++;
+      if (Math.random() < 0.55) return { status: 'ok', note: 'TCGdex 429 → riprovo dopo 2 s ✓', eur: value(prevEur, v.cm), usd: value(prevUsd, v.tcp) };
+      if (ctx.fails >= 3) {
+        ctx.breaker = true;
+        return { status: 'fail', note: 'TCGdex 429 di nuovo → in pausa per 6 h' };
+      }
+      return { status: 'fail', note: 'TCGdex 429 di nuovo' };
+    }
+    return { status: 'ok', note: 'TCGdex ✓', eur: value(prevEur, v.cm), usd: value(prevUsd, v.tcp) };
+  }
+  if (providerId === 'pokemontcg') {
+    if (card.lang !== 'en') return { status: 'skip', note: 'pokemontcg.io: solo carte EN' };
+    return { status: 'ok', note: 'pokemontcg.io ✓', eur: value(prevEur, v.cm), usd: value(prevUsd, v.tcp) };
+  }
+  if (providerId === 'ppt') {
+    if ((state.pptKey || '').length < 8) return { status: 'skip', note: 'PokemonPriceTracker: manca la chiave' };
+    if (v.cm == null && v.tcp == null) return { status: 'fail', note: 'PokemonPriceTracker: nessun dato' };
+    return { status: 'ok', note: 'PokemonPriceTracker ✓', eur: value(prevEur, v.cm), usd: value(prevUsd, v.tcp) };
+  }
+  return { status: 'skip', note: '' };
+}
+
+/**
+ * Aggiunge una riga al registro del pannello di aggiornamento.
+ * @param {string} text - Testo della riga.
+ * @param {'ok'|'warn'|'bad'|''} kind - Tipo di riga, decide il colore.
+ * @returns {void}
+ */
+function logLine(text, kind) {
+  const log = document.getElementById('runLog');
+  const div = document.createElement('div');
+  div.className = kind || '';
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+/**
+ * Esegue l'aggiornamento prezzi simulato su tutte le varianti desiderate o possedute,
+ * applicando la catena di fallback e salvando l'ultimo risultato in locale.
+ * @returns {Promise<void>} Si risolve a fine run (anche se interrotto dalla modalità aereo).
+ */
+async function runPriceCheck() {
+  if (running) return;
+  if (state.offline) { toast('Sei in modalità aereo: i prezzi salvati restano visibili.'); return; }
+  running = true;
+  renderHeader();
+  const panel = document.getElementById('runPanel');
+  const bar = document.getElementById('runBar');
+  const status = document.getElementById('runStatus');
+  document.getElementById('runLog').innerHTML = '';
+  document.getElementById('runTitle').textContent = 'Aggiornamento prezzi';
+  panel.hidden = false;
+
+  const targets = [];
+  for (const card of trackedCards()) {
+    for (const v of card.variants) {
+      const key = vkey(card.id, v.type);
+      if (isWanted(key) || qtyOf(key) > 0) targets.push({ card, v, key });
+    }
+  }
+  const order = state.providers.filter(p => p.enabled).map(p => p.id);
+  const ctx = { fails: 0, breaker: false };
+  const run = { t: Date.now(), ok: 0, fallback: 0, fail: 0, aborted: false };
+  logLine(`${targets.length} varianti da controllare · ordine fonti: ${order.map(id => PROVIDERS[id].name).join(' → ') || 'nessuna'}`, '');
+
+  for (let i = 0; i < targets.length; i++) {
+    if (state.offline) {
+      run.aborted = true;
+      logLine('Connessione persa: mi fermo. I prezzi già salvati restano validi.', 'bad');
+      break;
+    }
+    const { card, v, key } = targets[i];
+    status.textContent = `${i + 1} di ${targets.length} · ${card.name} (${VARIANT_LABEL[v.type]})`;
+    await sleep(110);
+    const steps = [];
+    let result = null;
+    for (const pid of order) {
+      const r = tryProvider(pid, card, v, ctx);
+      if (r.note && !(r.status === 'skip' && r.note === 'TCGdex in pausa' && steps.length)) steps.push(r.note);
+      if (r.status === 'ok') { result = r; break; }
+    }
+    const label = `${card.name} · ${VARIANT_LABEL[v.type]}: `;
+    if (result) {
+      const firstOk = order[0] && steps.length === 1;
+      state.prices[key] = (state.prices[key] || []).concat({
+        t: Date.now(), eur: result.eur, usd: result.usd,
+        src: result.note.split(' ')[0], conf: v.conf,
+      }).slice(-10);
+      if (firstOk) run.ok++; else run.fallback++;
+      logLine(label + steps.join(' → ') + ` · ${fmtEur(result.eur)} / ${fmtUsd(result.usd)}`, firstOk ? 'ok' : 'warn');
+    } else {
+      run.fail++;
+      logLine(label + (steps.length ? steps.join(' → ') + ' → ' : '') + "tengo l'ultimo prezzo, consigliato inserimento manuale", 'bad');
+    }
+    bar.style.width = ((i + 1) / targets.length * 100).toFixed(1) + '%';
+  }
+  if (!run.aborted) {
+    status.textContent = `Fatto: ${run.ok} ok al primo colpo, ${run.fallback} con fallback, ${run.fail} senza dati nuovi.`;
+    document.getElementById('runTitle').textContent = 'Prezzi aggiornati';
+  } else {
+    status.textContent = 'Interrotto.';
+  }
+  state.runs = [run].concat(state.runs).slice(0, 10);
+  running = false;
+  saveState();
+  renderAll();
+}
+
+/* ------------------------------------------------------------------ *
+ *  Backup (export / import con validazione)                            *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Crea il JSON di backup con i dati dell'utente (non include il catalogo né la chiave API).
+ * @returns {string} JSON formattato.
+ */
+function exportBackup() {
+  const manual = {};
+  for (const [key, list] of Object.entries(state.prices)) {
+    const m = list.filter(s => s.src === 'Manuale');
+    if (m.length) manual[key] = m;
+  }
+  return JSON.stringify({
+    schema: 1, app: 'mawile-tracker', exportedAt: new Date().toISOString(),
+    qty: state.qty, cond: state.cond, wanted: state.wanted, manualPrices: manual,
+    queries: state.queries, providers: state.providers,
+  }, null, 2);
+}
+
+/**
+ * Valida e applica un backup incollato dall'utente. Accetta solo chiavi di varianti note e valori nei limiti.
+ * @param {string} text - Contenuto JSON del backup.
+ * @returns {{ok:boolean, message:string}} Esito dell'import con messaggio per l'utente.
+ */
+function importBackup(text) {
+  if (!text || text.length > 200000) return { ok: false, message: 'Backup vuoto o troppo grande (massimo 200 KB).' };
+  let data;
+  try { data = JSON.parse(text); } catch (e) { return { ok: false, message: 'Il testo non è un JSON valido.' }; }
+  if (!data || data.schema !== 1 || data.app !== 'mawile-tracker') return { ok: false, message: 'Backup non riconosciuto: manca schema 1 di Mawile Tracker.' };
+  const known = new Set(CARDS.flatMap(c => c.variants.map(v => vkey(c.id, v.type))));
+  const qty = {}, cond = {}, wanted = {};
+  let skipped = 0;
+  for (const [k, n] of Object.entries(data.qty || {})) {
+    if (known.has(k) && Number.isInteger(n) && n >= 0 && n <= 999) qty[k] = n; else skipped++;
+  }
+  for (const [k, c] of Object.entries(data.cond || {})) {
+    if (known.has(k) && ['NM', 'LP', 'MP', 'HP', 'DMG'].includes(c)) cond[k] = c; else skipped++;
+  }
+  for (const [k, w] of Object.entries(data.wanted || {})) {
+    if (known.has(k) && typeof w === 'boolean') wanted[k] = w; else skipped++;
+  }
+  state.qty = qty;
+  state.cond = cond;
+  state.wanted = wanted;
+  for (const [k, list] of Object.entries(data.manualPrices || {})) {
+    if (!known.has(k) || !Array.isArray(list)) { skipped++; continue; }
+    const valid = list.filter(s => s && typeof s.eur === 'number' && s.eur > 0 && s.eur < 100000 && typeof s.t === 'number')
+      .map(s => ({ t: s.t, eur: round2(s.eur), usd: null, src: 'Manuale', conf: 'manuale' }));
+    state.prices[k] = (state.prices[k] || []).filter(s => s.src !== 'Manuale').concat(valid).sort((a, b) => a.t - b.t).slice(-10);
+  }
+  return { ok: true, message: `Backup importato.${skipped ? ` ${skipped} valori non validi ignorati.` : ''}` };
+}
+
+/* ------------------------------------------------------------------ *
+ *  Eventi                                                              *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Apre il dettaglio di una carta.
+ * @param {string} cardId - Id della carta.
+ * @returns {void}
+ */
+function openDetail(cardId) {
+  if (!CARD_BY_ID[cardId]) return;
+  openCardId = cardId;
+  manualOpenKey = null;
+  renderDetail(cardId);
+  const sheet = document.getElementById('sheet');
+  sheet.hidden = false;
+  sheet.scrollTop = 0;
+  document.getElementById('btnBack')?.focus();
+}
+
+/**
+ * Chiude il dettaglio carta e aggiorna le viste sottostanti.
+ * @returns {void}
+ */
+function closeDetail() {
+  openCardId = null;
+  manualOpenKey = null;
+  document.getElementById('sheet').hidden = true;
+  renderAll();
+}
+
+/**
+ * Restituisce la variante attualmente mostrata nell'anteprima del dettaglio.
+ * @returns {string|undefined} Tipo di variante selezionato, se presente.
+ */
+function currentPreview() {
+  return document.querySelector('#sheet [data-preview][aria-pressed="true"]')?.dataset.preview;
+}
+
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('button, [data-open]');
+  if (!t) return;
+  if (t.dataset.tab) { state.tab = t.dataset.tab; saveState(); showTab(state.tab); window.scrollTo(0, 0); return; }
+  if (t.dataset.open) { openDetail(t.dataset.open); return; }
+  if (t.id === 'btnBack') { closeDetail(); return; }
+  if (t.id === 'btnRefresh') { runPriceCheck(); return; }
+  if (t.id === 'btnRunClose') { if (!running) document.getElementById('runPanel').hidden = true; else toast('Attendi la fine o attiva la modalità aereo per interrompere.'); return; }
+  if (t.id === 'btnDemoClose') { state.demoClosed = true; saveState(); renderHeader(); return; }
+  if (t.id === 'btnOffline') {
+    state.offline = !state.offline;
+    saveState();
+    renderHeader();
+    toast(state.offline ? 'Modalità aereo attiva: tutto resta consultabile.' : 'Di nuovo online.');
+    return;
+  }
+  if (t.dataset.filter) { state.filter[t.dataset.filter] = t.dataset.value; saveState(); renderCollection(); return; }
+  if (t.dataset.preview) { renderDetail(openCardId, t.dataset.preview); return; }
+  if (t.dataset.qty) {
+    const key = t.dataset.qty;
+    const next = Math.min(999, Math.max(0, qtyOf(key) + Number(t.dataset.delta)));
+    if (next === 0) delete state.qty[key]; else state.qty[key] = next;
+    saveState();
+    renderAll(currentPreview());
+    return;
+  }
+  if (t.dataset.manual) { manualOpenKey = t.dataset.manual; renderDetail(openCardId, currentPreview()); document.querySelector('[data-manual-form] input')?.focus(); return; }
+  if ('manualCancel' in t.dataset) { manualOpenKey = null; renderDetail(openCardId, currentPreview()); return; }
+  if (t.dataset.provUp || t.dataset.provDown) {
+    const i = Number(t.dataset.provUp ?? t.dataset.provDown);
+    const j = t.dataset.provUp ? i - 1 : i + 1;
+    if (j < 0 || j >= state.providers.length) return;
+    [state.providers[i], state.providers[j]] = [state.providers[j], state.providers[i]];
+    saveState();
+    renderSettings();
+    return;
+  }
+  if (t.id === 'btnSaveKey') {
+    const v = document.getElementById('pptKey').value.trim();
+    if (v && !/^[A-Za-z0-9_\-.]{8,80}$/.test(v)) { toast('La chiave può contenere solo lettere, numeri, "-", "_" e "." (8-80 caratteri).'); return; }
+    state.pptKey = v;
+    saveState();
+    toast(v ? 'Chiave salvata.' : 'Chiave rimossa.');
+    return;
+  }
+  if (t.id === 'btnExport') { document.getElementById('backupText').value = exportBackup(); document.getElementById('backupMsg').textContent = 'Backup pronto: copialo e conservalo.'; return; }
+  if (t.id === 'btnCopy') {
+    const ta = document.getElementById('backupText');
+    if (!ta.value) { document.getElementById('backupMsg').textContent = 'Premi prima Esporta.'; return; }
+    navigator.clipboard?.writeText(ta.value).then(() => toast('Backup copiato.'), () => { ta.select(); toast('Testo selezionato: copialo a mano.'); });
+    return;
+  }
+  if (t.id === 'btnImport') {
+    const res = importBackup(document.getElementById('backupText').value.trim());
+    document.getElementById('backupMsg').textContent = res.message;
+    if (res.ok) { saveState(); renderAll(); document.getElementById('backupMsg').textContent = res.message; }
+    return;
+  }
+  if (t.id === 'btnReset') {
+    const keep = { offline: false, demoClosed: state.demoClosed };
+    state = Object.assign(initialState(), keep);
+    saveState();
+    renderAll();
+    toast('Dati di esempio ripristinati.');
+  }
+});
+
+document.addEventListener('change', ev => {
+  const t = ev.target;
+  if (t.id === 'sortSel') { state.filter.sort = t.value; saveState(); renderCollection(); return; }
+  if (t.dataset.wanted) {
+    if (t.checked) delete state.wanted[t.dataset.wanted]; else state.wanted[t.dataset.wanted] = false;
+    saveState();
+    renderAll(currentPreview());
+    return;
+  }
+  if (t.dataset.cond) {
+    if (['NM', 'LP', 'MP', 'HP', 'DMG'].includes(t.value)) state.cond[t.dataset.cond] = t.value;
+    saveState();
+    return;
+  }
+  if (t.dataset.query) {
+    const q = state.queries.find(x => x.id === t.dataset.query);
+    if (q) q.enabled = t.checked;
+    saveState();
+    renderAll();
+    return;
+  }
+  if (t.dataset.provToggle) {
+    const p = state.providers[Number(t.dataset.provToggle)];
+    if (p) p.enabled = t.checked;
+    saveState();
+  }
+});
+
+document.addEventListener('input', ev => {
+  if (ev.target.id !== 'search') return;
+  state.filter.q = ev.target.value.slice(0, 40);
+  saveState();
+  const pos = ev.target.selectionStart;
+  renderCollection();
+  const s = document.getElementById('search');
+  s.focus();
+  s.setSelectionRange(pos, pos);
+});
+
+document.addEventListener('submit', ev => {
+  ev.preventDefault();
+  const form = ev.target;
+  if (form.id === 'queryForm') {
+    const lang = document.getElementById('qLang').value === 'ja' ? 'ja' : 'en';
+    const pattern = document.getElementById('qPattern').value.trim();
+    const err = document.getElementById('qErr');
+    if (!/^[\p{L}\p{N} '.\-&]{2,40}$/u.test(pattern)) { err.textContent = 'Usa da 2 a 40 caratteri: lettere, numeri, spazi, apostrofo, punto, trattino o &.'; err.hidden = false; return; }
+    if (state.queries.some(q => q.lang === lang && q.pattern.toLowerCase() === pattern.toLowerCase())) { err.textContent = 'Questa ricerca c\'è già.'; err.hidden = false; return; }
+    state.queries.push({ id: 'q-' + Date.now(), lang, pattern, enabled: true, demo: false });
+    saveState();
+    renderSettings();
+    toast('Ricerca aggiunta. Nella demo non scarica carte nuove.');
+    return;
+  }
+  if (form.dataset.manualForm) {
+    const key = form.dataset.manualForm;
+    const raw = form.querySelector('input').value.trim().replace(',', '.');
+    const val = Number(raw);
+    const errEl = form.nextElementSibling;
+    if (!/^\d{1,5}(\.\d{1,2})?$/.test(raw) || !(val > 0)) { errEl.textContent = 'Inserisci un importo valido, es. 2,50 (massimo 99999,99).'; errEl.hidden = false; return; }
+    state.prices[key] = (state.prices[key] || []).concat({ t: Date.now(), eur: round2(val), usd: null, src: 'Manuale', conf: 'manuale' }).slice(-10);
+    manualOpenKey = null;
+    saveState();
+    renderAll(currentPreview());
+    toast('Prezzo manuale salvato.');
+  }
+});
+
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && openCardId) closeDetail();
+});
+
+renderAll();
+</script>
