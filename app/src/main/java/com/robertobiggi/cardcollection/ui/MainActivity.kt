@@ -41,7 +41,9 @@ import androidx.navigation.navArgument
 import com.robertobiggi.cardcollection.ui.collection.CollectionScreen
 import com.robertobiggi.cardcollection.ui.detail.DetailScreen
 import com.robertobiggi.cardcollection.ui.missing.MissingScreen
-import com.robertobiggi.cardcollection.ui.settings.SettingsScreen
+import com.robertobiggi.cardcollection.ui.home.HomeScreen
+import com.robertobiggi.cardcollection.ui.manage.ManageScreen
+import com.robertobiggi.cardcollection.ui.settings.InfoScreen
 import com.robertobiggi.cardcollection.ui.stats.StatsScreen
 import com.robertobiggi.cardcollection.ui.theme.CardCollectionTheme
 
@@ -60,16 +62,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Schede della navigazione in basso. */
-private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
-    COLLECTION("collection", "Collezione", Icons.Filled.GridView),
+/** Schede della navigazione in basso dentro una collezione. */
+private enum class Tab(val segment: String, val label: String, val icon: ImageVector) {
+    CARDS("cards", "Carte", Icons.Filled.GridView),
     MISSING("missing", "Mancanti", Icons.Filled.Star),
     STATS("stats", "Statistiche", Icons.Filled.BarChart),
-    SETTINGS("settings", "Impostazioni", Icons.Filled.Settings),
+    MANAGE("manage", "Gestione", Icons.Filled.Settings),
 }
 
 /**
- * Radice dell'interfaccia: barra di navigazione, snackbar e grafo di navigazione.
+ * Radice dell'interfaccia: elenco collezioni, schede della collezione aperta, snackbar.
  * @return Unit
  */
 @Composable
@@ -79,6 +81,7 @@ private fun AppRoot() {
     val snackbar = remember { SnackbarHostState() }
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
+    val currentCid = backStack?.arguments?.getLong("cid")
 
     RequestNotificationPermission()
     LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
@@ -86,33 +89,53 @@ private fun AppRoot() {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            if (Tab.entries.any { it.route == route }) {
+            val tab = Tab.entries.firstOrNull { route == "c/{cid}/${it.segment}" }
+            if (tab != null && currentCid != null) {
                 NavigationBar {
-                    Tab.entries.forEach { tab ->
+                    Tab.entries.forEach { t ->
                         NavigationBarItem(
-                            selected = route == tab.route,
+                            selected = tab == t,
                             onClick = {
-                                nav.navigate(tab.route) {
-                                    popUpTo(Tab.COLLECTION.route) { saveState = true }
+                                nav.navigate("c/$currentCid/${t.segment}") {
+                                    popUpTo("c/{cid}/${Tab.CARDS.segment}") { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(tab.icon, contentDescription = null) },
-                            label = { Text(tab.label) },
+                            icon = { Icon(t.icon, contentDescription = null) },
+                            label = { Text(t.label) },
                         )
                     }
                 }
             }
         },
     ) { padding ->
-        val openCard: (String) -> Unit = { id -> nav.navigate("card/${Uri.encode(id)}") }
-        NavHost(nav, startDestination = Tab.COLLECTION.route, modifier = Modifier.padding(padding)) {
-            composable(Tab.COLLECTION.route) { CollectionScreen(vm, openCard) }
-            composable(Tab.MISSING.route) { MissingScreen(vm, openCard) }
-            composable(Tab.STATS.route) { StatsScreen(vm) }
-            composable(Tab.SETTINGS.route) { SettingsScreen(vm) }
-            composable("card/{cardId}", arguments = listOf(navArgument("cardId") { type = NavType.StringType })) { entry ->
+        val cidArg = listOf(navArgument("cid") { type = NavType.LongType })
+        NavHost(nav, startDestination = "home", modifier = Modifier.padding(padding)) {
+            composable("home") {
+                HomeScreen(vm, onOpen = { id -> nav.navigate("c/$id/${Tab.CARDS.segment}") }, onInfo = { nav.navigate("info") })
+            }
+            composable("info") { InfoScreen(vm, onBack = { nav.popBackStack() }) }
+            Tab.entries.forEach { tab ->
+                composable("c/{cid}/${tab.segment}", arguments = cidArg) { entry ->
+                    val cid = entry.arguments?.getLong("cid") ?: return@composable
+                    LaunchedEffect(cid) { vm.open(cid) }
+                    val openCard: (String) -> Unit = { id -> nav.navigate("c/$cid/card/${Uri.encode(id)}") }
+                    val toHome: () -> Unit = { nav.popBackStack("home", inclusive = false) }
+                    when (tab) {
+                        Tab.CARDS -> CollectionScreen(vm, openCard, onHome = toHome)
+                        Tab.MISSING -> MissingScreen(vm, openCard)
+                        Tab.STATS -> StatsScreen(vm)
+                        Tab.MANAGE -> ManageScreen(vm)
+                    }
+                }
+            }
+            composable(
+                "c/{cid}/card/{cardId}",
+                arguments = cidArg + navArgument("cardId") { type = NavType.StringType },
+            ) { entry ->
+                val cid = entry.arguments?.getLong("cid") ?: return@composable
+                LaunchedEffect(cid) { vm.open(cid) }
                 DetailScreen(vm, entry.arguments?.getString("cardId").orEmpty(), onBack = { nav.popBackStack() })
             }
         }

@@ -4,10 +4,10 @@ import android.content.Context
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
-import com.robertobiggi.cardcollection.data.repo.BackupRepository
 import com.robertobiggi.cardcollection.data.repo.CatalogRepository
 import com.robertobiggi.cardcollection.data.repo.CollectionRepository
 import com.robertobiggi.cardcollection.data.repo.PriceRepository
+import com.robertobiggi.cardcollection.data.repo.TransferRepository
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import com.robertobiggi.cardcollection.work.WorkScheduler
 import okhttp3.OkHttpClient
@@ -38,7 +38,7 @@ class AppContainer(context: Context) {
     val collection = CollectionRepository(database)
     val catalog = CatalogRepository(database, tcgdex, images, settings)
     val prices = PriceRepository(database, tcgdex, settings)
-    val backup = BackupRepository(database, appContext.contentResolver)
+    val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
     val work = WorkScheduler(appContext)
 
     private companion object {

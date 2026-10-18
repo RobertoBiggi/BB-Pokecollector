@@ -110,6 +110,11 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
                 )
             }
             item {
+                TextButton(onClick = { vm.hideCard(card.card.id); onBack() }) {
+                    Text("Togli dalla collezione", color = MaterialTheme.colorScheme.error)
+                }
+            }
+            item {
                 Text(
                     "Ogni variante è uno slot della collezione. Togli \"la voglio\" alle varianti che non ti interessano: " +
                         "non conteranno come mancanti.",
