@@ -2,21 +2,23 @@
 
 ## Obiettivo
 
-App Android nativa per tracciare un insieme di carte Pokémon scelto dall'utente (inizialmente tutti i Mawile e Mega Mawile, EN e JP). Per ogni carta tiene:
+App Android nativa per tracciare collezioni di carte Pokémon scelte dall'utente (la prima: tutti i Mawile e Mega Mawile). Per ogni carta tiene:
 - varianti, rarità e codice stampato;
 - immagini salvate in locale;
 - quantità possedute per variante;
 - carte mancanti;
 - ultimo prezzo trovato.
 
-Funziona **completamente offline**. Il controllo prezzi parte **solo a mano**.
+Funziona **completamente offline**. Il controllo prezzi parte **solo a mano**. L'interfaccia è in **italiano e inglese**.
 
 Decisioni prese con l'utente:
 - Kotlin + Jetpack Compose;
 - nessun backend, tutto sul telefono;
 - ogni variante è uno slot della collezione;
 - check prezzi manuale;
-- lingue EN e JP;
+- più collezioni, con quantità separate;
+- carte in più lingue (EN, IT, FR, DE, ES, PT, JA complete; ZH-TW, TH, ID limitate);
+- app in italiano e inglese, a scelta in Impostazioni;
 - codice stampato visibile ovunque;
 - vista a griglia.
 
@@ -25,7 +27,7 @@ Decisioni prese con l'utente:
 ```
 UI Compose ──► MainViewModel ──► Repository ──► Room (unica fonte della UI → offline)
                                     │
-                                    ├─ CatalogRepository ──► TcgdexClient (EN/JA) ──► ImageStore (filesDir/cards)
+                                    ├─ CatalogRepository ──► TcgdexClient (10 lingue) ──► ImageStore (filesDir/cards)
                                     └─ PriceRepository  ──► PriceChain
                                                               └─ TcgdexPriceProvider (Cardmarket EUR + TCGplayer USD)
 WorkManager: CatalogSyncWorker, PriceCheckWorker (unici, espressi, avviati a mano)
@@ -33,21 +35,33 @@ WorkManager: CatalogSyncWorker, PriceCheckWorker (unici, espressi, avviati a man
 
 | Modulo | Ruolo |
 |---|---|
-| `core` (Kotlin/JVM) | DTO TCGdex, `TcgdexClient`, `CatalogMapper`, `VariantMapper`, `PriceChain` + `RateLimiter` + `CircuitBreaker`, `Validators`, `BackupCodec`, `CollectionStats`. Si compila e si testa senza Android SDK. |
+| `core` (Kotlin/JVM) | DTO TCGdex, `TcgdexClient`, `CatalogMapper`, `VariantMapper`, `PriceChain` + `RateLimiter` + `CircuitBreaker`, `Validators`, `CollectionFiles` (JSON), `CollectionStats`. Si compila e si testa senza Android SDK e non contiene testi per l'utente. |
 | `app` (Android) | Room, DataStore, `ImageStore`, repository, worker, UI. Dipendenze iniettate a mano in `AppContainer`. |
+
+**Testi e lingue:** repository, worker e core restituiscono solo dati ed esiti tipizzati (enum e sealed class, es. `InputError`, `ImportError`, `AbortReason`). È la UI a trasformarli in testo con `stringResource`. Le risorse sono in `res/values` (inglese, lingua di base) e `res/values-it` (italiano). La lingua si sceglie in Impostazioni (Sistema / Italiano / English) con `AppCompatDelegate.setApplicationLocales`, che la ricorda anche su Android 12 e precedenti. Date e valute seguono la lingua corrente.
 
 ## Fonte dati: TCGdex
 
 Lo schema è stato verificato sulle risposte reali (workflow `tcgdex-probe.yml`).
 
-- **Ricerca:** `/v2/{en|ja}/cards?name=…` cerca per sottostringa del nome. `Mawile` trova anche `Mawile GX`, `M Mawile EX` e `Mega Mawile ex`; `クチート` trova anche `メガクチートex`.
+- **Ricerca:** `/v2/{lingua}/cards?name=…` cerca per sottostringa del nome. `Mawile` trova anche `Mawile GX`, `M Mawile EX` e `Mega Mawile ex`; `クチート` trova anche `メガクチートex`.
 - **Esclusioni:** le carte di **TCG Pocket** (serie `tcgp`, solo digitali) e le carte non Pokémon (es. "Mawile Spirit Link"). Sono escluse anche le varianti jumbo.
 - **Dettaglio:** `/cards/{id}` contiene `variants_detailed`, con i prezzi **per variante**: `pricing.cardmarket` (EUR) e `pricing.tcgplayer` (USD, `null` per le carte JP).
 - **Codice stampato:**
-  - EN: `set.abbreviation.official` (es. `POR`), assente nelle ere più vecchie;
-  - JP: l'id del set coincide con la sigla stampata (es. `SM10a`, `M1L`);
+  - lingue europee: `set.abbreviation.localized` se presente (es. `PXY` in francese), altrimenti `official` (es. `POR`); assente nelle ere più vecchie;
+  - cataloghi asiatici (JA, ZH-TW, TH, ID): l'id del set coincide con la sigla stampata (es. `SM10a`, `M1L`);
   - numero: `localId/cardCount.official`, con il totale allungato alle stesse cifre (`032/088`). Le promo restano invariate (`XY103`).
-- **Immagini:** `{image}/low.webp` per la griglia e `{image}/high.webp` per il dettaglio. Molte carte JP non hanno immagine: l'app mostra un segnaposto con nome e codice.
+- **Immagini:** `{image}/low.webp` per la griglia e `{image}/high.webp` per il dettaglio. Molte carte asiatiche non hanno immagine: l'app mostra un segnaposto con nome e codice.
+- **Varianti tradotte:** nei cataloghi europei `variants_detailed` può avere nomi tradotti (es. "Olografica"). In quel caso le varianti si ricavano dai flag `variants`, che hanno chiavi standard.
+
+### Lingue verificate (probe)
+
+| Lingua | Stato |
+|---|---|
+| EN, IT, FR, DE, ES, PT | catalogo, immagini e prezzi Cardmarket; TCGplayer solo per EN |
+| JA | catalogo e prezzi Cardmarket; molte carte senza immagine |
+| ZH-TW, TH, ID | poche carte, quasi senza immagini né prezzi (segnalate nella UI) |
+| KO, ZH-CN, NL, PL, RU | escluse: ricerche vuote o quasi |
 
 ### Mappatura prezzi per variante
 
@@ -140,8 +154,9 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 
 ## Build e verifica
 
-- `./gradlew :core:test`: 30 test su fixture reali (mappatura, prezzi, catena con 429/403/circuit breaker, validatori, backup, statistiche).
-- `./gradlew :app:testDebugUnitTest`: test di assemblaggio e filtri della libreria.
+- `./gradlew :core:test`: test su fixture reali (mappatura, lingue, prezzi, catena con 429/403/circuit breaker, validatori, file JSON, statistiche).
+- `./gradlew :app:testDebugUnitTest`: assemblaggio e visibilità della libreria, filtri, migrazione 1 → 2 confrontata con lo schema Room.
+- Il lint di Android blocca la build se una stringa manca in una delle due lingue.
 - La CI (`.github/workflows/android.yml`) esegue test, lint e `assembleDebug`, e pubblica l'APK come artifact.
 
 ## Possibili evoluzioni
@@ -150,8 +165,8 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 - Check prezzi periodico, come opzione.
 - Widget.
 - Più condizioni per la stessa variante.
-- Migrazioni Room esplicite al primo cambio di schema (gli schemi sono esportati in `app/schemas/`).
+- Altre lingue dell'interfaccia: basta aggiungere `res/values-xx/strings.xml` e la voce in `locales_config.xml` e in Impostazioni.
 
 ## Prototipo
 
-`docs/demo/prototype.html` è il prototipo cliccabile usato per allinearsi su UX e idee, con dati di esempio.
+`docs/demo/prototype.html` è il prototipo cliccabile usato all'inizio per allinearsi su UX e idee, con dati di esempio. Non rispecchia l'app attuale.

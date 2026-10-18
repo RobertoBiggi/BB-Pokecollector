@@ -11,6 +11,7 @@ import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.core.backup.CollectionImportResult
 import com.robertobiggi.cardcollection.core.backup.CollectionInfo
 import com.robertobiggi.cardcollection.core.backup.ImageExport
+import com.robertobiggi.cardcollection.core.backup.ImportError
 import com.robertobiggi.cardcollection.core.backup.ImportedCollection
 import com.robertobiggi.cardcollection.core.backup.PriceRecord
 import com.robertobiggi.cardcollection.data.image.ImageStore
@@ -26,8 +27,29 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.time.Instant
 
+/** Errore di accesso al file scelto dall'utente. */
+enum class FileError { NOT_FOUND, OPEN_FAILED, PERMISSION_DENIED }
+
+/** Esito dell'export di una collezione. */
+sealed interface ExportResult {
+    /** File scritto con [cards] carte, di cui [withImages] con immagine incorporata. */
+    data class Done(val cards: Int, val withImages: Int) : ExportResult
+
+    /** Export non riuscito. */
+    data class Failed(val error: FileError) : ExportResult
+}
+
 /** Esito dell'import di una collezione. */
-data class ImportOutcome(val message: String, val collectionId: Long?)
+sealed interface ImportOutcome {
+    /** Collezione [name] creata con id [collectionId]; [skipped] voci non valide ignorate. */
+    data class Done(val collectionId: Long, val name: String, val cards: Int, val images: Int, val skipped: Int) : ImportOutcome
+
+    /** Il file non è un JSON di collezione valido. */
+    data class Invalid(val error: ImportError) : ImportOutcome
+
+    /** Il file non si può leggere. */
+    data class Failed(val error: FileError) : ImportOutcome
+}
 
 /**
  * Esporta e importa singole collezioni in file JSON (con o senza immagini) scelti dall'utente
@@ -47,10 +69,10 @@ class TransferRepository(
      * @param collectionId Long - collezione da esportare.
      * @param uri Uri - file scelto con ACTION_CREATE_DOCUMENT.
      * @param imageExport ImageExport - quali immagini incorporare.
-     * @return String - messaggio di esito per l'utente.
+     * @return ExportResult - carte esportate oppure errore sul file.
      */
-    suspend fun export(collectionId: Long, uri: Uri, imageExport: ImageExport): String = withContext(Dispatchers.IO) {
-        val collection = catalogDao.getCollection(collectionId) ?: return@withContext "Collezione non trovata."
+    suspend fun export(collectionId: Long, uri: Uri, imageExport: ImageExport): ExportResult = withContext(Dispatchers.IO) {
+        val collection = catalogDao.getCollection(collectionId) ?: return@withContext ExportResult.Failed(FileError.NOT_FOUND)
         val memberships = catalogDao.membershipsOf(collectionId)
         val cards = memberships.mapNotNull { m -> catalogDao.getCard(m.cardId)?.let { it to m.hidden } }
         val cardIds = cards.map { it.first.id }
@@ -75,14 +97,13 @@ class TransferRepository(
             prices = prices,
         )
         try {
-            val stream = resolver.openOutputStream(uri, "wt") ?: return@withContext "Impossibile aprire il file."
+            val stream = resolver.openOutputStream(uri, "wt") ?: return@withContext ExportResult.Failed(FileError.OPEN_FAILED)
             stream.use { CollectionFiles.write(file, it) }
-            val withImages = records.count { it.imageLow != null || it.imageHigh != null }
-            "Collezione esportata: ${records.size} carte" + if (imageExport != ImageExport.NONE) ", $withImages con immagine." else "."
+            ExportResult.Done(records.size, records.count { it.imageLow != null || it.imageHigh != null })
         } catch (e: IOException) {
-            "Salvataggio non riuscito: ${e.message}"
+            ExportResult.Failed(FileError.OPEN_FAILED)
         } catch (e: SecurityException) {
-            "Permesso negato per il file scelto."
+            ExportResult.Failed(FileError.PERMISSION_DENIED)
         }
     }
 
@@ -90,30 +111,24 @@ class TransferRepository(
      * Importa un file come nuova collezione. Accetta file schema 2 (con o senza immagini) e i backup
      * della prima versione.
      * @param uri Uri - file scelto con ACTION_OPEN_DOCUMENT.
-     * @return ImportOutcome - messaggio per l'utente e id della collezione creata.
+     * @param defaultName String - nome da usare se il file non ne ha uno (backup della prima versione).
+     * @return ImportOutcome - collezione creata oppure motivo del fallimento.
      */
-    suspend fun import(uri: Uri): ImportOutcome = withContext(Dispatchers.IO) {
+    suspend fun import(uri: Uri, defaultName: String): ImportOutcome = withContext(Dispatchers.IO) {
         val result = try {
-            val stream = resolver.openInputStream(uri) ?: return@withContext ImportOutcome("File non disponibile.", null)
+            val stream = resolver.openInputStream(uri) ?: return@withContext ImportOutcome.Failed(FileError.OPEN_FAILED)
             stream.use { CollectionFiles.read(it) }
         } catch (e: IOException) {
-            return@withContext ImportOutcome("Lettura non riuscita: ${e.message}", null)
+            return@withContext ImportOutcome.Failed(FileError.OPEN_FAILED)
         } catch (e: SecurityException) {
-            return@withContext ImportOutcome("Permesso negato per il file scelto.", null)
+            return@withContext ImportOutcome.Failed(FileError.PERMISSION_DENIED)
         }
         when (result) {
-            is CollectionImportResult.Error -> ImportOutcome(result.message, null)
+            is CollectionImportResult.Error -> ImportOutcome.Invalid(result.error)
             is CollectionImportResult.Ok -> {
-                val id = apply(result.collection)
-                val imagesSaved = saveImages(result.collection)
-                val message = buildString {
-                    append("Collezione \"${result.collection.name}\" importata: ${result.collection.cards.size} carte")
-                    if (imagesSaved > 0) append(", $imagesSaved immagini")
-                    append('.')
-                    if (result.collection.cards.isEmpty()) append(" Premi \"Aggiorna catalogo\" per scaricare le carte.")
-                    if (result.skipped > 0) append(" ${result.skipped} voci non valide ignorate.")
-                }
-                ImportOutcome(message, id)
+                val imported = result.collection
+                val (id, name) = apply(imported, imported.name ?: defaultName)
+                ImportOutcome.Done(id, name, imported.cards.size, saveImages(imported), result.skipped)
             }
         }
     }
@@ -122,10 +137,12 @@ class TransferRepository(
      * Scrive la collezione importata nel database in un'unica transazione.
      * Le carte già presenti nel catalogo non vengono sovrascritte.
      * @param imported ImportedCollection - dati validati.
-     * @return Long - id della nuova collezione.
+     * @param desiredName String - nome da dare alla collezione (reso unico se serve).
+     * @return Pair<Long, String> - id e nome effettivo della nuova collezione.
      */
-    private suspend fun apply(imported: ImportedCollection): Long = db.withTransaction {
-        val id = catalogDao.insertCollection(CollectionEntity(name = collections.uniqueName(imported.name), createdAt = System.currentTimeMillis()))
+    private suspend fun apply(imported: ImportedCollection, desiredName: String): Pair<Long, String> = db.withTransaction {
+        val name = collections.uniqueName(desiredName)
+        val id = catalogDao.insertCollection(CollectionEntity(name = name, createdAt = System.currentTimeMillis()))
         imported.queries.forEach {
             catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = it.language, pattern = it.pattern, enabled = it.enabled))
         }
@@ -156,7 +173,7 @@ class TransferRepository(
                 priceDao.pruneSnapshots(p.variantId, PriceRepository.KEEP_SNAPSHOTS)
             }
         }
-        id
+        id to name
     }
 
     /**

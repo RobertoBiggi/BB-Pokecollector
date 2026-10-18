@@ -4,42 +4,60 @@ import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Currency
 import java.util.Locale
 
-/** Formattazione di prezzi e date in italiano. EUR e USD non vengono mai convertiti. */
+/**
+ * Formattazione di prezzi e date nella lingua corrente dell'app (cambia con la scelta in Impostazioni).
+ * EUR e USD non vengono mai convertiti.
+ */
 object Format {
-    private val italian = Locale.ITALY
-    private val eur = NumberFormat.getCurrencyInstance(italian).apply { currency = Currency.getInstance("EUR") }
-    private val usd = NumberFormat.getCurrencyInstance(italian).apply { currency = Currency.getInstance("USD") }
-    private val dateTime = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", italian).withZone(ZoneId.systemDefault())
-    private val date = DateTimeFormatter.ofPattern("d MMM yyyy", italian).withZone(ZoneId.systemDefault())
+
+    /**
+     * Formatta un importo in una valuta.
+     * @param value Double? - importo.
+     * @param currency String - codice ISO della valuta.
+     * @return String - importo formattato, oppure "—" se assente.
+     */
+    private fun money(value: Double?, currency: String): String {
+        if (value == null) return "—"
+        val format = NumberFormat.getCurrencyInstance(Locale.getDefault())
+        format.currency = Currency.getInstance(currency)
+        return format.format(value)
+    }
 
     /**
      * Formatta un importo in euro.
      * @param value Double? - importo.
-     * @return String - es. "2,50 €", oppure "—" se assente.
+     * @return String - es. "2,50 €" in italiano, "€2.50" in inglese; "—" se assente.
      */
-    fun eur(value: Double?): String = value?.let { eur.format(it) } ?: "—"
+    fun eur(value: Double?): String = money(value, "EUR")
 
     /**
      * Formatta un importo in dollari.
      * @param value Double? - importo.
-     * @return String - es. "2,50 USD", oppure "—" se assente.
+     * @return String - importo formattato, oppure "—" se assente.
      */
-    fun usd(value: Double?): String = value?.let { usd.format(it) } ?: "—"
+    fun usd(value: Double?): String = money(value, "USD")
 
     /**
      * Formatta data e ora.
      * @param millis Long - istante in millisecondi.
-     * @return String - es. "17 ott 2026, 18:30".
+     * @return String - data e ora nello stile della lingua corrente.
      */
-    fun dateTime(millis: Long): String = dateTime.format(Instant.ofEpochMilli(millis))
+    fun dateTime(millis: Long): String =
+        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+            .withLocale(Locale.getDefault()).withZone(ZoneId.systemDefault())
+            .format(Instant.ofEpochMilli(millis))
 
     /**
      * Formatta una data.
      * @param millis Long - istante in millisecondi.
-     * @return String - es. "17 ott 2026".
+     * @return String - data nello stile della lingua corrente.
      */
-    fun date(millis: Long): String = date.format(Instant.ofEpochMilli(millis))
+    fun date(millis: Long): String =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(Locale.getDefault()).withZone(ZoneId.systemDefault())
+            .format(Instant.ofEpochMilli(millis))
 }

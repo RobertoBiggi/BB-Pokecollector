@@ -12,14 +12,19 @@ import androidx.work.workDataOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** Stato di un lavoro in background, pronto per la UI. */
+/**
+ * Stato di un lavoro in background. [phase] e [label] descrivono l'elemento in lavorazione,
+ * [output] contiene i conteggi finali (chiavi di [WorkKeys]); i testi li compone la UI.
+ */
 data class JobState(
     val running: Boolean,
-    val message: String?,
+    val waitingForNetwork: Boolean,
+    val failed: Boolean,
+    val phase: String?,
+    val label: String?,
     val done: Int,
     val total: Int,
-    val finishedMessage: String?,
-    val failed: Boolean,
+    val output: Map<String, Any?>,
 )
 
 /**
@@ -86,12 +91,13 @@ class WorkScheduler(context: Context) {
             val progress = info.progress
             JobState(
                 running = info.state == WorkInfo.State.RUNNING || info.state == WorkInfo.State.ENQUEUED,
-                message = progress.getString(WorkKeys.MESSAGE)
-                    ?: if (info.state == WorkInfo.State.ENQUEUED) "In attesa della connessione…" else null,
+                waitingForNetwork = info.state == WorkInfo.State.ENQUEUED,
+                failed = info.state == WorkInfo.State.FAILED,
+                phase = progress.getString(WorkKeys.PHASE),
+                label = progress.getString(WorkKeys.LABEL),
                 done = progress.getInt(WorkKeys.DONE, 0),
                 total = progress.getInt(WorkKeys.TOTAL, 0),
-                finishedMessage = info.outputData.getString(WorkKeys.MESSAGE),
-                failed = info.state == WorkInfo.State.FAILED,
+                output = info.outputData.keyValueMap,
             )
         }
 
