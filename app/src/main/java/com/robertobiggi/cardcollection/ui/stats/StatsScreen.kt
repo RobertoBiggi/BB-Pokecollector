@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.robertobiggi.cardcollection.core.model.Language
@@ -51,6 +52,7 @@ private fun summaryOf(cards: List<CardUi>): StatsSummary =
 @Composable
 fun StatsScreen(vm: MainViewModel) {
     val library by vm.library.collectAsStateWithLifecycle()
+    val name by vm.collectionName.collectAsStateWithLifecycle()
     val runs by vm.runs.collectAsStateWithLifecycle()
     val cards = library.orEmpty()
     val total = remember(cards) { summaryOf(cards) }
@@ -66,7 +68,7 @@ fun StatsScreen(vm: MainViewModel) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Statistiche") })
+        TopAppBar(title = { Text("Statistiche · ${name ?: ""}", maxLines = 1, overflow = TextOverflow.Ellipsis) })
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Card(Modifier.fillMaxWidth()) {

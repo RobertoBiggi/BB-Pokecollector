@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.robertobiggi.cardcollection.core.model.Language
@@ -46,6 +47,7 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 @Composable
 fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val library by vm.library.collectAsStateWithLifecycle()
+    val name by vm.collectionName.collectAsStateWithLifecycle()
     val cards = library.orEmpty()
     val missing = remember(cards) {
         cards.sortedWith(compareBy({ it.card.releaseDate ?: "9999" }, { it.card.localId.padStart(4, '0') }))
@@ -54,7 +56,7 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val stats = remember(cards) { CollectionStats.compute(cards.flatMap { c -> c.variants.map { it.toSlotInput() } }) }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Mancanti") })
+        TopAppBar(title = { Text("Mancanti · ${name ?: ""}", maxLines = 1, overflow = TextOverflow.Ellipsis) })
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Card(Modifier.fillMaxWidth()) {

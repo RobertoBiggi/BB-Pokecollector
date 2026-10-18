@@ -13,18 +13,21 @@ object WorkKeys {
     const val MESSAGE = "message"
     const val DONE = "done"
     const val TOTAL = "total"
+    const val COLLECTION_ID = "collectionId"
 }
 
 /** Scarica il catalogo delle ricerche attive e le immagini. Avviato solo a mano. */
 class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     /**
-     * Esegue il sync del catalogo pubblicando l'avanzamento.
+     * Esegue il sync del catalogo della collezione indicata nei dati di input, pubblicando l'avanzamento.
      * @return Result - successo con il riepilogo, oppure fallimento con il messaggio d'errore.
      */
     override suspend fun doWork(): Result {
         val container = (applicationContext as CardCollectionApp).container
-        val result = container.catalog.sync { p ->
+        val collectionId = inputData.getLong(WorkKeys.COLLECTION_ID, -1L)
+        if (collectionId < 0) return Result.failure()
+        val result = container.catalog.sync(collectionId) { p ->
             setProgress(workDataOf(WorkKeys.MESSAGE to p.message, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
         }
         val data = workDataOf(WorkKeys.MESSAGE to result.summary())
@@ -50,12 +53,14 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
 class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     /**
-     * Esegue l'aggiornamento prezzi pubblicando l'avanzamento.
+     * Esegue l'aggiornamento prezzi della collezione indicata nei dati di input, pubblicando l'avanzamento.
      * @return Result - successo con il riepilogo (anche se interrotto: i prezzi salvati restano validi).
      */
     override suspend fun doWork(): Result {
         val container = (applicationContext as CardCollectionApp).container
-        val result = container.prices.runPriceCheck { p ->
+        val collectionId = inputData.getLong(WorkKeys.COLLECTION_ID, -1L)
+        if (collectionId < 0) return Result.failure()
+        val result = container.prices.runPriceCheck(collectionId) { p ->
             setProgress(workDataOf(WorkKeys.MESSAGE to p.message, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
         }
         return Result.success(workDataOf(WorkKeys.MESSAGE to result.message))

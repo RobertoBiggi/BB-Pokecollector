@@ -8,6 +8,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -22,8 +23,8 @@ data class JobState(
 )
 
 /**
- * Avvia e osserva i lavori manuali (catalogo e prezzi). Ogni lavoro è unico: un secondo tocco
- * mentre il primo è in corso non avvia un duplicato.
+ * Avvia e osserva i lavori manuali (catalogo e prezzi) di ogni collezione. Ogni lavoro è unico per
+ * collezione: un secondo tocco mentre il primo è in corso non avvia un duplicato.
  *
  * @param context contesto dell'applicazione.
  */
@@ -32,34 +33,46 @@ class WorkScheduler(context: Context) {
     private val workManager = WorkManager.getInstance(context)
     private val network = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
-    /** Stato del sync del catalogo. */
-    val catalogState: Flow<JobState?> = observe(CATALOG_WORK)
-
-    /** Stato dell'aggiornamento prezzi. */
-    val priceState: Flow<JobState?> = observe(PRICE_WORK)
+    /**
+     * Stato del sync del catalogo di una collezione.
+     * @param collectionId Long - collezione.
+     * @return Flow<JobState?> - stato corrente, null se mai avviato.
+     */
+    fun catalogState(collectionId: Long): Flow<JobState?> = observe(catalogName(collectionId))
 
     /**
-     * Avvia il sync del catalogo, se non è già in corso.
+     * Stato dell'aggiornamento prezzi di una collezione.
+     * @param collectionId Long - collezione.
+     * @return Flow<JobState?> - stato corrente, null se mai avviato.
+     */
+    fun priceState(collectionId: Long): Flow<JobState?> = observe(priceName(collectionId))
+
+    /**
+     * Avvia il sync del catalogo di una collezione, se non è già in corso.
+     * @param collectionId Long - collezione.
      * @return Unit
      */
-    fun startCatalogSync() {
+    fun startCatalogSync(collectionId: Long) {
         val request = OneTimeWorkRequestBuilder<CatalogSyncWorker>()
             .setConstraints(network)
+            .setInputData(workDataOf(WorkKeys.COLLECTION_ID to collectionId))
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
-        workManager.enqueueUniqueWork(CATALOG_WORK, ExistingWorkPolicy.KEEP, request)
+        workManager.enqueueUniqueWork(catalogName(collectionId), ExistingWorkPolicy.KEEP, request)
     }
 
     /**
-     * Avvia l'aggiornamento prezzi, se non è già in corso.
+     * Avvia l'aggiornamento prezzi di una collezione, se non è già in corso.
+     * @param collectionId Long - collezione.
      * @return Unit
      */
-    fun startPriceCheck() {
+    fun startPriceCheck(collectionId: Long) {
         val request = OneTimeWorkRequestBuilder<PriceCheckWorker>()
             .setConstraints(network)
+            .setInputData(workDataOf(WorkKeys.COLLECTION_ID to collectionId))
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
-        workManager.enqueueUniqueWork(PRICE_WORK, ExistingWorkPolicy.KEEP, request)
+        workManager.enqueueUniqueWork(priceName(collectionId), ExistingWorkPolicy.KEEP, request)
     }
 
     /**
@@ -82,8 +95,17 @@ class WorkScheduler(context: Context) {
             )
         }
 
-    private companion object {
-        const val CATALOG_WORK = "catalog-sync"
-        const val PRICE_WORK = "price-check"
-    }
+    /**
+     * Nome del lavoro unico di sync catalogo.
+     * @param collectionId Long - collezione.
+     * @return String - nome del lavoro.
+     */
+    private fun catalogName(collectionId: Long) = "catalog-sync-$collectionId"
+
+    /**
+     * Nome del lavoro unico di aggiornamento prezzi.
+     * @param collectionId Long - collezione.
+     * @return String - nome del lavoro.
+     */
+    private fun priceName(collectionId: Long) = "price-check-$collectionId"
 }

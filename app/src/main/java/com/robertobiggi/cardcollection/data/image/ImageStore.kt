@@ -57,6 +57,46 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
+     * Salva un'immagine ricevuta da un file importato (già validata come WebP, PNG o JPEG).
+     * @param cardId String - id locale della carta.
+     * @param quality Quality - qualità dell'immagine.
+     * @param bytes ByteArray - contenuto dell'immagine.
+     * @return String? - percorso assoluto del file salvato, oppure null se il salvataggio fallisce.
+     */
+    suspend fun write(cardId: String, quality: Quality, bytes: ByteArray): String? = withContext(Dispatchers.IO) {
+        if (bytes.isEmpty() || bytes.size > MAX_BYTES) return@withContext null
+        val target = fileFor(cardId, quality)
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        try {
+            tmp.writeBytes(bytes)
+            if (!tmp.renameTo(target)) {
+                tmp.delete()
+                return@withContext null
+            }
+            target.absolutePath
+        } catch (e: IOException) {
+            tmp.delete()
+            null
+        }
+    }
+
+    /**
+     * Legge un'immagine salvata, solo se si trova nella cartella delle immagini dell'app.
+     * @param path String? - percorso assoluto salvato nel database.
+     * @return ByteArray? - contenuto del file, oppure null se assente, fuori cartella o troppo grande.
+     */
+    suspend fun read(path: String?): ByteArray? = withContext(Dispatchers.IO) {
+        if (path == null) return@withContext null
+        val file = File(path)
+        if (!file.canonicalPath.startsWith(rootPath) || !file.isFile || file.length() > MAX_BYTES) return@withContext null
+        try {
+            file.readBytes()
+        } catch (e: IOException) {
+            null
+        }
+    }
+
+    /**
      * Scarica un file controllando codice HTTP, tipo di contenuto e dimensione massima,
      * scrivendo prima su un file temporaneo e poi rinominandolo.
      * @param url String - URL già validato.

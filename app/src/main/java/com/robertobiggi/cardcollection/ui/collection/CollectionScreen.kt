@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -88,15 +89,17 @@ fun applyFilter(cards: List<CardUi>, filter: CollectionFilter): List<CardUi> {
  * Schermata principale: griglia delle carte con ricerca, filtri e pulsanti di aggiornamento.
  * @param vm MainViewModel - stato e azioni.
  * @param onOpen (String) -> Unit - apre il dettaglio della carta con l'id indicato.
+ * @param onHome () -> Unit - torna all'elenco delle collezioni.
  * @return Unit
  */
 @Composable
-fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
+fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> Unit) {
     val library by vm.library.collectAsStateWithLifecycle()
     val filter by vm.filter.collectAsStateWithLifecycle()
     val runs by vm.runs.collectAsStateWithLifecycle()
     val catalogJob by vm.catalogJob.collectAsStateWithLifecycle()
     val priceJob by vm.priceJob.collectAsStateWithLifecycle()
+    val name by vm.collectionName.collectAsStateWithLifecycle()
     val cards = library
     val visible = remember(cards, filter) { applyFilter(cards.orEmpty(), filter) }
 
@@ -104,9 +107,12 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
         TopAppBar(
             title = {
                 Column {
-                    Text("Collezione")
+                    Text(name ?: "Collezione", maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(lastUpdateText(runs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            },
+            navigationIcon = {
+                IconButton(onClick = onHome) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Tutte le collezioni") }
             },
             actions = {
                 IconButton(onClick = vm::startCatalogSync, enabled = catalogJob?.running != true) {
@@ -164,9 +170,9 @@ private fun lastUpdateText(runs: List<PriceRunEntity>): String {
 private fun EmptyLibrary(onSync: () -> Unit, syncing: Boolean) {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Nessuna carta salvata", style = MaterialTheme.typography.titleMedium)
+            Text("Nessuna carta in questa collezione", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Scarica il catalogo delle ricerche attive (Mawile in inglese e クチート in giapponese). " +
+                "Scarica il catalogo delle ricerche della collezione, oppure aggiungi ricerche e carte singole da Gestione. " +
                     "Carte e immagini restano sul telefono e sono consultabili anche offline.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

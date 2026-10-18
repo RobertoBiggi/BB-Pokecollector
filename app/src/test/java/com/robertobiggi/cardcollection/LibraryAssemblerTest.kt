@@ -33,7 +33,7 @@ class LibraryAssemblerTest {
         val result = LibraryAssembler.assemble(
             cards = listOf(c),
             variants = listOf(CardVariantEntity(reverse, c.id, VariantType.REVERSE.name), CardVariantEntity(normal, c.id, VariantType.NORMAL.name)),
-            entries = listOf(CollectionEntryEntity(normal, quantity = 2), CollectionEntryEntity(reverse, wanted = false)),
+            entries = listOf(CollectionEntryEntity(1, normal, quantity = 2), CollectionEntryEntity(1, reverse, wanted = false)),
             snapshots = listOf(snap(normal, 0.03, 0.11, 1), snap(normal, 0.05, null, 2, source = "Manuale")),
         ).single()
         assertEquals("POR 032/088", result.printedCode)
@@ -46,11 +46,28 @@ class LibraryAssemblerTest {
     }
 
     @Test
+    fun `visibilita per collezione, ricerche disattivate e carte tolte`() {
+        val queries = listOf(
+            com.robertobiggi.cardcollection.data.local.TrackedQueryEntity(1, 1, "en", "Mawile", true),
+            com.robertobiggi.cardcollection.data.local.TrackedQueryEntity(2, 1, "ja", "クチート", false),
+        )
+        val links = listOf(
+            com.robertobiggi.cardcollection.data.local.CollectionCardEntity(1, "en:a-1", 1),
+            com.robertobiggi.cardcollection.data.local.CollectionCardEntity(1, "ja:b-1", 2),
+            com.robertobiggi.cardcollection.data.local.CollectionCardEntity(1, "en:c-1", null),
+            com.robertobiggi.cardcollection.data.local.CollectionCardEntity(1, "en:d-1", 1, hidden = true),
+            com.robertobiggi.cardcollection.data.local.CollectionCardEntity(2, "en:e-1", null),
+        )
+        assertEquals(setOf("en:a-1", "en:c-1"), LibraryAssembler.visibleCardIds(1, links, queries))
+        assertEquals(setOf("en:e-1"), LibraryAssembler.visibleCardIds(2, links, queries))
+    }
+
+    @Test
     fun `filtro mancanti e ricerca per codice`() {
         val a = LibraryAssembler.assemble(
             listOf(card("en:me03-032", "Mawile", "POR"), card("en:ex2-9", "Mawile", null)),
             listOf(CardVariantEntity("en:me03-032|NORMAL", "en:me03-032", "NORMAL"), CardVariantEntity("en:ex2-9|HOLO", "en:ex2-9", "HOLO")),
-            listOf(CollectionEntryEntity("en:me03-032|NORMAL", quantity = 1)),
+            listOf(CollectionEntryEntity(1, "en:me03-032|NORMAL", quantity = 1)),
             emptyList(),
         )
         assertEquals(listOf("en:ex2-9"), applyFilter(a, CollectionFilter(owned = OwnedFilter.MISSING)).map { it.card.id })
