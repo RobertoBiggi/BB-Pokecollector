@@ -30,6 +30,9 @@ jobs:
       - name: Test, lint e build
         run: ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace --console=plain
 
+      - name: Mostra schema Room esportato
+        run: find app/schemas -name '*.json' -print -exec cat {} \;
+
       - name: Pubblica APK debug
         uses: actions/upload-artifact@v4
         with:
