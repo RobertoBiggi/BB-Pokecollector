@@ -5,13 +5,14 @@ Il primo obiettivo sono tutti i **Mawile** e **Mega Mawile**, in inglese e giapp
 
 ## Cosa fa
 
+- **Più collezioni:** all'avvio vedi l'elenco delle collezioni, ognuna con copertina, completamento e valore; toccandone una si apre con le schede Carte, Mancanti, Statistiche e Gestione. Ogni collezione ha ricerche, carte aggiunte a mano e quantità proprie; catalogo, immagini e prezzi sono condivisi.
+- **Import/export JSON:** esporti una collezione in un unico file, senza immagini oppure con immagini piccole o grandi incorporate, e la importi su un altro telefono anche offline. L'import crea sempre una nuova collezione. Sono accettati anche i backup della prima versione.
 - **Catalogo da TCGdex:** scarica tutte le carte Pokémon che contengono il nome cercato (di default `Mawile` per l'inglese e `クチート` per il giapponese). Le carte digitali di TCG Pocket e gli Allenatori vengono esclusi. Le immagini sono salvate sul telefono.
 - **Slot per variante:** ogni variante è uno slot della collezione. Per ognuna segni quante copie hai e in che condizione; con "la voglio" decidi se conta tra le mancanti.
 - **Codice stampato:** ogni carta mostra il codice in basso a sinistra, come sulla carta vera (es. `POR 032/088`, `M1L 046/063`). Puoi cercare e ordinare anche per codice.
 - **Prezzi su richiesta:** l'aggiornamento parte solo quando lo chiedi. Prende Cardmarket in EUR (disponibile anche per le carte JP) e TCGplayer in USD tramite TCGdex, senza mai contattare cardmarket.com. L'ultimo prezzo resta salvato in locale; puoi anche inserirne uno a mano.
 - **Se la fonte blocca:** in caso di risposta 429 l'app riprova con attese crescenti. Dopo 3 blocchi di fila mette la fonte in pausa per 6 ore.
 - **Mancanti e statistiche:** costo stimato delle carte che mancano, percentuale di completamento, valore della collezione (EUR e USD separati), avanzamento per lingua e per serie.
-- **Backup:** esporti e importi un file JSON nella posizione che scegli tu.
 
 ## Installare l'APK
 
@@ -21,7 +22,7 @@ L'app non è sul Play Store: l'APK di debug viene compilato da GitHub Actions a 
 2. In fondo alla pagina, nella sezione **Artifacts**, scarica `card-collection-debug-apk` (è uno zip).
 3. Estrai `app-debug.apk` e copialo sul telefono.
 4. Aprilo e consenti l'installazione da origini sconosciute quando Android lo chiede.
-5. Al primo avvio premi **Scarica catalogo**, poi **Prezzi** per il primo aggiornamento.
+5. Al primo avvio apri la collezione **Mawile** (già pronta con le ricerche Mawile EN e クチート JP), premi **Scarica catalogo** e poi **Prezzi**.
 
 Requisiti: Android 8.0 o successivo.
 
