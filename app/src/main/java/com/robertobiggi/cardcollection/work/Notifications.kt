@@ -26,21 +26,17 @@ object Notifications {
     }
 
     /**
-     * Costruisce la notifica di avanzamento.
+     * Costruisce la notifica di un lavoro in corso, con avanzamento indeterminato.
      * @param context Context - contesto.
-     * @param title String - titolo.
-     * @param text String - testo di dettaglio.
-     * @param done Int - elementi completati.
-     * @param total Int - elementi totali (0 = avanzamento indeterminato).
+     * @param title String - titolo già tradotto.
      * @return Notification - notifica pronta.
      */
-    fun progress(context: Context, title: String, text: String, done: Int, total: Int): Notification =
+    fun progress(context: Context, title: String): Notification =
         NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_card)
             .setContentTitle(title)
-            .setContentText(text)
             .setOnlyAlertOnce(true)
             .setOngoing(true)
-            .setProgress(total, done.coerceAtMost(total), total == 0)
+            .setProgress(0, 0, true)
             .build()
 }

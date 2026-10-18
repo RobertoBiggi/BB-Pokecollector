@@ -9,6 +9,7 @@ junit5 = "5.11.4"
 junit4 = "4.13.2"
 composeBom = "2024.12.01"
 coreKtx = "1.15.0"
+appcompat = "1.7.0"
 activityCompose = "1.9.3"
 lifecycle = "2.8.7"
 navigation = "2.8.5"
@@ -31,6 +32,7 @@ junit4 = { module = "junit:junit", version.ref = "junit4" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqliteJdbc" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }

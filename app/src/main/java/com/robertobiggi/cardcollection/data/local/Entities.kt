@@ -125,7 +125,10 @@ data class PriceSnapshotEntity(
     val confidence: String,
 )
 
-/** Registro di un aggiornamento prezzi; [collectionId] è null per i run della versione 1. */
+/**
+ * Registro di un aggiornamento prezzi. [summary] contiene il motivo dell'interruzione
+ * ([com.robertobiggi.cardcollection.data.repo.AbortReason]) oppure null; [collectionId] è null per i run della versione 1.
+ */
 @Entity(tableName = "price_run")
 data class PriceRunEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

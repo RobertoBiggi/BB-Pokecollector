@@ -1,6 +1,7 @@
 package com.robertobiggi.cardcollection.ui
 
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -9,6 +10,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.robertobiggi.cardcollection.AppContainer
 import com.robertobiggi.cardcollection.CardCollectionApp
+import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.core.backup.ImageExport
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
@@ -17,8 +19,16 @@ import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
+import com.robertobiggi.cardcollection.data.repo.AddCardResult
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.CollectionSummary
+import com.robertobiggi.cardcollection.data.repo.CreateResult
+import com.robertobiggi.cardcollection.data.repo.ExportResult
+import com.robertobiggi.cardcollection.data.repo.ImportOutcome
+import com.robertobiggi.cardcollection.data.repo.InputError
+import com.robertobiggi.cardcollection.data.repo.SearchResult
+import com.robertobiggi.cardcollection.ui.common.UiText
+import com.robertobiggi.cardcollection.ui.common.messageRes
 import com.robertobiggi.cardcollection.work.JobState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -37,12 +47,12 @@ import kotlinx.coroutines.launch
 /** Filtro per possesso nella griglia. */
 enum class OwnedFilter { ALL, OWNED, MISSING }
 
-/** Ordinamento della griglia. */
-enum class SortMode(val label: String) {
-    RELEASE("Uscita"),
-    PRICE("Prezzo"),
-    CODE("Codice"),
-    NAME("Nome"),
+/** Ordinamento della griglia; [labelRes] è il nome mostrato. */
+enum class SortMode(@StringRes val labelRes: Int) {
+    RELEASE(R.string.sort_release),
+    PRICE(R.string.sort_price),
+    CODE(R.string.sort_code),
+    NAME(R.string.sort_name),
 }
 
 /** Stato dei filtri della collezione. */
@@ -53,12 +63,12 @@ data class CollectionFilter(
     val sort: SortMode = SortMode.RELEASE,
 )
 
-/** Stato della ricerca di carte da aggiungere a mano. */
+/** Stato della ricerca di carte da aggiungere a mano; [messageRes] è un avviso da mostrare, se c'è. */
 data class CardSearchState(
     val loading: Boolean = false,
     val results: List<CardBriefDto> = emptyList(),
     val language: Language = Language.EN,
-    val error: String? = null,
+    @StringRes val messageRes: Int? = null,
 )
 
 /**
@@ -94,10 +104,20 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     private val _search = MutableStateFlow(CardSearchState())
     val search: StateFlow<CardSearchState> = _search.asStateFlow()
 
-    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    private val _messages = MutableSharedFlow<UiText>(extraBufferCapacity = 4)
 
-    /** Messaggi brevi da mostrare in uno snackbar. */
-    val messages: SharedFlow<String> = _messages.asSharedFlow()
+    /** Messaggi brevi da mostrare in uno snackbar, tradotti al momento della visualizzazione. */
+    val messages: SharedFlow<UiText> = _messages.asSharedFlow()
+
+    /**
+     * Accoda un messaggio per lo snackbar.
+     * @param id Int - risorsa stringa.
+     * @param args Any - argomenti del formato.
+     * @return Unit
+     */
+    private fun say(@StringRes id: Int, vararg args: Any) {
+        _messages.tryEmit(UiText(id, *args))
+    }
 
     /**
      * Converte un flusso in StateFlow legato al ViewModel.
@@ -177,18 +197,18 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @param name String - nome.
      * @param language Language - lingua della prima ricerca.
      * @param pattern String - prima ricerca (vuota = nessuna).
-     * @param onResult (String?, Long?) -> Unit - riceve l'errore oppure l'id creato.
+     * @param onResult (InputError?, Long?) -> Unit - riceve l'errore oppure l'id creato.
      * @return Unit
      */
-    fun createCollection(name: String, language: Language, pattern: String, onResult: (String?, Long?) -> Unit) {
+    fun createCollection(name: String, language: Language, pattern: String, onResult: (InputError?, Long?) -> Unit) {
         viewModelScope.launch {
-            container.collection.createCollection(name, language, pattern).fold(
-                onSuccess = { id ->
-                    if (pattern.isNotBlank()) container.work.startCatalogSync(id)
-                    onResult(null, id)
-                },
-                onFailure = { onResult(it.message, null) },
-            )
+            when (val result = container.collection.createCollection(name, language, pattern)) {
+                is CreateResult.Created -> {
+                    if (pattern.isNotBlank()) container.work.startCatalogSync(result.id)
+                    onResult(null, result.id)
+                }
+                is CreateResult.Invalid -> onResult(result.error, null)
+            }
         }
     }
 
@@ -196,10 +216,10 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * Rinomina una collezione.
      * @param collectionId Long - collezione.
      * @param name String - nuovo nome.
-     * @param onResult (String?) -> Unit - riceve l'errore, oppure null se rinominata.
+     * @param onResult (InputError?) -> Unit - riceve l'errore, oppure null se rinominata.
      * @return Unit
      */
-    fun renameCollection(collectionId: Long, name: String, onResult: (String?) -> Unit) {
+    fun renameCollection(collectionId: Long, name: String, onResult: (InputError?) -> Unit) {
         viewModelScope.launch { onResult(container.collection.rename(collectionId, name)) }
     }
 
@@ -212,7 +232,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             container.collection.delete(collectionId)
             if (_selected.value == collectionId) _selected.value = null
-            _messages.tryEmit("Collezione eliminata.")
+            say(R.string.msg_collection_deleted)
         }
     }
 
@@ -225,20 +245,32 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      */
     fun exportCollection(collectionId: Long, uri: Uri, images: ImageExport) {
         viewModelScope.launch {
-            _messages.tryEmit("Esportazione in corso…")
-            _messages.tryEmit(container.transfer.export(collectionId, uri, images))
+            say(R.string.msg_exporting)
+            when (val result = container.transfer.export(collectionId, uri, images)) {
+                is ExportResult.Done ->
+                    if (images == ImageExport.NONE) say(R.string.msg_exported, result.cards) else say(R.string.msg_exported_images, result.cards, result.withImages)
+                is ExportResult.Failed -> say(result.error.messageRes())
+            }
         }
     }
 
     /**
      * Importa un file come nuova collezione.
      * @param uri Uri - file sorgente.
+     * @param defaultName String - nome da usare se il file non ne ha uno (già tradotto).
      * @return Unit
      */
-    fun importCollection(uri: Uri) {
+    fun importCollection(uri: Uri, defaultName: String) {
         viewModelScope.launch {
-            _messages.tryEmit("Importazione in corso…")
-            _messages.tryEmit(container.transfer.import(uri).message)
+            say(R.string.msg_importing)
+            when (val result = container.transfer.import(uri, defaultName)) {
+                is ImportOutcome.Done -> {
+                    if (result.cards == 0) say(R.string.msg_imported_no_cards, result.name) else say(R.string.msg_imported, result.name, result.cards, result.images)
+                    if (result.skipped > 0) say(R.string.msg_import_skipped, result.skipped)
+                }
+                is ImportOutcome.Invalid -> say(result.error.messageRes())
+                is ImportOutcome.Failed -> say(result.error.messageRes())
+            }
         }
     }
 
@@ -276,7 +308,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         val value = Validators.parseManualPrice(input) ?: return false
         viewModelScope.launch {
             container.prices.addManualPrice(variantId, value)
-            _messages.tryEmit("Prezzo manuale salvato.")
+            say(R.string.msg_manual_price_saved)
         }
         return true
     }
@@ -285,13 +317,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * Aggiunge una ricerca alla collezione aperta.
      * @param language Language - lingua.
      * @param pattern String - testo da cercare.
-     * @param onResult (String?) -> Unit - riceve l'errore, oppure null se aggiunta.
+     * @param onResult (InputError?) -> Unit - riceve l'errore, oppure null se aggiunta.
      * @return Unit
      */
-    fun addQuery(language: Language, pattern: String, onResult: (String?) -> Unit) = withSelected { id ->
+    fun addQuery(language: Language, pattern: String, onResult: (InputError?) -> Unit) = withSelected { id ->
         val error = container.collection.addQuery(id, language, pattern)
         onResult(error)
-        if (error == null) _messages.tryEmit("Ricerca aggiunta: premi \"Aggiorna catalogo\" per scaricare le carte.")
+        if (error == null) say(R.string.msg_search_added)
     }
 
     /**
@@ -322,10 +354,15 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     fun searchCards(language: Language, text: String) {
         _search.value = CardSearchState(loading = true, language = language)
         viewModelScope.launch {
-            _search.value = container.catalog.search(language, text.trim()).fold(
-                onSuccess = { CardSearchState(results = it, language = language, error = if (it.isEmpty()) "Nessuna carta trovata." else null) },
-                onFailure = { CardSearchState(language = language, error = it.message) },
-            )
+            _search.value = when (val result = container.catalog.search(language, text.trim())) {
+                is SearchResult.Found -> CardSearchState(
+                    results = result.cards,
+                    language = language,
+                    messageRes = if (result.cards.isEmpty()) R.string.search_no_results else null,
+                )
+                SearchResult.InvalidQuery -> CardSearchState(language = language, messageRes = R.string.err_query_invalid)
+                SearchResult.NetworkError -> CardSearchState(language = language, messageRes = R.string.msg_network_error)
+            }
         }
     }
 
@@ -335,8 +372,12 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @return Unit
      */
     fun addSingleCard(card: CardBriefDto) = withSelected { id ->
-        _messages.tryEmit("Aggiungo ${card.name}…")
-        _messages.tryEmit(container.catalog.addSingleCard(id, _search.value.language, card.id))
+        say(R.string.msg_adding_card, card.name)
+        when (val result = container.catalog.addSingleCard(id, _search.value.language, card.id)) {
+            is AddCardResult.Added -> say(R.string.msg_card_added, result.name)
+            AddCardResult.NotAllowed -> say(R.string.msg_card_not_allowed)
+            AddCardResult.NetworkError -> say(R.string.msg_network_error)
+        }
     }
 
     /**
@@ -346,7 +387,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      */
     fun hideCard(cardId: String) = withSelected { id ->
         container.collection.hideCard(id, cardId)
-        _messages.tryEmit("Carta tolta dalla collezione. Puoi ripristinarla da Gestione.")
+        say(R.string.msg_card_removed)
     }
 
     /**

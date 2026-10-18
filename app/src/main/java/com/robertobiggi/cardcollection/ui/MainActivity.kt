@@ -5,8 +5,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -38,17 +40,21 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.ui.collection.CollectionScreen
 import com.robertobiggi.cardcollection.ui.detail.DetailScreen
 import com.robertobiggi.cardcollection.ui.missing.MissingScreen
 import com.robertobiggi.cardcollection.ui.home.HomeScreen
 import com.robertobiggi.cardcollection.ui.manage.ManageScreen
-import com.robertobiggi.cardcollection.ui.settings.InfoScreen
+import com.robertobiggi.cardcollection.ui.settings.SettingsScreen
 import com.robertobiggi.cardcollection.ui.stats.StatsScreen
 import com.robertobiggi.cardcollection.ui.theme.CardCollectionTheme
 
-/** Unica activity: ospita la navigazione Compose. */
-class MainActivity : ComponentActivity() {
+/**
+ * Unica activity: ospita la navigazione Compose. Estende AppCompatActivity per applicare la lingua
+ * scelta in Impostazioni anche sulle versioni di Android precedenti alla 13.
+ */
+class MainActivity : AppCompatActivity() {
 
     /**
      * Imposta il contenuto Compose a tutto schermo.
@@ -63,11 +69,11 @@ class MainActivity : ComponentActivity() {
 }
 
 /** Schede della navigazione in basso dentro una collezione. */
-private enum class Tab(val segment: String, val label: String, val icon: ImageVector) {
-    CARDS("cards", "Carte", Icons.Filled.GridView),
-    MISSING("missing", "Mancanti", Icons.Filled.Star),
-    STATS("stats", "Statistiche", Icons.Filled.BarChart),
-    MANAGE("manage", "Gestione", Icons.Filled.Settings),
+private enum class Tab(val segment: String, @StringRes val labelRes: Int, val icon: ImageVector) {
+    CARDS("cards", R.string.tab_cards, Icons.Filled.GridView),
+    MISSING("missing", R.string.tab_missing, Icons.Filled.Star),
+    STATS("stats", R.string.tab_stats, Icons.Filled.BarChart),
+    MANAGE("manage", R.string.tab_manage, Icons.Filled.Settings),
 }
 
 /**
@@ -83,8 +89,9 @@ private fun AppRoot() {
     val route = backStack?.destination?.route
     val currentCid = backStack?.arguments?.getLong("cid")
 
+    val context = LocalContext.current
     RequestNotificationPermission()
-    LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
+    LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it.resolve(context)) } }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -103,7 +110,7 @@ private fun AppRoot() {
                                 }
                             },
                             icon = { Icon(t.icon, contentDescription = null) },
-                            label = { Text(t.label) },
+                            label = { Text(stringResource(t.labelRes)) },
                         )
                     }
                 }
@@ -113,9 +120,9 @@ private fun AppRoot() {
         val cidArg = listOf(navArgument("cid") { type = NavType.LongType })
         NavHost(nav, startDestination = "home", modifier = Modifier.padding(padding)) {
             composable("home") {
-                HomeScreen(vm, onOpen = { id -> nav.navigate("c/$id/${Tab.CARDS.segment}") }, onInfo = { nav.navigate("info") })
+                HomeScreen(vm, onOpen = { id -> nav.navigate("c/$id/${Tab.CARDS.segment}") }, onSettings = { nav.navigate("settings") })
             }
-            composable("info") { InfoScreen(vm, onBack = { nav.popBackStack() }) }
+            composable("settings") { SettingsScreen(vm, onBack = { nav.popBackStack() }) }
             Tab.entries.forEach { tab ->
                 composable("c/{cid}/${tab.segment}", arguments = cidArg) { entry ->
                     val cid = entry.arguments?.getLong("cid") ?: return@composable

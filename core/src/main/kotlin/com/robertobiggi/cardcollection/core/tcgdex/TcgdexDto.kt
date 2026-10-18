@@ -132,8 +132,12 @@ data class SerieRefDto(
     val name: String,
 )
 
-/** Sigla del set: [official] è quella stampata sulle carte inglesi recenti (es. "POR"). */
+/**
+ * Sigla del set: [official] è quella stampata sulle carte inglesi recenti (es. "POR"),
+ * [localized] quella delle edizioni tradotte che ne hanno una propria (es. "PXY" in francese).
+ */
 @Serializable
 data class AbbreviationDto(
     val official: String? = null,
+    val localized: String? = null,
 )

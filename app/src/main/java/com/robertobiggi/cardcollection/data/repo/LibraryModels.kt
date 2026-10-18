@@ -1,7 +1,6 @@
 package com.robertobiggi.cardcollection.data.repo
 
 import com.robertobiggi.cardcollection.core.model.Condition
-import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.stats.CollectionStats
@@ -169,12 +168,4 @@ object LibraryAssembler {
             CardUi(card, list)
         }
     }
-
-    /**
-     * Calcola l'id della variante (scorciatoia per la UI).
-     * @param cardId String - id locale della carta.
-     * @param type VariantType - variante.
-     * @return String - id della variante.
-     */
-    fun variantId(cardId: String, type: VariantType): String = Ids.variantId(cardId, type)
 }

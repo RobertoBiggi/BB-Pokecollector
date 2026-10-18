@@ -2,6 +2,9 @@
 
 package com.robertobiggi.cardcollection.ui.collection
 
+import com.robertobiggi.cardcollection.ui.common.shortLabel
+import com.robertobiggi.cardcollection.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,16 +110,16 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
         TopAppBar(
             title = {
                 Column {
-                    Text(name ?: "Collezione", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(name ?: stringResource(R.string.collection_default_title), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(lastUpdateText(runs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             navigationIcon = {
-                IconButton(onClick = onHome) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Tutte le collezioni") }
+                IconButton(onClick = onHome) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.all_collections)) }
             },
             actions = {
                 IconButton(onClick = vm::startCatalogSync, enabled = catalogJob?.running != true) {
-                    Icon(Icons.Filled.CloudDownload, contentDescription = "Aggiorna catalogo")
+                    Icon(Icons.Filled.CloudDownload, contentDescription = stringResource(R.string.update_catalog))
                 }
                 FilledTonalButton(
                     onClick = vm::startPriceCheck,
@@ -124,12 +127,12 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
                     modifier = Modifier.padding(end = 8.dp),
                 ) {
                     Icon(Icons.Filled.Refresh, contentDescription = null)
-                    Text("Prezzi", modifier = Modifier.padding(start = 4.dp))
+                    Text(stringResource(R.string.prices_button), modifier = Modifier.padding(start = 4.dp))
                 }
             },
         )
-        JobBanner("Catalogo", catalogJob)
-        JobBanner("Prezzi", priceJob)
+        JobBanner(stringResource(R.string.job_catalog), catalogJob, prices = false)
+        JobBanner(stringResource(R.string.job_prices), priceJob, prices = true)
 
         when {
             cards == null -> Unit
@@ -142,7 +145,7 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Filters(filter, visible.size, vm::updateFilter)
+                    Filters(filter, visible.size, cards.map { it.language }.distinct().sortedBy { it.ordinal }, vm::updateFilter)
                 }
                 items(visible, key = { it.card.id }) { card -> CardTile(card, onClick = { onOpen(card.card.id) }) }
             }
@@ -155,9 +158,10 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
  * @param runs List<PriceRunEntity> - ultimi aggiornamenti.
  * @return String - frase da mostrare sotto il titolo.
  */
+@Composable
 private fun lastUpdateText(runs: List<PriceRunEntity>): String {
-    val last = runs.firstOrNull { it.finishedAt != null } ?: return "Prezzi mai aggiornati"
-    return "Prezzi aggiornati il ${Format.dateTime(last.finishedAt ?: last.startedAt)}"
+    val finished = runs.firstOrNull { it.finishedAt != null }?.finishedAt ?: return stringResource(R.string.prices_never)
+    return stringResource(R.string.prices_updated_at, Format.dateTime(finished))
 }
 
 /**
@@ -170,14 +174,15 @@ private fun lastUpdateText(runs: List<PriceRunEntity>): String {
 private fun EmptyLibrary(onSync: () -> Unit, syncing: Boolean) {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Nessuna carta in questa collezione", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.empty_collection_title), style = MaterialTheme.typography.titleMedium)
             Text(
-                "Scarica il catalogo delle ricerche della collezione, oppure aggiungi ricerche e carte singole da Gestione. " +
-                    "Carte e immagini restano sul telefono e sono consultabili anche offline.",
+                stringResource(R.string.empty_collection_text),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = onSync, enabled = !syncing) { Text(if (syncing) "Scaricamento in corso…" else "Scarica catalogo") }
+            Button(onClick = onSync, enabled = !syncing) {
+                Text(stringResource(if (syncing) R.string.downloading else R.string.download_catalog))
+            }
         }
     }
 }
@@ -186,18 +191,19 @@ private fun EmptyLibrary(onSync: () -> Unit, syncing: Boolean) {
  * Ricerca, chip di filtro e ordinamento.
  * @param filter CollectionFilter - filtri correnti.
  * @param count Int - carte visibili.
+ * @param languages List<Language> - lingue presenti nella collezione.
  * @param onChange ((CollectionFilter) -> CollectionFilter) -> Unit - applica una modifica ai filtri.
  * @return Unit
  */
 @Composable
-private fun Filters(filter: CollectionFilter, count: Int, onChange: ((CollectionFilter) -> CollectionFilter) -> Unit) {
+private fun Filters(filter: CollectionFilter, count: Int, languages: List<Language>, onChange: ((CollectionFilter) -> CollectionFilter) -> Unit) {
     var sortOpen by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             value = filter.query,
             onValueChange = { text -> onChange { it.copy(query = text) } },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            placeholder = { Text("Nome, codice (es. M1L 046) o rarità") },
+            placeholder = { Text(stringResource(R.string.search_placeholder)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -206,21 +212,33 @@ private fun Filters(filter: CollectionFilter, count: Int, onChange: ((Collection
                 FilterChip(
                     selected = filter.owned == f,
                     onClick = { onChange { it.copy(owned = f) } },
-                    label = { Text(when (f) { OwnedFilter.ALL -> "Tutte"; OwnedFilter.OWNED -> "Possedute"; OwnedFilter.MISSING -> "Mancanti" }) },
+                    label = {
+                        Text(
+                            stringResource(
+                                when (f) {
+                                    OwnedFilter.ALL -> R.string.filter_all
+                                    OwnedFilter.OWNED -> R.string.filter_owned
+                                    OwnedFilter.MISSING -> R.string.filter_missing
+                                },
+                            ),
+                        )
+                    },
                 )
             }
-            listOf(null, Language.EN, Language.JA).forEach { lang ->
-                FilterChip(
-                    selected = filter.language == lang,
-                    onClick = { onChange { it.copy(language = lang) } },
-                    label = { Text(lang?.let { if (it == Language.JA) "JP" else "EN" } ?: "EN + JP") },
-                )
+            if (languages.size > 1) {
+                (listOf<Language?>(null) + languages).forEach { lang ->
+                    FilterChip(
+                        selected = filter.language == lang,
+                        onClick = { onChange { it.copy(language = lang) } },
+                        label = { Text(lang?.shortLabel() ?: stringResource(R.string.filter_all_languages)) },
+                    )
+                }
             }
             Box {
-                TextButton(onClick = { sortOpen = true }) { Text("Ordina: ${filter.sort.label}") }
+                TextButton(onClick = { sortOpen = true }) { Text(stringResource(R.string.sort_label, stringResource(filter.sort.labelRes))) }
                 DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
                     SortMode.entries.forEach { mode ->
-                        DropdownMenuItem(text = { Text(mode.label) }, onClick = {
+                        DropdownMenuItem(text = { Text(stringResource(mode.labelRes)) }, onClick = {
                             onChange { it.copy(sort = mode) }
                             sortOpen = false
                         })
@@ -229,7 +247,7 @@ private fun Filters(filter: CollectionFilter, count: Int, onChange: ((Collection
             }
         }
         Text(
-            "$count carte · il badge indica varianti possedute su varianti che vuoi",
+            stringResource(R.string.cards_count_hint, count),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -250,7 +268,7 @@ private fun CardTile(card: CardUi, onClick: () -> Unit) {
             Text(card.card.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(card.printedCode, style = MonoStyle)
             Text(
-                listOfNotNull(card.card.rarity, if (card.language == Language.JA) "JP" else "EN").joinToString(" · "),
+                listOfNotNull(card.card.rarity, card.language.shortLabel()).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -258,7 +276,7 @@ private fun CardTile(card: CardUi, onClick: () -> Unit) {
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 SlotBadge(card.ownedSlots, card.slots)
-                Text(card.minEur?.let { "da ${Format.eur(it)}" } ?: "—", style = MonoStyle)
+                Text(card.minEur?.let { stringResource(R.string.price_from, Format.eur(it)) } ?: "—", style = MonoStyle)
             }
         }
     }
