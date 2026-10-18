@@ -1,6 +1,6 @@
-# Interroga le API pubbliche (TCGdex, pokemontcg.io) e stampa il JSON nei log.
-# Serve a verificare lo schema reale delle risposte e a ricavare fixture per i test,
-# perché l'ambiente di sviluppo cloud non raggiunge questi host.
+# Interroga TCGdex e stampa nei log un riepilogo per lingua (set disponibili, ricerca di Mawile,
+# immagini e prezzi della prima carta). Serve a verificare l'API quando si sviluppa da un ambiente
+# che non raggiunge TCGdex. Si avvia a mano da Actions oppure modificando questo file.
 name: API probe
 
 on:
@@ -15,44 +15,26 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: TCGdex EN - ricerca "Mawile"
+      - name: Lingue TCGdex
         run: |
-          set -euo pipefail
-          curl -sS --fail "https://api.tcgdex.net/v2/en/cards?name=mawile" -o en_list.json
-          echo "count: $(jq length en_list.json)"
-          jq -c '.[]' en_list.json
-      - name: TCGdex EN - dettaglio prima, ultima e una carta SV/ME
-        run: |
-          set -euo pipefail
-          for id in $(jq -r '.[0].id, .[-1].id' en_list.json) $(jq -r '[.[] | select(.id|test("^(sv|me)"))][0].id // empty' en_list.json); do
-            echo "===== EN CARD $id"
-            curl -sS --fail "https://api.tcgdex.net/v2/en/cards/$id" | jq -c . | head -c 12000; echo
+          set -uo pipefail
+          # lingua|nome di Mawile in quella lingua
+          for pair in "en|Mawile" "fr|Mysdibule" "es|Mawile" "es-mx|Mawile" "it|Mawile" "pt|Mawile" "pt-br|Mawile" "pt-pt|Mawile" \
+                      "de|Flunkifer" "nl|Mawile" "pl|Mawile" "ru|Мавайл" "ja|クチート" "ko|입치트" "zh-tw|大嘴娃" "zh-cn|大嘴娃" "id|Mawile" "th|คูชีท"; do
+            lang="${pair%%|*}"; name="${pair#*|}"
+            enc=$(jq -rn --arg v "$name" '$v|@uri')
+            sets=$(curl -s "https://api.tcgdex.net/v2/$lang/sets" | jq 'if type=="array" then length else "err" end' 2>/dev/null)
+            list=$(curl -s "https://api.tcgdex.net/v2/$lang/cards?name=$enc")
+            count=$(echo "$list" | jq 'if type=="array" then length else "err" end' 2>/dev/null)
+            withimg=$(echo "$list" | jq '[.[]? | select(.image != null)] | length' 2>/dev/null)
+            first=$(echo "$list" | jq -r '[.[]? | select((.image // "") | contains("/tcgp/") | not)][-1].id // empty' 2>/dev/null)
+            detail=""
+            if [ -n "$first" ]; then
+              detail=$(curl -s "https://api.tcgdex.net/v2/$lang/cards/$first" | jq -c '{id, name, rarity, set: .set.id, official: .set.cardCount.official, image: (.image != null), variants: [.variants_detailed[]?.type], cm: (.pricing.cardmarket.trend // null), tp: (.pricing.tcgplayer != null)}' 2>/dev/null)
+              setabbr=$(curl -s "https://api.tcgdex.net/v2/$lang/sets/$(echo "$detail" | jq -r .set)" | jq -c '{abbr: .abbreviation, serie: .serie.id}' 2>/dev/null)
+            fi
+            echo "LANG=$lang sets=$sets search($name)=$count img=$withimg first=$detail set=${setabbr:-}"
+            setabbr=""
           done
-      - name: TCGdex EN - dettaglio set della carta SV/ME
-        run: |
-          set -euo pipefail
-          sid=$(jq -r '[.[] | select(.id|test("^(sv|me)"))][0].id // .[-1].id' en_list.json | sed 's/-[^-]*$//')
-          echo "===== EN SET $sid"
-          curl -sS --fail "https://api.tcgdex.net/v2/en/sets/$sid" | jq -c 'del(.cards)'
-      - name: TCGdex JA - ricerca "クチート"
-        run: |
-          set -euo pipefail
-          curl -sS --fail "https://api.tcgdex.net/v2/ja/cards?name=%E3%82%AF%E3%83%81%E3%83%BC%E3%83%88" -o ja_list.json
-          echo "count: $(jq length ja_list.json)"
-          jq -c '.[]' ja_list.json
-      - name: TCGdex JA - dettaglio prima e ultima carta + set
-        run: |
-          set -euo pipefail
-          for id in $(jq -r '.[0].id, .[-1].id' ja_list.json); do
-            echo "===== JA CARD $id"
-            curl -sS --fail "https://api.tcgdex.net/v2/ja/cards/$id" | tee card.json | jq -c . | head -c 12000; echo
-            sid=$(jq -r '.set.id' card.json)
-            echo "===== JA SET $sid"
-            curl -sS --fail "https://api.tcgdex.net/v2/ja/sets/$sid" | jq -c 'del(.cards)'
-          done
-      - name: pokemontcg.io - ricerca "mawile"
-        run: |
-          set -euo pipefail
-          curl -sS "https://api.pokemontcg.io/v2/cards?q=name:mawile*&pageSize=2" | jq -c . | head -c 12000 || true
