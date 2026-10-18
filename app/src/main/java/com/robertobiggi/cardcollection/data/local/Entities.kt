@@ -5,18 +5,33 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/** Ricerca per nome che definisce quali carte tracciare (es. "Mawile" in inglese). */
-@Entity(tableName = "tracked_query", indices = [Index(value = ["language", "pattern"], unique = true)])
+/** Collezione creata dall'utente (es. "Mawile"). Ogni collezione ha ricerche, carte e quantità proprie. */
+@Entity(tableName = "collection")
+data class CollectionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val createdAt: Long,
+)
+
+/** Ricerca per nome di una collezione (es. "Mawile" in inglese). */
+@Entity(
+    tableName = "tracked_query",
+    foreignKeys = [ForeignKey(entity = CollectionEntity::class, parentColumns = ["id"], childColumns = ["collectionId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index(value = ["collectionId", "language", "pattern"], unique = true)],
+)
 data class TrackedQueryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val collectionId: Long,
     val language: String,
     val pattern: String,
     val enabled: Boolean = true,
 )
 
 /**
- * Carta del catalogo, scaricata da TCGdex. Il sync del catalogo aggiorna solo questa tabella e
- * card_variant: i dati dell'utente stanno in collection_entry e non vengono mai toccati.
+ * Carta del catalogo TCGdex, condivisa tra tutte le collezioni. Il sync del catalogo aggiorna solo
+ * questa tabella e card_variant: i dati dell'utente stanno in collection_entry.
+ * [queryId] è un campo storico della versione 1 (prima ricerca che ha trovato la carta): l'appartenenza
+ * alle collezioni è in collection_card.
  */
 @Entity(tableName = "card", indices = [Index("queryId")])
 data class CardEntity(
@@ -41,7 +56,7 @@ data class CardEntity(
     val catalogUpdatedAt: Long,
 )
 
-/** Variante di stampa di una carta: ogni riga è uno slot della collezione. */
+/** Variante di stampa di una carta: ogni riga è uno slot. */
 @Entity(
     tableName = "card_variant",
     foreignKeys = [ForeignKey(entity = CardEntity::class, parentColumns = ["id"], childColumns = ["cardId"], onDelete = ForeignKey.CASCADE)],
@@ -54,19 +69,47 @@ data class CardVariantEntity(
 )
 
 /**
- * Dati dell'utente per una variante. Non ha vincoli verso card_variant, così un backup si può
- * importare anche prima di aver scaricato il catalogo.
+ * Appartenenza di una carta a una collezione.
+ * [queryId] è la ricerca che l'ha aggiunta (null se aggiunta a mano o importata): se la ricerca viene
+ * disattivata la carta si nasconde, se viene eliminata il collegamento sparisce.
+ * [hidden] vale true se l'utente l'ha tolta: il sync non la riaggiunge.
  */
-@Entity(tableName = "collection_entry")
+@Entity(
+    tableName = "collection_card",
+    primaryKeys = ["collectionId", "cardId"],
+    foreignKeys = [
+        ForeignKey(entity = CollectionEntity::class, parentColumns = ["id"], childColumns = ["collectionId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = CardEntity::class, parentColumns = ["id"], childColumns = ["cardId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = TrackedQueryEntity::class, parentColumns = ["id"], childColumns = ["queryId"], onDelete = ForeignKey.CASCADE),
+    ],
+    indices = [Index("cardId"), Index("queryId")],
+)
+data class CollectionCardEntity(
+    val collectionId: Long,
+    val cardId: String,
+    val queryId: Long?,
+    val hidden: Boolean = false,
+)
+
+/**
+ * Dati dell'utente per una variante in una collezione: le quantità sono separate per collezione.
+ * Non ha vincoli verso card_variant, così si può importare prima di scaricare il catalogo.
+ */
+@Entity(
+    tableName = "collection_entry",
+    primaryKeys = ["collectionId", "variantId"],
+    foreignKeys = [ForeignKey(entity = CollectionEntity::class, parentColumns = ["id"], childColumns = ["collectionId"], onDelete = ForeignKey.CASCADE)],
+)
 data class CollectionEntryEntity(
-    @PrimaryKey val variantId: String,
+    val collectionId: Long,
+    val variantId: String,
     val quantity: Int = 0,
     val condition: String = "NM",
     val wanted: Boolean = true,
     val notes: String? = null,
 )
 
-/** Prezzo salvato per una variante; se ne tengono gli ultimi [com.robertobiggi.cardcollection.data.repo.PriceRepository.KEEP_SNAPSHOTS]. */
+/** Prezzo salvato per una variante (condiviso tra le collezioni); se ne tengono gli ultimi 10. */
 @Entity(tableName = "price_snapshot", indices = [Index(value = ["variantId", "fetchedAt"])])
 data class PriceSnapshotEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -82,7 +125,7 @@ data class PriceSnapshotEntity(
     val confidence: String,
 )
 
-/** Registro di un aggiornamento prezzi. */
+/** Registro di un aggiornamento prezzi; [collectionId] è null per i run della versione 1. */
 @Entity(tableName = "price_run")
 data class PriceRunEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -93,4 +136,5 @@ data class PriceRunEntity(
     val fallbackCount: Int,
     val failCount: Int,
     val summary: String?,
+    val collectionId: Long? = null,
 )

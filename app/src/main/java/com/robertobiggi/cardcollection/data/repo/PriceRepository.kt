@@ -34,17 +34,18 @@ class PriceRepository(
     private val priceDao = db.priceDao()
 
     /**
-     * Esegue l'aggiornamento prezzi completo.
+     * Esegue l'aggiornamento prezzi delle carte visibili di una collezione.
+     * @param collectionId Long - collezione da aggiornare.
      * @param progress suspend (PriceProgress) -> Unit - callback di avanzamento.
      * @return PriceRunResult - conteggi ed eventuale motivo di interruzione.
      */
-    suspend fun runPriceCheck(progress: suspend (PriceProgress) -> Unit): PriceRunResult {
+    suspend fun runPriceCheck(collectionId: Long, progress: suspend (PriceProgress) -> Unit): PriceRunResult {
         val startedAt = System.currentTimeMillis()
-        val runId = priceDao.insertRun(PriceRunEntity(0, startedAt, null, STATUS_RUNNING, 0, 0, 0, null))
+        val runId = priceDao.insertRun(PriceRunEntity(0, startedAt, null, STATUS_RUNNING, 0, 0, 0, null, collectionId))
 
-        val cards = db.catalogDao().trackedCards().associateBy { it.id }
-        val entries = db.collectionDao().allEntries().associateBy { it.variantId }
-        val variants = db.catalogDao().allVariants().filter { it.cardId in cards }
+        val cards = db.catalogDao().visibleCardsOf(collectionId).associateBy { it.id }
+        val entries = db.collectionDao().entriesOf(collectionId).associateBy { it.variantId }
+        val variants = if (cards.isEmpty()) emptyList() else cards.keys.chunked(SQL_CHUNK).flatMap { db.catalogDao().variantsOf(it) }
         val typesByCard = variants.groupBy({ it.cardId }, { it.type })
         val targets = variants.filter { v ->
             val entry = entries[v.id]
@@ -119,6 +120,7 @@ class PriceRepository(
                 fallbackCount = fallback,
                 failCount = failed,
                 summary = message,
+                collectionId = collectionId,
             ),
         )
         return PriceRunResult(ok, fallback, failed, abortReason != null, message)
@@ -157,6 +159,7 @@ class PriceRepository(
         const val STATUS_ABORTED = "ABORTED"
         private const val REQUEST_INTERVAL_MS = 300L
         private const val MAX_NETWORK_ERRORS = 5
+        private const val SQL_CHUNK = 500
     }
 }
 

@@ -85,4 +85,5 @@ dependencies {
     implementation(libs.coil.compose)
 
     testImplementation(libs.junit4)
+    testImplementation(libs.sqlite.jdbc)
 }
