@@ -7,6 +7,7 @@ import com.robertobiggi.cardcollection.core.backup.CollectionFileV2
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.core.backup.CollectionImportResult
 import com.robertobiggi.cardcollection.core.backup.CollectionInfo
+import com.robertobiggi.cardcollection.core.backup.ImportError
 import com.robertobiggi.cardcollection.core.backup.PriceRecord
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -66,21 +67,38 @@ class CollectionFileTest {
     }
 
     @Test
-    fun `backup della prima versione diventa una collezione`() {
-        val legacy = """{"schema":1,"app":"card-collection","exportedAt":"x","queries":[{"language":"en","pattern":"Mawile","enabled":true}],
-            "collection":[{"variantId":"en:me03-032|NORMAL","quantity":3}],"manualPrices":[{"variantId":"en:me03-032|NORMAL","eur":2.5,"fetchedAt":5}]}"""
+    fun `backup della prima versione diventa una collezione senza nome`() {
+        val legacy = """{"schema":1,"app":"card-collection","exportedAt":"x",
+            "queries":[{"language":"en","pattern":"Mawile","enabled":true},{"language":"xx","pattern":"Mawile","enabled":true}],
+            "collection":[{"variantId":"en:me03-032|NORMAL","quantity":3},{"variantId":"en:me03-032|REVERSE","quantity":5000}],
+            "manualPrices":[{"variantId":"en:me03-032|NORMAL","eur":2.5,"fetchedAt":5},{"variantId":"en:x|NORMAL","eur":-1,"fetchedAt":5}]}"""
         val result = CollectionFiles.read(legacy.byteInputStream()) as CollectionImportResult.Ok
-        assertEquals("Collezione importata", result.collection.name)
+        assertNull(result.collection.name)
+        assertEquals(1, result.collection.queries.size)
         assertEquals(3, result.collection.entries.single().quantity)
         assertEquals("Manuale", result.collection.prices.single().source)
         assertTrue(result.collection.cards.isEmpty())
+        assertEquals(3, result.skipped)
     }
 
     @Test
-    fun `file estranei rifiutati`() {
-        assertTrue(CollectionFiles.read("{}".byteInputStream()) is CollectionImportResult.Error)
-        assertTrue(CollectionFiles.read("non json".byteInputStream()) is CollectionImportResult.Error)
-        assertTrue(CollectionFiles.read("""{"schema":9,"app":"card-collection"}""".byteInputStream()) is CollectionImportResult.Error)
+    fun `file estranei rifiutati con il motivo`() {
+        fun error(text: String) = (CollectionFiles.read(text.byteInputStream()) as CollectionImportResult.Error).error
+        assertEquals(ImportError.NOT_THIS_APP, error("{}"))
+        assertEquals(ImportError.INVALID_JSON, error("non json"))
+        assertEquals(ImportError.UNSUPPORTED_VERSION, error("""{"schema":9,"app":"card-collection"}"""))
+        assertEquals(ImportError.MISSING_INFO, error("""{"schema":2,"app":"card-collection"}"""))
         assertNull(CollectionFiles.cleanName("   \u0000 "))
+    }
+
+    @Test
+    fun `lingue europee e asiatiche negli id`() {
+        assertTrue(com.robertobiggi.cardcollection.core.model.Ids.isValidVariantId("zh-tw:SI-295|NORMAL"))
+        assertTrue(com.robertobiggi.cardcollection.core.model.Ids.isValidVariantId("it:swsh12tg-TG17|HOLO"))
+        val file = CollectionFileV2(
+            exportedAt = "x", info = CollectionInfo("Mysdibule"),
+            cards = listOf(record("me03-032").copy(id = "fr:me03-032", language = "fr")), entries = emptyList(),
+        )
+        assertEquals("fr:me03-032", (roundTrip(file) as CollectionImportResult.Ok).collection.cards.single().card.id)
     }
 }

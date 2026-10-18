@@ -22,19 +22,40 @@ import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import kotlinx.coroutines.delay
 import java.io.IOException
 
-/** Avanzamento del sync del catalogo. */
-data class SyncProgress(val message: String, val done: Int, val total: Int)
+/** Fase del sync del catalogo. */
+enum class SyncPhase { SEARCH, CARD, IMAGES }
 
-/** Esito del sync del catalogo. */
-data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: List<String>) {
-    /**
-     * Riassunto per l'utente.
-     * @return String - frase breve con carte, immagini ed eventuali errori.
-     */
-    fun summary(): String = buildString {
-        append("$cardsSaved carte aggiornate, $imagesSaved immagini scaricate")
-        if (errors.isNotEmpty()) append(" · ${errors.size} problemi: ${errors.first()}")
-    }
+/**
+ * Avanzamento del sync del catalogo.
+ * @property label testo della ricerca o nome della carta in lavorazione (dati, non frasi).
+ */
+data class SyncProgress(val phase: SyncPhase, val label: String, val done: Int, val total: Int)
+
+/** Esito del sync del catalogo: carte e immagini salvate, numero di problemi incontrati. */
+data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int)
+
+/** Esito della ricerca di carte da aggiungere a mano. */
+sealed interface SearchResult {
+    /** Carte trovate (lista eventualmente vuota). */
+    data class Found(val cards: List<CardBriefDto>) : SearchResult
+
+    /** Testo di ricerca non valido. */
+    data object InvalidQuery : SearchResult
+
+    /** Rete non disponibile o risposta non valida. */
+    data object NetworkError : SearchResult
+}
+
+/** Esito dell'aggiunta di una carta singola. */
+sealed interface AddCardResult {
+    /** Carta [name] aggiunta. */
+    data class Added(val name: String) : AddCardResult
+
+    /** La carta non si può aggiungere (id non valido o dati mancanti). */
+    data object NotAllowed : AddCardResult
+
+    /** Rete non disponibile o risposta non valida. */
+    data object NetworkError : AddCardResult
 }
 
 /**
@@ -56,25 +77,25 @@ class CatalogRepository(
      * @return SyncResult - carte e immagini salvate, errori incontrati.
      */
     suspend fun sync(collectionId: Long, progress: suspend (SyncProgress) -> Unit): SyncResult {
-        val errors = mutableListOf<String>()
+        var errors = 0
         val limiter = RateLimiter(REQUEST_INTERVAL_MS)
         val setCache = HashMap<String, SetDto?>()
         var saved = 0
         val queries = dao.enabledQueriesOf(collectionId)
         for ((qIndex, query) in queries.withIndex()) {
             val language = Language.fromCode(query.language) ?: continue
-            progress(SyncProgress("Cerco \"${query.pattern}\" (${language.code.uppercase()})", qIndex, queries.size))
+            progress(SyncProgress(SyncPhase.SEARCH, query.pattern, qIndex, queries.size))
             val briefs = try {
                 limiter.acquire()
                 withRetry { client.searchCards(language, query.pattern) }
             } catch (e: Exception) {
                 if (!isRecoverable(e)) throw e
-                errors += "ricerca \"${query.pattern}\": ${e.message}"
+                errors++
                 continue
             }
             val candidates = briefs.filterNot { CatalogMapper.isDigitalOnly(it) }.filter { Validators.isValidRemoteId(it.id) }
             for ((index, brief) in candidates.withIndex()) {
-                progress(SyncProgress("${brief.name} (${index + 1}/${candidates.size})", index, candidates.size))
+                progress(SyncProgress(SyncPhase.CARD, brief.name, index, candidates.size))
                 try {
                     val card = fetchCatalogCard(language, brief.id, limiter, setCache) ?: continue
                     saveCard(card, legacyQueryId = query.id)
@@ -82,12 +103,12 @@ class CatalogRepository(
                     saved++
                 } catch (e: Exception) {
                     if (!isRecoverable(e)) throw e
-                    errors += "${brief.id}: ${e.message}"
+                    errors++
                 }
             }
         }
         val imagesSaved = downloadMissingImages(progress)
-        if (errors.isEmpty() || saved > 0) settings.setLastCatalogSync(System.currentTimeMillis())
+        if (errors == 0 || saved > 0) settings.setLastCatalogSync(System.currentTimeMillis())
         return SyncResult(saved, imagesSaved, errors)
     }
 
@@ -95,12 +116,12 @@ class CatalogRepository(
      * Cerca carte su TCGdex per aggiungerle a mano a una collezione.
      * @param language Language - lingua del catalogo.
      * @param text String - testo da cercare nel nome.
-     * @return Result<List<CardBriefDto>> - risultati senza carte digitali, oppure errore con messaggio.
+     * @return SearchResult - risultati senza carte digitali, oppure il motivo del fallimento.
      */
-    suspend fun search(language: Language, text: String): Result<List<CardBriefDto>> {
-        if (!Validators.isValidQueryPattern(text)) return Result.failure(IllegalArgumentException("Scrivi da 2 a 40 caratteri validi."))
+    suspend fun search(language: Language, text: String): SearchResult {
+        if (!Validators.isValidQueryPattern(text)) return SearchResult.InvalidQuery
         return try {
-            Result.success(
+            SearchResult.Found(
                 client.searchCards(language, text)
                     .filterNot { CatalogMapper.isDigitalOnly(it) }
                     .filter { Validators.isValidRemoteId(it.id) }
@@ -108,7 +129,7 @@ class CatalogRepository(
             )
         } catch (e: Exception) {
             if (!isRecoverable(e)) throw e
-            Result.failure(IOException("Ricerca non riuscita: controlla la connessione."))
+            SearchResult.NetworkError
         }
     }
 
@@ -117,20 +138,20 @@ class CatalogRepository(
      * @param collectionId Long - collezione.
      * @param language Language - lingua del catalogo.
      * @param tcgdexId String - id TCGdex della carta.
-     * @return String - messaggio di esito per l'utente.
+     * @return AddCardResult - esito dell'aggiunta.
      */
-    suspend fun addSingleCard(collectionId: Long, language: Language, tcgdexId: String): String {
-        if (!Validators.isValidRemoteId(tcgdexId)) return "Carta non valida."
+    suspend fun addSingleCard(collectionId: Long, language: Language, tcgdexId: String): AddCardResult {
+        if (!Validators.isValidRemoteId(tcgdexId)) return AddCardResult.NotAllowed
         return try {
             val card = fetchCatalogCard(language, tcgdexId, RateLimiter(0), HashMap(), requirePokemon = false)
-                ?: return "Questa carta non si può aggiungere."
+                ?: return AddCardResult.NotAllowed
             saveCard(card, legacyQueryId = 0)
             if (dao.insertMembership(CollectionCardEntity(collectionId, card.id, null)) == -1L) dao.makeManual(collectionId, card.id)
             downloadMissingImages { }
-            "${card.name} aggiunta alla collezione."
+            AddCardResult.Added(card.name)
         } catch (e: Exception) {
             if (!isRecoverable(e)) throw e
-            "Non riesco a scaricare la carta: controlla la connessione."
+            AddCardResult.NetworkError
         }
     }
 
@@ -216,7 +237,7 @@ class CatalogRepository(
         var count = 0
         for ((index, card) in missing.withIndex()) {
             val url = card.imageUrl ?: continue
-            progress(SyncProgress("Immagini ${index + 1}/${missing.size}", index, missing.size))
+            progress(SyncProgress(SyncPhase.IMAGES, card.name, index, missing.size))
             val low = card.imageLowPath ?: images.ensure(card.id, url, ImageStore.Quality.LOW)
             val high = card.imageHighPath ?: images.ensure(card.id, url, ImageStore.Quality.HIGH)
             if (low != card.imageLowPath || high != card.imageHighPath) {

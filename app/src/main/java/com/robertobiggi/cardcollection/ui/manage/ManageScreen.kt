@@ -2,6 +2,13 @@
 
 package com.robertobiggi.cardcollection.ui.manage
 
+import com.robertobiggi.cardcollection.ui.common.messageRes
+import com.robertobiggi.cardcollection.ui.common.labelRes
+import com.robertobiggi.cardcollection.ui.common.catalogResultText
+import com.robertobiggi.cardcollection.ui.common.LanguagePicker
+import com.robertobiggi.cardcollection.data.repo.InputError
+import com.robertobiggi.cardcollection.R
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +24,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,9 +49,9 @@ import com.robertobiggi.cardcollection.core.backup.ImageExport
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.ui.MainViewModel
 import com.robertobiggi.cardcollection.ui.common.ExportDialog
-import com.robertobiggi.cardcollection.ui.common.Format
+import com.robertobiggi.cardcollection.ui.common.exportFileName
 import com.robertobiggi.cardcollection.ui.common.JobBanner
-import com.robertobiggi.cardcollection.ui.settings.Section
+import com.robertobiggi.cardcollection.ui.common.Section
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 
 /**
@@ -63,7 +69,7 @@ fun ManageScreen(vm: MainViewModel) {
     val search by vm.search.collectAsStateWithLifecycle()
     var queryLanguage by rememberSaveable { mutableStateOf(Language.EN) }
     var pattern by rememberSaveable { mutableStateOf("") }
-    var queryError by remember { mutableStateOf<String?>(null) }
+    var queryError by remember { mutableStateOf<InputError?>(null) }
     var searchLanguage by rememberSaveable { mutableStateOf(Language.EN) }
     var searchText by rememberSaveable { mutableStateOf("") }
     var exportOpen by remember { mutableStateOf(false) }
@@ -75,29 +81,30 @@ fun ManageScreen(vm: MainViewModel) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Gestione · ${name ?: ""}", maxLines = 1, overflow = TextOverflow.Ellipsis) })
-        JobBanner("Catalogo", catalogJob)
+        TopAppBar(title = { Text(stringResource(R.string.manage_title, name.orEmpty()), maxLines = 1, overflow = TextOverflow.Ellipsis) })
+        JobBanner(stringResource(R.string.job_catalog), catalogJob, prices = false)
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Section("Ricerche della collezione") {
-                    if (queries.isEmpty()) Text("Nessuna ricerca: aggiungine una o inserisci carte singole qui sotto.", style = MaterialTheme.typography.bodySmall)
+                Section(stringResource(R.string.manage_searches)) {
+                    if (queries.isEmpty()) Text(stringResource(R.string.manage_no_searches), style = MaterialTheme.typography.bodySmall)
                     queries.forEach { q ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(q.pattern, fontWeight = FontWeight.Bold)
-                                Text(if (q.language == Language.JA.code) "Giapponese" else "Inglese", style = MaterialTheme.typography.bodySmall)
+                                val lang = Language.fromCode(q.language)
+                                Text(lang?.let { stringResource(it.labelRes()) } ?: q.language, style = MaterialTheme.typography.bodySmall)
                             }
                             Switch(checked = q.enabled, onCheckedChange = { vm.setQueryEnabled(q.id, it) })
-                            IconButton(onClick = { vm.deleteQuery(q.id) }) { Icon(Icons.Filled.Delete, contentDescription = "Elimina ricerca") }
+                            IconButton(onClick = { vm.deleteQuery(q.id) }) { Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete_search)) }
                         }
                     }
-                    LanguageChips(queryLanguage) { queryLanguage = it }
+                    LanguagePicker(queryLanguage) { queryLanguage = it }
                     OutlinedTextField(
                         value = pattern,
                         onValueChange = { pattern = it.take(40); queryError = null },
-                        label = { Text("Nome Pokémon, es. Sableye") },
+                        label = { Text(stringResource(R.string.search_name_label)) },
                         isError = queryError != null,
-                        supportingText = { queryError?.let { Text(it) } },
+                        supportingText = { queryError?.let { Text(stringResource(it.messageRes())) } },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -106,45 +113,44 @@ fun ManageScreen(vm: MainViewModel) {
                             queryError = err
                             if (err == null) pattern = ""
                         }
-                    }) { Text("Aggiungi ricerca") }
+                    }) { Text(stringResource(R.string.add_search)) }
                     OutlinedButton(onClick = vm::startCatalogSync, enabled = catalogJob?.running != true) {
-                        Text(if (catalogJob?.running == true) "Aggiornamento in corso…" else "Aggiorna catalogo")
+                        Text(stringResource(if (catalogJob?.running == true) R.string.updating else R.string.update_catalog))
                     }
-                    catalogJob?.finishedMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    catalogResultText(catalogJob)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     Text(
-                        "Una ricerca prende tutte le carte Pokémon che contengono quel nome; TCG Pocket e Allenatori sono esclusi. " +
-                            "Disattivarla nasconde le sue carte senza cancellare le quantità.",
+                        stringResource(R.string.manage_searches_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             item {
-                Section("Aggiungi una carta singola") {
-                    LanguageChips(searchLanguage) { searchLanguage = it }
+                Section(stringResource(R.string.add_single_title)) {
+                    LanguagePicker(searchLanguage) { searchLanguage = it }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = searchText,
                             onValueChange = { searchText = it.take(40) },
-                            label = { Text("Cerca su TCGdex") },
+                            label = { Text(stringResource(R.string.search_tcgdex)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                         )
-                        Button(onClick = { vm.searchCards(searchLanguage, searchText) }, enabled = !search.loading) { Text("Cerca") }
+                        Button(onClick = { vm.searchCards(searchLanguage, searchText) }, enabled = !search.loading) { Text(stringResource(R.string.action_search)) }
                     }
                     if (search.loading) CircularProgressIndicator()
-                    search.error?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    search.messageRes?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall) }
                     search.results.forEach { card ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(card.name, fontWeight = FontWeight.Bold)
                                 Text(card.id, style = MonoStyle)
                             }
-                            IconButton(onClick = { vm.addSingleCard(card) }) { Icon(Icons.Filled.Add, contentDescription = "Aggiungi ${card.name}") }
+                            IconButton(onClick = { vm.addSingleCard(card) }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_card_cd, card.name)) }
                         }
                     }
                     Text(
-                        "Utile per carte che nessuna ricerca trova (es. promo o carte con un nome diverso). Serve la connessione.",
+                        stringResource(R.string.add_single_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -152,27 +158,23 @@ fun ManageScreen(vm: MainViewModel) {
             }
             if (hidden.isNotEmpty()) {
                 item {
-                    Section("Carte tolte (${hidden.size})") {
+                    Section(stringResource(R.string.removed_cards, hidden.size)) {
                         hidden.forEach { card ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text(card.name, fontWeight = FontWeight.Bold)
                                     Text(listOfNotNull(card.setCode, card.printedNumber).joinToString(" "), style = MonoStyle)
                                 }
-                                TextButton(onClick = { vm.restoreCard(card.id) }) { Text("Ripristina") }
+                                TextButton(onClick = { vm.restoreCard(card.id) }) { Text(stringResource(R.string.action_restore)) }
                             }
                         }
                     }
                 }
             }
             item {
-                Section("Esporta") {
-                    Text(
-                        "Salva questa collezione in un file JSON con carte, quantità e prezzi, con o senza immagini. " +
-                            "Si importa dall'elenco collezioni, anche su un altro telefono e senza rete.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Button(onClick = { exportOpen = true }) { Text("Esporta JSON") }
+                Section(stringResource(R.string.export_section)) {
+                    Text(stringResource(R.string.export_section_text), style = MaterialTheme.typography.bodyMedium)
+                    Button(onClick = { exportOpen = true }) { Text(stringResource(R.string.home_export_json)) }
                 }
             }
         }
@@ -184,23 +186,8 @@ fun ManageScreen(vm: MainViewModel) {
             onConfirm = { images ->
                 pendingImages = images.name
                 exportOpen = false
-                val slug = (name ?: "collezione").lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifEmpty { "collezione" }
-                exportLauncher.launch("$slug-${Format.date(System.currentTimeMillis()).replace(' ', '-')}.json")
+                exportLauncher.launch(exportFileName(name.orEmpty()))
             },
         )
-    }
-}
-
-/**
- * Scelta della lingua EN / JP.
- * @param selected Language - lingua selezionata.
- * @param onSelect (Language) -> Unit - nuova scelta.
- * @return Unit
- */
-@Composable
-private fun LanguageChips(selected: Language, onSelect: (Language) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(selected = selected == Language.EN, onClick = { onSelect(Language.EN) }, label = { Text("EN") })
-        FilterChip(selected = selected == Language.JA, onClick = { onSelect(Language.JA) }, label = { Text("JP") })
     }
 }

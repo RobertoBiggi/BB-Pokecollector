@@ -17,7 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.core.backup.ImageExport
 
 /**
@@ -30,13 +32,13 @@ import com.robertobiggi.cardcollection.core.backup.ImageExport
 fun ExportDialog(onDismiss: () -> Unit, onConfirm: (ImageExport) -> Unit) {
     var choice by remember { mutableStateOf(ImageExport.NONE) }
     val options = listOf(
-        ImageExport.NONE to "Senza immagini · file leggero, le immagini si riscaricano",
-        ImageExport.LOW to "Con immagini piccole · consultabile subito offline",
-        ImageExport.LOW_AND_HIGH to "Con immagini piccole e grandi · file più pesante",
+        ImageExport.NONE to stringResource(R.string.export_none),
+        ImageExport.LOW to stringResource(R.string.export_low),
+        ImageExport.LOW_AND_HIGH to stringResource(R.string.export_high),
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Esporta collezione") },
+        title = { Text(stringResource(R.string.export_title)) },
         text = {
             Column {
                 options.forEach { (value, label) ->
@@ -50,8 +52,8 @@ fun ExportDialog(onDismiss: () -> Unit, onConfirm: (ImageExport) -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(choice) }) { Text("Scegli file") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+        confirmButton = { TextButton(onClick = { onConfirm(choice) }) { Text(stringResource(R.string.action_choose_file)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
@@ -81,8 +83,8 @@ fun TextInputDialog(title: String, initial: String, label: String, error: String
                 singleLine = true,
             )
         },
-        confirmButton = { TextButton(onClick = { onConfirm(text) }) { Text("Salva") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+        confirmButton = { TextButton(onClick = { onConfirm(text) }) { Text(stringResource(R.string.action_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
@@ -102,7 +104,17 @@ fun ConfirmDialog(title: String, text: String, confirmLabel: String, onDismiss: 
         title = { Text(title) },
         text = { Text(text) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(confirmLabel, color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
+
+/**
+ * Nome di file suggerito per l'export di una collezione.
+ * @param name String - nome della collezione.
+ * @return String - es. "mawile.json" (solo lettere, cifre e trattini).
+ */
+fun exportFileName(name: String): String {
+    val slug = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40).ifEmpty { "card-collection" }
+    return "$slug.json"
+}
