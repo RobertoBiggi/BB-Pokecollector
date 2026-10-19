@@ -1,18 +1,32 @@
 package com.robertobiggi.cardcollection.ui.common
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,12 +36,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.core.model.Confidence
+import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 import com.robertobiggi.cardcollection.ui.theme.StatusColors
@@ -49,20 +66,13 @@ fun CardImage(card: CardUi, path: String?, modifier: Modifier = Modifier) {
                 model = File(path),
                 contentDescription = "${card.card.name} ${card.printedCode}",
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.matchParentSizeCompat(),
+                modifier = Modifier.fillMaxWidth().aspectRatio(63f / 88f),
             )
         } else {
             Placeholder(card)
         }
     }
 }
-
-/**
- * Riempie il contenitore (equivalente di matchParentSize per un figlio singolo).
- * @receiver Modifier - modificatore di partenza.
- * @return Modifier - modificatore che occupa tutto lo spazio disponibile.
- */
-private fun Modifier.matchParentSizeCompat(): Modifier = this.fillMaxWidth().aspectRatio(63f / 88f)
 
 /**
  * Segnaposto per le carte senza immagine (molte carte giapponesi su TCGdex non ne hanno).
@@ -89,7 +99,7 @@ private fun Placeholder(card: CardUi) {
             modifier = Modifier.align(Alignment.TopStart),
         )
         Text(
-            "Immagine non disponibile",
+            stringResource(R.string.image_unavailable),
             color = Color(0xFF1D1F26),
             style = MaterialTheme.typography.labelSmall,
             textAlign = TextAlign.Center,
@@ -133,14 +143,15 @@ fun SlotBadge(owned: Int, slots: Int) {
 @Composable
 fun ConfidenceChip(confidence: String, stale: Boolean) {
     val value = Confidence.entries.firstOrNull { it.name == confidence }
-    val (label, color) = when {
-        stale -> "vecchio" to StatusColors.bad
-        value == Confidence.HIGH -> "affidabile" to StatusColors.ok
-        value == Confidence.MEDIUM -> "variante incerta" to StatusColors.warn
-        value == Confidence.MANUAL -> "manuale" to MaterialTheme.colorScheme.secondary
-        else -> "indicativo" to StatusColors.bad
+    val (labelRes, color) = when {
+        stale -> R.string.confidence_stale to StatusColors.bad
+        value == Confidence.HIGH -> R.string.confidence_high to StatusColors.ok
+        value == Confidence.MEDIUM -> R.string.confidence_medium to StatusColors.warn
+        value == Confidence.MANUAL -> R.string.confidence_manual to MaterialTheme.colorScheme.secondary
+        else -> R.string.confidence_low to StatusColors.bad
     }
-    Surface(shape = RoundedCornerShape(50), color = Color.Transparent, border = androidx.compose.foundation.BorderStroke(1.dp, color)) {
+    val label = stringResource(labelRes)
+    Surface(shape = RoundedCornerShape(50), color = Color.Transparent, border = BorderStroke(1.dp, color)) {
         Text(label, color = color, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
     }
 }
@@ -183,5 +194,70 @@ fun MetaRow(label: String, value: String, mono: Boolean = false) {
     Column(Modifier.padding(vertical = 2.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = if (mono) MonoStyle else MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/**
+ * Sezione con titolo dentro una card.
+ * @param title String - titolo.
+ * @param content @Composable () -> Unit - contenuto della sezione.
+ * @return Unit
+ */
+@Composable
+fun Section(title: String, content: @Composable () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            content()
+        }
+    }
+}
+
+/**
+ * Scelta della lingua delle carte: blocchetti EN e JP, più "Altro" con il menu delle altre lingue.
+ * Se è scelta un'altra lingua, il terzo blocchetto ne mostra il nome. Avvisa per le lingue con pochi dati.
+ * @param selected Language - lingua selezionata.
+ * @param onSelect (Language) -> Unit - nuova scelta.
+ * @return Unit
+ */
+@Composable
+fun LanguagePicker(selected: Language, onSelect: (Language) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val main = listOf(Language.EN, Language.JA)
+    Column {
+        Text(stringResource(R.string.label_card_language), style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            main.forEach { lang ->
+                FilterChip(
+                    selected = selected == lang,
+                    onClick = { onSelect(lang) },
+                    label = { Text(lang.shortLabel()) },
+                )
+            }
+            Box {
+                val other = selected.takeIf { it !in main }
+                FilterChip(
+                    selected = other != null,
+                    onClick = { open = true },
+                    label = { Text(other?.let { "${stringResource(it.labelRes())} (${it.shortLabel()})" } ?: stringResource(R.string.lang_other)) },
+                    trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
+                )
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    Language.entries.filter { it !in main }.forEach { lang ->
+                        DropdownMenuItem(
+                            text = { Text("${stringResource(lang.labelRes())} (${lang.shortLabel()})") },
+                            onClick = { onSelect(lang); open = false },
+                        )
+                    }
+                }
+            }
+        }
+        if (selected.limitedData) {
+            Text(
+                stringResource(R.string.lang_limited_hint, stringResource(selected.labelRes())),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

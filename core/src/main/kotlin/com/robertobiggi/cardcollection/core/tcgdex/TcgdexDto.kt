@@ -123,6 +123,15 @@ data class SetDto(
     val serie: SerieRefDto? = null,
     val abbreviation: AbbreviationDto? = null,
     val cardCount: CardCountDto? = null,
+    val cards: List<CardBriefDto> = emptyList(),
+)
+
+/** Elemento sintetico della lista /sets (senza sigla né carte). */
+@Serializable
+data class SetBriefDto(
+    val id: String,
+    val name: String,
+    val cardCount: CardCountDto? = null,
 )
 
 /** Riferimento alla serie (era) di un set. */
@@ -132,8 +141,12 @@ data class SerieRefDto(
     val name: String,
 )
 
-/** Sigla del set: [official] è quella stampata sulle carte inglesi recenti (es. "POR"). */
+/**
+ * Sigla del set: [official] è quella stampata sulle carte inglesi recenti (es. "POR"),
+ * [localized] quella delle edizioni tradotte che ne hanno una propria (es. "PXY" in francese).
+ */
 @Serializable
 data class AbbreviationDto(
     val official: String? = null,
+    val localized: String? = null,
 )

@@ -20,6 +20,24 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.Base64
 
+/** Ricerca per nome salvata nel file. */
+@Serializable
+data class BackupQuery(val language: String, val pattern: String, val enabled: Boolean)
+
+/** Stato di una variante nella collezione. */
+@Serializable
+data class BackupEntry(
+    val variantId: String,
+    val quantity: Int,
+    val condition: String = "NM",
+    val wanted: Boolean = true,
+    val notes: String? = null,
+)
+
+/** Prezzo manuale nel formato dei backup della prima versione (schema 1). */
+@Serializable
+data class BackupManualPrice(val variantId: String, val eur: Double, val fetchedAt: Long)
+
 /** Nome e ricerche della collezione esportata. */
 @Serializable
 data class CollectionInfo(val name: String, val queries: List<BackupQuery> = emptyList())
@@ -70,7 +88,7 @@ data class PriceRecord(
 @Serializable
 data class CollectionFileV2(
     val schema: Int = CollectionFiles.SCHEMA_COLLECTION,
-    val app: String = BackupV1.APP_ID,
+    val app: String = CollectionFiles.APP_ID,
     val type: String = CollectionFiles.TYPE_COLLECTION,
     val exportedAt: String,
     val info: CollectionInfo,
@@ -105,22 +123,28 @@ class ImportedCard(
     val imageHigh: ByteArray?,
 )
 
-/** Collezione letta da file e ripulita dalle voci non valide. */
+/**
+ * Collezione letta da file e ripulita dalle voci non valide.
+ * [name] è null per i backup della prima versione, che non avevano un nome: lo sceglie l'app.
+ */
 class ImportedCollection(
-    val name: String,
+    val name: String?,
     val queries: List<BackupQuery>,
     val cards: List<ImportedCard>,
     val entries: List<BackupEntry>,
     val prices: List<PriceRecord>,
 )
 
+/** Motivo per cui un file non può essere importato; la UI lo traduce in un messaggio. */
+enum class ImportError { TOO_LARGE, INVALID_JSON, NOT_THIS_APP, UNSUPPORTED_VERSION, MISSING_INFO, TOO_MANY_ITEMS, READ_FAILED }
+
 /** Esito della lettura di un file di collezione. */
 sealed interface CollectionImportResult {
     /** File valido; [skipped] conta le voci scartate. */
     class Ok(val collection: ImportedCollection, val skipped: Int) : CollectionImportResult
 
-    /** File non leggibile; [message] spiega il motivo all'utente. */
-    class Error(val message: String) : CollectionImportResult
+    /** File non leggibile per il motivo [error]. */
+    class Error(val error: ImportError) : CollectionImportResult
 }
 
 /** Quante immagini includere nell'export. */
@@ -129,6 +153,8 @@ enum class ImageExport { NONE, LOW, LOW_AND_HIGH }
 /** Lettura e scrittura dei file di collezione. */
 @OptIn(ExperimentalSerializationApi::class)
 object CollectionFiles {
+    const val APP_ID = "card-collection"
+    const val SCHEMA_V1 = 1
     const val SCHEMA_COLLECTION = 2
     const val TYPE_COLLECTION = "collection"
 
@@ -141,7 +167,6 @@ object CollectionFiles {
     private const val MAX_CARDS = 5_000
     private const val MAX_ENTRIES = 20_000
     private const val MAX_PRICES = 50_000
-    private const val LEGACY_NAME = "Collezione importata"
     private val CONTROL_CHARS = Regex("[\\p{Cntrl}]")
 
     private val json = Json {
@@ -176,19 +201,19 @@ object CollectionFiles {
         val envelope = try {
             json.decodeFromStream(ImportEnvelope.serializer(), LimitedInputStream(input, MAX_FILE_BYTES))
         } catch (e: FileTooLargeException) {
-            return CollectionImportResult.Error("Il file è troppo grande (massimo 40 MB).")
+            return CollectionImportResult.Error(ImportError.TOO_LARGE)
         } catch (e: SerializationException) {
-            return CollectionImportResult.Error("Il file non è un JSON di collezione valido.")
+            return CollectionImportResult.Error(ImportError.INVALID_JSON)
         } catch (e: IllegalArgumentException) {
-            return CollectionImportResult.Error("Il file non è un JSON di collezione valido.")
+            return CollectionImportResult.Error(ImportError.INVALID_JSON)
         } catch (e: IOException) {
-            return CollectionImportResult.Error("Lettura del file non riuscita.")
+            return CollectionImportResult.Error(ImportError.READ_FAILED)
         }
-        if (envelope.app != BackupV1.APP_ID) return CollectionImportResult.Error("Il file non è stato creato da Card Collection.")
+        if (envelope.app != APP_ID) return CollectionImportResult.Error(ImportError.NOT_THIS_APP)
         return when (envelope.schema) {
             SCHEMA_COLLECTION -> readV2(envelope)
-            BackupV1.SCHEMA -> readV1(envelope)
-            else -> CollectionImportResult.Error("Versione del file non supportata (${envelope.schema}).")
+            SCHEMA_V1 -> readV1(envelope)
+            else -> CollectionImportResult.Error(ImportError.UNSUPPORTED_VERSION)
         }
     }
 
@@ -198,12 +223,12 @@ object CollectionFiles {
      * @return CollectionImportResult - esito.
      */
     private fun readV2(env: ImportEnvelope): CollectionImportResult {
-        val info = env.info ?: return CollectionImportResult.Error("Il file non contiene i dati della collezione.")
+        val info = env.info ?: return CollectionImportResult.Error(ImportError.MISSING_INFO)
         if (env.cards.size > MAX_CARDS || env.entries.size > MAX_ENTRIES || env.prices.size > MAX_PRICES) {
-            return CollectionImportResult.Error("Il file contiene troppe voci.")
+            return CollectionImportResult.Error(ImportError.TOO_MANY_ITEMS)
         }
         var skipped = 0
-        val name = cleanName(info.name) ?: return CollectionImportResult.Error("Il nome della collezione non è valido.")
+        val name = cleanName(info.name)
         val queries = validQueries(info.queries).also { skipped += info.queries.size - it.size }
         val cards = env.cards.mapNotNull { record -> toImportedCard(record).also { if (it == null) skipped++ } }
             .distinctBy { it.card.id }
@@ -222,22 +247,16 @@ object CollectionFiles {
      * @return CollectionImportResult - esito.
      */
     private fun readV1(env: ImportEnvelope): CollectionImportResult {
-        val legacy = BackupV1(
-            exportedAt = "",
-            queries = env.queries,
-            collection = env.collection,
-            manualPrices = env.manualPrices,
-        )
-        return when (val decoded = BackupCodec.decode(BackupCodec.encode(legacy))) {
-            is BackupDecodeResult.Error -> CollectionImportResult.Error(decoded.message)
-            is BackupDecodeResult.Ok -> {
-                val b = decoded.backup
-                val prices = b.manualPrices.map {
-                    PriceRecord(it.variantId, MANUAL_SOURCE, eur = it.eur, fetchedAt = it.fetchedAt, confidence = Confidence.MANUAL.name)
-                }
-                CollectionImportResult.Ok(ImportedCollection(LEGACY_NAME, b.queries, emptyList(), b.collection, prices), decoded.skipped)
-            }
+        if (env.queries.size + env.collection.size + env.manualPrices.size > MAX_ENTRIES) {
+            return CollectionImportResult.Error(ImportError.TOO_MANY_ITEMS)
         }
+        val queries = validQueries(env.queries)
+        val entries = validEntries(env.collection) { true }
+        val prices = env.manualPrices
+            .filter { Ids.isValidVariantId(it.variantId) && it.eur.isFinite() && it.eur > 0 && it.eur < 100_000 && it.fetchedAt > 0 }
+            .map { PriceRecord(it.variantId, MANUAL_SOURCE, eur = it.eur, fetchedAt = it.fetchedAt, confidence = Confidence.MANUAL.name) }
+        val skipped = env.queries.size - queries.size + env.collection.size - entries.size + env.manualPrices.size - prices.size
+        return CollectionImportResult.Ok(ImportedCollection(null, queries, emptyList(), entries, prices), skipped)
     }
 
     /** Fonte usata per i prezzi inseriti a mano. */
