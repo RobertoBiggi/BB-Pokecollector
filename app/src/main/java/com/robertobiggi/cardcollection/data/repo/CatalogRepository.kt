@@ -1,11 +1,13 @@
 package com.robertobiggi.cardcollection.data.repo
 
+import android.net.Uri
 import androidx.room.withTransaction
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.net.ApiException
 import com.robertobiggi.cardcollection.core.net.InvalidResponseException
+import com.robertobiggi.cardcollection.core.net.NotFoundException
 import com.robertobiggi.cardcollection.core.net.RateLimitedException
 import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.tcgdex.CardBriefDto
@@ -34,6 +36,9 @@ data class SyncProgress(val phase: SyncPhase, val label: String, val done: Int, 
 
 /** Esito del sync del catalogo: carte e immagini salvate, numero di problemi incontrati. */
 data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int)
+
+/** Esito delle azioni sull'immagine di una carta. */
+enum class ImageResult { DOWNLOADED, SAVED, NOT_AVAILABLE, NETWORK_ERROR, INVALID_IMAGE }
 
 /** Esito della ricerca di carte da aggiungere a mano. */
 sealed interface SearchResult {
@@ -158,6 +163,49 @@ class CatalogRepository(
             if (!isRecoverable(e)) throw e
             AddCardResult.NetworkError
         }
+    }
+
+    /**
+     * Riscarica i dati della carta da TCGdex (l'immagine può essere stata aggiunta dopo) e ne scarica
+     * l'immagine ufficiale, che sostituisce quella scelta a mano.
+     * @param cardId String - id locale della carta.
+     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE se TCGdex non ha l'immagine, NETWORK_ERROR.
+     */
+    suspend fun downloadImage(cardId: String): ImageResult {
+        val stored = dao.getCard(cardId) ?: return ImageResult.NOT_AVAILABLE
+        val language = Language.fromCode(stored.language) ?: return ImageResult.NOT_AVAILABLE
+        val refreshedUrl = try {
+            fetchCatalogCard(language, stored.tcgdexId, RateLimiter(0), HashMap(), requirePokemon = false)?.let { saveCard(it, stored.queryId) }
+            dao.getCard(cardId)?.imageUrl
+        } catch (e: Exception) {
+            if (!isRecoverable(e)) throw e
+            if (e is NotFoundException) stored.imageUrl else return ImageResult.NETWORK_ERROR
+        }
+        val url = refreshedUrl ?: return ImageResult.NOT_AVAILABLE
+        val low = images.ensure(cardId, url, ImageStore.Quality.LOW)
+        val high = images.ensure(cardId, url, ImageStore.Quality.HIGH)
+        if (low == null && high == null) return ImageResult.NETWORK_ERROR
+        val current = dao.getCard(cardId)
+        if (images.isManual(current?.imageHighPath)) images.deleteManual(current?.imageHighPath)
+        if (images.isManual(current?.imageLowPath)) images.deleteManual(current?.imageLowPath)
+        dao.setImagePaths(cardId, low ?: high, high ?: low)
+        return ImageResult.DOWNLOADED
+    }
+
+    /**
+     * Usa come immagine della carta un'immagine scelta dall'utente. Resta finché non si scarica
+     * quella ufficiale; il sync del catalogo non la sostituisce.
+     * @param cardId String - id locale della carta.
+     * @param uri Uri - immagine scelta con il selettore di sistema.
+     * @return ImageResult - SAVED oppure INVALID_IMAGE.
+     */
+    suspend fun setManualImage(cardId: String, uri: Uri): ImageResult {
+        val card = dao.getCard(cardId) ?: return ImageResult.INVALID_IMAGE
+        val bytes = images.prepareManual(uri) ?: return ImageResult.INVALID_IMAGE
+        val path = images.writeManual(cardId, bytes, previous = card.imageHighPath) ?: return ImageResult.INVALID_IMAGE
+        if (card.imageLowPath != card.imageHighPath) images.deleteManual(card.imageLowPath)
+        dao.setImagePaths(cardId, path, path)
+        return ImageResult.SAVED
     }
 
     /**

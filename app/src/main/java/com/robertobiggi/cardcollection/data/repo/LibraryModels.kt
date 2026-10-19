@@ -50,8 +50,11 @@ data class CardUi(
     /** Codice stampato in basso a sinistra, es. "M1L 046/063". */
     val printedCode: String get() = listOfNotNull(card.setCode, card.printedNumber).joinToString(" ")
 
-    val slots: Int get() = variants.count { it.wanted }
-    val ownedSlots: Int get() = variants.count { it.wanted && it.quantity > 0 }
+    /** Slot della carta: varianti desiderate o possedute (stessa regola di [CollectionStats]). */
+    val slots: Int get() = variants.count { it.wanted || it.quantity > 0 }
+
+    /** Varianti possedute, con almeno una copia. */
+    val ownedSlots: Int get() = variants.count { it.quantity > 0 }
     val copies: Int get() = variants.sumOf { it.quantity }
 
     /** Prezzo in euro più basso tra le varianti, usato in griglia ("da 0,30 €"). */

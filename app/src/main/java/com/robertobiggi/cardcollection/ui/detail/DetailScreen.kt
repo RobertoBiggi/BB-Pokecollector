@@ -7,6 +7,17 @@ import com.robertobiggi.cardcollection.ui.common.labelRes
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.robertobiggi.cardcollection.ui.CardAction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,7 +92,11 @@ private const val STALE_AFTER_MS = 30L * 24 * 60 * 60 * 1000
 fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     val library by vm.library.collectAsStateWithLifecycle()
     val card = library?.firstOrNull { it.card.id == cardId }
+    val action by vm.cardAction.collectAsStateWithLifecycle()
     var manualFor by remember { mutableStateOf<VariantUi?>(null) }
+    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) vm.setCardImage(cardId, uri)
+    }
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
@@ -100,6 +115,14 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
         ) {
             item { Header(card) }
+            item {
+                CardActions(
+                    action = action,
+                    onPrice = { vm.checkCardPrice(card.card.id) },
+                    onDownload = { vm.downloadCardImage(card.card.id) },
+                    onPick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                )
+            }
             item { Links(card) }
             item { Text(stringResource(R.string.variants_title), style = MaterialTheme.typography.titleMedium) }
             items(card.variants, key = { it.id }) { variant ->
@@ -154,6 +177,53 @@ private fun Header(card: CardUi) {
             card.card.releaseDate?.let { MetaRow(stringResource(R.string.meta_release), it) }
             card.card.illustrator?.let { MetaRow(stringResource(R.string.meta_illustrator), it) }
         }
+    }
+}
+
+/**
+ * Azioni sulla singola carta: aggiorna il prezzo, scarica l'immagine ufficiale o scegline una.
+ * @param action CardAction? - azione in corso, null se nessuna.
+ * @param onPrice () -> Unit - aggiorna i prezzi della carta.
+ * @param onDownload () -> Unit - scarica l'immagine da TCGdex.
+ * @param onPick () -> Unit - apre il selettore di immagini.
+ * @return Unit
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CardActions(action: CardAction?, onPrice: () -> Unit, onDownload: () -> Unit, onPick: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ActionButton(stringResource(R.string.action_update_price), Icons.Filled.Refresh, action == CardAction.PRICE, action == null, onPrice)
+            ActionButton(stringResource(R.string.action_download_image), Icons.Filled.Download, action == CardAction.DOWNLOAD_IMAGE, action == null, onDownload)
+            ActionButton(stringResource(R.string.action_pick_image), Icons.Filled.Image, action == CardAction.PICK_IMAGE, action == null, onPick)
+        }
+        Text(
+            stringResource(R.string.card_actions_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Pulsante di un'azione sulla carta, con indicatore mentre è in corso.
+ * @param label String - testo del pulsante.
+ * @param icon ImageVector - icona.
+ * @param running Boolean - true se l'azione è in corso.
+ * @param enabled Boolean - false mentre è in corso un'altra azione.
+ * @param onClick () -> Unit - avvia l'azione.
+ * @return Unit
+ */
+@Composable
+private fun ActionButton(label: String, icon: ImageVector, running: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, enabled = enabled) {
+        if (running) {
+            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(label)
     }
 }
 
