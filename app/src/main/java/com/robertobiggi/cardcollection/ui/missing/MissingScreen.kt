@@ -2,6 +2,10 @@
 
 package com.robertobiggi.cardcollection.ui.missing
 
+import com.robertobiggi.cardcollection.ui.common.shortLabel
+import com.robertobiggi.cardcollection.ui.common.labelRes
+import com.robertobiggi.cardcollection.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,11 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.stats.CollectionStats
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.VariantUi
-import com.robertobiggi.cardcollection.data.repo.label
 import com.robertobiggi.cardcollection.ui.MainViewModel
 import com.robertobiggi.cardcollection.ui.common.CardImage
 import com.robertobiggi.cardcollection.ui.common.Format
@@ -56,27 +58,24 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val stats = remember(cards) { CollectionStats.compute(cards.flatMap { c -> c.variants.map { it.toSlotInput() } }) }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Mancanti · ${name ?: ""}", maxLines = 1, overflow = TextOverflow.Ellipsis) })
+        TopAppBar(title = { Text(stringResource(R.string.missing_title, name.orEmpty()), maxLines = 1, overflow = TextOverflow.Ellipsis) })
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("Ti mancano", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("${stats.missing} varianti", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                        Text(
-                            buildString {
-                                append("Costo stimato ${Format.eur(stats.missingEur)} (Cardmarket trend)")
-                                if (stats.missingWithoutPrice > 0) append(" · ${stats.missingWithoutPrice} senza prezzo")
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        Text(stringResource(R.string.missing_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.missing_count, stats.missing), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                        Text(stringResource(R.string.missing_cost, Format.eur(stats.missingEur)), style = MaterialTheme.typography.bodySmall)
+                        if (stats.missingWithoutPrice > 0) {
+                            Text(stringResource(R.string.missing_without_price, stats.missingWithoutPrice), style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
             }
             if (missing.isEmpty()) {
                 item {
                     Text(
-                        if (cards.isEmpty()) "Scarica prima il catalogo dalla schermata Collezione." else "Collezione completa!",
+                        stringResource(if (cards.isEmpty()) R.string.missing_download_first else R.string.missing_complete),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -94,7 +93,7 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             }
             item {
                 Text(
-                    "Le varianti segnate come \"non la voglio\" non compaiono qui e non contano nel completamento.",
+                    stringResource(R.string.missing_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -121,7 +120,7 @@ private fun MissingRow(card: CardUi, variant: VariantUi, onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text(card.card.name, fontWeight = FontWeight.Bold)
             Text(
-                "${card.printedCode} · ${variant.type.label()} · ${if (card.language == Language.JA) "JP" else "EN"}",
+                listOf(card.printedCode, stringResource(variant.type.labelRes()), card.language.shortLabel()).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

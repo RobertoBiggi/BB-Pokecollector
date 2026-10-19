@@ -18,6 +18,18 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
+/** Errore di un dato inserito dall'utente; la UI lo traduce in un messaggio. */
+enum class InputError { NAME_EMPTY, QUERY_INVALID, QUERY_DUPLICATE }
+
+/** Esito della creazione di una collezione. */
+sealed interface CreateResult {
+    /** Collezione creata con id [id]. */
+    data class Created(val id: Long) : CreateResult
+
+    /** Dati non validi. */
+    data class Invalid(val error: InputError) : CreateResult
+}
+
 /** Collezioni, libreria e modifiche dell'utente (quantità, condizione, slot, ricerche, carte). */
 class CollectionRepository(private val db: AppDatabase) {
 
@@ -93,14 +105,12 @@ class CollectionRepository(private val db: AppDatabase) {
      * @param rawName String - nome inserito dall'utente.
      * @param language Language? - lingua della prima ricerca.
      * @param pattern String? - testo della prima ricerca (vuoto = nessuna ricerca).
-     * @return Result<Long> - id della collezione creata, oppure errore con messaggio per l'utente.
+     * @return CreateResult - id della collezione creata, oppure l'errore da mostrare.
      */
-    suspend fun createCollection(rawName: String, language: Language?, pattern: String?): Result<Long> {
-        val name = CollectionFiles.cleanName(rawName) ?: return Result.failure(IllegalArgumentException("Scrivi un nome per la collezione."))
+    suspend fun createCollection(rawName: String, language: Language?, pattern: String?): CreateResult {
+        val name = CollectionFiles.cleanName(rawName) ?: return CreateResult.Invalid(InputError.NAME_EMPTY)
         val clean = pattern?.trim().orEmpty()
-        if (clean.isNotEmpty() && !Validators.isValidQueryPattern(clean)) {
-            return Result.failure(IllegalArgumentException(QUERY_ERROR))
-        }
+        if (clean.isNotEmpty() && !Validators.isValidQueryPattern(clean)) return CreateResult.Invalid(InputError.QUERY_INVALID)
         val id = db.withTransaction {
             val id = catalogDao.insertCollection(CollectionEntity(name = uniqueName(name), createdAt = System.currentTimeMillis()))
             if (clean.isNotEmpty() && language != null) {
@@ -108,7 +118,7 @@ class CollectionRepository(private val db: AppDatabase) {
             }
             id
         }
-        return Result.success(id)
+        return CreateResult.Created(id)
     }
 
     /**
@@ -128,10 +138,10 @@ class CollectionRepository(private val db: AppDatabase) {
      * Rinomina una collezione.
      * @param collectionId Long - collezione.
      * @param rawName String - nuovo nome.
-     * @return String? - errore per l'utente, oppure null se rinominata.
+     * @return InputError? - errore, oppure null se rinominata.
      */
-    suspend fun rename(collectionId: Long, rawName: String): String? {
-        val name = CollectionFiles.cleanName(rawName) ?: return "Scrivi un nome per la collezione."
+    suspend fun rename(collectionId: Long, rawName: String): InputError? {
+        val name = CollectionFiles.cleanName(rawName) ?: return InputError.NAME_EMPTY
         catalogDao.renameCollection(collectionId, name)
         return null
     }
@@ -178,13 +188,13 @@ class CollectionRepository(private val db: AppDatabase) {
      * @param collectionId Long - collezione.
      * @param language Language - lingua del catalogo.
      * @param pattern String - testo da cercare nel nome.
-     * @return String? - errore per l'utente, oppure null se aggiunta.
+     * @return InputError? - errore, oppure null se aggiunta.
      */
-    suspend fun addQuery(collectionId: Long, language: Language, pattern: String): String? {
+    suspend fun addQuery(collectionId: Long, language: Language, pattern: String): InputError? {
         val clean = pattern.trim()
-        if (!Validators.isValidQueryPattern(clean)) return QUERY_ERROR
+        if (!Validators.isValidQueryPattern(clean)) return InputError.QUERY_INVALID
         val id = catalogDao.insertQuery(TrackedQueryEntity(collectionId = collectionId, language = language.code, pattern = clean))
-        return if (id == -1L) "Questa ricerca c'è già." else null
+        return if (id == -1L) InputError.QUERY_DUPLICATE else null
     }
 
     /**
@@ -228,9 +238,5 @@ class CollectionRepository(private val db: AppDatabase) {
     private suspend fun update(collectionId: Long, variantId: String, change: (CollectionEntryEntity) -> CollectionEntryEntity) {
         val current = collectionDao.getEntry(collectionId, variantId) ?: CollectionEntryEntity(collectionId = collectionId, variantId = variantId)
         collectionDao.upsertEntry(change(current))
-    }
-
-    private companion object {
-        const val QUERY_ERROR = "Usa da 2 a 40 caratteri: lettere, numeri, spazi, apostrofo, punto, trattino o &."
     }
 }

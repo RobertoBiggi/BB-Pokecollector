@@ -2,6 +2,12 @@
 
 package com.robertobiggi.cardcollection.ui.home
 
+import com.robertobiggi.cardcollection.ui.common.exportFileName
+import com.robertobiggi.cardcollection.ui.common.messageRes
+import com.robertobiggi.cardcollection.ui.common.LanguagePicker
+import com.robertobiggi.cardcollection.data.repo.InputError
+import com.robertobiggi.cardcollection.R
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -21,7 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FileOpen
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -29,7 +35,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -69,21 +74,22 @@ import java.io.File
  * Elenco iniziale delle collezioni: apertura, creazione, rinomina, export, eliminazione e import.
  * @param vm MainViewModel - stato e azioni.
  * @param onOpen (Long) -> Unit - apre la collezione indicata.
- * @param onInfo () -> Unit - apre le informazioni sull'app.
+ * @param onSettings () -> Unit - apre le impostazioni.
  * @return Unit
  */
 @Composable
-fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onInfo: () -> Unit) {
+fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit) {
     val summaries by vm.summaries.collectAsStateWithLifecycle()
+    val defaultImportName = stringResource(R.string.import_default_name)
     var creating by rememberSaveable { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<CollectionSummary?>(null) }
-    var renameError by remember { mutableStateOf<String?>(null) }
+    var renameError by remember { mutableStateOf<InputError?>(null) }
     var deleting by remember { mutableStateOf<CollectionSummary?>(null) }
     var exporting by remember { mutableStateOf<CollectionSummary?>(null) }
     var pendingExport by rememberSaveable { mutableStateOf<Pair<Long, String>?>(null) }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) vm.importCollection(uri)
+        if (uri != null) vm.importCollection(uri, defaultImportName)
     }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val pending = pendingExport
@@ -94,12 +100,12 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onInfo: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Le mie collezioni") },
+                title = { Text(stringResource(R.string.home_title)) },
                 actions = {
                     IconButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) }) {
-                        Icon(Icons.Filled.FileOpen, contentDescription = "Importa collezione da JSON")
+                        Icon(Icons.Filled.FileOpen, contentDescription = stringResource(R.string.home_import))
                     }
-                    IconButton(onClick = onInfo) { Icon(Icons.Filled.Info, contentDescription = "Informazioni") }
+                    IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.home_settings)) }
                 },
             )
         },
@@ -107,7 +113,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onInfo: () -> Unit) {
             ExtendedFloatingActionButton(
                 onClick = { creating = true },
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("Nuova collezione") },
+                text = { Text(stringResource(R.string.home_new)) },
             )
         },
     ) { padding ->
@@ -116,7 +122,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onInfo: () -> Unit) {
             list == null -> Unit
             list.isEmpty() -> Box(Modifier.fillMaxSize().padding(padding).padding(24.dp), contentAlignment = Alignment.Center) {
                 Text(
-                    "Nessuna collezione. Creane una con \"Nuova collezione\" oppure importa un file JSON dall'icona in alto.",
+                    stringResource(R.string.home_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -143,7 +149,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onInfo: () -> Unit) {
             onDismiss = { creating = false },
             onCreate = { name, language, pattern, setError ->
                 vm.createCollection(name, language, pattern) { error, id ->
-                    if (error != null) setError(error) else {
+                    if (error != null) setError(error.messageRes()) else {
                         creating = false
                         id?.let(onOpen)
                     }
@@ -153,19 +159,19 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onInfo: () -> Unit) {
     }
     renaming?.let { target ->
         TextInputDialog(
-            title = "Rinomina collezione",
+            title = stringResource(R.string.rename_title),
             initial = target.collection.name,
-            label = "Nome",
-            error = renameError,
+            label = stringResource(R.string.label_name),
+            error = renameError?.let { stringResource(it.messageRes()) },
             onDismiss = { renaming = null },
             onConfirm = { name -> vm.renameCollection(target.collection.id, name) { err -> if (err == null) renaming = null else renameError = err } },
         )
     }
     deleting?.let { target ->
         ConfirmDialog(
-            title = "Eliminare \"${target.collection.name}\"?",
-            text = "Vengono cancellate ricerche, quantità e carte aggiunte di questa collezione. Catalogo, immagini e prezzi restano per le altre collezioni. Se vuoi conservarla, esportala prima.",
-            confirmLabel = "Elimina",
+            title = stringResource(R.string.delete_title, target.collection.name),
+            text = stringResource(R.string.delete_text),
+            confirmLabel = stringResource(R.string.action_delete),
             onDismiss = { deleting = null },
             onConfirm = {
                 vm.deleteCollection(target.collection.id)
@@ -179,20 +185,10 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onInfo: () -> Unit) {
             onConfirm = { images ->
                 pendingExport = target.collection.id to images.name
                 exporting = null
-                exportLauncher.launch(fileNameFor(target.collection.name))
+                exportLauncher.launch(exportFileName(target.collection.name))
             },
         )
     }
-}
-
-/**
- * Nome di file suggerito per l'export.
- * @param name String - nome della collezione.
- * @return String - es. "mawile-collezione.json".
- */
-private fun fileNameFor(name: String): String {
-    val slug = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40).ifEmpty { "collezione" }
-    return "$slug-collezione.json"
 }
 
 /**
@@ -224,22 +220,22 @@ private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRen
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(summary.collection.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    "${summary.cardCount} carte · ${s.owned}/${s.slots} varianti",
+                    stringResource(R.string.home_cards_variants, summary.cardCount, s.owned, s.slots),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 LinearProgressIndicator(progress = { s.completionPercent() / 100f }, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${s.completionPercent()}% completa", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.home_complete, s.completionPercent()), style = MaterialTheme.typography.labelMedium)
                     Text(Format.eur(s.valueEur), style = MonoStyle)
                 }
             }
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "Altre azioni") }
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more_actions)) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text("Rinomina") }, onClick = { menu = false; onRename() })
-                    DropdownMenuItem(text = { Text("Esporta JSON") }, onClick = { menu = false; onExport() })
-                    DropdownMenuItem(text = { Text("Elimina") }, onClick = { menu = false; onDelete() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.action_rename)) }, onClick = { menu = false; onRename() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.home_export_json)) }, onClick = { menu = false; onExport() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { menu = false; onDelete() })
                 }
             }
         }
@@ -249,42 +245,39 @@ private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRen
 /**
  * Finestra di creazione di una collezione con una prima ricerca facoltativa.
  * @param onDismiss () -> Unit - chiude.
- * @param onCreate (String, Language, String, (String) -> Unit) -> Unit - crea; l'ultimo parametro mostra un errore.
+ * @param onCreate (String, Language, String, (Int) -> Unit) -> Unit - crea; l'ultimo parametro mostra un errore (risorsa stringa).
  * @return Unit
  */
 @Composable
-private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Language, String, (String) -> Unit) -> Unit) {
+private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Language, String, (Int) -> Unit) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     var pattern by rememberSaveable { mutableStateOf("") }
     var language by rememberSaveable { mutableStateOf(Language.EN) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<Int?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nuova collezione") },
+        title = { Text(stringResource(R.string.home_new)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it.take(60); error = null },
-                    label = { Text("Nome, es. Sableye") },
+                    label = { Text(stringResource(R.string.create_name_label)) },
                     singleLine = true,
                 )
-                Text("Prima ricerca (facoltativa): l'app scarica subito le carte che contengono questo nome.", style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = language == Language.EN, onClick = { language = Language.EN }, label = { Text("EN") })
-                    FilterChip(selected = language == Language.JA, onClick = { language = Language.JA }, label = { Text("JP") })
-                }
+                Text(stringResource(R.string.create_first_search), style = MaterialTheme.typography.bodySmall)
+                LanguagePicker(language) { language = it }
                 OutlinedTextField(
                     value = pattern,
                     onValueChange = { pattern = it.take(40); error = null },
-                    label = { Text("Nome Pokémon da cercare") },
+                    label = { Text(stringResource(R.string.create_pattern_label)) },
                     singleLine = true,
                     isError = error != null,
-                    supportingText = { error?.let { Text(it) } },
+                    supportingText = { error?.let { Text(stringResource(it)) } },
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onCreate(name, language, pattern) { error = it } }) { Text("Crea") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+        confirmButton = { TextButton(onClick = { onCreate(name, language, pattern) { error = it } }) { Text(stringResource(R.string.action_create)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

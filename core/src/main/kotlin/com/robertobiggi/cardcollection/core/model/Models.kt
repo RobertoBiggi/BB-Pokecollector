@@ -1,9 +1,21 @@
 package com.robertobiggi.cardcollection.core.model
 
-/** Lingua del catalogo TCGdex. [code] è il segmento usato negli URL dell'API. */
-enum class Language(val code: String) {
+/**
+ * Lingua del catalogo TCGdex. [code] è il segmento usato negli URL dell'API.
+ * [asianSets] vale true per i cataloghi asiatici, dove l'id del set coincide con la sigla stampata.
+ * [limitedData] vale true quando TCGdex ha poche carte, quasi senza immagini né prezzi (verificato col probe).
+ */
+enum class Language(val code: String, val asianSets: Boolean = false, val limitedData: Boolean = false) {
     EN("en"),
-    JA("ja");
+    IT("it"),
+    FR("fr"),
+    DE("de"),
+    ES("es"),
+    PT("pt"),
+    JA("ja", asianSets = true),
+    ZH_TW("zh-tw", asianSets = true, limitedData = true),
+    TH("th", asianSets = true, limitedData = true),
+    ID("id", asianSets = true, limitedData = true);
 
     companion object {
         /**
@@ -112,7 +124,9 @@ data class PriceQuote(
 
 /** Identificativi locali di carte e varianti. */
 object Ids {
-    private val VARIANT_ID = Regex("^(en|ja):[A-Za-z0-9][A-Za-z0-9._\\-]{0,39}\\|([A-Z_]+)$")
+    private val VARIANT_ID = Regex(
+        "^(" + Language.entries.joinToString("|") { Regex.escape(it.code) } + "):[A-Za-z0-9][A-Za-z0-9._\\-]{0,39}\\|([A-Z_]+)$",
+    )
 
     /**
      * Costruisce l'id di una variante (chiave della tabella card_variant).

@@ -52,6 +52,16 @@ class CatalogMapperTest {
     }
 
     @Test
+    fun `sigla localizzata e varianti tradotte`() {
+        val base = card("en_card_me03-032.json")
+        val italian = base.copy(variantsDetailed = base.variantsDetailed!!.map { it.copy(type = if (it.type == "normal") "Normale" else it.type) })
+        assertEquals(listOf(VariantType.NORMAL, VariantType.REVERSE), CatalogMapper.variantsOf(italian).map { it.type })
+        val frSet = set("en_set_me03.json").copy(abbreviation = com.robertobiggi.cardcollection.core.tcgdex.AbbreviationDto("POR", "ORP"))
+        assertEquals("ORP", CatalogMapper.printedSetCode(Language.FR, frSet, "me03"))
+        assertEquals("SI", CatalogMapper.printedSetCode(Language.ZH_TW, null, "SI"))
+    }
+
+    @Test
     fun `promo con numero alfanumerico resta invariato`() {
         assertEquals("XY103", CatalogMapper.printedNumber("XY103", 211))
     }
