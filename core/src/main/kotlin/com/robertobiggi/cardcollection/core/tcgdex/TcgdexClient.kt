@@ -85,19 +85,54 @@ class TcgdexClient(
     }
 
     /**
+     * Elenca le carte con un certo numero nel set. TCGdex confronta per "contiene", quindi il
+     * chiamante deve tenere solo le corrispondenze esatte.
+     * @param language Language - lingua del catalogo.
+     * @param localId String - numero della carta, solo cifre (1-4).
+     * @return List<CardBriefDto> - elenco sintetico delle carte trovate.
+     * @throws IllegalArgumentException se il numero non è valido.
+     * @throws ApiException in caso di errore HTTP.
+     */
+    suspend fun cardsByLocalId(language: Language, localId: String): List<CardBriefDto> {
+        require(LOCAL_NUMBER.matches(localId)) { "Numero carta non valido" }
+        val url = base.newBuilder()
+            .addPathSegment(language.code)
+            .addPathSegment("cards")
+            .addQueryParameter("localId", localId)
+            .build()
+        // Con numeri corti la lista può essere lunga: limite più alto del solito.
+        return get(url, ListSerializer(CardBriefDto.serializer()), MAX_LIST_BYTES)
+    }
+
+    /**
+     * Elenca tutti i set di una lingua, con il numero ufficiale di carte.
+     * @param language Language - lingua del catalogo.
+     * @return List<SetBriefDto> - elenco sintetico dei set.
+     * @throws ApiException in caso di errore HTTP.
+     */
+    suspend fun listSets(language: Language): List<SetBriefDto> {
+        val url = base.newBuilder()
+            .addPathSegment(language.code)
+            .addPathSegment("sets")
+            .build()
+        return get(url, ListSerializer(SetBriefDto.serializer()))
+    }
+
+    /**
      * Esegue una GET e decodifica il corpo JSON, convertendo gli errori HTTP in eccezioni tipizzate.
      * @param url HttpUrl - indirizzo completo da chiamare.
      * @param deserializer DeserializationStrategy<T> - decoder kotlinx.serialization del tipo atteso.
+     * @param maxBytes Long - dimensione massima accettata per il corpo.
      * @return T - oggetto decodificato.
      * @throws ApiException se la risposta non è 2xx.
      * @throws InvalidResponseException se il corpo è troppo grande o non decodificabile.
      */
-    private suspend fun <T> get(url: HttpUrl, deserializer: DeserializationStrategy<T>): T =
+    private suspend fun <T> get(url: HttpUrl, deserializer: DeserializationStrategy<T>, maxBytes: Long = MAX_BODY_BYTES): T =
         withContext(Dispatchers.IO) {
             val request = Request.Builder().url(url).header("Accept", "application/json").get().build()
             http.newCall(request).execute().use { response ->
                 throwIfError(response)
-                val body = readLimited(response)
+                val body = readLimited(response, maxBytes)
                 try {
                     JSON.decodeFromString(deserializer, body)
                 } catch (e: IllegalArgumentException) {
@@ -111,6 +146,11 @@ class TcgdexClient(
 
         /** Dimensione massima accettata per una risposta JSON (2 MB). */
         const val MAX_BODY_BYTES = 2L * 1024 * 1024
+
+        /** Dimensione massima per le liste di ricerca per numero (6 MB). */
+        const val MAX_LIST_BYTES = 6L * 1024 * 1024
+
+        private val LOCAL_NUMBER = Regex("^\\d{1,4}$")
 
         /** Parser JSON tollerante ai campi sconosciuti, condiviso dai client. */
         val JSON = Json {
@@ -141,12 +181,12 @@ class TcgdexClient(
          * @return String - corpo decodificato in UTF-8.
          * @throws InvalidResponseException se il corpo manca o è troppo grande.
          */
-        fun readLimited(response: Response): String {
+        fun readLimited(response: Response, maxBytes: Long = MAX_BODY_BYTES): String {
             val body = response.body ?: throw InvalidResponseException("Risposta senza corpo")
             val declared = body.contentLength()
-            if (declared > MAX_BODY_BYTES) throw InvalidResponseException("Risposta troppo grande")
+            if (declared > maxBytes) throw InvalidResponseException("Risposta troppo grande")
             val source = body.source()
-            if (source.request(MAX_BODY_BYTES + 1)) throw InvalidResponseException("Risposta troppo grande")
+            if (source.request(maxBytes + 1)) throw InvalidResponseException("Risposta troppo grande")
             return source.buffer.readUtf8()
         }
 

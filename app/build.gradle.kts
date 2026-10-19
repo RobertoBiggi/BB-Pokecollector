@@ -15,10 +15,21 @@ android {
         applicationId = "com.robertobiggi.cardcollection"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
         // Lingue dell'interfaccia: inglese (base) e italiano. Scarta le traduzioni delle librerie in altre lingue.
         resourceConfigurations += listOf("en", "it")
+    }
+
+    signingConfigs {
+        // Keystore di debug fisso nel repo: ogni build della CI ha la stessa firma, quindi il nuovo APK
+        // si installa sopra il precedente. Password pubbliche di proposito: non va usato per le release.
+        getByName("debug") {
+            storeFile = file("signing/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
