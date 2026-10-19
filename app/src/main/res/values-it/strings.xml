@@ -76,7 +76,7 @@
     <string name="sort_price">Prezzo</string>
     <string name="sort_code">Codice</string>
     <string name="sort_name">Nome</string>
-    <string name="cards_count_hint">%1$d carte · il badge indica varianti possedute su varianti che vuoi</string>
+    <string name="cards_count_hint">%1$d carte · il badge indica le varianti che hai su quelle che vuoi o hai, ×N le copie</string>
     <string name="price_from">da %1$s</string>
     <string name="job_catalog">Catalogo</string>
     <string name="job_prices">Prezzi</string>
@@ -199,4 +199,15 @@
     <string name="err_file_open">Impossibile aprire il file.</string>
     <string name="err_file_permission">Permesso negato per il file scelto.</string>
     <string name="err_file_not_found">Collezione non trovata.</string>
+    <string name="lang_other">Altro</string>
+    <string name="action_update_price">Aggiorna prezzo</string>
+    <string name="action_download_image">Scarica immagine</string>
+    <string name="action_pick_image">Scegli immagine</string>
+    <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Se TCGdex non ha l\'immagine (succede spesso con le carte giapponesi) puoi sceglierne una dalla galleria: resta salvata finché non scarichi quella ufficiale.</string>
+    <string name="msg_card_price_updated">Prezzi aggiornati (%1$d varianti).</string>
+    <string name="msg_card_price_none">Nessun prezzo trovato per questa carta.</string>
+    <string name="msg_image_downloaded">Immagine scaricata.</string>
+    <string name="msg_image_saved">Immagine salvata.</string>
+    <string name="msg_image_not_available">TCGdex non ha un\'immagine per questa carta: puoi sceglierne una tu.</string>
+    <string name="msg_image_invalid">Non riesco a leggere l\'immagine scelta.</string>
 </resources>

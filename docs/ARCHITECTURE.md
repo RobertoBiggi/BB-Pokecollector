@@ -94,6 +94,8 @@ La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`
 | `price_snapshot` | storico prezzi condiviso: ultimi 10 per variante, con fonte, data e affidabilità |
 | `price_run` | registro degli aggiornamenti prezzi, con la collezione |
 
+Uno slot è una variante desiderata (`wanted`) oppure posseduta: una variante con almeno una copia conta sempre come completata, anche senza "la voglio". Le mancanti sono le varianti desiderate con 0 copie.
+
 Una carta è visibile in una collezione se non è nascosta e se è stata aggiunta a mano oppure da una ricerca attiva. Il sync del catalogo aggiorna solo `card`, `card_variant` e i collegamenti: non tocca mai i dati dell'utente.
 
 **Migrazione 1 → 2** (`Migrations.SQL_1_2`): crea la collezione "Mawile" con id 1, sposta lì ricerche e quantità e collega le carte tramite il vecchio `queryId`. `MigrationTest` la esegue su SQLite (JVM) e confronta il risultato con lo schema che Room esporta in `app/schemas/` durante la stessa build.
@@ -134,6 +136,10 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
    5. download delle immagini mancanti.
 
    Tra due richieste passano almeno 250 ms; sul 429 l'app aspetta e riprova una volta.
+2. **Azioni sulla carta (dettaglio):**
+   - *Aggiorna prezzo*: `PriceRepository.checkCard` interroga la stessa catena (rate limiter e circuit breaker compresi) per tutte le varianti della carta, senza registrare un run.
+   - *Scarica immagine*: riscarica il dettaglio da TCGdex (l'immagine può essere arrivata dopo) e salva low/high; sostituisce l'eventuale immagine manuale.
+   - *Scegli immagine*: selettore di sistema (Photo Picker), lettura fino a 20 MB, decodifica con sottocampionamento, lato lungo massimo 1200 px, ricodifica WebP (scarta metadati e contenuti non immagine). Il file ha nome `<id>-manual-<timestamp>.webp` dentro `filesDir/cards` e viene usato sia come low sia come high, quindi il sync non lo sovrascrive; finisce anche negli export con immagini.
 2. **Aggiungi carta singola:** cerca su TCGdex per nome oppure, se il testo contiene un numero, per codice stampato (`CardCodeSearch`).
    - Se una parola coincide con l'id di un set (nei cataloghi asiatici è la sigla stampata, es. `M3`) cerca solo in quel set.
    - Altrimenti scarica le carte con quel numero (`/cards?localId=`, confronto esatto lato app) e restringe per totale ufficiale del set, nome e, per i cataloghi europei con pochi set candidati, sigla ufficiale (es. `MEG`).

@@ -77,7 +77,7 @@
     <string name="sort_price">Price</string>
     <string name="sort_code">Code</string>
     <string name="sort_name">Name</string>
-    <string name="cards_count_hint">%1$d cards · the badge shows owned variants out of the ones you want</string>
+    <string name="cards_count_hint">%1$d cards · the badge shows the variants you own out of the ones you want or own, ×N the copies</string>
     <string name="price_from">from %1$s</string>
     <string name="job_catalog">Catalog</string>
     <string name="job_prices">Prices</string>
@@ -212,4 +212,16 @@
     <string name="err_file_open">Can\'t open the file.</string>
     <string name="err_file_permission">Permission denied for the chosen file.</string>
     <string name="err_file_not_found">Collection not found.</string>
+    <string name="lang_other">Other</string>
+    <string name="action_update_price">Update price</string>
+    <string name="action_download_image">Download image</string>
+    <string name="action_pick_image">Choose image</string>
+    <string name="card_actions_hint">The price is updated for this card only. If TCGdex has no image (common for Japanese cards) you can pick one from your gallery: it stays until you download the official one.</string>
+    <string name="msg_card_price_updated">Prices updated (%1$d variants).</string>
+    <string name="msg_card_price_none">No price found for this card.</string>
+    <string name="msg_image_downloaded">Image downloaded.</string>
+    <string name="msg_image_saved">Image saved.</string>
+    <string name="msg_image_not_available">TCGdex has no image for this card: you can choose one yourself.</string>
+    <string name="msg_image_invalid">Couldn\'t read the chosen image.</string>
+    <string name="copies_short" translatable="false">×%1$d</string>
 </resources>

@@ -46,6 +46,21 @@ class LibraryAssemblerTest {
     }
 
     @Test
+    fun `variante posseduta conta come slot anche senza la voglio`() {
+        val c = card("ja:M3-117", "メガジガルデex", "M3")
+        val holo = "ja:M3-117|HOLO"
+        val result = LibraryAssembler.assemble(
+            cards = listOf(c),
+            variants = listOf(CardVariantEntity(holo, c.id, VariantType.HOLO.name)),
+            entries = listOf(CollectionEntryEntity(1, holo, quantity = 1, wanted = false)),
+            snapshots = emptyList(),
+        ).single()
+        assertEquals(1, result.slots)
+        assertEquals(1, result.ownedSlots)
+        assertEquals(1, result.copies)
+    }
+
+    @Test
     fun `visibilita per collezione, ricerche disattivate e carte tolte`() {
         val queries = listOf(
             com.robertobiggi.cardcollection.data.local.TrackedQueryEntity(1, 1, "en", "Mawile", true),
