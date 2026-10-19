@@ -123,6 +123,15 @@ data class SetDto(
     val serie: SerieRefDto? = null,
     val abbreviation: AbbreviationDto? = null,
     val cardCount: CardCountDto? = null,
+    val cards: List<CardBriefDto> = emptyList(),
+)
+
+/** Elemento sintetico della lista /sets (senza sigla né carte). */
+@Serializable
+data class SetBriefDto(
+    val id: String,
+    val name: String,
+    val cardCount: CardCountDto? = null,
 )
 
 /** Riferimento alla serie (era) di un set. */

@@ -9,6 +9,7 @@ import com.robertobiggi.cardcollection.core.net.InvalidResponseException
 import com.robertobiggi.cardcollection.core.net.RateLimitedException
 import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.tcgdex.CardBriefDto
+import com.robertobiggi.cardcollection.core.tcgdex.CardCodeSearch
 import com.robertobiggi.cardcollection.core.tcgdex.CatalogMapper
 import com.robertobiggi.cardcollection.core.tcgdex.SetDto
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
@@ -114,15 +115,19 @@ class CatalogRepository(
 
     /**
      * Cerca carte su TCGdex per aggiungerle a mano a una collezione.
+     * Se il testo contiene un numero di carta (es. "M3 117/080") cerca per codice stampato,
+     * altrimenti per nome.
      * @param language Language - lingua del catalogo.
-     * @param text String - testo da cercare nel nome.
+     * @param text String - nome o codice da cercare.
      * @return SearchResult - risultati senza carte digitali, oppure il motivo del fallimento.
      */
     suspend fun search(language: Language, text: String): SearchResult {
-        if (!Validators.isValidQueryPattern(text)) return SearchResult.InvalidQuery
+        val code = CardCodeSearch.parse(text)
+        if (code == null && !Validators.isValidQueryPattern(text)) return SearchResult.InvalidQuery
         return try {
+            val cards = if (code != null) CardCodeSearch.find(client, language, code) else client.searchCards(language, text)
             SearchResult.Found(
-                client.searchCards(language, text)
+                cards
                     .filterNot { CatalogMapper.isDigitalOnly(it) }
                     .filter { Validators.isValidRemoteId(it.id) }
                     .take(MAX_SEARCH_RESULTS),

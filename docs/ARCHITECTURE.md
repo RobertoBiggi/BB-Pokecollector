@@ -134,6 +134,10 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
    5. download delle immagini mancanti.
 
    Tra due richieste passano almeno 250 ms; sul 429 l'app aspetta e riprova una volta.
+2. **Aggiungi carta singola:** cerca su TCGdex per nome oppure, se il testo contiene un numero, per codice stampato (`CardCodeSearch`).
+   - Se una parola coincide con l'id di un set (nei cataloghi asiatici è la sigla stampata, es. `M3`) cerca solo in quel set.
+   - Altrimenti scarica le carte con quel numero (`/cards?localId=`, confronto esatto lato app) e restringe per totale ufficiale del set, nome e, per i cataloghi europei con pochi set candidati, sigla ufficiale (es. `MEG`).
+   - Un filtro che svuoterebbe i risultati viene saltato, così le parole in più (es. la rarità `MUR`) non bloccano la ricerca.
 2. **Aggiorna prezzi:** riguarda le varianti desiderate o possedute delle carte tracciate. Ogni carta viene scaricata una sola volta per run.
    - Rate limit di 300 ms tra le richieste.
    - Retry esponenziale su 429 e 5xx.
@@ -158,6 +162,7 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 - `./gradlew :app:testDebugUnitTest`: assemblaggio e visibilità della libreria, filtri, migrazione 1 → 2 confrontata con lo schema Room.
 - Il lint di Android blocca la build se una stringa manca in una delle due lingue.
 - La CI (`.github/workflows/android.yml`) esegue test, lint e `assembleDebug`, e pubblica l'APK come artifact.
+- L'APK di debug è firmato con un keystore fisso nel repo (`app/signing/debug.keystore`, password pubbliche `android`), così gli aggiornamenti si installano sopra la versione precedente. Non va usato per una release pubblica: in quel caso la chiave va in un secret di GitHub.
 
 ## Possibili evoluzioni
 

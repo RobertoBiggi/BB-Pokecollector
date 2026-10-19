@@ -12,6 +12,7 @@ Il primo obiettivo sono tutti i **Mawile** e **Mega Mawile**, con ogni variante 
 - **Lingua dell'app:** italiano o inglese, da Impostazioni, oppure quella di sistema.
 - **Slot per variante:** ogni variante è uno slot della collezione. Per ognuna segni quante copie hai e in che condizione; con "la voglio" decidi se conta tra le mancanti.
 - **Codice stampato:** ogni carta mostra il codice in basso a sinistra, come sulla carta vera (es. `POR 032/088`, `M1L 046/063`). Puoi cercare e ordinare anche per codice.
+- **Aggiungi una carta per codice:** in Gestione → "Aggiungi una carta singola" puoi cercare su TCGdex per nome oppure per codice stampato: `M3 117/080`, `117/080` (anche con parole in più come la rarità, es. `117/080 MUR`), `MEG 046/132` o l'id TCGdex `M3-117`.
 - **Prezzi su richiesta:** l'aggiornamento parte solo quando lo chiedi. Prende Cardmarket in EUR (disponibile anche per le carte JP) e TCGplayer in USD tramite TCGdex, senza mai contattare cardmarket.com. L'ultimo prezzo resta salvato in locale; puoi anche inserirne uno a mano.
 - **Se la fonte blocca:** in caso di risposta 429 l'app riprova con attese crescenti. Dopo 3 blocchi di fila mette la fonte in pausa per 6 ore.
 - **Mancanti e statistiche:** costo stimato delle carte che mancano, percentuale di completamento, valore della collezione (EUR e USD separati), avanzamento per lingua e per serie.
@@ -24,6 +25,7 @@ L'app non è sul Play Store: l'APK di debug viene compilato da GitHub Actions a 
 2. In fondo alla pagina, nella sezione **Artifacts**, scarica `card-collection-debug-apk` (è uno zip).
 3. Estrai `app-debug.apk` e copialo sul telefono.
 4. Aprilo e consenti l'installazione da origini sconosciute quando Android lo chiede.
+   Gli APK sono firmati sempre con la stessa chiave di debug (`app/signing/debug.keystore`), quindi ogni nuova versione si installa sopra la precedente senza perdere i dati. Fino alla 0.3.0 la chiave cambiava a ogni build: per passare da quelle versioni alla 0.4.0 esporta le collezioni in JSON, disinstalla l'app, installa la nuova e reimporta.
 5. Al primo avvio apri la collezione **Mawile** (già pronta con le ricerche Mawile EN e クチート JP), premi **Scarica catalogo** e poi **Prezzi**.
 
 Requisiti: Android 8.0 o successivo.
