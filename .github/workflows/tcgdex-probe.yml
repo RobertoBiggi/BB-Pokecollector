@@ -38,3 +38,19 @@ jobs:
             echo "LANG=$lang sets=$sets search($name)=$count img=$withimg first=$detail set=${setabbr:-}"
             setabbr=""
           done
+
+      - name: Ricerca per codice stampato
+        run: |
+          set -uo pipefail
+          api=https://api.tcgdex.net/v2
+          echo "== set ja con 80 carte ufficiali"
+          curl -s "$api/ja/sets" | jq -c '[.[] | select(.cardCount.official == 80) | {id, name, cardCount}]'
+          echo "== primo elemento della lista set ja"; curl -s "$api/ja/sets" | jq -c '.[0]'
+          echo "== set ja M3"; curl -s "$api/ja/sets/M3" | jq -c '{id, name, cardCount, abbreviation, n: (.cards | length), last: [.cards[-3:][]? | {id, localId, name}]}'
+          echo "== carta ja M3-117"; curl -s "$api/ja/cards/M3-117" | jq -c '{id, localId, name, rarity, set: .set}'
+          echo "== filtro localId=117 (ja)"; curl -s "$api/ja/cards?localId=117" | jq -c 'if type=="array" then {n: length, ids: [.[].id][:30]} else . end'
+          echo "== filtro localId=eq:117 (ja)"; curl -s "$api/ja/cards?localId=eq:117" | jq -c 'if type=="array" then {n: length, ids: [.[].id][:30]} else . end'
+          echo "== filtro localId=eq:046 (en)"; curl -s "$api/en/cards?localId=eq:046" | jq -c 'if type=="array" then {n: length, ids: [.[].id][:20]} else . end'
+          echo "== set en con abbreviation POR"; curl -s "$api/en/sets" | jq -c '.[0:2]'
+          echo "== set en me01"; curl -s "$api/en/sets/me01" | jq -c '{id, name, cardCount, abbreviation}'
+          echo "== ricerca Zygarde ja"; curl -s "$api/ja/cards?name=%E3%82%B8%E3%82%AC%E3%83%AB%E3%83%87" | jq -c '[.[]? | .id] | .[-15:]'
