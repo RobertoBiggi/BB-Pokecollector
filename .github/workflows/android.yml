@@ -30,6 +30,20 @@ jobs:
       - name: Test, lint e build
         run: ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace --console=plain
 
+      - name: Verifica firma e pacchetto dell'APK
+        run: |
+          set -euo pipefail
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          apk=$(ls app/build/outputs/apk/debug/*.apk)
+          "$tools/apksigner" verify --verbose --print-certs "$apk"
+          "$tools/aapt" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-debuggable|testOnly|native-code)" || true
+          # La firma deve essere quella del keystore fisso, altrimenti gli aggiornamenti falliscono.
+          expected="b66e03971fb82eef2a2af8bcd4b64ecec1cdbc3fb18569d9ad612ba9e26e9589"
+          actual=$("$tools/apksigner" verify --print-certs "$apk" | grep -m1 "SHA-256 digest" | awk '{print $NF}')
+          echo "SHA-256 firma: $actual"
+          test "$actual" = "$expected"
+          if "$tools/aapt" dump badging "$apk" | grep -q "testOnly"; then echo "APK marcato testOnly"; exit 1; fi
+
       - name: Pubblica APK debug
         uses: actions/upload-artifact@v4
         with:
