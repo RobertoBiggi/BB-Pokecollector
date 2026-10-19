@@ -19,6 +19,7 @@ import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
+import com.robertobiggi.cardcollection.data.repo.AbortReason
 import com.robertobiggi.cardcollection.data.repo.AddCardResult
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.CollectionSummary
@@ -71,6 +72,9 @@ data class CardSearchState(
     @StringRes val messageRes: Int? = null,
 )
 
+/** Azione in corso nel dettaglio di una carta. */
+enum class CardAction { PRICE, DOWNLOAD_IMAGE, PICK_IMAGE }
+
 /**
  * ViewModel unico dell'app: elenco delle collezioni e stato della collezione aperta, letti dal
  * database locale; inoltra le azioni ai repository.
@@ -103,6 +107,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     private val _search = MutableStateFlow(CardSearchState())
     val search: StateFlow<CardSearchState> = _search.asStateFlow()
+
+    private val _cardAction = MutableStateFlow<CardAction?>(null)
+
+    /** Azione sulla carta aperta in corso (prezzo o immagine), null se nessuna. */
+    val cardAction: StateFlow<CardAction?> = _cardAction.asStateFlow()
 
     private val _messages = MutableSharedFlow<UiText>(extraBufferCapacity = 4)
 
@@ -311,6 +320,59 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             say(R.string.msg_manual_price_saved)
         }
         return true
+    }
+
+    /**
+     * Aggiorna subito i prezzi di una sola carta.
+     * @param cardId String - carta.
+     * @return Unit
+     */
+    fun checkCardPrice(cardId: String) = runCardAction(CardAction.PRICE) {
+        val result = container.prices.checkCard(cardId)
+        val found = result.ok + result.fallback
+        when {
+            result.abort == AbortReason.SOURCE_PAUSED -> say(R.string.abort_source_paused)
+            found > 0 -> say(R.string.msg_card_price_updated, found)
+            result.abort == AbortReason.OFFLINE -> say(R.string.msg_network_error)
+            else -> say(R.string.msg_card_price_none)
+        }
+    }
+
+    /**
+     * Scarica da TCGdex l'immagine ufficiale di una carta.
+     * @param cardId String - carta.
+     * @return Unit
+     */
+    fun downloadCardImage(cardId: String) = runCardAction(CardAction.DOWNLOAD_IMAGE) {
+        say(container.catalog.downloadImage(cardId).messageRes())
+    }
+
+    /**
+     * Usa un'immagine scelta dall'utente per una carta.
+     * @param cardId String - carta.
+     * @param uri Uri - immagine scelta con il selettore di sistema.
+     * @return Unit
+     */
+    fun setCardImage(cardId: String, uri: Uri) = runCardAction(CardAction.PICK_IMAGE) {
+        say(container.catalog.setManualImage(cardId, uri).messageRes())
+    }
+
+    /**
+     * Esegue un'azione sulla carta aperta, una alla volta, esponendo lo stato in [cardAction].
+     * @param action CardAction - azione da segnalare alla UI.
+     * @param block suspend () -> Unit - lavoro da eseguire.
+     * @return Unit
+     */
+    private fun runCardAction(action: CardAction, block: suspend () -> Unit) {
+        if (_cardAction.value != null) return
+        _cardAction.value = action
+        viewModelScope.launch {
+            try {
+                block()
+            } finally {
+                _cardAction.value = null
+            }
+        }
     }
 
     /**

@@ -275,7 +275,10 @@ private fun CardTile(card: CardUi, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                SlotBadge(card.ownedSlots, card.slots)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    SlotBadge(card.ownedSlots, card.slots)
+                    if (card.copies > 0) Text(stringResource(R.string.copies_short, card.copies), style = MaterialTheme.typography.labelMedium)
+                }
                 Text(card.minEur?.let { stringResource(R.string.price_from, Format.eur(it)) } ?: "—", style = MonoStyle)
             }
         }

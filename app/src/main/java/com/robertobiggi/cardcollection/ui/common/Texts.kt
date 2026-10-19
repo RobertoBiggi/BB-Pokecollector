@@ -11,6 +11,7 @@ import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.repo.AbortReason
 import com.robertobiggi.cardcollection.data.repo.FileError
+import com.robertobiggi.cardcollection.data.repo.ImageResult
 import com.robertobiggi.cardcollection.data.repo.InputError
 import com.robertobiggi.cardcollection.data.repo.SyncPhase
 import com.robertobiggi.cardcollection.work.JobState
@@ -68,6 +69,20 @@ fun VariantType.labelRes(): Int = when (this) {
     VariantType.REVERSE -> R.string.variant_reverse
     VariantType.FIRST_EDITION -> R.string.variant_first_edition
     VariantType.W_PROMO -> R.string.variant_w_promo
+}
+
+/**
+ * Messaggio per l'esito di un'azione sull'immagine di una carta.
+ * @receiver ImageResult - esito.
+ * @return Int - risorsa stringa.
+ */
+@StringRes
+fun ImageResult.messageRes(): Int = when (this) {
+    ImageResult.DOWNLOADED -> R.string.msg_image_downloaded
+    ImageResult.SAVED -> R.string.msg_image_saved
+    ImageResult.NOT_AVAILABLE -> R.string.msg_image_not_available
+    ImageResult.NETWORK_ERROR -> R.string.msg_network_error
+    ImageResult.INVALID_IMAGE -> R.string.msg_image_invalid
 }
 
 /**

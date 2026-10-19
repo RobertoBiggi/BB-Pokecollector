@@ -7,15 +7,19 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -210,7 +214,8 @@ fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 /**
- * Menu a tendina per scegliere la lingua delle carte, con avviso per le lingue con pochi dati.
+ * Scelta della lingua delle carte: blocchetti EN e JP, più "Altro" con il menu delle altre lingue.
+ * Se è scelta un'altra lingua, il terzo blocchetto ne mostra il nome. Avvisa per le lingue con pochi dati.
  * @param selected Language - lingua selezionata.
  * @param onSelect (Language) -> Unit - nuova scelta.
  * @return Unit
@@ -218,17 +223,32 @@ fun Section(title: String, content: @Composable () -> Unit) {
 @Composable
 fun LanguagePicker(selected: Language, onSelect: (Language) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    val main = listOf(Language.EN, Language.JA)
     Column {
-        Box {
-            OutlinedButton(onClick = { open = true }) {
-                Text("${stringResource(R.string.label_card_language)}: ${stringResource(selected.labelRes())} (${selected.shortLabel()})")
+        Text(stringResource(R.string.label_card_language), style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            main.forEach { lang ->
+                FilterChip(
+                    selected = selected == lang,
+                    onClick = { onSelect(lang) },
+                    label = { Text(lang.shortLabel()) },
+                )
             }
-            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                Language.entries.forEach { lang ->
-                    DropdownMenuItem(
-                        text = { Text("${stringResource(lang.labelRes())} (${lang.shortLabel()})") },
-                        onClick = { onSelect(lang); open = false },
-                    )
+            Box {
+                val other = selected.takeIf { it !in main }
+                FilterChip(
+                    selected = other != null,
+                    onClick = { open = true },
+                    label = { Text(other?.let { "${stringResource(it.labelRes())} (${it.shortLabel()})" } ?: stringResource(R.string.lang_other)) },
+                    trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
+                )
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    Language.entries.filter { it !in main }.forEach { lang ->
+                        DropdownMenuItem(
+                            text = { Text("${stringResource(lang.labelRes())} (${lang.shortLabel()})") },
+                            onClick = { onSelect(lang); open = false },
+                        )
+                    }
                 }
             }
         }

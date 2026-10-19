@@ -1,13 +1,20 @@
 package com.robertobiggi.cardcollection.data.image
 
+import android.content.ContentResolver
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.os.Build
 import com.robertobiggi.cardcollection.core.validation.Validators
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 
 /**
  * Scarica e conserva in locale le immagini delle carte, così restano visibili offline.
@@ -16,6 +23,8 @@ import java.io.IOException
  * @param http client OkHttp condiviso.
  */
 class ImageStore(context: Context, private val http: OkHttpClient) {
+
+    private val resolver: ContentResolver = context.contentResolver
 
     private val root: File = File(context.filesDir, "cards").apply { mkdirs() }
     private val rootPath: String = root.canonicalPath + File.separator
@@ -81,6 +90,83 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
+     * Converte un'immagine scelta dall'utente (galleria o file) in una WebP ridimensionata.
+     * La ricodifica scarta i metadati (es. posizione GPS) e qualsiasi contenuto che non sia un'immagine.
+     * @param uri Uri - immagine scelta con il selettore di sistema.
+     * @return ByteArray? - immagine WebP con lato lungo al massimo [MANUAL_MAX_SIDE] px, oppure null
+     *         se il file non è leggibile, non è un'immagine o è troppo grande.
+     */
+    suspend fun prepareManual(uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
+        val raw = try {
+            resolver.openInputStream(uri)?.use { readAtMost(it, MAX_PICKED_BYTES) }
+        } catch (e: IOException) {
+            null
+        } catch (e: SecurityException) {
+            null
+        } ?: return@withContext null
+
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(raw, 0, raw.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@withContext null
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MANUAL_MAX_SIDE) sample *= 2
+        val decoded = BitmapFactory.decodeByteArray(raw, 0, raw.size, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: return@withContext null
+        val scale = MANUAL_MAX_SIDE.toFloat() / maxOf(decoded.width, decoded.height)
+        val bitmap = if (scale < 1f) {
+            Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true)
+        } else {
+            decoded
+        }
+        val out = ByteArrayOutputStream()
+        val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Bitmap.CompressFormat.WEBP_LOSSY else legacyWebp()
+        val ok = bitmap.compress(format, MANUAL_QUALITY, out)
+        if (bitmap !== decoded) bitmap.recycle()
+        decoded.recycle()
+        out.toByteArray().takeIf { ok && it.isNotEmpty() && it.size <= MAX_BYTES }
+    }
+
+    /**
+     * Salva l'immagine scelta dall'utente con un nome nuovo (così la UI non mostra la vecchia dalla
+     * cache) e cancella quella manuale precedente.
+     * @param cardId String - id locale della carta.
+     * @param bytes ByteArray - immagine preparata con [prepareManual].
+     * @param previous String? - percorso attuale dell'immagine della carta.
+     * @return String? - percorso assoluto del nuovo file, oppure null se il salvataggio fallisce.
+     */
+    suspend fun writeManual(cardId: String, bytes: ByteArray, previous: String?): String? = withContext(Dispatchers.IO) {
+        if (bytes.isEmpty() || bytes.size > MAX_BYTES) return@withContext null
+        val target = File(root, "${Validators.safeFileSegment(cardId)}$MANUAL_MARKER${System.currentTimeMillis()}.webp")
+        if (!target.canonicalPath.startsWith(rootPath)) throw SecurityException("Percorso immagine non valido")
+        try {
+            target.writeBytes(bytes)
+        } catch (e: IOException) {
+            target.delete()
+            return@withContext null
+        }
+        deleteManual(previous)
+        target.absolutePath
+    }
+
+    /**
+     * Cancella un'immagine scelta a mano, solo se il percorso è dentro la cartella dell'app ed è un file manuale.
+     * @param path String? - percorso salvato nel database.
+     * @return Unit
+     */
+    suspend fun deleteManual(path: String?) = withContext(Dispatchers.IO) {
+        if (path == null) return@withContext
+        val file = File(path)
+        if (file.canonicalPath.startsWith(rootPath) && file.name.contains(MANUAL_MARKER)) file.delete()
+    }
+
+    /**
+     * Indica se un percorso è un'immagine scelta a mano dall'utente.
+     * @param path String? - percorso salvato nel database.
+     * @return Boolean - true se è un file manuale.
+     */
+    fun isManual(path: String?): Boolean = path != null && File(path).name.contains(MANUAL_MARKER)
+
+    /**
      * Legge un'immagine salvata, solo se si trova nella cartella delle immagini dell'app.
      * @param path String? - percorso assoluto salvato nel database.
      * @return ByteArray? - contenuto del file, oppure null se assente, fuori cartella o troppo grande.
@@ -137,8 +223,46 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         }
     }
 
+    /**
+     * Legge uno stream fino a un limite di byte.
+     * @param input InputStream - stream da leggere.
+     * @param limit Long - byte massimi accettati.
+     * @return ByteArray? - contenuto, oppure null se supera il limite.
+     */
+    private fun readAtMost(input: InputStream, limit: Long): ByteArray? {
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(16 * 1024)
+        var total = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > limit) return null
+            out.write(buffer, 0, read)
+        }
+        return out.toByteArray()
+    }
+
+    /**
+     * Formato WebP per Android 8-10, dove WEBP_LOSSY non esiste ancora.
+     * @return Bitmap.CompressFormat - formato WebP storico.
+     */
+    @Suppress("DEPRECATION")
+    private fun legacyWebp(): Bitmap.CompressFormat = Bitmap.CompressFormat.WEBP
+
     companion object {
         /** Dimensione massima di un'immagine (3 MB). */
         const val MAX_BYTES = 3L * 1024 * 1024
+
+        /** Dimensione massima del file scelto dall'utente prima della ricodifica (20 MB). */
+        private const val MAX_PICKED_BYTES = 20L * 1024 * 1024
+
+        /** Lato lungo massimo dell'immagine scelta dall'utente, in pixel. */
+        private const val MANUAL_MAX_SIDE = 1200
+
+        private const val MANUAL_QUALITY = 88
+
+        /** Parte del nome che distingue le immagini scelte a mano. */
+        private const val MANUAL_MARKER = "-manual-"
     }
 }
