@@ -2,6 +2,11 @@
 
 package com.robertobiggi.cardcollection.ui.stats
 
+import com.robertobiggi.cardcollection.ui.common.shortLabel
+import com.robertobiggi.cardcollection.ui.common.runSummaryText
+import com.robertobiggi.cardcollection.ui.common.labelRes
+import com.robertobiggi.cardcollection.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.stats.CollectionStats
 import com.robertobiggi.cardcollection.core.stats.StatsSummary
 import com.robertobiggi.cardcollection.data.repo.CardUi
@@ -57,18 +61,17 @@ fun StatsScreen(vm: MainViewModel) {
     val cards = library.orEmpty()
     val total = remember(cards) { summaryOf(cards) }
     val byLanguage = remember(cards) {
-        listOf(Language.EN to "Inglese (EN)", Language.JA to "Giapponese (JP)")
-            .map { (lang, label) -> label to summaryOf(cards.filter { it.language == lang }) }
-            .filter { it.second.slots > 0 }
+        cards.groupBy { it.language }.entries.sortedBy { it.key.ordinal }.map { it.key to summaryOf(it.value) }.filter { it.second.slots > 0 }
     }
-    val bySerie = remember(cards) {
-        cards.groupBy { it.card.serieName ?: "Altro" }
+    val otherSerie = stringResource(R.string.stats_other_serie)
+    val bySerie = remember(cards, otherSerie) {
+        cards.groupBy { it.card.serieName ?: otherSerie }
             .entries.sortedBy { e -> e.value.minOfOrNull { it.card.releaseDate ?: "9999" } }
             .map { it.key to summaryOf(it.value) }
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Statistiche · ${name ?: ""}", maxLines = 1, overflow = TextOverflow.Ellipsis) })
+        TopAppBar(title = { Text(stringResource(R.string.stats_title, name.orEmpty()), maxLines = 1, overflow = TextOverflow.Ellipsis) })
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Card(Modifier.fillMaxWidth()) {
@@ -82,42 +85,42 @@ fun StatsScreen(vm: MainViewModel) {
                             Text("${total.completionPercent()}%", fontWeight = FontWeight.ExtraBold)
                         }
                         Column {
-                            Text("Completamento", style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.stats_completion), style = MaterialTheme.typography.labelMedium)
                             Text("${total.owned} / ${total.slots}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                            Text("varianti possedute su quelle che vuoi", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.stats_completion_hint), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatTile("Valore EUR", Format.eur(total.valueEur), "Cardmarket trend", Modifier.weight(1f))
-                    StatTile("Valore USD", Format.usd(total.valueUsd), "TCGplayer market", Modifier.weight(1f))
+                    StatTile(stringResource(R.string.stats_value_eur), Format.eur(total.valueEur), stringResource(R.string.cardmarket_trend), Modifier.weight(1f))
+                    StatTile(stringResource(R.string.stats_value_usd), Format.usd(total.valueUsd), stringResource(R.string.tcgplayer_market), Modifier.weight(1f))
                 }
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatTile("Copie", "${total.copies}", "doppioni compresi", Modifier.weight(1f))
-                    StatTile("Mancanti", Format.eur(total.missingEur), "${total.missing} varianti", Modifier.weight(1f))
+                    StatTile(stringResource(R.string.stats_copies), "${total.copies}", stringResource(R.string.stats_copies_hint), Modifier.weight(1f))
+                    StatTile(stringResource(R.string.stats_missing), Format.eur(total.missingEur), stringResource(R.string.missing_count, total.missing), Modifier.weight(1f))
                 }
             }
-            item { Bars("Per lingua", byLanguage) }
-            item { Bars("Per serie", bySerie) }
+            item { Bars(stringResource(R.string.stats_by_language), byLanguage.map { (lang, s) -> "${stringResource(lang.labelRes())} (${lang.shortLabel()})" to s }) }
+            item { Bars(stringResource(R.string.stats_by_serie), bySerie) }
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Ultimi aggiornamenti prezzi", style = MaterialTheme.typography.titleMedium)
-                        if (runs.isEmpty()) Text("Nessun aggiornamento.", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.stats_runs), style = MaterialTheme.typography.titleMedium)
+                        if (runs.isEmpty()) Text(stringResource(R.string.stats_no_runs), style = MaterialTheme.typography.bodySmall)
                         runs.forEach { run ->
                             Text(Format.dateTime(run.startedAt), style = MaterialTheme.typography.labelMedium)
-                            Text(run.summary ?: "In corso…", style = MaterialTheme.typography.bodySmall)
+                            Text(runSummaryText(run), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
             }
             item {
                 Text(
-                    "EUR e USD restano separati: l'app non converte le valute.",
+                    stringResource(R.string.stats_currency_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

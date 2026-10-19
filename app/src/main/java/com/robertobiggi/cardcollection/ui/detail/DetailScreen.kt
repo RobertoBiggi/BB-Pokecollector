@@ -2,7 +2,22 @@
 
 package com.robertobiggi.cardcollection.ui.detail
 
+import com.robertobiggi.cardcollection.core.backup.CollectionFiles
+import com.robertobiggi.cardcollection.ui.common.labelRes
+import com.robertobiggi.cardcollection.R
+import androidx.compose.ui.res.stringResource
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.robertobiggi.cardcollection.ui.CardAction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,7 +69,6 @@ import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.VariantUi
-import com.robertobiggi.cardcollection.data.repo.label
 import com.robertobiggi.cardcollection.ui.MainViewModel
 import com.robertobiggi.cardcollection.ui.common.CardImage
 import com.robertobiggi.cardcollection.ui.common.ConfidenceChip
@@ -78,17 +92,21 @@ private const val STALE_AFTER_MS = 30L * 24 * 60 * 60 * 1000
 fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     val library by vm.library.collectAsStateWithLifecycle()
     val card = library?.firstOrNull { it.card.id == cardId }
+    val action by vm.cardAction.collectAsStateWithLifecycle()
     var manualFor by remember { mutableStateOf<VariantUi?>(null) }
+    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) vm.setCardImage(cardId, uri)
+    }
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(card?.card?.name ?: "Carta") },
+            title = { Text(card?.card?.name ?: stringResource(R.string.card_default_title)) },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
             },
         )
         if (card == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Carta non trovata") }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.card_not_found)) }
             return@Column
         }
         LazyColumn(
@@ -97,8 +115,16 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
         ) {
             item { Header(card) }
+            item {
+                CardActions(
+                    action = action,
+                    onPrice = { vm.checkCardPrice(card.card.id) },
+                    onDownload = { vm.downloadCardImage(card.card.id) },
+                    onPick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                )
+            }
             item { Links(card) }
-            item { Text("Varianti", style = MaterialTheme.typography.titleMedium) }
+            item { Text(stringResource(R.string.variants_title), style = MaterialTheme.typography.titleMedium) }
             items(card.variants, key = { it.id }) { variant ->
                 VariantCard(
                     card = card,
@@ -111,13 +137,12 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
             }
             item {
                 TextButton(onClick = { vm.hideCard(card.card.id); onBack() }) {
-                    Text("Togli dalla collezione", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.remove_from_collection), color = MaterialTheme.colorScheme.error)
                 }
             }
             item {
                 Text(
-                    "Ogni variante è uno slot della collezione. Togli \"la voglio\" alle varianti che non ti interessano: " +
-                        "non conteranno come mancanti.",
+                    stringResource(R.string.variants_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -127,7 +152,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
 
     manualFor?.let { variant ->
         ManualPriceDialog(
-            variantLabel = variant.type.label(),
+            variantLabel = stringResource(variant.type.labelRes()),
             onDismiss = { manualFor = null },
             onSave = { text -> vm.addManualPrice(variant.id, text).also { saved -> if (saved) manualFor = null } },
         )
@@ -144,14 +169,61 @@ private fun Header(card: CardUi) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         CardImage(card, card.card.imageHighPath ?: card.card.imageLowPath, Modifier.width(160.dp))
         Column(Modifier.weight(1f)) {
-            MetaRow("Codice", card.printedCode, mono = true)
-            MetaRow("Set", card.card.setName)
-            card.card.serieName?.let { MetaRow("Serie", it) }
-            card.card.rarity?.let { MetaRow("Rarità", it) }
-            MetaRow("Lingua", if (card.language == Language.JA) "Giapponese" else "Inglese")
-            card.card.releaseDate?.let { MetaRow("Uscita", it) }
-            card.card.illustrator?.let { MetaRow("Illustratore", it) }
+            MetaRow(stringResource(R.string.meta_code), card.printedCode, mono = true)
+            MetaRow(stringResource(R.string.meta_set), card.card.setName)
+            card.card.serieName?.let { MetaRow(stringResource(R.string.meta_serie), it) }
+            card.card.rarity?.let { MetaRow(stringResource(R.string.meta_rarity), it) }
+            MetaRow(stringResource(R.string.meta_language), stringResource(card.language.labelRes()))
+            card.card.releaseDate?.let { MetaRow(stringResource(R.string.meta_release), it) }
+            card.card.illustrator?.let { MetaRow(stringResource(R.string.meta_illustrator), it) }
         }
+    }
+}
+
+/**
+ * Azioni sulla singola carta: aggiorna il prezzo, scarica l'immagine ufficiale o scegline una.
+ * @param action CardAction? - azione in corso, null se nessuna.
+ * @param onPrice () -> Unit - aggiorna i prezzi della carta.
+ * @param onDownload () -> Unit - scarica l'immagine da TCGdex.
+ * @param onPick () -> Unit - apre il selettore di immagini.
+ * @return Unit
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CardActions(action: CardAction?, onPrice: () -> Unit, onDownload: () -> Unit, onPick: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ActionButton(stringResource(R.string.action_update_price), Icons.Filled.Refresh, action == CardAction.PRICE, action == null, onPrice)
+            ActionButton(stringResource(R.string.action_download_image), Icons.Filled.Download, action == CardAction.DOWNLOAD_IMAGE, action == null, onDownload)
+            ActionButton(stringResource(R.string.action_pick_image), Icons.Filled.Image, action == CardAction.PICK_IMAGE, action == null, onPick)
+        }
+        Text(
+            stringResource(R.string.card_actions_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Pulsante di un'azione sulla carta, con indicatore mentre è in corso.
+ * @param label String - testo del pulsante.
+ * @param icon ImageVector - icona.
+ * @param running Boolean - true se l'azione è in corso.
+ * @param enabled Boolean - false mentre è in corso un'altra azione.
+ * @param onClick () -> Unit - avvia l'azione.
+ * @return Unit
+ */
+@Composable
+private fun ActionButton(label: String, icon: ImageVector, running: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, enabled = enabled) {
+        if (running) {
+            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(label)
     }
 }
 
@@ -166,11 +238,11 @@ private fun Links(card: CardUi) {
     val term = Uri.encode(card.card.name)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(onClick = { uriHandler.openUri("https://www.cardmarket.com/it/Pokemon/Products/Search?searchString=$term") }) {
-            Text("Cardmarket ↗")
+            Text(stringResource(R.string.link_cardmarket))
         }
         if (card.language == Language.EN) {
             OutlinedButton(onClick = { uriHandler.openUri("https://www.tcgplayer.com/search/pokemon/product?q=$term") }) {
-                Text("TCGplayer ↗")
+                Text(stringResource(R.string.link_tcgplayer))
             }
         }
     }
@@ -205,17 +277,17 @@ private fun VariantCard(
                     modifier = Modifier.size(10.dp),
                 ) {}
                 Spacer(Modifier.width(8.dp))
-                Text(variant.type.label(), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(stringResource(variant.type.labelRes()), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Checkbox(checked = variant.wanted, onCheckedChange = onWanted)
-                Text("la voglio", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.want_it), style = MaterialTheme.typography.bodySmall)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalIconButton(onClick = { onQuantity(variant.quantity - 1) }, enabled = variant.quantity > 0) {
-                    Icon(Icons.Filled.Remove, contentDescription = "Togli una copia")
+                    Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.qty_remove))
                 }
                 Text("${variant.quantity}", style = MaterialTheme.typography.titleMedium)
                 FilledTonalIconButton(onClick = { onQuantity(variant.quantity + 1) }) {
-                    Icon(Icons.Filled.Add, contentDescription = "Aggiungi una copia")
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.qty_add))
                 }
                 Box {
                     TextButton(onClick = { conditionOpen = true }) { Text(variant.condition.name) }
@@ -227,28 +299,28 @@ private fun VariantCard(
                 }
                 Text(
                     when {
-                        variant.quantity == 0 && variant.wanted -> "Ti manca"
-                        variant.quantity == 0 -> "Non la cerchi"
-                        variant.quantity == 1 -> "Posseduta"
-                        else -> "${variant.quantity - 1} doppioni"
+                        variant.quantity == 0 && variant.wanted -> stringResource(R.string.state_missing)
+                        variant.quantity == 0 -> stringResource(R.string.state_not_wanted)
+                        variant.quantity == 1 -> stringResource(R.string.state_owned)
+                        else -> stringResource(R.string.state_duplicates, variant.quantity - 1)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PriceBox("Cardmarket · trend", variant.latestEur?.eur?.let { Format.eur(it) }, Modifier.weight(1f))
+                PriceBox(stringResource(R.string.price_cardmarket), variant.latestEur?.eur?.let { Format.eur(it) }, Modifier.weight(1f))
                 PriceBox(
-                    "TCGplayer · market",
+                    stringResource(R.string.price_tcgplayer),
                     variant.latestUsd?.usd?.let { Format.usd(it) },
                     Modifier.weight(1f),
-                    emptyText = if (card.language == Language.JA) "non venduta" else "nessun prezzo",
+                    emptyText = stringResource(if (card.language == Language.EN) R.string.no_price else R.string.not_sold),
                 )
             }
             val last = variant.lastSnapshot
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    last?.let { "${Format.date(it.fetchedAt)} · ${it.source}" } ?: "Nessun prezzo: aggiorna o inseriscilo a mano",
+                    last?.let { stringResource(R.string.price_source_date, Format.date(it.fetchedAt), sourceLabel(it.source)) } ?: stringResource(R.string.no_price_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
@@ -256,7 +328,7 @@ private fun VariantCard(
                 if (last != null) ConfidenceChip(last.confidence, System.currentTimeMillis() - last.fetchedAt > STALE_AFTER_MS)
                 Sparkline(variant.eurHistory, Modifier.width(72.dp).height(22.dp))
             }
-            TextButton(onClick = onManual) { Text("Inserisci prezzo manuale") }
+            TextButton(onClick = onManual) { Text(stringResource(R.string.manual_price_button)) }
         }
     }
 }
@@ -266,15 +338,15 @@ private fun VariantCard(
  * @param label String - nome del mercato.
  * @param value String? - prezzo formattato, null se assente.
  * @param modifier Modifier - modificatore di layout.
- * @param emptyText String - testo quando il prezzo manca.
+ * @param emptyText String? - testo quando il prezzo manca (null = "nessun prezzo").
  * @return Unit
  */
 @Composable
-private fun PriceBox(label: String, value: String?, modifier: Modifier = Modifier, emptyText: String = "nessun prezzo") {
+private fun PriceBox(label: String, value: String?, modifier: Modifier = Modifier, emptyText: String? = null) {
     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium, modifier = modifier) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value ?: emptyText, style = if (value != null) MonoStyle else MaterialTheme.typography.bodySmall)
+            Text(value ?: emptyText ?: stringResource(R.string.no_price), style = if (value != null) MonoStyle else MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -292,19 +364,28 @@ private fun ManualPriceDialog(variantLabel: String, onDismiss: () -> Unit, onSav
     var error by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Prezzo manuale · $variantLabel") },
+        title = { Text(stringResource(R.string.manual_price_title, variantLabel)) },
         text = {
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it.take(9); error = false },
-                label = { Text("Prezzo in euro, es. 2,50") },
+                label = { Text(stringResource(R.string.manual_price_label)) },
                 isError = error,
-                supportingText = { if (error) Text("Inserisci un importo valido (massimo 99999,99).") },
+                supportingText = { if (error) Text(stringResource(R.string.manual_price_error)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
             )
         },
-        confirmButton = { TextButton(onClick = { if (!onSave(text)) error = true }) { Text("Salva") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+        confirmButton = { TextButton(onClick = { if (!onSave(text)) error = true }) { Text(stringResource(R.string.action_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
+
+/**
+ * Nome della fonte di un prezzo: i prezzi manuali hanno un'etichetta tradotta.
+ * @param source String - fonte salvata nel database.
+ * @return String - nome da mostrare.
+ */
+@Composable
+private fun sourceLabel(source: String): String =
+    if (source == CollectionFiles.MANUAL_SOURCE) stringResource(R.string.source_manual) else source

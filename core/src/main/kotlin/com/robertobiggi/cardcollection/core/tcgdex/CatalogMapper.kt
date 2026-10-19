@@ -54,17 +54,20 @@ object CatalogMapper {
 
     /**
      * Ricava la sigla del set stampata in basso a sinistra.
-     * Per le carte giapponesi l'id TCGdex coincide con la sigla stampata (es. "SM10a", "M1L");
-     * per quelle inglesi si usa l'abbreviazione ufficiale (es. "POR"), assente nelle ere più vecchie.
+     * Nei cataloghi asiatici l'id TCGdex coincide con la sigla stampata (es. "SM10a", "M1L");
+     * per le altre lingue si usa l'abbreviazione localizzata o quella ufficiale (es. "POR"),
+     * assente nelle ere più vecchie.
      * @param language Language - lingua del catalogo.
      * @param set SetDto? - dettaglio del set.
      * @param setId String - id del set, usato per le carte giapponesi.
      * @return String? - sigla stampata, oppure null se la carta non la riporta.
      */
-    fun printedSetCode(language: Language, set: SetDto?, setId: String): String? = when (language) {
-        Language.JA -> setId
-        Language.EN -> set?.abbreviation?.official?.takeIf { it.isNotBlank() }
-    }
+    fun printedSetCode(language: Language, set: SetDto?, setId: String): String? =
+        if (language.asianSets) {
+            setId
+        } else {
+            (set?.abbreviation?.localized ?: set?.abbreviation?.official)?.takeIf { it.isNotBlank() }
+        }
 
     /**
      * Compone il numero stampato sulla carta.
@@ -81,15 +84,15 @@ object CatalogMapper {
 
     /**
      * Elenca le varianti standard della carta. Le carte jumbo vengono ignorate.
-     * Se TCGdex non fornisce il dettaglio, si usano i flag booleani.
+     * Se TCGdex non fornisce il dettaglio, o lo fornisce con nomi tradotti (es. "Olografica" nel
+     * catalogo italiano), si usano i flag booleani, che hanno sempre chiavi standard.
      * @param card CardDto - dettaglio della carta.
      * @return List<CatalogVariant> - varianti senza duplicati, nell'ordine dell'enum.
      */
     fun variantsOf(card: CardDto): List<CatalogVariant> {
-        val fromDetailed = card.variantsDetailed.orEmpty()
-            .filter { it.size == null || it.size == "standard" }
-            .mapNotNull { VariantType.fromTcgdexKey(it.type) }
-        val types = if (fromDetailed.isNotEmpty()) {
+        val standard = card.variantsDetailed.orEmpty().filter { it.size == null || it.size == "standard" }
+        val fromDetailed = standard.mapNotNull { VariantType.fromTcgdexKey(it.type) }
+        val types = if (fromDetailed.isNotEmpty() && fromDetailed.size == standard.size) {
             fromDetailed
         } else {
             val flags = card.variants ?: VariantFlagsDto(normal = true)

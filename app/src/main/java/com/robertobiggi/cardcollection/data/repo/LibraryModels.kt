@@ -1,7 +1,6 @@
 package com.robertobiggi.cardcollection.data.repo
 
 import com.robertobiggi.cardcollection.core.model.Condition
-import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.stats.CollectionStats
@@ -51,8 +50,11 @@ data class CardUi(
     /** Codice stampato in basso a sinistra, es. "M1L 046/063". */
     val printedCode: String get() = listOfNotNull(card.setCode, card.printedNumber).joinToString(" ")
 
-    val slots: Int get() = variants.count { it.wanted }
-    val ownedSlots: Int get() = variants.count { it.wanted && it.quantity > 0 }
+    /** Slot della carta: varianti desiderate o possedute (stessa regola di [CollectionStats]). */
+    val slots: Int get() = variants.count { it.wanted || it.quantity > 0 }
+
+    /** Varianti possedute, con almeno una copia. */
+    val ownedSlots: Int get() = variants.count { it.quantity > 0 }
     val copies: Int get() = variants.sumOf { it.quantity }
 
     /** Prezzo in euro più basso tra le varianti, usato in griglia ("da 0,30 €"). */
@@ -169,12 +171,4 @@ object LibraryAssembler {
             CardUi(card, list)
         }
     }
-
-    /**
-     * Calcola l'id della variante (scorciatoia per la UI).
-     * @param cardId String - id locale della carta.
-     * @param type VariantType - variante.
-     * @return String - id della variante.
-     */
-    fun variantId(cardId: String, type: VariantType): String = Ids.variantId(cardId, type)
 }

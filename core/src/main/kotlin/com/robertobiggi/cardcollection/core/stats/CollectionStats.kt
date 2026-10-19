@@ -3,7 +3,7 @@ package com.robertobiggi.cardcollection.core.stats
 /**
  * Dati minimi di uno slot (variante) per calcolare le statistiche.
  *
- * @property wanted true se la variante conta come slot della collezione.
+ * @property wanted true se la variante è desiderata: conta come slot anche quando non la possiedi.
  * @property quantity copie possedute.
  * @property latestEur ultimo prezzo noto in euro, se presente.
  * @property latestUsd ultimo prezzo noto in dollari, se presente.
@@ -40,8 +40,8 @@ object CollectionStats {
 
     /**
      * Calcola completamento, valore e costo dei mancanti.
-     * Il valore conta tutte le copie possedute (anche delle varianti non desiderate);
-     * completamento e mancanti considerano solo gli slot desiderati.
+     * Uno slot è una variante desiderata oppure posseduta: una variante che hai conta sempre come
+     * completata, anche se hai tolto "la voglio". Le mancanti sono solo le desiderate con 0 copie.
      * @param slots List<SlotInput> - varianti da considerare.
      * @return StatsSummary - riepilogo.
      */
@@ -59,7 +59,7 @@ object CollectionStats {
             copies += quantity
             slot.latestEur?.let { valueEur += it * quantity }
             slot.latestUsd?.let { valueUsd += it * quantity }
-            if (!slot.wanted) continue
+            if (!slot.wanted && quantity == 0) continue
             wanted++
             if (quantity > 0) {
                 owned++

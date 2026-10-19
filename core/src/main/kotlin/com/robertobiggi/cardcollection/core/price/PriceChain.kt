@@ -10,16 +10,15 @@ import kotlinx.coroutines.delay
 import java.io.IOException
 
 /** Esito di un singolo tentativo su una fonte. */
-enum class StepOutcome { OK, NO_DATA, RATE_LIMITED, BLOCKED, CIRCUIT_OPEN, ERROR }
+enum class StepOutcome { OK, NO_DATA, RATE_LIMITED, BLOCKED, CIRCUIT_OPEN, NETWORK_ERROR, ERROR }
 
 /**
  * Riga del registro di un aggiornamento prezzi.
  *
  * @property providerId fonte interrogata.
  * @property outcome esito.
- * @property detail spiegazione breve in italiano, mostrabile all'utente.
  */
-data class ChainStep(val providerId: String, val outcome: StepOutcome, val detail: String)
+data class ChainStep(val providerId: String, val outcome: StepOutcome)
 
 /**
  * Risultato della catena di fonti per una variante.
@@ -70,9 +69,8 @@ class PriceChain(
         var retried = false
         for ((index, slot) in slots.withIndex()) {
             val id = slot.provider.id
-            val name = slot.provider.displayName
             if (slot.breaker.isOpen()) {
-                steps += ChainStep(id, StepOutcome.CIRCUIT_OPEN, "$name in pausa dopo troppi blocchi")
+                steps += ChainStep(id, StepOutcome.CIRCUIT_OPEN)
                 continue
             }
             var attempt = 0
@@ -82,14 +80,14 @@ class PriceChain(
                     val quote = slot.provider.fetch(request)
                     slot.breaker.recordSuccess()
                     if (quote != null && quote.hasAnyPrice()) {
-                        steps += ChainStep(id, StepOutcome.OK, "$name ✓")
+                        steps += ChainStep(id, StepOutcome.OK)
                         return ChainOutcome(quote, steps, usedFallback = index > 0 || retried || steps.size > 1)
                     }
-                    steps += ChainStep(id, StepOutcome.NO_DATA, "$name: nessun prezzo per questa variante")
+                    steps += ChainStep(id, StepOutcome.NO_DATA)
                     break
                 } catch (e: RateLimitedException) {
                     if (slot.breaker.recordBlock()) {
-                        steps += ChainStep(id, StepOutcome.CIRCUIT_OPEN, "$name 429: messo in pausa")
+                        steps += ChainStep(id, StepOutcome.CIRCUIT_OPEN)
                         break
                     }
                     if (attempt < maxRetries) {
@@ -98,18 +96,14 @@ class PriceChain(
                         attempt++
                         continue
                     }
-                    steps += ChainStep(id, StepOutcome.RATE_LIMITED, "$name 429: troppe richieste")
+                    steps += ChainStep(id, StepOutcome.RATE_LIMITED)
                     break
                 } catch (e: BlockedException) {
                     val opened = slot.breaker.recordBlock()
-                    steps += ChainStep(
-                        id,
-                        if (opened) StepOutcome.CIRCUIT_OPEN else StepOutcome.BLOCKED,
-                        "$name ${e.httpCode}: accesso rifiutato" + if (opened) ", messo in pausa" else "",
-                    )
+                    steps += ChainStep(id, if (opened) StepOutcome.CIRCUIT_OPEN else StepOutcome.BLOCKED)
                     break
                 } catch (e: NotFoundException) {
-                    steps += ChainStep(id, StepOutcome.NO_DATA, "$name: carta non trovata")
+                    steps += ChainStep(id, StepOutcome.NO_DATA)
                     break
                 } catch (e: ApiException) {
                     if (e.httpCode >= 500 && attempt < maxRetries) {
@@ -118,13 +112,13 @@ class PriceChain(
                         attempt++
                         continue
                     }
-                    steps += ChainStep(id, StepOutcome.ERROR, "$name: errore ${e.httpCode}")
+                    steps += ChainStep(id, StepOutcome.ERROR)
                     break
                 } catch (e: InvalidResponseException) {
-                    steps += ChainStep(id, StepOutcome.ERROR, "$name: risposta non valida")
+                    steps += ChainStep(id, StepOutcome.ERROR)
                     break
                 } catch (e: IOException) {
-                    steps += ChainStep(id, StepOutcome.ERROR, "$name: rete non disponibile")
+                    steps += ChainStep(id, StepOutcome.NETWORK_ERROR)
                     break
                 }
             }
