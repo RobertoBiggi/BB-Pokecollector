@@ -151,6 +151,14 @@ interface CatalogDao {
     suspend fun cardsMissingImages(): List<CardEntity>
 
     /**
+     * Carte che TCGdex non fornisce con un'immagine e che non ne hanno nessuna salvata (nemmeno manuale).
+     * @param languages List<String> - lingue da considerare (es. "en", "ja").
+     * @return List<CardEntity> - carte per cui cercare un'immagine su altre fonti.
+     */
+    @Query("SELECT * FROM card WHERE imageUrl IS NULL AND imageLowPath IS NULL AND imageHighPath IS NULL AND language IN (:languages)")
+    suspend fun cardsWithoutImage(languages: List<String>): List<CardEntity>
+
+    /**
      * Inserisce o aggiorna una carta del catalogo.
      * @param card CardEntity - carta da salvare.
      * @return Unit

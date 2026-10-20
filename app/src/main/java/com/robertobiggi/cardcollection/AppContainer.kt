@@ -3,6 +3,7 @@ package com.robertobiggi.cardcollection
 import android.content.Context
 import com.robertobiggi.cardcollection.core.model.PokemonNames
 import com.robertobiggi.cardcollection.core.validation.Validators
+import com.robertobiggi.cardcollection.core.tcgcsv.TcgcsvClient
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
@@ -35,7 +36,7 @@ class AppContainer(context: Context) {
         .addInterceptor { chain ->
             chain.proceed(chain.request().newBuilder().header("User-Agent", USER_AGENT).build())
         }
-        // Controlla ogni richiesta, redirect compresi: l'app parla solo con TCGdex.
+        // Controlla ogni richiesta, redirect compresi: l'app parla solo con TCGdex e TCGCSV.
         .addNetworkInterceptor { chain ->
             val host = chain.request().url.host
             if (host !in ALLOWED_HOSTS) throw IOException("Host non consentito: $host")
@@ -49,11 +50,12 @@ class AppContainer(context: Context) {
     val database: AppDatabase = AppDatabase.create(appContext)
     val settings = SettingsStore(appContext)
     val tcgdex = TcgdexClient(http)
+    val tcgcsv = TcgcsvClient(http)
     val images = ImageStore(appContext, http)
 
     val collection = CollectionRepository(database, appScope)
-    val catalog = CatalogRepository(database, tcgdex, images, settings)
-    val prices = PriceRepository(database, tcgdex, settings)
+    val catalog = CatalogRepository(database, tcgdex, images, settings, tcgcsv)
+    val prices = PriceRepository(database, tcgdex, tcgcsv, settings)
     val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
     val work = WorkScheduler(appContext)
 
@@ -65,7 +67,7 @@ class AppContainer(context: Context) {
     private companion object {
         const val USER_AGENT = "CardCollection-Android (uso personale)"
 
-        /** Host raggiungibili dall'app: API e immagini di TCGdex. */
-        val ALLOWED_HOSTS = setOf("api.tcgdex.net") + Validators.ALLOWED_IMAGE_HOSTS
+        /** Host raggiungibili dall'app: API e immagini di TCGdex, dati e immagini TCGplayer di TCGCSV. */
+        val ALLOWED_HOSTS = setOf("api.tcgdex.net", "tcgcsv.com") + Validators.ALLOWED_IMAGE_HOSTS + ImageStore.EXTERNAL_IMAGE_HOSTS
     }
 }

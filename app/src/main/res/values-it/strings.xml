@@ -164,7 +164,7 @@
     <string name="settings_app_language">Lingua dell\'app</string>
     <string name="app_lang_system">Lingua di sistema</string>
     <string name="settings_sources">Fonti prezzi</string>
-    <string name="settings_sources_text">I prezzi arrivano da TCGdex, che riporta Cardmarket (EUR, anche per le carte giapponesi ed europee) e TCGplayer (USD). L\'app non contatta mai cardmarket.com: niente blocchi anti-bot.</string>
+    <string name="settings_sources_text">I prezzi arrivano da TCGdex, che riporta Cardmarket (EUR, anche per le carte giapponesi ed europee) e TCGplayer (USD). Se manca il prezzo in dollari, per le carte inglesi e giapponesi lo completa TCGCSV (copia giornaliera dei prezzi TCGplayer), che fornisce anche le immagini che TCGdex non ha. L\'app non contatta mai cardmarket.com: niente blocchi anti-bot.</string>
     <string name="settings_paused">TCGdex in pausa fino al %1$s dopo troppi blocchi.</string>
     <string name="settings_available">TCGdex disponibile. Se blocca 3 volte di fila, l\'app lo mette in pausa per 6 ore.</string>
     <string name="settings_last_catalog">Ultimo catalogo scaricato il %1$s</string>
@@ -207,12 +207,12 @@
     <string name="action_update_price">Aggiorna prezzo</string>
     <string name="action_download_image">Scarica immagine</string>
     <string name="action_pick_image">Scegli immagine</string>
-    <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Se TCGdex non ha l\'immagine (succede spesso con le carte giapponesi) puoi sceglierne una dalla galleria: resta salvata finché non scarichi quella ufficiale.</string>
+    <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Se TCGdex non ha l\'immagine (succede spesso con le carte giapponesi) l\'app la cerca su TCGplayer; altrimenti puoi sceglierne una dalla galleria, che resta salvata finché non scarichi quella ufficiale.</string>
     <string name="msg_card_price_updated">Prezzi aggiornati (%1$d varianti).</string>
     <string name="msg_card_price_none">Nessun prezzo trovato per questa carta.</string>
     <string name="msg_image_downloaded">Immagine scaricata.</string>
     <string name="msg_image_saved">Immagine salvata.</string>
-    <string name="msg_image_not_available">TCGdex non ha un\'immagine per questa carta: puoi sceglierne una tu.</string>
+    <string name="msg_image_not_available">Né TCGdex né TCGplayer hanno un\'immagine per questa carta: puoi sceglierne una tu.</string>
     <string name="msg_image_invalid">Non riesco a leggere l\'immagine scelta.</string>
     <string name="source_imported">Importato</string>
 </resources>

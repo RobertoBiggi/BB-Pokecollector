@@ -74,9 +74,19 @@ Lo schema è stato verificato sulle risposte reali (workflow `tcgdex-probe.yml`)
 
 TCGdex usa `0` per "nessun dato": i valori nulli o pari a zero vengono scartati.
 
+### Seconda fonte: TCGCSV
+
+[TCGCSV](https://tcgcsv.com) è una copia pubblica dei dati TCGplayer, aggiornata ogni giorno verso le 20:00 UTC, gratuita e senza chiave. Le sue linee guida chiedono uno User-Agent riconoscibile e richieste distanziate (250 ms in `TcgcsvClient`); non serve attribuzione. Copre le carte inglesi (categoria 3) e giapponesi (categoria 85).
+
+- **Abbinamento** (`TcgcsvCatalog`): set per sigla (`abbreviation` di TCGplayer = sigla TCGdex per i set inglesi recenti, es. MEG, e id del set per i giapponesi, es. M3, SM10a). Per i set inglesi con sigla diversa (es. Lost Origin: LOR su TCGdex, SWSH11 su TCGplayer) si confronta il nome del set senza il prefisso. Poi il numero stampato (`extendedData.Number`, es. "117/080"), senza zeri iniziali. Per le carte inglesi deve coincidere anche il nome; tra più prodotti con lo stesso numero si sceglie quello senza parentesi (es. non "Poke Ball Pattern"). Se resta ambiguo, nessun abbinamento.
+- **Prezzi** (`TcgcsvPriceProvider`): `subTypeName` Normal / Holofoil / Reverse Holofoil / 1st Edition…; prezzo di mercato, altrimenti medio. Se il prodotto ha una sola versione vale per la normal o la holo con affidabilità media.
+- **Catena:** `PriceChain` si ferma quando ha sia EUR sia USD; altrimenti la fonte successiva completa il valore mancante (fonte salvata come "TCGdex + TCGplayer (TCGCSV)"). Il completamento non conta come fallback.
+- **Immagini:** per le carte inglesi e giapponesi senza immagine su TCGdex, il sync del catalogo e il pulsante "Scarica immagine" usano l'immagine del prodotto TCGplayer (`tcgplayer-cdn.tcgplayer.com`, 400 px e 1000 px), ricodificata in WebP.
+- Set, prodotti e prezzi di ogni set si scaricano una volta per aggiornamento.
+
 ### Altre fonti valutate
 
-- **pokemontcg.io:** non risponde più dal runner CI. Non è implementato.
+- **pokemontcg.io:** a ottobre 2026 risponde quasi sempre con errori 500/502 e non ha i set usciti dopo l'acquisizione da parte di Scrydex (il successore, a pagamento). Non è implementato.
 - **PokemonPriceTracker:** non c'è modo di verificarne lo schema senza chiave. Non è implementato.
 
 La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`: aggiungerne una richiede solo l'implementazione e l'inserimento in `PriceRepository`. Quando non c'è un prezzo nuovo resta l'ultimo salvato, oppure il prezzo manuale.
@@ -165,17 +175,17 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 
 ## Sicurezza
 
-- **Rete:** solo HTTPS (`network_security_config` senza traffico in chiaro). Le immagini si scaricano solo da `assets.tcgdex.net`, con controllo di tipo e dimensione (massimo 3 MB).
+- **Rete:** solo HTTPS (`network_security_config` senza traffico in chiaro). Un interceptor di rete blocca ogni host fuori da `api.tcgdex.net`, `assets.tcgdex.net`, `tcgcsv.com` e `tcgplayer-cdn.tcgplayer.com`, anche dopo un redirect. Le immagini si scaricano con controllo di tipo e dimensione (massimo 3 MB); quelle di TCGplayer, costruite dall'id numerico del prodotto, vengono anche ricodificate in WebP.
 - **Segreti:** nessuno nel repository. Le fonti usate non richiedono chiavi.
 - **Validazione:** gli id remoti passano da una whitelist (niente `..` né `/`) prima di finire in URL o nomi file. I percorsi delle immagini sono verificati in forma canonica sotto `filesDir/cards`.
-- **Risposte API:** limite di 2 MB; JSON tollerante ai campi sconosciuti ma con i tipi controllati.
+- **Risposte API:** limite di 2 MB (8 MB per i prodotti di un set TCGCSV); JSON tollerante ai campi sconosciuti ma con i tipi controllati.
 - **Database:** solo query Room parametrizzate.
 - **Input utente:** ricerche limitate a 2-40 caratteri ammessi, prezzi manuali a 0-99999,99, quantità a 0-999.
 - **Import dei file JSON:** limite 40 MB in streaming, schema verificato, immagini controllate per formato e dimensione; le voci non valide vengono scartate e contate.
 
 ## Build e verifica
 
-- `./gradlew -PcoreOnly :core:test`: test su fixture reali (mappatura, lingue, prezzi, catena con 429/403/circuit breaker, validatori, file JSON, ricerca per codice e per nome, statistiche).
+- `./gradlew -PcoreOnly :core:test`: test su fixture reali (mappatura, lingue, prezzi, catena con 429/403/circuit breaker e completamento da TCGCSV, abbinamento dei prodotti TCGplayer, validatori, file JSON, ricerca per codice e per nome, statistiche).
 - `./gradlew :app:testDebugUnitTest`: assemblaggio e visibilità della libreria, filtri, migrazioni confrontate con gli schemi Room.
 - Il lint di Android blocca la build se una stringa manca in una delle due lingue.
 - **CI** (`.github/workflows/android.yml`), job `build` su ogni push e pull request:

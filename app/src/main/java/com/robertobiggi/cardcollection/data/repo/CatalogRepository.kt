@@ -10,6 +10,9 @@ import com.robertobiggi.cardcollection.core.net.InvalidResponseException
 import com.robertobiggi.cardcollection.core.net.NotFoundException
 import com.robertobiggi.cardcollection.core.net.RateLimitedException
 import com.robertobiggi.cardcollection.core.price.RateLimiter
+import com.robertobiggi.cardcollection.core.tcgcsv.TcgcsvCardRef
+import com.robertobiggi.cardcollection.core.tcgcsv.TcgcsvCatalog
+import com.robertobiggi.cardcollection.core.tcgcsv.TcgcsvClient
 import com.robertobiggi.cardcollection.core.tcgdex.CardBriefDto
 import com.robertobiggi.cardcollection.core.tcgdex.CardCodeSearch
 import com.robertobiggi.cardcollection.core.tcgdex.CatalogMapper
@@ -73,6 +76,7 @@ class CatalogRepository(
     private val client: TcgdexClient,
     private val images: ImageStore,
     private val settings: SettingsStore,
+    private val tcgcsv: TcgcsvClient,
 ) {
     private val dao = db.catalogDao()
 
@@ -167,9 +171,10 @@ class CatalogRepository(
 
     /**
      * Riscarica i dati della carta da TCGdex (l'immagine può essere stata aggiunta dopo) e ne scarica
-     * l'immagine ufficiale, che sostituisce quella scelta a mano.
+     * l'immagine ufficiale, che sostituisce quella scelta a mano. Se TCGdex non ce l'ha, per le carte
+     * inglesi e giapponesi usa l'immagine del prodotto TCGplayer trovato con TCGCSV.
      * @param cardId String - id locale della carta.
-     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE se TCGdex non ha l'immagine, NETWORK_ERROR.
+     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE se nessuna fonte ha l'immagine, NETWORK_ERROR.
      */
     suspend fun downloadImage(cardId: String): ImageResult {
         val stored = dao.getCard(cardId) ?: return ImageResult.NOT_AVAILABLE
@@ -181,9 +186,12 @@ class CatalogRepository(
             if (!isRecoverable(e)) throw e
             if (e is NotFoundException) stored.imageUrl else return ImageResult.NETWORK_ERROR
         }
-        val url = refreshedUrl ?: return ImageResult.NOT_AVAILABLE
-        val low = images.ensure(cardId, url, ImageStore.Quality.LOW)
-        val high = images.ensure(cardId, url, ImageStore.Quality.HIGH)
+        val (low, high) = if (refreshedUrl != null) {
+            images.ensure(cardId, refreshedUrl, ImageStore.Quality.LOW) to images.ensure(cardId, refreshedUrl, ImageStore.Quality.HIGH)
+        } else {
+            val card = dao.getCard(cardId) ?: return ImageResult.NOT_AVAILABLE
+            externalImage(TcgcsvCatalog(tcgcsv), card) ?: return ImageResult.NOT_AVAILABLE
+        }
         if (low == null && high == null) return ImageResult.NETWORK_ERROR
         val current = dao.getCard(cardId)
         if (images.isManual(current?.imageHighPath)) images.deleteManual(current?.imageHighPath)
@@ -299,7 +307,38 @@ class CatalogRepository(
                 count++
             }
         }
+        // Carte senza immagine su TCGdex (frequenti tra le giapponesi): si prova con TCGplayer.
+        val withoutImage = dao.cardsWithoutImage(TCGPLAYER_LANGUAGES)
+        val catalog = TcgcsvCatalog(tcgcsv)
+        for ((index, card) in withoutImage.withIndex()) {
+            progress(SyncProgress(SyncPhase.IMAGES, card.name, index, withoutImage.size))
+            val (low, high) = externalImage(catalog, card) ?: continue
+            if (low != null || high != null) {
+                dao.setImagePaths(card.id, low ?: high, high ?: low)
+                count++
+            }
+        }
         return count
+    }
+
+    /**
+     * Scarica l'immagine del prodotto TCGplayer corrispondente alla carta (via TCGCSV).
+     * @param catalog TcgcsvCatalog - catalogo TCGCSV con la cache dei set già scaricati.
+     * @param card CardEntity - carta senza immagine TCGdex.
+     * @return Pair<String?, String?>? - percorsi delle immagini piccola e grande (uno dei due può
+     *         mancare se il download fallisce), oppure null se la carta non si trova su TCGplayer.
+     */
+    private suspend fun externalImage(catalog: TcgcsvCatalog, card: CardEntity): Pair<String?, String?>? {
+        val language = Language.fromCode(card.language) ?: return null
+        val match = try {
+            catalog.find(TcgcsvCardRef(language, card.setCode, card.setName, card.localId, card.name))
+        } catch (e: Exception) {
+            if (!isRecoverable(e)) throw e
+            null
+        } ?: return null
+        val id = match.product.productId
+        return images.ensureExternal(card.id, TcgcsvCatalog.imageUrl(id, high = false), ImageStore.Quality.LOW) to
+            images.ensureExternal(card.id, TcgcsvCatalog.imageUrl(id, high = true), ImageStore.Quality.HIGH)
     }
 
     /**
@@ -324,6 +363,8 @@ class CatalogRepository(
         e is ApiException || e is IOException || e is InvalidResponseException || e is IllegalArgumentException
 
     private companion object {
+        /** Lingue vendute su TCGplayer, per cui TCGCSV può fornire l'immagine mancante. */
+        val TCGPLAYER_LANGUAGES = listOf(Language.EN.code, Language.JA.code)
         const val REQUEST_INTERVAL_MS = 250L
         const val RETRY_DELAY_MS = 5_000L
         const val MAX_SEARCH_RESULTS = 60

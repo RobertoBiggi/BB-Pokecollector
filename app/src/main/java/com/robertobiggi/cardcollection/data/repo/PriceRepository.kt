@@ -10,7 +10,10 @@ import com.robertobiggi.cardcollection.core.price.PriceRequest
 import com.robertobiggi.cardcollection.core.price.ProviderSlot
 import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.price.StepOutcome
+import com.robertobiggi.cardcollection.core.price.TcgcsvPriceProvider
 import com.robertobiggi.cardcollection.core.price.TcgdexPriceProvider
+import com.robertobiggi.cardcollection.core.tcgcsv.TcgcsvCatalog
+import com.robertobiggi.cardcollection.core.tcgcsv.TcgcsvClient
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -37,9 +40,25 @@ data class PriceRunResult(val ok: Int, val fallback: Int, val failed: Int, val a
 class PriceRepository(
     private val db: AppDatabase,
     private val client: TcgdexClient,
+    private val tcgcsv: TcgcsvClient,
     private val settings: SettingsStore,
 ) {
     private val priceDao = db.priceDao()
+
+    /**
+     * Catena di fonti per un aggiornamento: TCGdex (Cardmarket e TCGplayer) e poi TCGCSV, che completa
+     * i prezzi in dollari mancanti. La pausa di TCGdex è salvata nelle impostazioni, quella di TCGCSV vale
+     * solo per l'aggiornamento in corso.
+     * @param tcgdexBreaker CircuitBreaker - circuit breaker di TCGdex, da salvare a fine aggiornamento.
+     * @return PriceChain - catena pronta.
+     */
+    private fun buildChain(tcgdexBreaker: CircuitBreaker): PriceChain = PriceChain(
+        listOf(
+            ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), tcgdexBreaker),
+            // Il client TCGCSV distanzia già le richieste reali: qui niente attese sulle risposte in cache.
+            ProviderSlot(TcgcsvPriceProvider(TcgcsvCatalog(tcgcsv)), RateLimiter(0), CircuitBreaker()),
+        ),
+    )
 
     /**
      * Esegue l'aggiornamento prezzi delle carte visibili di una collezione.
@@ -61,7 +80,7 @@ class PriceRepository(
         }
 
         val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
-        val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
+        val chain = buildChain(breaker)
 
         var ok = 0
         var fallback = 0
@@ -128,7 +147,7 @@ class PriceRepository(
         val variants = db.catalogDao().variantsOf(listOf(cardId))
         val types = variants.map { it.type }
         val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
-        val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
+        val chain = buildChain(breaker)
         var ok = 0
         var fallback = 0
         var failed = 0
@@ -172,6 +191,10 @@ class PriceRepository(
                 tcgdexId = card.tcgdexId,
                 variant = type,
                 cardHasNormalAndHolo = VariantType.NORMAL.name in types && VariantType.HOLO.name in types,
+                setCode = card.setCode,
+                setName = card.setName,
+                localId = card.localId,
+                name = card.name,
             ),
         )
         val quote = outcome.quote
