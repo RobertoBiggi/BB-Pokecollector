@@ -61,12 +61,15 @@ import java.io.File
 fun CardImage(card: CardUi, path: String?, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(8.dp)
     Box(modifier.aspectRatio(63f / 88f).clip(shape)) {
-        if (path != null && File(path).isFile) {
+        // Se il file manca, Coil segnala l'errore e si mostra il segnaposto (niente accessi al disco qui).
+        var failed by remember(path) { mutableStateOf(false) }
+        if (path != null && !failed) {
             AsyncImage(
                 model = File(path),
                 contentDescription = "${card.card.name} ${card.printedCode}",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxWidth().aspectRatio(63f / 88f),
+                onError = { failed = true },
             )
         } else {
             Placeholder(card)

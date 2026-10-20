@@ -62,6 +62,12 @@ data class CardUi(
 
     /** Percorso dell'immagine locale migliore per la griglia. */
     val thumbnailPath: String? get() = card.imageLowPath ?: card.imageHighPath
+
+    companion object {
+        /** Ordine di uscita: data del set, poi set e numero (le carte senza data in fondo). */
+        val RELEASE_ORDER: Comparator<CardUi> =
+            compareBy<CardUi>({ it.card.releaseDate ?: "9999" }, { it.card.setId }, { it.card.localId.padStart(4, '0') })
+    }
 }
 
 /** Riepilogo di una collezione per l'elenco iniziale. */
@@ -107,13 +113,29 @@ object LibraryAssembler {
      * @param collectionId Long - collezione.
      * @return List<CardUi> - carte visibili con varianti, quantità della collezione e prezzi.
      */
-    fun libraryOf(state: DbState, collectionId: Long): List<CardUi> {
+    fun libraryOf(state: DbState, collectionId: Long): List<CardUi> =
+        libraryOf(state, collectionId, state.variants.groupBy { it.cardId }, state.snapshots.groupBy { it.variantId })
+
+    /**
+     * Come [libraryOf], con varianti e prezzi già raggruppati (per non rifarlo a ogni collezione).
+     * @param state DbState - tabelle osservate.
+     * @param collectionId Long - collezione.
+     * @param variantsByCard Map<String, List<CardVariantEntity>> - varianti per carta.
+     * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prezzi per variante, dal più vecchio.
+     * @return List<CardUi> - carte visibili della collezione.
+     */
+    private fun libraryOf(
+        state: DbState,
+        collectionId: Long,
+        variantsByCard: Map<String, List<CardVariantEntity>>,
+        snapsByVariant: Map<String, List<PriceSnapshotEntity>>,
+    ): List<CardUi> {
         val ids = visibleCardIds(collectionId, state.memberships, state.queries)
-        return assemble(
+        return assembleGrouped(
             cards = state.cards.filter { it.id in ids },
-            variants = state.variants,
-            entries = state.entries.filter { it.collectionId == collectionId },
-            snapshots = state.snapshots,
+            variantsByCard = variantsByCard,
+            entryById = state.entries.filter { it.collectionId == collectionId }.associateBy { it.variantId },
+            snapsByVariant = snapsByVariant,
         )
     }
 
@@ -122,17 +144,43 @@ object LibraryAssembler {
      * @param state DbState - tabelle osservate.
      * @return List<CollectionSummary> - una voce per collezione, in ordine di creazione.
      */
-    fun summaries(state: DbState): List<CollectionSummary> = state.collections.map { collection ->
-        val library = libraryOf(state, collection.id)
+    fun summaries(state: DbState): List<CollectionSummary> {
+        val variantsByCard = state.variants.groupBy { it.cardId }
+        val snapsByVariant = state.snapshots.groupBy { it.variantId }
+        return state.collections.map { collection -> summaryOf(state, collection, variantsByCard, snapsByVariant) }
+    }
+
+    /**
+     * Riepilogo di una collezione.
+     * @param state DbState - tabelle osservate.
+     * @param collection CollectionEntity - collezione.
+     * @param variantsByCard Map<String, List<CardVariantEntity>> - varianti per carta.
+     * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prezzi per variante.
+     * @return CollectionSummary - numero di carte, statistiche e copertina.
+     */
+    private fun summaryOf(
+        state: DbState,
+        collection: CollectionEntity,
+        variantsByCard: Map<String, List<CardVariantEntity>>,
+        snapsByVariant: Map<String, List<PriceSnapshotEntity>>,
+    ): CollectionSummary {
+        val library = libraryOf(state, collection.id, variantsByCard, snapsByVariant)
         val cover = library.firstOrNull { it.copies > 0 && it.thumbnailPath != null }?.thumbnailPath
             ?: library.firstOrNull { it.thumbnailPath != null }?.thumbnailPath
-        CollectionSummary(
+        return CollectionSummary(
             collection = collection,
             cardCount = library.size,
-            stats = CollectionStats.compute(library.flatMap { c -> c.variants.map { it.toSlotInput() } }),
+            stats = statsOf(library),
             coverPath = cover,
         )
     }
+
+    /**
+     * Statistiche di un insieme di carte.
+     * @param cards List<CardUi> - carte da considerare.
+     * @return StatsSummary - completamento, valore e mancanti.
+     */
+    fun statsOf(cards: List<CardUi>): StatsSummary = CollectionStats.compute(cards.flatMap { c -> c.variants.map { it.toSlotInput() } })
 
     /**
      * Unisce carte, varianti, dati utente e prezzi.
@@ -147,13 +195,25 @@ object LibraryAssembler {
         variants: List<CardVariantEntity>,
         entries: List<CollectionEntryEntity>,
         snapshots: List<PriceSnapshotEntity>,
+    ): List<CardUi> = assembleGrouped(cards, variants.groupBy { it.cardId }, entries.associateBy { it.variantId }, snapshots.groupBy { it.variantId })
+
+    /**
+     * Unisce carte, varianti, dati utente e prezzi già raggruppati.
+     * @param cards List<CardEntity> - carte tracciate.
+     * @param variantsByCard Map<String, List<CardVariantEntity>> - varianti per carta.
+     * @param entryById Map<String, CollectionEntryEntity> - dati dell'utente per variante.
+     * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prezzi per variante, dal più vecchio.
+     * @return List<CardUi> - carte con varianti ordinate secondo [VariantType].
+     */
+    private fun assembleGrouped(
+        cards: List<CardEntity>,
+        variantsByCard: Map<String, List<CardVariantEntity>>,
+        entryById: Map<String, CollectionEntryEntity>,
+        snapsByVariant: Map<String, List<PriceSnapshotEntity>>,
     ): List<CardUi> {
-        val variantsByCard = variants.groupBy { it.cardId }
-        val entryById = entries.associateBy { it.variantId }
-        val snapsByVariant = snapshots.groupBy { it.variantId }
         return cards.map { card ->
             val list = variantsByCard[card.id].orEmpty().mapNotNull { v ->
-                val type = VariantType.entries.firstOrNull { it.name == v.type } ?: return@mapNotNull null
+                val type = VariantType.fromName(v.type) ?: return@mapNotNull null
                 val entry = entryById[v.id]
                 val snaps = snapsByVariant[v.id].orEmpty()
                 VariantUi(

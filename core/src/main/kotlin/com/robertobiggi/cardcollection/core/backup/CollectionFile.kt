@@ -359,7 +359,7 @@ object CollectionFiles {
         if (!Validators.isValidRemoteId(r.tcgdexId) || !Validators.isValidRemoteId(r.setId)) return null
         if (r.id != "${language.code}:${r.tcgdexId}") return null
         val variants = (r.variants ?: typesInEntries.ifEmpty { listOf(VariantType.NORMAL.name) })
-            .mapNotNull { v -> VariantType.entries.firstOrNull { it.name == v } }.distinct()
+            .mapNotNull { VariantType.fromName(it) }.distinct()
         val name = r.name?.replace(CONTROL_CHARS, "")?.trim().orEmpty()
         if (variants.isEmpty() || name.isEmpty()) return null
         val localId = r.localId?.takeIf { it.isNotBlank() } ?: r.tcgdexId.substringAfterLast('-')

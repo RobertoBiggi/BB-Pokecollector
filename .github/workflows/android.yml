@@ -52,6 +52,8 @@ jobs:
           actual=$("$tools/apksigner" verify --print-certs "$apk" | grep -m1 "SHA-256 digest" | awk '{print $NF}')
           test "$actual" = "$expected"
           "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.robertobiggi.cardcollection.debug'"
+          # La build release (minimizzata da R8) deve contenere i nomi dei Pokémon.
+          unzip -l app/build/outputs/apk/release/*.apk | grep -q "com/robertobiggi/cardcollection/core/model/pokemon-names.tsv"
 
       # Solo per i push del repo: gli APK delle pull request di terzi non vengono pubblicati.
       - name: Pubblica APK debug

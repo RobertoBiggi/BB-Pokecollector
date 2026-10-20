@@ -135,7 +135,7 @@ fun jobProgressText(state: JobState, prices: Boolean): String {
     if (state.waitingForNetwork) return stringResource(R.string.job_waiting)
     val label = state.label ?: return stringResource(R.string.job_starting)
     if (prices) {
-        val variant = VariantType.entries.firstOrNull { it.name == state.phase }
+        val variant = VariantType.fromName(state.phase)
         val item = if (variant != null) stringResource(R.string.job_price_item, label, stringResource(variant.labelRes())) else label
         return stringResource(R.string.job_item, item, state.done + 1, state.total)
     }

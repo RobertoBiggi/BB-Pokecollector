@@ -18,6 +18,8 @@ import com.robertobiggi.cardcollection.data.local.CardVariantEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 /** Avanzamento dell'aggiornamento prezzi: carta e variante in lavorazione. */
 data class PriceProgress(val cardName: String, val variant: VariantType, val done: Int, val total: Int)
@@ -66,44 +68,52 @@ class PriceRepository(
         var failed = 0
         var consecutiveNetworkErrors = 0
         var abortReason: AbortReason? = null
-        for ((index, variant) in targets.withIndex()) {
-            val card = cards[variant.cardId] ?: continue
-            val type = VariantType.entries.firstOrNull { it.name == variant.type } ?: continue
-            if (chain.allCircuitsOpen()) {
-                abortReason = AbortReason.SOURCE_PAUSED
-                break
-            }
-            progress(PriceProgress(card.name, type, index, targets.size))
-            when (checkVariant(chain, card, variant, typesByCard[card.id].orEmpty())) {
-                VariantCheck.OK -> { ok++; consecutiveNetworkErrors = 0 }
-                VariantCheck.FALLBACK -> { fallback++; consecutiveNetworkErrors = 0 }
-                VariantCheck.FAILED -> { failed++; consecutiveNetworkErrors = 0 }
-                VariantCheck.NETWORK_ERROR -> {
-                    failed++
-                    consecutiveNetworkErrors++
-                    if (consecutiveNetworkErrors >= MAX_NETWORK_ERRORS) {
-                        abortReason = AbortReason.OFFLINE
-                        break
-                    }
+        var completed = false
+        try {
+            for ((index, variant) in targets.withIndex()) {
+                val card = cards[variant.cardId] ?: continue
+                val type = VariantType.fromName(variant.type) ?: continue
+                if (chain.allCircuitsOpen()) {
+                    abortReason = AbortReason.SOURCE_PAUSED
+                    break
                 }
-                VariantCheck.SKIPPED -> Unit
+                progress(PriceProgress(card.name, type, index, targets.size))
+                when (checkVariant(chain, card, variant, typesByCard[card.id].orEmpty())) {
+                    VariantCheck.OK -> { ok++; consecutiveNetworkErrors = 0 }
+                    VariantCheck.FALLBACK -> { fallback++; consecutiveNetworkErrors = 0 }
+                    VariantCheck.FAILED -> { failed++; consecutiveNetworkErrors = 0 }
+                    VariantCheck.NETWORK_ERROR -> {
+                        failed++
+                        consecutiveNetworkErrors++
+                        if (consecutiveNetworkErrors >= MAX_NETWORK_ERRORS) {
+                            abortReason = AbortReason.OFFLINE
+                            break
+                        }
+                    }
+                    VariantCheck.SKIPPED -> Unit
+                }
+            }
+            completed = true
+        } finally {
+            // Anche se il lavoro viene interrotto, il run non resta "in corso" per sempre.
+            withContext(NonCancellable) {
+                settings.setTcgdexPausedUntil(breaker.openUntil)
+                priceDao.updateRun(
+                    PriceRunEntity(
+                        id = runId,
+                        startedAt = startedAt,
+                        finishedAt = System.currentTimeMillis(),
+                        status = if (completed && abortReason == null) STATUS_DONE else STATUS_ABORTED,
+                        okCount = ok,
+                        fallbackCount = fallback,
+                        failCount = failed,
+                        summary = abortReason?.name,
+                        collectionId = collectionId,
+                    ),
+                )
+                priceDao.pruneRuns(collectionId, KEEP_RUNS)
             }
         }
-        settings.setTcgdexPausedUntil(breaker.openUntil)
-
-        priceDao.updateRun(
-            PriceRunEntity(
-                id = runId,
-                startedAt = startedAt,
-                finishedAt = System.currentTimeMillis(),
-                status = if (abortReason == null) STATUS_DONE else STATUS_ABORTED,
-                okCount = ok,
-                fallbackCount = fallback,
-                failCount = failed,
-                summary = abortReason?.name,
-                collectionId = collectionId,
-            ),
-        )
         return PriceRunResult(ok, fallback, failed, abortReason)
     }
 
@@ -154,7 +164,7 @@ class PriceRepository(
      * @return VariantCheck - esito; SKIPPED se lingua o tipo non sono riconosciuti.
      */
     private suspend fun checkVariant(chain: PriceChain, card: CardEntity, variant: CardVariantEntity, types: List<String>): VariantCheck {
-        val type = VariantType.entries.firstOrNull { it.name == variant.type } ?: return VariantCheck.SKIPPED
+        val type = VariantType.fromName(variant.type) ?: return VariantCheck.SKIPPED
         val language = Language.fromCode(card.language) ?: return VariantCheck.SKIPPED
         val outcome = chain.fetch(
             PriceRequest(
@@ -213,6 +223,9 @@ class PriceRepository(
     companion object {
         /** Snapshot conservati per variante. */
         const val KEEP_SNAPSHOTS = 10
+
+        /** Aggiornamenti prezzi conservati nel registro di ogni collezione. */
+        const val KEEP_RUNS = 10
         const val STATUS_RUNNING = "RUNNING"
         const val STATUS_DONE = "DONE"
         const val STATUS_ABORTED = "ABORTED"

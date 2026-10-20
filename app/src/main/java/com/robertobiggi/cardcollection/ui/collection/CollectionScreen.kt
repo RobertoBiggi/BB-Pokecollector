@@ -71,11 +71,15 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
  */
 fun applyFilter(cards: List<CardUi>, filter: CollectionFilter): List<CardUi> {
     val q = filter.query.trim().lowercase()
+    // Nome confrontato senza accenti e punteggiatura, anche tramite i nomi del Pokémon in altre lingue.
+    val normalized = PokemonNames.normalize(q)
     val dexMatches = PokemonNames.dexIdsMatching(q)
     val filtered = cards.filter { c ->
         (filter.language == null || c.language == filter.language) &&
-            (q.isEmpty() || c.card.name.lowercase().contains(q) || c.printedCode.lowercase().contains(q) ||
-                c.card.setName.lowercase().contains(q) || (c.card.dexId != null && c.card.dexId in dexMatches) || (c.card.rarity?.lowercase()?.contains(q) == true)) &&
+            (q.isEmpty() || c.card.name.lowercase().contains(q) ||
+                (normalized.isNotEmpty() && PokemonNames.normalize(c.card.name).contains(normalized)) ||
+                c.printedCode.lowercase().contains(q) || c.card.setName.lowercase().contains(q) ||
+                (c.card.dexId != null && c.card.dexId in dexMatches) || (c.card.rarity?.lowercase()?.contains(q) == true)) &&
             when (filter.owned) {
                 OwnedFilter.ALL -> true
                 OwnedFilter.OWNED -> c.copies > 0
@@ -83,7 +87,7 @@ fun applyFilter(cards: List<CardUi>, filter: CollectionFilter): List<CardUi> {
             }
     }
     return when (filter.sort) {
-        SortMode.RELEASE -> filtered.sortedWith(compareBy<CardUi>({ it.card.releaseDate ?: "9999" }, { it.card.setId }, { it.card.localId.padStart(4, '0') }))
+        SortMode.RELEASE -> filtered.sortedWith(CardUi.RELEASE_ORDER)
         SortMode.PRICE -> filtered.sortedByDescending { it.minEur ?: -1.0 }
         SortMode.CODE -> filtered.sortedWith(compareBy<CardUi>({ it.card.setCode == null }, { it.card.setCode ?: it.card.setId }, { it.card.localId.padStart(4, '0') }))
         SortMode.NAME -> filtered.sortedBy { it.card.name.lowercase() }
@@ -106,7 +110,7 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
     val priceJob by vm.priceJob.collectAsStateWithLifecycle()
     val name by vm.collectionName.collectAsStateWithLifecycle()
     val cards = library
-    val visible = remember(cards, filter) { applyFilter(cards.orEmpty(), filter) }
+    val visible by vm.visibleCards.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
