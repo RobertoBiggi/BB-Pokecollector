@@ -56,12 +56,39 @@ jobs:
             jq -c . body.json 2>/dev/null | head -c 6000 || head -c 2000 body.json
             echo
           }
-          P=https://api.pokemontcg.io/v2
-          SEL="select=id,name,number,rarity,set,images,tcgplayer,cardmarket"
-          probe "$P/sets?orderBy=-releaseDate&pageSize=10&select=id,name,ptcgoCode,printedTotal,total,releaseDate"
-          probe "$P/cards?q=name:mawile&pageSize=1"
-          probe "$P/cards?q=set.ptcgoCode:SVI%20number:46&$SEL"
-          probe "$P/cards?q=set.ptcgoCode:MEG%20number:46&$SEL"
-          probe "$P/cards?q=set.name:%22Lost%20Origin%22%20number:TG17&$SEL"
-          probe "$P/cards?q=name:mawile%20set.ptcgoCode:PHF&$SEL"
-          probe "https://api.tcgdex.net/v2/en/sets/me01"
+          # Secondo tentativo su pokemontcg.io, per escludere un errore passeggero.
+          probe "https://api.pokemontcg.io/v2/cards?q=name:mawile&pageSize=1&select=id,name"
+          T=https://tcgcsv.com/tcgplayer
+          echo "===== TCGCSV categorie Pokémon"
+          curl -sS --max-time 60 "$T/categories" | jq -c '.results[] | select(.name | test("okemon")) | {categoryId, name, displayName}'
+          for cat in $(curl -sS --max-time 60 "$T/categories" | jq -r '.results[] | select(.name | test("okemon")) | .categoryId'); do
+            echo "===== TCGCSV gruppi categoria $cat (ultimi 15 per data)"
+            curl -sS --max-time 60 "$T/$cat/groups" | tee "groups-$cat.json" | jq -c '[.results[] | {groupId, name, abbreviation, publishedOn}] | sort_by(.publishedOn) | reverse | .[0:15][]'
+            echo "totale gruppi: $(jq '.results | length' "groups-$cat.json")"
+          done
+          echo "===== TCGCSV gruppi con abbreviazione M3, MEG, PFL, SVI, SV7"
+          cat groups-*.json | jq -c '.results[] | select(.abbreviation as $a | ["M3","MEG","PFL","SVI","SV7","M2a"] | index($a)) | {categoryId, groupId, name, abbreviation}'
+          g=$(cat groups-*.json | jq -r '[.results[] | select(.abbreviation == "M3")][0].groupId // empty')
+          c=$(cat groups-*.json | jq -r '[.results[] | select(.abbreviation == "M3")][0].categoryId // empty')
+          if [ -n "$g" ]; then
+            echo "===== TCGCSV prodotti gruppo M3 ($c/$g): numero 117 e un esempio completo"
+            curl -sS --max-time 60 "$T/$c/$g/products" | tee products.json | jq -c '.results[0]'
+            jq -c '.results[] | select(any(.extendedData[]?; .name == "Number" and (.value | startswith("117")))) | {productId, name, cleanName, imageUrl, url, extendedData}' products.json
+            echo "===== TCGCSV prezzi gruppo M3"
+            curl -sS --max-time 60 "$T/$c/$g/prices" | tee prices.json | jq -c '.results[0:3][]'
+            pid=$(jq -r '[.results[] | select(any(.extendedData[]?; .name == "Number" and (.value | startswith("117"))))][0].productId // empty' products.json)
+            [ -n "$pid" ] && jq -c --argjson p "$pid" '.results[] | select(.productId == $p)' prices.json
+          fi
+          g=$(cat groups-*.json | jq -r '[.results[] | select(.abbreviation == "MEG")][0].groupId // empty')
+          if [ -n "$g" ]; then
+            echo "===== TCGCSV gruppo MEG: Mawile/Magneton 046 e prezzi"
+            curl -sS --max-time 60 "$T/3/$g/products" > products.json
+            jq -c '.results[] | select(any(.extendedData[]?; .name == "Number" and (.value | startswith("046")))) | {productId, name, imageUrl, extendedData}' products.json
+            pid=$(jq -r '[.results[] | select(any(.extendedData[]?; .name == "Number" and (.value | startswith("046"))))][0].productId // empty' products.json)
+            [ -n "$pid" ] && curl -sS --max-time 60 "$T/3/$g/prices" | jq -c --argjson p "$pid" '.results[] | select(.productId == $p)'
+          fi
+          echo "===== TCGCSV FAQ (testo)"
+          curl -sS --max-time 60 https://tcgcsv.com/faq | sed -e 's/<[^>]*>/ /g' | tr -s ' \n' | head -c 6000
+          echo
+          echo "===== Header risposta TCGCSV"
+          curl -sSI --max-time 60 "$T/categories" | head -20
