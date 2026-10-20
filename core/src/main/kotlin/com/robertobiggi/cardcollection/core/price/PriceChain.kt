@@ -25,7 +25,8 @@ data class ChainStep(val providerId: String, val outcome: StepOutcome)
  *
  * @property quote prezzo trovato, oppure null.
  * @property steps tentativi effettuati, in ordine.
- * @property usedFallback true se il prezzo è arrivato dopo un errore, un retry o da una fonte non primaria.
+ * @property usedFallback true se il prezzo è arrivato dopo un retry o da una fonte non primaria
+ *           (il solo completamento con una seconda fonte non conta).
  */
 data class ChainOutcome(val quote: PriceQuote?, val steps: List<ChainStep>, val usedFallback: Boolean)
 
@@ -39,7 +40,8 @@ data class ProviderSlot(
 )
 
 /**
- * Prova le fonti in ordine per ogni variante e si ferma alla prima che ha un prezzo.
+ * Prova le fonti in ordine per ogni variante. Si ferma quando ha sia il prezzo in euro sia quello in
+ * dollari: se la prima fonte ne ha solo uno, le successive completano quello mancante.
  * Su 429 e 5xx ritenta con attesa esponenziale; i blocchi (429/403) alimentano il circuit breaker.
  *
  * @param slots fonti in ordine di priorità.
@@ -67,6 +69,8 @@ class PriceChain(
     suspend fun fetch(request: PriceRequest): ChainOutcome {
         val steps = mutableListOf<ChainStep>()
         var retried = false
+        var found: PriceQuote? = null
+        var firstIndex = -1
         for ((index, slot) in slots.withIndex()) {
             val id = slot.provider.id
             if (slot.breaker.isOpen()) {
@@ -81,7 +85,15 @@ class PriceChain(
                     slot.breaker.recordSuccess()
                     if (quote != null && quote.hasAnyPrice()) {
                         steps += ChainStep(id, StepOutcome.OK)
-                        return ChainOutcome(quote, steps, usedFallback = index > 0 || retried || steps.size > 1)
+                        val current = found
+                        if (current == null) {
+                            found = quote
+                            firstIndex = index
+                        } else {
+                            found = current.complementedBy(quote)
+                        }
+                        if (found.isComplete()) return ChainOutcome(found, steps, usedFallback = firstIndex > 0 || retried)
+                        break
                     }
                     steps += ChainStep(id, StepOutcome.NO_DATA)
                     break
@@ -123,6 +135,6 @@ class PriceChain(
                 }
             }
         }
-        return ChainOutcome(null, steps, usedFallback = false)
+        return ChainOutcome(found, steps, usedFallback = found != null && (firstIndex > 0 || retried))
     }
 }

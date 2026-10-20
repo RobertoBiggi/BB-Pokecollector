@@ -13,10 +13,10 @@ Ogni collezione traccia le carte che scegli, con ogni variante (normal, holo, re
 - **Lingua della collezione:** EN o JP per una collezione in una sola lingua (le ricerche non la chiedono più), oppure Mista per scegliere la lingua a ogni ricerca e mescolare carte di lingue diverse.
 - **Lingua dell'app:** italiano o inglese, da Impostazioni, oppure quella di sistema.
 - **Slot per variante:** ogni variante è uno slot della collezione. Per ognuna segni quante copie hai e in che condizione; con "la voglio" decidi se conta tra le mancanti. Nella griglia il badge `1/2` indica le varianti che hai su quelle che vuoi o hai, e `×3` le copie totali.
-- **Azioni sulla carta:** dal dettaglio aggiorni il prezzo di quella sola carta, riscarichi l'immagine da TCGdex oppure ne scegli una dalla galleria (utile per le carte giapponesi senza immagine). L'immagine scelta viene ridimensionata e ricodificata in WebP, senza metadati.
+- **Azioni sulla carta:** dal dettaglio aggiorni il prezzo di quella sola carta, riscarichi l'immagine (da TCGdex o, se lì manca, da TCGplayer) oppure ne scegli una dalla galleria. L'immagine scelta viene ridimensionata e ricodificata in WebP, senza metadati.
 - **Codice stampato:** ogni carta mostra il codice in basso a sinistra, come sulla carta vera (es. `POR 032/088`, `M1L 046/063`). Puoi cercare e ordinare anche per codice.
 - **Aggiungi una carta per codice:** in Gestione → "Aggiungi una carta singola" puoi cercare su TCGdex per nome oppure per codice stampato: `M3 117/080`, `117/080` (anche con parole in più come la rarità, es. `117/080 MUR`), `MEG 046/132` o l'id TCGdex `M3-117`.
-- **Prezzi su richiesta:** l'aggiornamento parte solo quando lo chiedi. Prende Cardmarket in EUR (disponibile anche per le carte JP) e TCGplayer in USD tramite TCGdex, senza mai contattare cardmarket.com. L'ultimo prezzo resta salvato in locale; puoi anche inserirne uno a mano.
+- **Prezzi su richiesta:** l'aggiornamento parte solo quando lo chiedi. Prende Cardmarket in EUR (disponibile anche per le carte JP) e TCGplayer in USD tramite TCGdex, senza mai contattare cardmarket.com. Se manca il prezzo in dollari, per le carte inglesi e giapponesi lo completa TCGCSV (copia giornaliera di TCGplayer). L'ultimo prezzo resta salvato in locale; puoi anche inserirne uno a mano.
 - **Se la fonte blocca:** in caso di risposta 429 l'app riprova con attese crescenti. Dopo 3 blocchi di fila mette la fonte in pausa per 6 ore.
 - **Mancanti e statistiche:** costo stimato delle carte che mancano, percentuale di completamento, valore della collezione (EUR e USD separati), avanzamento per lingua e per serie.
 
@@ -61,4 +61,4 @@ Il codice è distribuito con licenza [MIT](LICENSE). I dati di terze parti inclu
 
 ## Crediti
 
-Catalogo, immagini e prezzi (Cardmarket e TCGplayer) arrivano da [TCGdex](https://tcgdex.dev). I nomi dei Pokémon in più lingue vengono da [PokeAPI](https://pokeapi.co) (licenza BSD-3-Clause). Pokémon e i nomi dei Pokémon sono marchi di Nintendo, Creatures e GAME FREAK; questa app non è affiliata né approvata da The Pokémon Company.
+Catalogo, immagini e prezzi (Cardmarket e TCGplayer) arrivano da [TCGdex](https://tcgdex.dev). I prezzi TCGplayer e le immagini che mancano su TCGdex, per le carte inglesi e giapponesi, arrivano da [TCGCSV](https://tcgcsv.com). I nomi dei Pokémon in più lingue vengono da [PokeAPI](https://pokeapi.co) (licenza BSD-3-Clause). Pokémon e i nomi dei Pokémon sono marchi di Nintendo, Creatures e GAME FREAK; questa app non è affiliata né approvata da The Pokémon Company.
