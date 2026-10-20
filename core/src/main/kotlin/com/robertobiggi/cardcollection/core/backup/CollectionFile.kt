@@ -22,13 +22,13 @@ import java.util.Base64
 
 /** Ricerca per nome salvata nel file. */
 @Serializable
-data class BackupQuery(val language: String, val pattern: String, val enabled: Boolean)
+data class BackupQuery(val language: String, val pattern: String, val enabled: Boolean = true)
 
 /** Stato di una variante nella collezione. */
 @Serializable
 data class BackupEntry(
     val variantId: String,
-    val quantity: Int,
+    val quantity: Int = 1,
     val condition: String = "NM",
     val wanted: Boolean = true,
     val notes: String? = null,
@@ -40,7 +40,7 @@ data class BackupManualPrice(val variantId: String, val eur: Double, val fetched
 
 /** Nome e ricerche della collezione esportata. */
 @Serializable
-data class CollectionInfo(val name: String, val queries: List<BackupQuery> = emptyList())
+data class CollectionInfo(val name: String? = null, val queries: List<BackupQuery> = emptyList())
 
 /**
  * Carta del catalogo inclusa nel file, così l'import funziona anche offline.
@@ -51,19 +51,19 @@ data class CardRecord(
     val id: String,
     val language: String,
     val tcgdexId: String,
-    val name: String,
+    val name: String? = null,
     val setId: String,
-    val setName: String,
+    val setName: String? = null,
     val setCode: String? = null,
     val serieId: String? = null,
     val serieName: String? = null,
-    val localId: String,
-    val printedNumber: String,
+    val localId: String? = null,
+    val printedNumber: String? = null,
     val rarity: String? = null,
     val releaseDate: String? = null,
     val illustrator: String? = null,
     val imageUrl: String? = null,
-    val variants: List<String>,
+    val variants: List<String>? = null,
     val hidden: Boolean = false,
     val imageLow: String? = null,
     val imageHigh: String? = null,
@@ -73,15 +73,15 @@ data class CardRecord(
 @Serializable
 data class PriceRecord(
     val variantId: String,
-    val source: String,
+    val source: String = CollectionFiles.IMPORTED_SOURCE,
     val eur: Double? = null,
     val eurLow: Double? = null,
     val eurAvg30: Double? = null,
     val usd: Double? = null,
     val usdLow: Double? = null,
     val sourceUpdatedAt: String? = null,
-    val fetchedAt: Long,
-    val confidence: String,
+    val fetchedAt: Long = 0,
+    val confidence: String = "MEDIUM",
 )
 
 /** File di una singola collezione (schema 2), con o senza immagini. */
@@ -90,8 +90,8 @@ data class CollectionFileV2(
     val schema: Int = CollectionFiles.SCHEMA_COLLECTION,
     val app: String = CollectionFiles.APP_ID,
     val type: String = CollectionFiles.TYPE_COLLECTION,
-    val exportedAt: String,
-    val info: CollectionInfo,
+    val exportedAt: String? = null,
+    val info: CollectionInfo = CollectionInfo(),
     val cards: List<CardRecord>,
     val entries: List<BackupEntry>,
     val prices: List<PriceRecord> = emptyList(),
@@ -173,6 +173,7 @@ object CollectionFiles {
         ignoreUnknownKeys = true
         encodeDefaults = true
         explicitNulls = false
+        coerceInputValues = true
     }
 
     /**
@@ -223,18 +224,19 @@ object CollectionFiles {
      * @return CollectionImportResult - esito.
      */
     private fun readV2(env: ImportEnvelope): CollectionImportResult {
-        val info = env.info ?: return CollectionImportResult.Error(ImportError.MISSING_INFO)
+        val info = env.info ?: CollectionInfo()
         if (env.cards.size > MAX_CARDS || env.entries.size > MAX_ENTRIES || env.prices.size > MAX_PRICES) {
             return CollectionImportResult.Error(ImportError.TOO_MANY_ITEMS)
         }
         var skipped = 0
-        val name = cleanName(info.name)
+        val name = info.name?.let(::cleanName)
         val queries = validQueries(info.queries).also { skipped += info.queries.size - it.size }
         val cards = env.cards.mapNotNull { record -> toImportedCard(record).also { if (it == null) skipped++ } }
             .distinctBy { it.card.id }
         val cardIds = cards.map { it.card.id }.toSet()
         val entries = validEntries(env.entries) { it.substringBefore('|') in cardIds }.also { skipped += env.entries.size - it.size }
-        val prices = env.prices.filter { p ->
+        val now = System.currentTimeMillis()
+        val prices = env.prices.map { if (it.fetchedAt <= 0) it.copy(fetchedAt = now) else it }.filter { p ->
             validPrice(p, cardIds).also { if (!it) skipped++ }
         }
         return CollectionImportResult.Ok(ImportedCollection(name, queries, cards, entries, prices), skipped)
@@ -261,6 +263,9 @@ object CollectionFiles {
 
     /** Fonte usata per i prezzi inseriti a mano. */
     const val MANUAL_SOURCE = "Manuale"
+
+    /** Fonte assegnata ai prezzi importati senza indicazione della fonte. */
+    const val IMPORTED_SOURCE = "Importato"
 
     /**
      * Pulisce il nome di una collezione.
@@ -318,20 +323,23 @@ object CollectionFiles {
         val language = Language.fromCode(r.language) ?: return null
         if (!Validators.isValidRemoteId(r.tcgdexId) || !Validators.isValidRemoteId(r.setId)) return null
         if (r.id != "${language.code}:${r.tcgdexId}") return null
-        val variants = r.variants.mapNotNull { v -> VariantType.entries.firstOrNull { it.name == v } }.distinct()
-        if (variants.isEmpty() || r.name.isBlank()) return null
+        val variants = (r.variants ?: listOf(VariantType.NORMAL.name))
+            .mapNotNull { v -> VariantType.entries.firstOrNull { it.name == v } }.distinct()
+        val name = r.name?.trim().orEmpty()
+        if (variants.isEmpty() || name.isEmpty()) return null
+        val localId = r.localId?.takeIf { it.isNotBlank() } ?: r.tcgdexId.substringAfterLast('-')
         val card = CatalogCard(
             id = r.id,
             language = language,
             tcgdexId = r.tcgdexId,
-            name = r.name.trim().take(120),
+            name = name.take(120),
             setId = r.setId,
-            setName = r.setName.take(120),
+            setName = (r.setName?.takeIf { it.isNotBlank() } ?: r.setId).take(120),
             setCode = r.setCode?.take(16),
             serieId = r.serieId?.take(40),
             serieName = r.serieName?.take(80),
-            localId = r.localId.take(16),
-            printedNumber = r.printedNumber.take(24),
+            localId = localId.take(16),
+            printedNumber = (r.printedNumber?.takeIf { it.isNotBlank() } ?: localId).take(24),
             rarity = r.rarity?.take(60),
             releaseDate = r.releaseDate?.take(10),
             illustrator = r.illustrator?.take(80),
