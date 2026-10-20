@@ -54,6 +54,10 @@ Requisiti: Android 8.0 o successivo.
 
 Il workflow manuale `.github/workflows/tcgdex-probe.yml` stampa una risposta reale di TCGdex (es. `ja/cards/M3-117`), utile per verificare l'API da un ambiente che non la raggiunge.
 
+## Licenza
+
+Il codice è distribuito con licenza [MIT](LICENSE). I dati di terze parti inclusi o scaricati (TCGdex, PokeAPI, immagini delle carte) restano soggetti alle rispettive licenze e marchi, indicati qui sotto.
+
 ## Crediti
 
 Catalogo, immagini e prezzi (Cardmarket e TCGplayer) arrivano da [TCGdex](https://tcgdex.dev). I nomi dei Pokémon in più lingue vengono da [PokeAPI](https://pokeapi.co) (licenza BSD-3-Clause). Pokémon e i nomi dei Pokémon sono marchi di Nintendo, Creatures e GAME FREAK; questa app non è affiliata né approvata da The Pokémon Company.
