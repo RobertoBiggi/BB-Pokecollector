@@ -274,6 +274,7 @@ class CatalogRepository(
                     imageHighPath = existing?.imageHighPath,
                     queryId = existing?.queryId ?: legacyQueryId,
                     catalogUpdatedAt = System.currentTimeMillis(),
+                    dexId = card.dexId ?: existing?.dexId,
                 ),
             )
             dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name) })

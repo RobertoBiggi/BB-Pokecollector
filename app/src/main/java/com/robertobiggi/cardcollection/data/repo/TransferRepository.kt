@@ -209,7 +209,7 @@ class TransferRepository(
         id = id, language = language, tcgdexId = tcgdexId, name = name, setId = setId, setName = setName,
         setCode = setCode, serieId = serieId, serieName = serieName, localId = localId, printedNumber = printedNumber,
         rarity = rarity, releaseDate = releaseDate, illustrator = illustrator, imageUrl = imageUrl,
-        variants = variants, hidden = hidden, imageLow = low, imageHigh = high,
+        variants = variants, hidden = hidden, imageLow = low, imageHigh = high, dexId = dexId,
     )
 
     /**

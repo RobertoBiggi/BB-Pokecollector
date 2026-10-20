@@ -73,6 +73,7 @@ data class CatalogVariant(
  *
  * @property id identificativo univoco locale nel formato "lingua:idTcgdex" (es. "en:me01-094").
  * @property setCode sigla stampata in basso a sinistra (es. "POR", "M1L"), null se la carta non la riporta.
+ * @property dexId numero del Pokédex nazionale, null per Allenatori ed Energie (serve a cercare la carta per nome in ogni lingua).
  * @property printedNumber numero stampato (es. "094/132" oppure "XY103" per le promo).
  */
 data class CatalogCard(
@@ -92,6 +93,7 @@ data class CatalogCard(
     val illustrator: String?,
     val imageBaseUrl: String?,
     val variants: List<CatalogVariant>,
+    val dexId: Int? = null,
 )
 
 /**

@@ -134,6 +134,7 @@ object CatalogMapper {
             illustrator = card.illustrator?.take(80),
             imageBaseUrl = image,
             variants = variantsOf(card),
+            dexId = card.dexId?.firstOrNull(),
         )
     }
 }

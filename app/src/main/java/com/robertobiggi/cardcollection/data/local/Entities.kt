@@ -54,6 +54,7 @@ data class CardEntity(
     val imageHighPath: String?,
     val queryId: Long,
     val catalogUpdatedAt: Long,
+    val dexId: Int? = null,
 )
 
 /** Variante di stampa di una carta: ogni riga è uno slot. */
