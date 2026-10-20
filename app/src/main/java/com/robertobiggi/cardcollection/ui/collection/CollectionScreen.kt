@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.core.model.PokemonNames
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.ui.CollectionFilter
@@ -70,10 +71,11 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
  */
 fun applyFilter(cards: List<CardUi>, filter: CollectionFilter): List<CardUi> {
     val q = filter.query.trim().lowercase()
+    val dexMatches = PokemonNames.dexIdsMatching(q)
     val filtered = cards.filter { c ->
         (filter.language == null || c.language == filter.language) &&
             (q.isEmpty() || c.card.name.lowercase().contains(q) || c.printedCode.lowercase().contains(q) ||
-                c.card.setName.lowercase().contains(q) || (c.card.rarity?.lowercase()?.contains(q) == true)) &&
+                c.card.setName.lowercase().contains(q) || (c.card.dexId != null && c.card.dexId in dexMatches) || (c.card.rarity?.lowercase()?.contains(q) == true)) &&
             when (filter.owned) {
                 OwnedFilter.ALL -> true
                 OwnedFilter.OWNED -> c.copies > 0
