@@ -91,7 +91,8 @@ jobs:
     steps:
       - name: Chiave di release assente
         if: env.HAS_KEY != 'true'
-        run: echo "::warning::Secret RELEASE_KEYSTORE_BASE64 non impostato: nessuna release pubblicata."
+        run: |
+          echo "::warning::Secret RELEASE_KEYSTORE_BASE64 non impostato, nessuna release pubblicata."
 
       - uses: actions/checkout@v4
         if: env.HAS_KEY == 'true'
