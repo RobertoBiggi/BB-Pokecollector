@@ -4,6 +4,9 @@
 name: API probe
 
 on:
+  # Un push che modifica questo file esegue le interrogazioni fisse dello step "Probe predefinito".
+  push:
+    paths: [".github/workflows/tcgdex-probe.yml"]
   workflow_dispatch:
     inputs:
       api:
@@ -25,6 +28,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Risposta API
+        if: github.event_name == 'workflow_dispatch'
         env:
           API: ${{ inputs.api }}
           API_PATH: ${{ inputs.path }}
@@ -40,3 +44,24 @@ jobs:
           code=$(curl -sS --max-time 120 -o body.json -w "%{http_code} %{time_total}s" "$base$API_PATH" || echo "errore curl")
           echo "HTTP $code"
           jq . body.json 2>/dev/null | head -c 200000 || head -c 5000 body.json
+
+      - name: Probe predefinito
+        if: github.event_name == 'push'
+        run: |
+          set -uo pipefail
+          probe() {
+            echo "===== $1"
+            code=$(curl -sS --max-time 90 -o body.json -w "%{http_code} %{time_total}s" "$1" || echo "errore curl")
+            echo "HTTP $code"
+            jq -c . body.json 2>/dev/null | head -c 6000 || head -c 2000 body.json
+            echo
+          }
+          P=https://api.pokemontcg.io/v2
+          SEL="select=id,name,number,rarity,set,images,tcgplayer,cardmarket"
+          probe "$P/sets?orderBy=-releaseDate&pageSize=10&select=id,name,ptcgoCode,printedTotal,total,releaseDate"
+          probe "$P/cards?q=name:mawile&pageSize=1"
+          probe "$P/cards?q=set.ptcgoCode:SVI%20number:46&$SEL"
+          probe "$P/cards?q=set.ptcgoCode:MEG%20number:46&$SEL"
+          probe "$P/cards?q=set.name:%22Lost%20Origin%22%20number:TG17&$SEL"
+          probe "$P/cards?q=name:mawile%20set.ptcgoCode:PHF&$SEL"
+          probe "https://api.tcgdex.net/v2/en/sets/me01"
