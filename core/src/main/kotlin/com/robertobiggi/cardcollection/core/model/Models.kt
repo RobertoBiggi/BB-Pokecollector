@@ -171,6 +171,32 @@ data class PriceQuote(
      * @return Boolean - true se è presente un prezzo in euro o in dollari.
      */
     fun hasAnyPrice(): Boolean = eur != null || usd != null
+
+    /**
+     * Indica se il prezzo ha sia il valore in euro sia quello in dollari.
+     * @return Boolean - true se non serve cercare altro su altre fonti.
+     */
+    fun isComplete(): Boolean = eur != null && usd != null
+
+    /**
+     * Completa i valori mancanti con quelli di un'altra fonte, senza toccare quelli già presenti.
+     * @param other PriceQuote - prezzo di una fonte successiva.
+     * @return PriceQuote - prezzo combinato; la fonte diventa "prima + seconda" se l'altra ha aggiunto qualcosa.
+     */
+    fun complementedBy(other: PriceQuote): PriceQuote {
+        val addEur = eur == null && other.eur != null
+        val addUsd = usd == null && other.usd != null
+        if (!addEur && !addUsd) return this
+        return copy(
+            source = "$source + ${other.source}",
+            eur = if (addEur) other.eur else eur,
+            eurLow = if (addEur) other.eurLow else eurLow,
+            eurAvg30 = if (addEur) other.eurAvg30 else eurAvg30,
+            usd = if (addUsd) other.usd else usd,
+            usdLow = if (addUsd) other.usdLow else usdLow,
+            sourceUpdatedAt = sourceUpdatedAt ?: other.sourceUpdatedAt,
+        )
+    }
 }
 
 /** Identificativi locali di carte e varianti. */

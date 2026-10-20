@@ -1,6 +1,6 @@
-# Stampa nei log una risposta reale di TCGdex o pokemontcg.io, per verificare le API quando si sviluppa
-# da un ambiente che non le raggiunge. Si avvia a mano da Actions indicando API e percorso,
-# es. "tcgdex" + "ja/cards/M3-117" oppure "pokemontcg" + "cards?q=name:mawile".
+# Stampa nei log una risposta reale di TCGdex, TCGCSV o pokemontcg.io, per verificare le API quando si
+# sviluppa da un ambiente che non le raggiunge. Si avvia a mano da Actions indicando API e percorso,
+# es. "tcgdex" + "ja/cards/M3-117" oppure "tcgcsv" + "85/24600/prices".
 name: API probe
 
 on:
@@ -12,10 +12,10 @@ on:
       api:
         description: "API da interrogare"
         type: choice
-        options: [tcgdex, pokemontcg]
+        options: [tcgdex, tcgcsv, pokemontcg]
         default: tcgdex
       path:
-        description: "Percorso dopo la base (tcgdex: https://api.tcgdex.net/v2/, pokemontcg: https://api.pokemontcg.io/v2/)"
+        description: "Percorso dopo la base (tcgdex: https://api.tcgdex.net/v2/, tcgcsv: https://tcgcsv.com/tcgplayer/, pokemontcg: https://api.pokemontcg.io/v2/)"
         required: true
         default: "en/cards?name=Mawile"
 
@@ -36,6 +36,7 @@ jobs:
           set -euo pipefail
           case "$API" in
             tcgdex) base="https://api.tcgdex.net/v2/" ;;
+            tcgcsv) base="https://tcgcsv.com/tcgplayer/" ;;
             pokemontcg) base="https://api.pokemontcg.io/v2/" ;;
             *) echo "API non valida"; exit 1 ;;
           esac
@@ -49,42 +50,9 @@ jobs:
         if: github.event_name == 'push'
         run: |
           set -uo pipefail
-          probe() {
-            echo "===== $1"
-            code=$(curl -sS --max-time 90 -o body.json -w "%{http_code} %{time_total}s" "$1" || echo "errore curl")
-            echo "HTTP $code"
-            jq -c . body.json 2>/dev/null | head -c 6000 || head -c 2000 body.json
+          for url in "https://api.tcgdex.net/v2/en/cards/me01-046" "https://tcgcsv.com/tcgplayer/85/groups"; do
+            echo "===== $url"
+            curl -sS --max-time 60 -o body.json -w "HTTP %{http_code} %{time_total}s\n" "$url" || echo "errore curl"
+            jq -c . body.json 2>/dev/null | head -c 3000
             echo
-          }
-          T=https://tcgcsv.com/tcgplayer
-          echo "===== Formati immagine TCGplayer CDN (prodotto 674436)"
-          for suffix in _200w.jpg _400w.jpg _in_1000x1000.jpg _in_800x800.jpg; do
-            echo "$suffix -> $(curl -sS -o /dev/null --max-time 30 -w '%{http_code} %{content_type} %{size_download}B' "https://tcgplayer-cdn.tcgplayer.com/product/674436$suffix")"
           done
-          curl -sS --max-time 60 "$T/85/groups" > g85.json
-          curl -sS --max-time 60 "$T/3/groups" > g3.json
-          echo "===== Gruppi JP con abbreviazione SM10a, SV4a, SM9b, S12a e campione di abbreviazioni"
-          jq -c '.results[] | select(.abbreviation as $a | ["SM10a","SV4a","SM9b","S12a","XY4"] | index($a)) | {groupId, name, abbreviation}' g85.json
-          jq -r '[.results[].abbreviation] | map(select(. != "")) | .[0:80] | join(" ")' g85.json
-          echo "abbreviazioni JP duplicate: $(jq -r '[.results[].abbreviation | select(. != "")] | group_by(.) | map(select(length > 1) | .[0]) | join(" ")' g85.json)"
-          echo "===== Gruppi EN: abbreviazioni duplicate e gruppi senza abbreviazione"
-          jq -r '[.results[].abbreviation | select(. != "")] | group_by(.) | map(select(length > 1) | "\(.[0])x\(length)") | join(" ")' g3.json
-          jq -c '[.results[] | select(.abbreviation == "") | .name] | .[0:20]' g3.json
-          jq -c '.results[] | select(.name | test("Lost Origin|Phantom Forces|Base Set$|Team Rocket Returns")) | {groupId, name, abbreviation}' g3.json
-          g=$(jq -r '[.results[] | select(.abbreviation == "SM10a")][0].groupId // empty' g85.json)
-          if [ -n "$g" ]; then
-            echo "===== SM10a numero 030 (クチートGX?) e prezzi"
-            curl -sS --max-time 60 "$T/85/$g/products" > p.json
-            echo "dimensione prodotti: $(wc -c < p.json) byte"
-            jq -c '.results[] | select(any(.extendedData[]?; .name == "Number" and (.value | startswith("030")))) | {productId, name}' p.json
-            curl -sS --max-time 60 "$T/85/$g/prices" | jq -c --argjson ids "$(jq '[.results[] | select(any(.extendedData[]?; .name == "Number" and (.value | startswith("030")))) | .productId]' p.json)" '.results[] | select(.productId as $p | $ids | index($p))'
-          fi
-          g=$(jq -r '[.results[] | select(.abbreviation == "SVI")][0].groupId // empty' g3.json)
-          echo "===== SVI: prodotti con numero 025-030 (doppioni per variante?) e sottotipi di prezzo"
-          curl -sS --max-time 60 "$T/3/$g/products" > p.json
-          echo "dimensione prodotti: $(wc -c < p.json) byte"
-          jq -c '.results[] | select(any(.extendedData[]?; .name == "Number" and (.value | test("^0(2[5-9]|30)/")))) | {productId, name, n: ([.extendedData[] | select(.name == "Number") | .value][0])}' p.json
-          curl -sS --max-time 60 "$T/3/$g/prices" | jq -r '[.results[].subTypeName] | group_by(.) | map("\(.[0])=\(length)") | join(", ")'
-          g=$(jq -r '[.results[] | select(.name | test("Prismatic Evolutions"))][0].groupId // empty' g3.json)
-          echo "===== Prismatic Evolutions: numeri duplicati"
-          curl -sS --max-time 60 "$T/3/$g/products" | jq -c '[.results[] | {name, n: ([.extendedData[]? | select(.name == "Number") | .value][0])} | select(.n != null)] | group_by(.n) | map(select(length > 1)) | .[0:4]'

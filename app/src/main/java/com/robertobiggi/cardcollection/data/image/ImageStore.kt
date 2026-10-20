@@ -9,6 +9,7 @@ import android.os.Build
 import com.robertobiggi.cardcollection.core.validation.Validators
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.ByteArrayOutputStream
@@ -104,15 +105,47 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         } catch (e: SecurityException) {
             null
         } ?: return@withContext null
+        recode(raw, MANUAL_MAX_SIDE)
+    }
 
+    /**
+     * Scarica un'immagine da una fonte diversa da TCGdex (es. il CDN di TCGplayer, in JPEG), la
+     * ricodifica in WebP e la salva come immagine della carta, se non è già presente.
+     * @param cardId String - id locale della carta.
+     * @param url String - URL HTTPS dell'immagine, accettato solo se l'host è in [EXTERNAL_IMAGE_HOSTS].
+     * @param quality Quality - qualità da salvare (LOW: lato lungo 400 px, HIGH: 1200 px).
+     * @return String? - percorso assoluto del file salvato, oppure null se l'URL non è consentito,
+     *         il download fallisce o il contenuto non è un'immagine.
+     */
+    suspend fun ensureExternal(cardId: String, url: String, quality: Quality): String? = withContext(Dispatchers.IO) {
+        val target = fileFor(cardId, quality)
+        if (target.isFile && target.length() > 0) return@withContext target.absolutePath
+        val parsed = url.toHttpUrlOrNull()
+        if (parsed == null || !parsed.isHttps || parsed.host !in EXTERNAL_IMAGE_HOSTS) return@withContext null
+        val raw = try {
+            fetchBytes(url)
+        } catch (e: IOException) {
+            null
+        } ?: return@withContext null
+        val bytes = recode(raw, if (quality == Quality.HIGH) MANUAL_MAX_SIDE else LOW_MAX_SIDE) ?: return@withContext null
+        write(cardId, quality, bytes)
+    }
+
+    /**
+     * Ricodifica un'immagine in WebP ridimensionata: scarta metadati e tutto ciò che non è un'immagine.
+     * @param raw ByteArray - immagine originale (JPEG, PNG, WebP…).
+     * @param maxSide Int - lato lungo massimo in pixel.
+     * @return ByteArray? - immagine WebP, oppure null se il contenuto non è decodificabile o il risultato supera [MAX_BYTES].
+     */
+    private fun recode(raw: ByteArray, maxSide: Int): ByteArray? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(raw, 0, raw.size, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@withContext null
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         var sample = 1
-        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MANUAL_MAX_SIDE) sample *= 2
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
         val decoded = BitmapFactory.decodeByteArray(raw, 0, raw.size, BitmapFactory.Options().apply { inSampleSize = sample })
-            ?: return@withContext null
-        val scale = MANUAL_MAX_SIDE.toFloat() / maxOf(decoded.width, decoded.height)
+            ?: return null
+        val scale = maxSide.toFloat() / maxOf(decoded.width, decoded.height)
         val bitmap = if (scale < 1f) {
             Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true)
         } else {
@@ -123,7 +156,7 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         val ok = bitmap.compress(format, MANUAL_QUALITY, out)
         if (bitmap !== decoded) bitmap.recycle()
         decoded.recycle()
-        out.toByteArray().takeIf { ok && it.isNotEmpty() && it.size <= MAX_BYTES }
+        return out.toByteArray().takeIf { ok && it.isNotEmpty() && it.size <= MAX_BYTES }
     }
 
     /**
@@ -222,6 +255,24 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
+     * Scarica un'immagine in memoria controllando codice HTTP, tipo di contenuto e dimensione massima.
+     * @param url String - URL già validato.
+     * @return ByteArray? - contenuto, oppure null se supera [MAX_BYTES].
+     * @throws IOException se la risposta non è riuscita o non è un'immagine.
+     */
+    private fun fetchBytes(url: String): ByteArray? {
+        val request = Request.Builder().url(url).get().build()
+        http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            val body = response.body ?: throw IOException("Corpo vuoto")
+            val type = body.contentType()
+            if (type == null || type.type != "image") throw IOException("Non è un'immagine")
+            if (body.contentLength() > MAX_BYTES) return null
+            return body.byteStream().use { readAtMost(it, MAX_BYTES) }
+        }
+    }
+
+    /**
      * Legge uno stream fino a un limite di byte.
      * @param input InputStream - stream da leggere.
      * @param limit Long - byte massimi accettati.
@@ -255,8 +306,14 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         /** Dimensione massima del file scelto dall'utente prima della ricodifica (20 MB). */
         private const val MAX_PICKED_BYTES = 20L * 1024 * 1024
 
-        /** Lato lungo massimo dell'immagine scelta dall'utente, in pixel. */
+        /** Lato lungo massimo dell'immagine scelta dall'utente (e di quella grande da altre fonti), in pixel. */
         private const val MANUAL_MAX_SIDE = 1200
+
+        /** Lato lungo massimo dell'immagine piccola presa da altre fonti, in pixel. */
+        private const val LOW_MAX_SIDE = 400
+
+        /** Host da cui si possono scaricare immagini oltre a TCGdex: il CDN di TCGplayer (via TCGCSV). */
+        val EXTERNAL_IMAGE_HOSTS = setOf("tcgplayer-cdn.tcgplayer.com")
 
         private const val MANUAL_QUALITY = 88
 

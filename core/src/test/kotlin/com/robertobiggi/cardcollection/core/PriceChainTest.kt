@@ -72,6 +72,38 @@ class PriceChainTest {
     }
 
     @Test
+    fun `seconda fonte completa il prezzo mancante senza contare come fallback`() = runTest {
+        val a = Scripted("a", mutableListOf({ PriceQuote("TCGdex", 3.0, 2.0, null, null, null, "2026", Confidence.HIGH) }))
+        val b = Scripted("b", mutableListOf({ PriceQuote("TCGplayer", null, null, null, 4.5, 4.0, null, Confidence.MEDIUM) }))
+        val out = PriceChain(listOf(slot(a), slot(b)), sleeper = sleeper).fetch(request)
+        val q = out.quote!!
+        assertEquals("TCGdex + TCGplayer", q.source)
+        assertEquals(3.0, q.eur)
+        assertEquals(4.5, q.usd)
+        assertEquals(4.0, q.usdLow)
+        assertEquals(Confidence.HIGH, q.confidence)
+        assertFalse(out.usedFallback)
+    }
+
+    @Test
+    fun `prezzo parziale resta valido se la seconda fonte non ha dati`() = runTest {
+        val a = Scripted("a", mutableListOf({ PriceQuote("TCGdex", 3.0, null, null, null, null, null, Confidence.HIGH) }))
+        val b = Scripted("b", mutableListOf({ null }))
+        val out = PriceChain(listOf(slot(a), slot(b)), sleeper = sleeper).fetch(request)
+        assertEquals("TCGdex", out.quote?.source)
+        assertEquals(listOf(StepOutcome.OK, StepOutcome.NO_DATA), out.steps.map { it.outcome })
+        assertFalse(out.usedFallback)
+    }
+
+    @Test
+    fun `prezzo completo non interroga la seconda fonte`() = runTest {
+        val a = Scripted("a", mutableListOf({ quote("a") }))
+        val b = Scripted("b", mutableListOf({ quote("b") }))
+        PriceChain(listOf(slot(a), slot(b)), sleeper = sleeper).fetch(request)
+        assertEquals(0, b.calls)
+    }
+
+    @Test
     fun `blocchi ripetuti aprono il circuito e la fonte viene saltata`() = runTest {
         val breaker = CircuitBreaker(threshold = 3, cooldownMs = 10_000, clock = clock)
         val a = Scripted("a", MutableList(10) { { throw BlockedException(403) } })
