@@ -14,9 +14,11 @@ import com.robertobiggi.cardcollection.core.backup.ImageExport
 import com.robertobiggi.cardcollection.core.backup.ImportError
 import com.robertobiggi.cardcollection.core.backup.ImportedCollection
 import com.robertobiggi.cardcollection.core.backup.PriceRecord
+import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
+import com.robertobiggi.cardcollection.data.local.CardVariantEntity
 import com.robertobiggi.cardcollection.data.local.CollectionCardEntity
 import com.robertobiggi.cardcollection.data.local.CollectionEntity
 import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
@@ -78,11 +80,12 @@ class TransferRepository(
         val cardIds = cards.map { it.first.id }
         val variants = cardIds.chunked(SQL_CHUNK).flatMap { catalogDao.variantsOf(it) }
         val snapshots = variants.map { it.id }.chunked(SQL_CHUNK).flatMap { db.priceDao().snapshotsOf(it) }
+        val typesByCard = variants.groupBy({ it.cardId }, { it.type })
 
         val records = cards.map { (card, hidden) ->
             val low = if (imageExport != ImageExport.NONE) images.read(card.imageLowPath)?.let(CollectionFiles::encodeImage) else null
             val high = if (imageExport == ImageExport.LOW_AND_HIGH) images.read(card.imageHighPath)?.let(CollectionFiles::encodeImage) else null
-            card.toRecord(variants.filter { it.cardId == card.id }.map { it.type }, hidden, low, high)
+            card.toRecord(typesByCard[card.id].orEmpty(), hidden, low, high)
         }
         val prices = snapshots.groupBy { it.variantId }.flatMap { (_, list) ->
             val manual = list.filter { it.source == CollectionFiles.MANUAL_SOURCE }
@@ -147,7 +150,14 @@ class TransferRepository(
             catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = it.language, pattern = it.pattern, enabled = it.enabled))
         }
         imported.cards.forEach { c ->
-            if (catalogDao.getCard(c.card.id) == null) catalog.saveCard(c.card, legacyQueryId = 0)
+            if (catalogDao.getCard(c.card.id) == null) {
+                catalog.saveCard(c.card, legacyQueryId = 0)
+            } else {
+                // Carta già nel catalogo: non si sovrascrive, ma si aggiungono le varianti mancanti
+                // (altrimenti le quantità importate non sarebbero visibili) e il numero del Pokédex.
+                catalogDao.insertVariants(c.card.variants.map { CardVariantEntity(Ids.variantId(c.card.id, it.type), c.card.id, it.type.name) })
+                c.card.dexId?.let { catalogDao.fillDexId(c.card.id, it) }
+            }
             catalogDao.insertMembership(CollectionCardEntity(id, c.card.id, null, c.hidden))
         }
         db.collectionDao().upsertEntries(

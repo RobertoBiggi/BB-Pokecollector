@@ -42,6 +42,13 @@ enum class VariantType(val tcgdexKey: String) {
          * @return VariantType? - la variante corrispondente, oppure null se sconosciuta.
          */
         fun fromTcgdexKey(key: String): VariantType? = entries.firstOrNull { it.tcgdexKey == key }
+
+        /**
+         * Trova la variante dal nome salvato nel database o nei file (es. "HOLO").
+         * @param name String? - nome dell'enum.
+         * @return VariantType? - variante, oppure null se il nome non è riconosciuto.
+         */
+        fun fromName(name: String?): VariantType? = entries.firstOrNull { it.name == name }
     }
 }
 

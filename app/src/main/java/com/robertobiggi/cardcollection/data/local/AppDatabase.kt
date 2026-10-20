@@ -21,8 +21,22 @@ import androidx.room.RoomDatabase
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
+    /**
+     * Accesso a collezioni, ricerche, carte e varianti.
+     * @return CatalogDao - DAO generato da Room.
+     */
     abstract fun catalogDao(): CatalogDao
+
+    /**
+     * Accesso ai dati dell'utente di ogni collezione.
+     * @return CollectionDao - DAO generato da Room.
+     */
     abstract fun collectionDao(): CollectionDao
+
+    /**
+     * Accesso a prezzi e registro degli aggiornamenti.
+     * @return PriceDao - DAO generato da Room.
+     */
     abstract fun priceDao(): PriceDao
 
     companion object {

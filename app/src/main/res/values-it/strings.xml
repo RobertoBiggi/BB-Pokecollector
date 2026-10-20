@@ -210,4 +210,5 @@
     <string name="msg_image_saved">Immagine salvata.</string>
     <string name="msg_image_not_available">TCGdex non ha un\'immagine per questa carta: puoi sceglierne una tu.</string>
     <string name="msg_image_invalid">Non riesco a leggere l\'immagine scelta.</string>
+    <string name="source_imported">Importato</string>
 </resources>
