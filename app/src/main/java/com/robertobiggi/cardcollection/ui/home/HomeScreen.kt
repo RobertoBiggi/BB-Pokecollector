@@ -211,8 +211,16 @@ private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRen
                 contentAlignment = Alignment.Center,
             ) {
                 val cover = summary.coverPath
-                if (cover != null && File(cover).isFile) {
-                    AsyncImage(model = File(cover), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                // Se il file manca, Coil segnala l'errore e si torna all'iniziale (niente accessi al disco qui).
+                var coverFailed by remember(cover) { mutableStateOf(false) }
+                if (cover != null && !coverFailed) {
+                    AsyncImage(
+                        model = File(cover),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        onError = { coverFailed = true },
+                    )
                 } else {
                     Text(summary.collection.name.take(1).uppercase(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 }

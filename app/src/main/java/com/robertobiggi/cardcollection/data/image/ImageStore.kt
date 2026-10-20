@@ -199,26 +199,24 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
             if (type == null || type.type != "image") throw IOException("Non è un'immagine")
             if (body.contentLength() > MAX_BYTES) throw IOException("Immagine troppo grande")
             val tmp = File(target.parentFile, target.name + ".tmp")
-            var written = 0L
-            body.byteStream().use { input ->
-                tmp.outputStream().use { output ->
-                    val buffer = ByteArray(16 * 1024)
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        written += read
-                        if (written > MAX_BYTES) {
-                            output.close()
-                            tmp.delete()
-                            throw IOException("Immagine troppo grande")
+            try {
+                var written = 0L
+                body.byteStream().use { input ->
+                    tmp.outputStream().use { output ->
+                        val buffer = ByteArray(16 * 1024)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            written += read
+                            if (written > MAX_BYTES) throw IOException("Immagine troppo grande")
+                            output.write(buffer, 0, read)
                         }
-                        output.write(buffer, 0, read)
                     }
                 }
-            }
-            if (written == 0L || !tmp.renameTo(target)) {
+                if (written == 0L || !tmp.renameTo(target)) throw IOException("Salvataggio non riuscito")
+            } finally {
+                // Dopo un rename riuscito il file temporaneo non esiste più; negli altri casi va tolto.
                 tmp.delete()
-                throw IOException("Salvataggio non riuscito")
             }
         }
     }

@@ -16,10 +16,12 @@ object PokemonNames {
     private val COMBINING_MARKS = Regex("\\p{Mn}+")
     private val NOT_LETTER_OR_DIGIT = Regex("[^\\p{L}\\p{N}]+")
 
-    /** Numero del Pokédex → nomi già normalizzati con [normalize], letti una sola volta. */
+    /**
+     * Numero del Pokédex → nomi già normalizzati con [normalize], letti una sola volta. Se il file
+     * mancasse la ricerca resterebbe solo sul nome della carta (la CI controlla che sia nell'APK).
+     */
     private val namesByDex: Map<Int, List<String>> by lazy {
-        val stream = PokemonNames::class.java.getResourceAsStream(RESOURCE)
-            ?: error("Risorsa $RESOURCE mancante")
+        val stream = PokemonNames::class.java.getResourceAsStream(RESOURCE) ?: return@lazy emptyMap()
         stream.bufferedReader(Charsets.UTF_8).useLines { lines ->
             lines.filter { it.isNotBlank() }.associate { line ->
                 val parts = line.split('\t')

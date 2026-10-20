@@ -224,4 +224,5 @@
     <string name="msg_image_not_available">TCGdex has no image for this card: you can choose one yourself.</string>
     <string name="msg_image_invalid">Couldn\'t read the chosen image.</string>
     <string name="copies_short" translatable="false">×%1$d</string>
+    <string name="source_imported">Imported</string>
 </resources>

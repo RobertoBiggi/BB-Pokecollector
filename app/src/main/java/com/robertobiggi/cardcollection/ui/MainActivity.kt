@@ -120,7 +120,7 @@ private fun AppRoot() {
         val cidArg = listOf(navArgument("cid") { type = NavType.LongType })
         NavHost(nav, startDestination = "home", modifier = Modifier.padding(padding)) {
             composable("home") {
-                HomeScreen(vm, onOpen = { id -> nav.navigate("c/$id/${Tab.CARDS.segment}") }, onSettings = { nav.navigate("settings") })
+                HomeScreen(vm, onOpen = { id -> vm.open(id); nav.navigate("c/$id/${Tab.CARDS.segment}") }, onSettings = { nav.navigate("settings") })
             }
             composable("settings") { SettingsScreen(vm, onBack = { nav.popBackStack() }) }
             Tab.entries.forEach { tab ->
