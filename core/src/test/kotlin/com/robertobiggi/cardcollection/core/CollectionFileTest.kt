@@ -116,7 +116,30 @@ class CollectionFileTest {
         assertEquals(1, c.entries.single().quantity)
         assertEquals("NM", c.entries.single().condition)
         assertEquals("Importato", c.prices.single().source)
-        assertTrue(c.prices.single().fetchedAt > 0)
+        assertEquals(1L, c.prices.single().fetchedAt)
+    }
+
+    @Test
+    fun `prezzi senza data prendono la data dell'export`() {
+        val text = """{"schema":2,"app":"card-collection","exportedAt":"2026-10-19T10:00:00Z",
+            "cards":[{"id":"en:me03-032","language":"en","tcgdexId":"me03-032","name":"Mawile","setId":"me03","variants":["NORMAL"]}],
+            "entries":[],"prices":[{"variantId":"en:me03-032|NORMAL","eur":1.5}]}"""
+        val c = (CollectionFiles.read(text.byteInputStream()) as CollectionImportResult.Ok).collection
+        assertEquals(java.time.Instant.parse("2026-10-19T10:00:00Z").toEpochMilli(), c.prices.single().fetchedAt)
+    }
+
+    @Test
+    fun `voci di varianti non dichiarate scartate, varianti dedotte se mancano`() {
+        val text = """{"schema":2,"app":"card-collection",
+            "cards":[{"id":"en:me03-032","language":"en","tcgdexId":"me03-032","name":"Mawile","setId":"me03","variants":["NORMAL"]},
+                     {"id":"en:me03-033","language":"en","tcgdexId":"me03-033","name":"Mawile ex","setId":"me03"}],
+            "entries":[{"variantId":"en:me03-032|HOLO","quantity":2},
+                       {"variantId":"en:me03-033|REVERSE","quantity":1,"condition":"lp"}]}"""
+        val r = CollectionFiles.read(text.byteInputStream()) as CollectionImportResult.Ok
+        assertEquals(listOf("en:me03-033|REVERSE"), r.collection.entries.map { it.variantId })
+        assertEquals("LP", r.collection.entries.single().condition)
+        assertEquals(listOf("REVERSE"), r.collection.cards.first { it.card.id == "en:me03-033" }.card.variants.map { it.type.name })
+        assertEquals(1, r.skipped)
     }
 
     @Test

@@ -18,6 +18,9 @@ object Validators {
     /** Quantità massima di copie per variante. */
     const val MAX_QUANTITY = 999
 
+    /** Prezzo massimo accettato (EUR o USD): oltre è certamente un dato sbagliato. */
+    const val MAX_PRICE = 1_000_000.0
+
     /**
      * Controlla un testo di ricerca inserito dall'utente (es. "Mawile", "クチート").
      * @param pattern String - testo da validare.
