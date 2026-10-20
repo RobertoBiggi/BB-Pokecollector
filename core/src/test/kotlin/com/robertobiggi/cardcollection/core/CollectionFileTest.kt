@@ -87,7 +87,6 @@ class CollectionFileTest {
         assertEquals(ImportError.NOT_THIS_APP, error("{}"))
         assertEquals(ImportError.INVALID_JSON, error("non json"))
         assertEquals(ImportError.UNSUPPORTED_VERSION, error("""{"schema":9,"app":"card-collection"}"""))
-        assertEquals(ImportError.MISSING_INFO, error("""{"schema":2,"app":"card-collection"}"""))
         assertNull(CollectionFiles.cleanName("   \u0000 "))
     }
 
@@ -100,5 +99,30 @@ class CollectionFileTest {
             cards = listOf(record("me03-032").copy(id = "fr:me03-032", language = "fr")), entries = emptyList(),
         )
         assertEquals("fr:me03-032", (roundTrip(file) as CollectionImportResult.Ok).collection.cards.single().card.id)
+    }
+
+    @Test
+    fun `campi nulli o assenti ricevono valori di ripiego`() {
+        val text = """{"schema":2,"app":"card-collection","exportedAt":null,"info":{"name":null,"queries":null},
+            "cards":[{"id":"en:me03-032","language":"en","tcgdexId":"me03-032","name":"Mawile","setId":"me03","setName":null,
+                      "localId":null,"printedNumber":null,"rarity":null,"imageUrl":null,"variants":null,"imageLow":null}],
+            "entries":[{"variantId":"en:me03-032|NORMAL","quantity":null,"condition":null,"notes":null}],
+            "prices":[{"variantId":"en:me03-032|NORMAL","source":null,"eur":1.5,"fetchedAt":null,"confidence":null}]}"""
+        val c = (CollectionFiles.read(text.byteInputStream()) as CollectionImportResult.Ok).collection
+        assertNull(c.name)
+        assertEquals("032", c.cards.single().card.localId)
+        assertEquals("me03", c.cards.single().card.setName)
+        assertEquals(listOf("NORMAL"), c.cards.single().card.variants.map { it.type.name })
+        assertEquals(1, c.entries.single().quantity)
+        assertEquals("NM", c.entries.single().condition)
+        assertEquals("Importato", c.prices.single().source)
+        assertTrue(c.prices.single().fetchedAt > 0)
+    }
+
+    @Test
+    fun `file senza info e senza carte e una collezione vuota`() {
+        val r = CollectionFiles.read("""{"schema":2,"app":"card-collection"}""".byteInputStream()) as CollectionImportResult.Ok
+        assertNull(r.collection.name)
+        assertTrue(r.collection.cards.isEmpty())
     }
 }
