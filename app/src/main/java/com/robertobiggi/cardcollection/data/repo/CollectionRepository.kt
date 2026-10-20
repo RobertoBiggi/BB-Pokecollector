@@ -2,6 +2,7 @@ package com.robertobiggi.cardcollection.data.repo
 
 import androidx.room.withTransaction
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
+import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.validation.Validators
@@ -129,25 +130,44 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope) {
     fun name(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.name }
 
     /**
+     * Lingua di una collezione.
+     * @param collectionId Long - collezione.
+     * @return Flow<String?> - valore di [CollectionLanguage] ("en", "ja" o "mixed"), oppure null se la collezione non esiste più.
+     */
+    fun language(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.language }
+
+    /**
      * Crea una collezione, con una prima ricerca facoltativa.
      * @param rawName String - nome inserito dall'utente.
-     * @param language Language? - lingua della prima ricerca.
+     * @param collectionLanguage Language? - lingua fissa della collezione, oppure null per una collezione mista.
+     * @param queryLanguage Language - lingua della prima ricerca, usata solo se la collezione è mista.
      * @param pattern String? - testo della prima ricerca (vuoto = nessuna ricerca).
      * @return CreateResult - id della collezione creata, oppure l'errore da mostrare.
      */
-    suspend fun createCollection(rawName: String, language: Language?, pattern: String?): CreateResult {
+    suspend fun createCollection(rawName: String, collectionLanguage: Language?, queryLanguage: Language, pattern: String?): CreateResult {
         val name = CollectionFiles.cleanName(rawName) ?: return CreateResult.Invalid(InputError.NAME_EMPTY)
         val clean = pattern?.trim().orEmpty()
         if (clean.isNotEmpty() && !Validators.isValidQueryPattern(clean)) return CreateResult.Invalid(InputError.QUERY_INVALID)
+        val code = CollectionLanguage.codeOf(collectionLanguage)
+        val searchLanguage = CollectionLanguage.fixedLanguage(code) ?: queryLanguage
         val id = db.withTransaction {
-            val id = catalogDao.insertCollection(CollectionEntity(name = uniqueName(name), createdAt = System.currentTimeMillis()))
-            if (clean.isNotEmpty() && language != null) {
-                catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = language.code, pattern = clean))
+            val id = catalogDao.insertCollection(CollectionEntity(name = uniqueName(name), createdAt = System.currentTimeMillis(), language = code))
+            if (clean.isNotEmpty()) {
+                catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = searchLanguage.code, pattern = clean))
             }
             id
         }
         return CreateResult.Created(id)
     }
+
+    /**
+     * Cambia la lingua di una collezione. Le ricerche già salvate restano com'erano.
+     * @param collectionId Long - collezione.
+     * @param language Language? - lingua fissa, oppure null per una collezione mista.
+     * @return Unit
+     */
+    suspend fun setLanguage(collectionId: Long, language: Language?) =
+        catalogDao.setCollectionLanguage(collectionId, CollectionLanguage.codeOf(language))
 
     /**
      * Rende unico un nome di collezione aggiungendo " (2)", " (3)"… se serve.

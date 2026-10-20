@@ -52,6 +52,15 @@ interface CatalogDao {
     suspend fun renameCollection(id: Long, name: String)
 
     /**
+     * Cambia la lingua di una collezione.
+     * @param id Long - id della riga.
+     * @param language String - valore di CollectionLanguage ("en", "ja" o "mixed").
+     * @return Unit
+     */
+    @Query("UPDATE collection SET language = :language WHERE id = :id")
+    suspend fun setCollectionLanguage(id: Long, language: String)
+
+    /**
      * Elimina una collezione; ricerche, appartenenze e quantità vengono eliminate a cascata.
      * @param id Long - id della riga.
      * @return Unit

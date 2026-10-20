@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.robertobiggi.cardcollection.R
+import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.CardUi
@@ -262,5 +263,39 @@ fun LanguagePicker(selected: Language, onSelect: (Language) -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/**
+ * Scelta della lingua di una collezione: blocchetti EN e JP per una lingua fissa, più "Mista" per
+ * scegliere la lingua a ogni ricerca. Sotto spiega cosa comporta la scelta.
+ * @param selected Language? - lingua fissa selezionata, oppure null per una collezione mista.
+ * @param onSelect (Language?) -> Unit - nuova scelta (null = mista).
+ * @return Unit
+ */
+@Composable
+fun CollectionLanguagePicker(selected: Language?, onSelect: (Language?) -> Unit) {
+    Column {
+        Text(stringResource(R.string.label_collection_language), style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            CollectionLanguage.FIXED.forEach { lang ->
+                FilterChip(
+                    selected = selected == lang,
+                    onClick = { onSelect(lang) },
+                    label = { Text(lang.shortLabel()) },
+                )
+            }
+            FilterChip(
+                selected = selected == null,
+                onClick = { onSelect(null) },
+                label = { Text(stringResource(R.string.lang_mixed)) },
+            )
+        }
+        Text(
+            if (selected == null) stringResource(R.string.lang_mixed_hint)
+            else stringResource(R.string.lang_fixed_hint, stringResource(selected.labelRes())),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

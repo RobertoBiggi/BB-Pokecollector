@@ -2,6 +2,7 @@ package com.robertobiggi.cardcollection.core.backup
 
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.CatalogVariant
+import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.Ids
@@ -40,9 +41,12 @@ data class BackupEntry(
 @Serializable
 data class BackupManualPrice(val variantId: String, val eur: Double, val fetchedAt: Long)
 
-/** Nome e ricerche della collezione esportata. */
+/**
+ * Nome, lingua e ricerche della collezione esportata. [language] è il valore di [CollectionLanguage]
+ * (assente nei file delle versioni precedenti: in quel caso si deduce dalle carte).
+ */
 @Serializable
-data class CollectionInfo(val name: String? = null, val queries: List<BackupQuery> = emptyList())
+data class CollectionInfo(val name: String? = null, val queries: List<BackupQuery> = emptyList(), val language: String? = null)
 
 /**
  * Carta del catalogo inclusa nel file, così l'import funziona anche offline.
@@ -130,9 +134,11 @@ class ImportedCard(
 /**
  * Collezione letta da file e ripulita dalle voci non valide.
  * [name] è null per i backup della prima versione, che non avevano un nome: lo sceglie l'app.
+ * [language] è il valore di [CollectionLanguage], letto dal file oppure dedotto da ricerche e carte.
  */
 class ImportedCollection(
     val name: String?,
+    val language: String,
     val queries: List<BackupQuery>,
     val cards: List<ImportedCard>,
     val entries: List<BackupEntry>,
@@ -258,7 +264,9 @@ object CollectionFiles {
         val prices = env.prices.map { if (it.fetchedAt <= 0) it.copy(fetchedAt = undatedTime) else it }.filter { p ->
             validPrice(p, cardIds).also { if (!it) skipped++ }
         }
-        return CollectionImportResult.Ok(ImportedCollection(name, queries, cards, entries, prices), skipped)
+        val language = CollectionLanguage.sanitize(info.language)
+            ?: CollectionLanguage.infer(queries.map { it.language } + cards.map { it.card.language.code })
+        return CollectionImportResult.Ok(ImportedCollection(name, language, queries, cards, entries, prices), skipped)
     }
 
     /**
@@ -277,7 +285,8 @@ object CollectionFiles {
             .filter { Ids.isValidVariantId(it.variantId) && it.eur.isFinite() && it.eur > 0 && it.eur < Validators.MAX_PRICE && it.fetchedAt > 0 }
             .map { PriceRecord(it.variantId, MANUAL_SOURCE, eur = it.eur, fetchedAt = it.fetchedAt, confidence = Confidence.MANUAL.name) }
         val skipped = env.queries.size - queries.size + env.collection.size - entries.size + env.manualPrices.size - prices.size
-        return CollectionImportResult.Ok(ImportedCollection(null, queries, emptyList(), entries, prices), skipped)
+        val language = CollectionLanguage.infer(queries.map { it.language })
+        return CollectionImportResult.Ok(ImportedCollection(null, language, queries, emptyList(), entries, prices), skipped)
     }
 
     /** Fonte usata per i prezzi inseriti a mano. */
