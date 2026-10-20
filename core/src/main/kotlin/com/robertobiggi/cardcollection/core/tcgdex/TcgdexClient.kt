@@ -150,6 +150,8 @@ class TcgdexClient(
         /** Dimensione massima per le liste di ricerca per numero (6 MB). */
         const val MAX_LIST_BYTES = 6L * 1024 * 1024
 
+        private const val MAX_RETRY_AFTER_SECONDS = 60L
+
         private val LOCAL_NUMBER = Regex("^\\d{1,4}$")
 
         /** Parser JSON tollerante ai campi sconosciuti, condiviso dai client. */
@@ -193,11 +195,13 @@ class TcgdexClient(
         /**
          * Interpreta l'header Retry-After espresso in secondi.
          * @param value String? - valore dell'header, se presente.
-         * @return Long? - attesa in millisecondi (massimo 10 minuti), oppure null se assente o non numerico.
+         * Il massimo è 60 secondi: attese più lunghe rischiano di superare il tempo concesso ai lavori
+         * in background, e in quel caso conviene lasciare che il circuit breaker metta in pausa la fonte.
+         * @return Long? - attesa in millisecondi (massimo 60 secondi), oppure null se assente o non numerico.
          */
         fun parseRetryAfter(value: String?): Long? {
             val seconds = value?.trim()?.toLongOrNull() ?: return null
-            return (seconds.coerceIn(0, 600)) * 1000
+            return seconds.coerceIn(0, MAX_RETRY_AFTER_SECONDS) * 1000
         }
     }
 }

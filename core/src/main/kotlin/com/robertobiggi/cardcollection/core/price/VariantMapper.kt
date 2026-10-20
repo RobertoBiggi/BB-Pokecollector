@@ -7,6 +7,7 @@ import com.robertobiggi.cardcollection.core.tcgdex.CardmarketPricingDto
 import com.robertobiggi.cardcollection.core.tcgdex.PricingDto
 import com.robertobiggi.cardcollection.core.tcgdex.TcgplayerPriceDto
 import com.robertobiggi.cardcollection.core.tcgdex.TcgplayerPricingDto
+import com.robertobiggi.cardcollection.core.validation.Validators
 
 /**
  * Associa i prezzi Cardmarket e TCGplayer alla variante giusta.
@@ -105,5 +106,5 @@ object VariantMapper {
      * @param value Double? - valore da controllare.
      * @return Double? - il valore se è un prezzo valido, altrimenti null.
      */
-    private fun positive(value: Double?): Double? = value?.takeIf { it.isFinite() && it > 0.0 && it < 1_000_000.0 }
+    private fun positive(value: Double?): Double? = value?.takeIf { it.isFinite() && it > 0.0 && it < Validators.MAX_PRICE }
 }
