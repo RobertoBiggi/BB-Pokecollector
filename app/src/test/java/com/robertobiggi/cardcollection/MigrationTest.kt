@@ -14,7 +14,7 @@ import java.sql.Connection
 import java.sql.DriverManager
 
 /**
- * Verifica le migrazioni 1 → 2 → 3 su SQLite (JVM): il database migrato deve avere lo stesso schema
+ * Verifica le migrazioni 1 → 2 → 3 → 4 su SQLite (JVM): il database migrato deve avere lo stesso schema
  * di quello che Room crea da zero (schemi esportati in app/schemas durante la build) e conservare i dati.
  */
 class MigrationTest {
@@ -143,9 +143,31 @@ class MigrationTest {
     }
 
     @Test
-    fun `la catena 1-2-3 produce lo schema attuale`() {
+    fun `la migrazione 3-4 deduce la lingua delle collezioni`() {
+        val migrated = db(fromRoomSchema(3))
+        listOf(
+            "INSERT INTO collection (id, name, createdAt) VALUES (1, 'Mista', 0), (2, 'Inglese', 0), (3, 'Giapponese', 0), (4, 'Vuota', 0), (5, 'Francese', 0)",
+            "INSERT INTO tracked_query (id, collectionId, language, pattern, enabled) VALUES (1, 1, 'en', 'Mawile', 1), (2, 1, 'ja', 'クチート', 1), (3, 2, 'en', 'Eevee', 1)",
+            "INSERT INTO card (id, language, tcgdexId, name, setId, setName, localId, printedNumber, queryId, catalogUpdatedAt) VALUES " +
+                "('en:me03-032','en','me03-032','Mawile','me03','Perfect Order','032','032/088',0,0), " +
+                "('ja:M3-117','ja','M3-117','メガジガルデex','M3','ムニキスゼロ','117','117/080',0,0), " +
+                "('fr:me03-032','fr','me03-032','Mysdibule','me03','x','032','032/088',0,0)",
+            "INSERT INTO collection_card (collectionId, cardId, queryId, hidden) VALUES (2, 'en:me03-032', 3, 0), (3, 'ja:M3-117', NULL, 0), (5, 'fr:me03-032', NULL, 0)",
+        ).forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
+
+        Migrations.SQL_3_4.forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
+
+        assertEquals(schema(db(fromRoomSchema(4))), schema(migrated))
+        assertEquals(
+            listOf(listOf("1", "mixed"), listOf("2", "en"), listOf("3", "ja"), listOf("4", "mixed"), listOf("5", "mixed")),
+            rows(migrated, "SELECT id, language FROM collection ORDER BY id"),
+        )
+    }
+
+    @Test
+    fun `la catena 1-2-3-4 produce lo schema attuale`() {
         val migrated = db(v1)
-        (Migrations.SQL_1_2 + Migrations.SQL_2_3).forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
-        assertEquals(schema(db(fromRoomSchema(3))), schema(migrated))
+        (Migrations.SQL_1_2 + Migrations.SQL_2_3 + Migrations.SQL_3_4).forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
+        assertEquals(schema(db(fromRoomSchema(4))), schema(migrated))
     }
 }

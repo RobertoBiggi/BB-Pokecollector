@@ -48,6 +48,41 @@ object Migrations {
     /** Versione 2 → 3: numero del Pokédex sulle carte, per cercarle per nome in ogni lingua (si compila al prossimo aggiornamento del catalogo). */
     val SQL_2_3: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `dexId` INTEGER")
 
+    /**
+     * Istruzione che dà la lingua [code] alle collezioni con almeno una ricerca o carta, tutte in quella lingua.
+     * @param code String - codice della lingua ("en" o "ja"), costante.
+     * @return String - istruzione UPDATE.
+     */
+    private fun inferLanguage(code: String): String =
+        "UPDATE `collection` SET `language` = '$code' WHERE " +
+            "(EXISTS (SELECT 1 FROM `tracked_query` q WHERE q.`collectionId` = `collection`.`id`) " +
+            "OR EXISTS (SELECT 1 FROM `collection_card` cc WHERE cc.`collectionId` = `collection`.`id`)) " +
+            "AND NOT EXISTS (SELECT 1 FROM `tracked_query` q WHERE q.`collectionId` = `collection`.`id` AND q.`language` <> '$code') " +
+            "AND NOT EXISTS (SELECT 1 FROM `collection_card` cc JOIN `card` c ON c.`id` = cc.`cardId` " +
+            "WHERE cc.`collectionId` = `collection`.`id` AND c.`language` <> '$code')"
+
+    /**
+     * Versione 3 → 4: lingua della collezione. Le collezioni esistenti diventano miste, tranne quelle
+     * con ricerche e carte tutte in inglese o tutte in giapponese, che prendono quella lingua.
+     */
+    val SQL_3_4: List<String> = listOf(
+        "ALTER TABLE `collection` ADD COLUMN `language` TEXT NOT NULL DEFAULT 'mixed'",
+        inferLanguage("en"),
+        inferLanguage("ja"),
+    )
+
+    /** Migrazione Room 3 → 4. */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        /**
+         * Esegue le istruzioni di [SQL_3_4].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_3_4.forEach { db.execSQL(it) }
+        }
+    }
+
     /** Migrazione Room 2 → 3. */
     val MIGRATION_2_3 = object : Migration(2, 3) {
         /**

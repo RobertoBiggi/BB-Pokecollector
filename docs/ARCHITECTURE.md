@@ -81,11 +81,11 @@ TCGdex usa `0` per "nessun dato": i valori nulli o pari a zero vengono scartati.
 
 La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`: aggiungerne una richiede solo l'implementazione e l'inserimento in `PriceRepository`. Quando non c'è un prezzo nuovo resta l'ultimo salvato, oppure il prezzo manuale.
 
-## Modello dati (Room, versione 3)
+## Modello dati (Room, versione 4)
 
 | Tabella | Contenuto |
 |---|---|
-| `collection` | collezioni create dall'utente (alla prima installazione non ce n'è nessuna) |
+| `collection` | collezioni create dall'utente (alla prima installazione non ce n'è nessuna), con la lingua: `en`, `ja` oppure `mixed` |
 | `tracked_query` | ricerche per nome e lingua **di una collezione** |
 | `card` | catalogo condiviso: set, sigla, numero stampato, rarità, serie, data, illustratore, numero del Pokédex (`dexId`), URL e percorsi delle immagini (`queryId` è un campo storico della v1) |
 | `card_variant` | una riga per variante (slot) |
@@ -96,13 +96,16 @@ La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`
 
 Uno slot è una variante desiderata (`wanted`) oppure posseduta: una variante con almeno una copia conta sempre come completata, anche senza "la voglio". Le mancanti sono le varianti desiderate con 0 copie.
 
+**Lingua della collezione** (`CollectionLanguage`, core): EN o JP fissano la lingua di tutte le ricerche e delle aggiunte singole, e la schermata Gestisci non la chiede più. "Mista" fa scegliere la lingua a ogni ricerca (EN, JP o le altre lingue di TCGdex), per mescolare carte di lingue diverse. Si cambia in qualsiasi momento da Gestisci; le ricerche già salvate restano invariate.
+
 Una carta è visibile in una collezione se non è nascosta e se è stata aggiunta a mano oppure da una ricerca attiva. Il sync del catalogo aggiorna solo `card`, `card_variant` e i collegamenti: non tocca mai i dati dell'utente.
 
 **Migrazioni** (`Migrations`):
 - **1 → 2**: crea la collezione "Mawile" con id 1, sposta lì ricerche e quantità e collega le carte tramite il vecchio `queryId`.
 - **2 → 3**: aggiunge `card.dexId`, compilato al prossimo aggiornamento del catalogo o dall'import di un file che lo contiene.
+- **3 → 4**: aggiunge `collection.language`. Le collezioni con ricerche e carte tutte in inglese (o tutte in giapponese) prendono quella lingua; le altre diventano miste.
 
-`MigrationTest` esegue 1 → 2, 2 → 3 e la catena 1 → 3 su SQLite (JVM) e confronta il risultato con gli schemi che Room esporta in `app/schemas/` durante la stessa build.
+`MigrationTest` esegue ogni passaggio e la catena 1 → 4 su SQLite (JVM) e confronta il risultato con gli schemi che Room esporta in `app/schemas/` durante la stessa build.
 
 **Lettura reattiva:** `CollectionRepository` combina le tabelle osservate in un'unica fotografia (`DbState`), calcolata fuori dal thread dell'interfaccia, accorpata durante le modifiche ravvicinate e condivisa da tutte le schermate (`shareIn` nello scope dell'app). Ricerca, filtri e ordinamento della griglia sono calcolati nel ViewModel, anch'essi fuori dal thread UI.
 
@@ -113,7 +116,7 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 ```json
 {
   "schema": 2, "app": "card-collection", "type": "collection", "exportedAt": "…",
-  "info":    { "name": "Mawile", "queries": [{ "language": "en", "pattern": "Mawile", "enabled": true }] },
+  "info":    { "name": "Mawile", "language": "mixed", "queries": [{ "language": "en", "pattern": "Mawile", "enabled": true }] },
   "cards":   [{ "id": "en:me03-032", "language": "en", "tcgdexId": "me03-032", "name": "Mawile",
                 "setId": "me03", "setName": "Perfect Order", "setCode": "POR", "localId": "032",
                 "printedNumber": "032/088", "variants": ["NORMAL", "REVERSE"], "hidden": false,
@@ -125,7 +128,7 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 ```
 
 - **Export:** senza immagini, con immagini piccole oppure con piccole e grandi. Nel file vanno l'ultimo prezzo di mercato e tutti i prezzi manuali di ogni variante.
-- **Import:** crea sempre una nuova collezione, con nome reso unico se serve. Le carte già presenti nel catalogo non vengono sovrascritte; le immagini incluse si usano solo per le carte che non ne hanno.
+- **Import:** crea sempre una nuova collezione, con nome reso unico se serve. La lingua viene da `info.language`; nei file senza (versioni precedenti) si deduce da ricerche e carte. Le carte già presenti nel catalogo non vengono sovrascritte; le immagini incluse si usano solo per le carte che non ne hanno.
 - **Validazione:**
   - lettura in streaming con limite di 40 MB e al massimo 5.000 carte;
   - id e varianti controllati, con lunghezze troncate;

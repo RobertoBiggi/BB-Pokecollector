@@ -91,6 +91,23 @@ class CollectionFileTest {
     }
 
     @Test
+    fun `lingua della collezione letta dal file o dedotta dalle carte`() {
+        fun language(info: CollectionInfo, vararg languages: String): String {
+            val cards = languages.mapIndexed { i, lang -> record("me03-03$i").copy(id = "$lang:me03-03$i", language = lang) }
+            val file = CollectionFileV2(exportedAt = "x", info = info, cards = cards, entries = emptyList())
+            return (roundTrip(file) as CollectionImportResult.Ok).collection.language
+        }
+        assertEquals("ja", language(CollectionInfo("A", language = "ja"), "en"))
+        assertEquals("mixed", language(CollectionInfo("A", language = "mixed"), "en"))
+        // Valore sconosciuto o assente: si deduce da ricerche e carte.
+        assertEquals("en", language(CollectionInfo("A", language = "../x"), "en", "en"))
+        assertEquals("mixed", language(CollectionInfo("A"), "en", "ja"))
+        assertEquals("mixed", language(CollectionInfo("A", listOf(BackupQuery("ja", "クチート"))), "en"))
+        assertEquals("mixed", language(CollectionInfo("A"), "fr"))
+        assertEquals("mixed", language(CollectionInfo("A")))
+    }
+
+    @Test
     fun `lingue europee e asiatiche negli id`() {
         assertTrue(com.robertobiggi.cardcollection.core.model.Ids.isValidVariantId("zh-tw:SI-295|NORMAL"))
         assertTrue(com.robertobiggi.cardcollection.core.model.Ids.isValidVariantId("it:swsh12tg-TG17|HOLO"))
