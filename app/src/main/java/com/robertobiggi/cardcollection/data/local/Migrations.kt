@@ -45,6 +45,21 @@ object Migrations {
         "ALTER TABLE `price_run` ADD COLUMN `collectionId` INTEGER",
     )
 
+    /** Versione 2 → 3: numero del Pokédex sulle carte, per cercarle per nome in ogni lingua (si compila al prossimo aggiornamento del catalogo). */
+    val SQL_2_3: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `dexId` INTEGER")
+
+    /** Migrazione Room 2 → 3. */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        /**
+         * Esegue le istruzioni di [SQL_2_3].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_2_3.forEach { db.execSQL(it) }
+        }
+    }
+
     /** Migrazione Room 1 → 2. */
     val MIGRATION_1_2 = object : Migration(1, 2) {
         /**

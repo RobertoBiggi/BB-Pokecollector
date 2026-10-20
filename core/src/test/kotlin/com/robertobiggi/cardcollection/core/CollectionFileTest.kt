@@ -125,4 +125,14 @@ class CollectionFileTest {
         assertNull(r.collection.name)
         assertTrue(r.collection.cards.isEmpty())
     }
+
+    @Test
+    fun `il numero del Pokedex viene letto solo se plausibile`() {
+        fun dex(value: Int): Int? {
+            val text = """{"schema":2,"app":"card-collection","cards":[{"id":"ja:SV2a-139","language":"ja","tcgdexId":"SV2a-139","name":"オムスター","setId":"SV2a","dexId":$value}],"entries":[]}"""
+            return (CollectionFiles.read(text.byteInputStream()) as CollectionImportResult.Ok).collection.cards.single().card.dexId
+        }
+        assertEquals(139, dex(139))
+        assertNull(dex(99999))
+    }
 }

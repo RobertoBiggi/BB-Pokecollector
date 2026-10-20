@@ -67,6 +67,7 @@ data class CardRecord(
     val hidden: Boolean = false,
     val imageLow: String? = null,
     val imageHigh: String? = null,
+    val dexId: Int? = null,
 )
 
 /** Prezzo salvato (di mercato o manuale) incluso nel file. */
@@ -167,6 +168,7 @@ object CollectionFiles {
     private const val MAX_CARDS = 5_000
     private const val MAX_ENTRIES = 20_000
     private const val MAX_PRICES = 50_000
+    private const val MAX_DEX_ID = 2_000
     private val CONTROL_CHARS = Regex("[\\p{Cntrl}]")
 
     private val json = Json {
@@ -345,6 +347,7 @@ object CollectionFiles {
             illustrator = r.illustrator?.take(80),
             imageBaseUrl = r.imageUrl?.takeIf { Validators.isAllowedImageUrl(it) },
             variants = variants.map { CatalogVariant(it) },
+            dexId = r.dexId?.takeIf { it in 1..MAX_DEX_ID },
         )
         return ImportedCard(card, r.hidden, decodeImage(r.imageLow), decodeImage(r.imageHigh))
     }
