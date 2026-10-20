@@ -1,12 +1,18 @@
-# Stampa nei log una risposta reale di TCGdex, per verificare l'API quando si sviluppa da un ambiente
-# che non la raggiunge. Si avvia a mano da Actions indicando il percorso, es. "ja/cards/M3-117".
+# Stampa nei log una risposta reale di TCGdex o pokemontcg.io, per verificare le API quando si sviluppa
+# da un ambiente che non le raggiunge. Si avvia a mano da Actions indicando API e percorso,
+# es. "tcgdex" + "ja/cards/M3-117" oppure "pokemontcg" + "cards?q=name:mawile".
 name: API probe
 
 on:
   workflow_dispatch:
     inputs:
+      api:
+        description: "API da interrogare"
+        type: choice
+        options: [tcgdex, pokemontcg]
+        default: tcgdex
       path:
-        description: "Percorso dopo https://api.tcgdex.net/v2/ (es. en/cards?name=Mawile)"
+        description: "Percorso dopo la base (tcgdex: https://api.tcgdex.net/v2/, pokemontcg: https://api.pokemontcg.io/v2/)"
         required: true
         default: "en/cards?name=Mawile"
 
@@ -18,11 +24,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Risposta TCGdex
+      - name: Risposta API
         env:
+          API: ${{ inputs.api }}
           API_PATH: ${{ inputs.path }}
         run: |
           set -euo pipefail
+          case "$API" in
+            tcgdex) base="https://api.tcgdex.net/v2/" ;;
+            pokemontcg) base="https://api.pokemontcg.io/v2/" ;;
+            *) echo "API non valida"; exit 1 ;;
+          esac
           # Solo caratteri sicuri per un percorso con query string.
-          if ! [[ "$API_PATH" =~ ^[A-Za-z0-9._/?=\&%-]{1,200}$ ]]; then echo "Percorso non valido"; exit 1; fi
-          curl -sS --max-time 30 "https://api.tcgdex.net/v2/$API_PATH" | jq . | head -c 200000
+          if ! [[ "$API_PATH" =~ ^[A-Za-z0-9._/?=\&%:,*-]{1,200}$ ]]; then echo "Percorso non valido"; exit 1; fi
+          code=$(curl -sS --max-time 120 -o body.json -w "%{http_code} %{time_total}s" "$base$API_PATH" || echo "errore curl")
+          echo "HTTP $code"
+          jq . body.json 2>/dev/null | head -c 200000 || head -c 5000 body.json
