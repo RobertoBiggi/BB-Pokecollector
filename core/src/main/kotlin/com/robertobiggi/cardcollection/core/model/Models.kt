@@ -27,6 +27,48 @@ enum class Language(val code: String, val asianSets: Boolean = false, val limite
     }
 }
 
+/**
+ * Lingua di una collezione, salvata come testo: il codice di una lingua fissa ([FIXED]) oppure [MIXED].
+ * In una collezione a lingua fissa tutte le ricerche usano quella lingua; in una mista la lingua si
+ * sceglie a ogni ricerca, tra tutte quelle di [Language].
+ */
+object CollectionLanguage {
+
+    /** Valore salvato per le collezioni miste. */
+    const val MIXED = "mixed"
+
+    /** Lingue che si possono scegliere come lingua fissa di una collezione. */
+    val FIXED: List<Language> = listOf(Language.EN, Language.JA)
+
+    /**
+     * Ricava la lingua fissa dal valore salvato.
+     * @param code String? - valore salvato nel database o nel file.
+     * @return Language? - lingua fissa, oppure null se la collezione è mista o il valore non è riconosciuto.
+     */
+    fun fixedLanguage(code: String?): Language? = FIXED.firstOrNull { it.code == code }
+
+    /**
+     * Converte una scelta dell'utente nel valore da salvare.
+     * @param language Language? - lingua fissa scelta, oppure null per una collezione mista.
+     * @return String - codice della lingua, oppure [MIXED] se la lingua non è tra quelle in [FIXED].
+     */
+    fun codeOf(language: Language?): String = language?.takeIf { it in FIXED }?.code ?: MIXED
+
+    /**
+     * Controlla un valore letto da un file importato.
+     * @param code String? - valore letto.
+     * @return String? - il valore se valido ([MIXED] o una lingua di [FIXED]), altrimenti null.
+     */
+    fun sanitize(code: String?): String? = code?.takeIf { it == MIXED || fixedLanguage(it) != null }
+
+    /**
+     * Deduce la lingua di una collezione dalle lingue delle sue ricerche e carte.
+     * @param languageCodes Collection<String> - codici lingua trovati.
+     * @return String - la lingua se è una sola e tra quelle in [FIXED], altrimenti [MIXED].
+     */
+    fun infer(languageCodes: Collection<String>): String = codeOf(languageCodes.distinct().singleOrNull()?.let(Language::fromCode))
+}
+
 /** Variante di stampa di una carta. Ogni variante è uno "slot" della collezione. */
 enum class VariantType(val tcgdexKey: String) {
     NORMAL("normal"),

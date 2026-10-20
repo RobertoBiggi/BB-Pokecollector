@@ -94,7 +94,11 @@ class TransferRepository(
         }
         val file = CollectionFileV2(
             exportedAt = Instant.now().toString(),
-            info = CollectionInfo(collection.name, catalogDao.queriesOf(collectionId).map { BackupQuery(it.language, it.pattern, it.enabled) }),
+            info = CollectionInfo(
+                name = collection.name,
+                queries = catalogDao.queriesOf(collectionId).map { BackupQuery(it.language, it.pattern, it.enabled) },
+                language = collection.language,
+            ),
             cards = records,
             entries = db.collectionDao().entriesOf(collectionId).map { BackupEntry(it.variantId, it.quantity, it.condition, it.wanted, it.notes) },
             prices = prices,
@@ -145,7 +149,7 @@ class TransferRepository(
      */
     private suspend fun apply(imported: ImportedCollection, desiredName: String): Pair<Long, String> = db.withTransaction {
         val name = collections.uniqueName(desiredName)
-        val id = catalogDao.insertCollection(CollectionEntity(name = name, createdAt = System.currentTimeMillis()))
+        val id = catalogDao.insertCollection(CollectionEntity(name = name, createdAt = System.currentTimeMillis(), language = imported.language))
         imported.queries.forEach {
             catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = it.language, pattern = it.pattern, enabled = it.enabled))
         }
