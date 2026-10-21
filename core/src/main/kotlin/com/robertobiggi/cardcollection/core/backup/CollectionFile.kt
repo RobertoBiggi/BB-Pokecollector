@@ -2,6 +2,7 @@ package com.robertobiggi.cardcollection.core.backup
 
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.CatalogVariant
+import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.Ids
@@ -18,6 +19,8 @@ import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.time.Instant
+import java.time.format.DateTimeParseException
 import java.util.Base64
 
 /** Ricerca per nome salvata nel file. */
@@ -38,9 +41,12 @@ data class BackupEntry(
 @Serializable
 data class BackupManualPrice(val variantId: String, val eur: Double, val fetchedAt: Long)
 
-/** Nome e ricerche della collezione esportata. */
+/**
+ * Nome, lingua e ricerche della collezione esportata. [language] è il valore di [CollectionLanguage]
+ * (assente nei file delle versioni precedenti: in quel caso si deduce dalle carte).
+ */
 @Serializable
-data class CollectionInfo(val name: String? = null, val queries: List<BackupQuery> = emptyList())
+data class CollectionInfo(val name: String? = null, val queries: List<BackupQuery> = emptyList(), val language: String? = null)
 
 /**
  * Carta del catalogo inclusa nel file, così l'import funziona anche offline.
@@ -108,6 +114,7 @@ private data class ImportEnvelope(
     val schema: Int = 0,
     val app: String = "",
     val type: String? = null,
+    val exportedAt: String? = null,
     val info: CollectionInfo? = null,
     val cards: List<CardRecord> = emptyList(),
     val entries: List<BackupEntry> = emptyList(),
@@ -128,9 +135,11 @@ class ImportedCard(
 /**
  * Collezione letta da file e ripulita dalle voci non valide.
  * [name] è null per i backup della prima versione, che non avevano un nome: lo sceglie l'app.
+ * [language] è il valore di [CollectionLanguage], letto dal file oppure dedotto da ricerche e carte.
  */
 class ImportedCollection(
     val name: String?,
+    val language: String,
     val queries: List<BackupQuery>,
     val cards: List<ImportedCard>,
     val entries: List<BackupEntry>,
@@ -138,7 +147,7 @@ class ImportedCollection(
 )
 
 /** Motivo per cui un file non può essere importato; la UI lo traduce in un messaggio. */
-enum class ImportError { TOO_LARGE, INVALID_JSON, NOT_THIS_APP, UNSUPPORTED_VERSION, MISSING_INFO, TOO_MANY_ITEMS, READ_FAILED }
+enum class ImportError { TOO_LARGE, INVALID_JSON, NOT_THIS_APP, UNSUPPORTED_VERSION, TOO_MANY_ITEMS, READ_FAILED }
 
 /** Esito della lettura di un file di collezione. */
 sealed interface CollectionImportResult {
@@ -169,8 +178,14 @@ object CollectionFiles {
     private const val MAX_CARDS = 5_000
     private const val MAX_ENTRIES = 20_000
     private const val MAX_PRICES = 50_000
+    private const val MAX_QUERIES = 200
     private const val MAX_DEX_ID = 2_000
-    private val CONTROL_CHARS = Regex("[\\p{Cntrl}]")
+
+    /** Data assegnata ai prezzi senza data quando nemmeno il file ne ha una: la più vecchia possibile. */
+    private const val UNDATED_PRICE_TIME = 1L
+
+    /** Caratteri di controllo e di direzione del testo (usabili per camuffare un nome). */
+    private val CONTROL_CHARS = Regex("[\\p{Cntrl}\\u202A-\\u202E\\u2066-\\u2069]")
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -228,21 +243,31 @@ object CollectionFiles {
      */
     private fun readV2(env: ImportEnvelope): CollectionImportResult {
         val info = env.info ?: CollectionInfo()
-        if (env.cards.size > MAX_CARDS || env.entries.size > MAX_ENTRIES || env.prices.size > MAX_PRICES) {
+        if (env.cards.size > MAX_CARDS || env.entries.size > MAX_ENTRIES || env.prices.size > MAX_PRICES ||
+            info.queries.size > MAX_QUERIES
+        ) {
             return CollectionImportResult.Error(ImportError.TOO_MANY_ITEMS)
         }
         var skipped = 0
         val name = info.name?.let(::cleanName)
         val queries = validQueries(info.queries).also { skipped += info.queries.size - it.size }
-        val cards = env.cards.mapNotNull { record -> toImportedCard(record).also { if (it == null) skipped++ } }
-            .distinctBy { it.card.id }
+        // Varianti usate dalle voci, per le carte del file che non elencano le proprie.
+        val typesInEntries = env.entries.groupBy({ it.variantId.substringBefore('|') }, { it.variantId.substringAfter('|') })
+        val cards = env.cards.mapNotNull { record ->
+            toImportedCard(record, typesInEntries[record.id].orEmpty()).also { if (it == null) skipped++ }
+        }.distinctBy { it.card.id }
         val cardIds = cards.map { it.card.id }.toSet()
-        val entries = validEntries(env.entries) { it.substringBefore('|') in cardIds }.also { skipped += env.entries.size - it.size }
-        val now = System.currentTimeMillis()
-        val prices = env.prices.map { if (it.fetchedAt <= 0) it.copy(fetchedAt = now) else it }.filter { p ->
+        val variantIds = cards.flatMap { c -> c.card.variants.map { Ids.variantId(c.card.id, it.type) } }.toSet()
+        val entries = validEntries(env.entries) { it in variantIds }.also { skipped += env.entries.size - it.size }
+        // I prezzi senza data prendono quella dell'export (o la più vecchia possibile): così non passano
+        // davanti ai prezzi più recenti e reimportare lo stesso file non crea doppioni.
+        val undatedTime = parseInstant(env.exportedAt) ?: UNDATED_PRICE_TIME
+        val prices = env.prices.map { if (it.fetchedAt <= 0) it.copy(fetchedAt = undatedTime) else it }.filter { p ->
             validPrice(p, cardIds).also { if (!it) skipped++ }
         }
-        return CollectionImportResult.Ok(ImportedCollection(name, queries, cards, entries, prices), skipped)
+        val language = CollectionLanguage.sanitize(info.language)
+            ?: CollectionLanguage.infer(queries.map { it.language } + cards.map { it.card.language.code })
+        return CollectionImportResult.Ok(ImportedCollection(name, language, queries, cards, entries, prices), skipped)
     }
 
     /**
@@ -258,10 +283,11 @@ object CollectionFiles {
         val queries = validQueries(env.queries)
         val entries = validEntries(env.collection) { true }
         val prices = env.manualPrices
-            .filter { Ids.isValidVariantId(it.variantId) && it.eur.isFinite() && it.eur > 0 && it.eur < 100_000 && it.fetchedAt > 0 }
+            .filter { Ids.isValidVariantId(it.variantId) && it.eur.isFinite() && it.eur > 0 && it.eur < Validators.MAX_PRICE && it.fetchedAt > 0 }
             .map { PriceRecord(it.variantId, MANUAL_SOURCE, eur = it.eur, fetchedAt = it.fetchedAt, confidence = Confidence.MANUAL.name) }
         val skipped = env.queries.size - queries.size + env.collection.size - entries.size + env.manualPrices.size - prices.size
-        return CollectionImportResult.Ok(ImportedCollection(null, queries, emptyList(), entries, prices), skipped)
+        val language = CollectionLanguage.infer(queries.map { it.language })
+        return CollectionImportResult.Ok(ImportedCollection(null, language, queries, emptyList(), entries, prices), skipped)
     }
 
     /** Fonte usata per i prezzi inseriti a mano. */
@@ -276,6 +302,17 @@ object CollectionFiles {
      * @return String? - nome senza caratteri di controllo, lungo 1-60 caratteri, oppure null se vuoto.
      */
     fun cleanName(raw: String): String? = raw.replace(CONTROL_CHARS, "").trim().take(60).ifEmpty { null }
+
+    /**
+     * Converte una data ISO-8601 (es. "2026-10-19T10:00:00Z") in millisecondi.
+     * @param text String? - data letta dal file.
+     * @return Long? - millisecondi dal 1970, oppure null se assente o non valida.
+     */
+    private fun parseInstant(text: String?): Long? = try {
+        text?.take(40)?.let { Instant.parse(it).toEpochMilli() }?.takeIf { it > 0 }
+    } catch (e: DateTimeParseException) {
+        null
+    }
 
     /**
      * Tiene solo le ricerche valide e senza duplicati.
@@ -297,8 +334,11 @@ object CollectionFiles {
         val conditions = Condition.entries.map { it.name }.toSet()
         return entries.filter {
             Ids.isValidVariantId(it.variantId) && belongs(it.variantId) &&
-                it.quantity in 0..Validators.MAX_QUANTITY && it.condition in conditions &&
-                (it.notes == null || it.notes.length <= 500)
+                it.quantity in 0..Validators.MAX_QUANTITY && (it.notes == null || it.notes.length <= 500)
+        }.map { entry ->
+            // Condizione scritta in minuscolo o sconosciuta: si tiene la voce con la condizione di default.
+            val condition = entry.condition.uppercase().takeIf { it in conditions } ?: Condition.NM.name
+            if (condition == entry.condition) entry else entry.copy(condition = condition)
         }.distinctBy { it.variantId }
     }
 
@@ -309,7 +349,7 @@ object CollectionFiles {
      * @return Boolean - true se il prezzo è valido e riferito a una carta del file.
      */
     private fun validPrice(p: PriceRecord, cardIds: Set<String>): Boolean {
-        fun ok(v: Double?) = v == null || (v.isFinite() && v >= 0 && v < 1_000_000)
+        fun ok(v: Double?) = v == null || (v.isFinite() && v >= 0 && v < Validators.MAX_PRICE)
         return Ids.isValidVariantId(p.variantId) && p.variantId.substringBefore('|') in cardIds &&
             p.source.isNotBlank() && p.source.length <= 40 && p.fetchedAt > 0 &&
             Confidence.entries.any { it.name == p.confidence } &&
@@ -320,15 +360,17 @@ object CollectionFiles {
     /**
      * Valida una carta letta da file e ne decodifica le immagini.
      * @param r CardRecord - carta.
+     * @param typesInEntries List<String> - tipi di variante usati dalle voci della carta, usati se il
+     *        file non elenca le varianti (in mancanza di entrambi la carta ha solo la variante normale).
      * @return ImportedCard? - carta pronta, oppure null se i dati essenziali non sono validi.
      */
-    private fun toImportedCard(r: CardRecord): ImportedCard? {
+    private fun toImportedCard(r: CardRecord, typesInEntries: List<String>): ImportedCard? {
         val language = Language.fromCode(r.language) ?: return null
         if (!Validators.isValidRemoteId(r.tcgdexId) || !Validators.isValidRemoteId(r.setId)) return null
         if (r.id != "${language.code}:${r.tcgdexId}") return null
-        val variants = (r.variants ?: listOf(VariantType.NORMAL.name))
-            .mapNotNull { v -> VariantType.entries.firstOrNull { it.name == v } }.distinct()
-        val name = r.name?.trim().orEmpty()
+        val variants = (r.variants ?: typesInEntries.ifEmpty { listOf(VariantType.NORMAL.name) })
+            .mapNotNull { VariantType.fromName(it) }.distinct()
+        val name = r.name?.replace(CONTROL_CHARS, "")?.trim().orEmpty()
         if (variants.isEmpty() || name.isEmpty()) return null
         val localId = r.localId?.takeIf { it.isNotBlank() } ?: r.tcgdexId.substringAfterLast('-')
         val card = CatalogCard(

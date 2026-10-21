@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "e552d2f8d78997799faff39d80bfa5fd",
+    "identityHash": "43e9be27bcf8661c5d9c35f3dbb46064",
     "entities": [
       {
         "tableName": "collection",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `language` TEXT NOT NULL DEFAULT 'mixed')",
         "fields": [
           {
             "fieldPath": "id",
@@ -25,6 +25,13 @@
             "columnName": "createdAt",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "language",
+            "columnName": "language",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'mixed'"
           }
         ],
         "primaryKey": {
@@ -106,7 +113,7 @@
       },
       {
         "tableName": "card",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `language` TEXT NOT NULL, `tcgdexId` TEXT NOT NULL, `name` TEXT NOT NULL, `setId` TEXT NOT NULL, `setName` TEXT NOT NULL, `setCode` TEXT, `serieId` TEXT, `serieName` TEXT, `localId` TEXT NOT NULL, `printedNumber` TEXT NOT NULL, `rarity` TEXT, `releaseDate` TEXT, `illustrator` TEXT, `imageUrl` TEXT, `imageLowPath` TEXT, `imageHighPath` TEXT, `queryId` INTEGER NOT NULL, `catalogUpdatedAt` INTEGER NOT NULL, `dexId` INTEGER, `cardTraderCondition` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `language` TEXT NOT NULL, `tcgdexId` TEXT NOT NULL, `name` TEXT NOT NULL, `setId` TEXT NOT NULL, `setName` TEXT NOT NULL, `setCode` TEXT, `serieId` TEXT, `serieName` TEXT, `localId` TEXT NOT NULL, `printedNumber` TEXT NOT NULL, `rarity` TEXT, `releaseDate` TEXT, `illustrator` TEXT, `imageUrl` TEXT, `imageLowPath` TEXT, `imageHighPath` TEXT, `queryId` INTEGER NOT NULL, `catalogUpdatedAt` INTEGER NOT NULL, `dexId` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -226,12 +233,6 @@
             "fieldPath": "dexId",
             "columnName": "dexId",
             "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "cardTraderCondition",
-            "columnName": "cardTraderCondition",
-            "affinity": "TEXT",
             "notNull": false
           }
         ],
@@ -626,7 +627,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e552d2f8d78997799faff39d80bfa5fd')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '43e9be27bcf8661c5d9c35f3dbb46064')"
     ]
   }
 }

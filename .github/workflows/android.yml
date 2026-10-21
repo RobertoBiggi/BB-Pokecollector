@@ -1,4 +1,5 @@
-# Compila e testa l'app; l'APK debug viene pubblicato come artifact da scaricare e installare.
+# Compila e testa l'app. Su ogni push su main pubblica anche una GitHub Release con l'APK firmato
+# con la chiave di release (secret del repo), che Obtainium usa per gli aggiornamenti.
 name: Android CI
 
 on:
@@ -11,7 +12,8 @@ permissions:
 
 concurrency:
   group: android-${{ github.ref }}
-  cancel-in-progress: true
+  # Su main non si interrompe mai un run a metà, per non lasciare una release pubblicata a metà.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:
@@ -19,6 +21,9 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-java@v4
         with:
@@ -27,29 +32,38 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Test, lint e build
-        run: ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace --console=plain
+      - name: Numero di build
+        run: echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
 
-      - name: Verifica firma e pacchetto dell'APK
+      # assembleRelease senza chiave produce un APK non firmato: serve a verificare R8 a ogni push.
+      - name: Test, lint e build
+        run: >
+          ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+          -PversionCode="$BUILD_NUMBER" --stacktrace --console=plain
+
+      - name: Verifica firma e pacchetto dell'APK debug
         run: |
           set -euo pipefail
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           apk=$(ls app/build/outputs/apk/debug/*.apk)
-          "$tools/apksigner" verify --verbose --print-certs "$apk"
-          "$tools/aapt" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-debuggable|testOnly|native-code)" || true
-          # La firma deve essere quella del keystore fisso, altrimenti gli aggiornamenti falliscono.
+          "$tools/aapt" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-debuggable)" || true
+          # Le build di prova usano il keystore di debug del repo e l'id ".debug".
           expected="b66e03971fb82eef2a2af8bcd4b64ecec1cdbc3fb18569d9ad612ba9e26e9589"
           actual=$("$tools/apksigner" verify --print-certs "$apk" | grep -m1 "SHA-256 digest" | awk '{print $NF}')
-          echo "SHA-256 firma: $actual"
           test "$actual" = "$expected"
-          if "$tools/aapt" dump badging "$apk" | grep -q "testOnly"; then echo "APK marcato testOnly"; exit 1; fi
+          "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.robertobiggi.cardcollection.debug'"
+          # La build release (minimizzata da R8) deve contenere i nomi dei Pokémon.
+          unzip -l app/build/outputs/apk/release/*.apk | grep -q "com/robertobiggi/cardcollection/core/model/pokemon-names.tsv"
 
+      # Solo per i push del repo: gli APK delle pull request di terzi non vengono pubblicati.
       - name: Pubblica APK debug
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: card-collection-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 14
 
       - name: Pubblica report in caso di errore
         if: failure()
@@ -60,3 +74,81 @@ jobs:
             app/build/reports/
             core/build/reports/
           if-no-files-found: ignore
+          retention-days: 7
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    env:
+      HAS_KEY: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
+    steps:
+      - name: Chiave di release assente
+        if: env.HAS_KEY != 'true'
+        run: |
+          echo "::warning::Secret RELEASE_KEYSTORE_BASE64 non impostato, nessuna release pubblicata."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: env.HAS_KEY == 'true'
+
+      - name: Build release firmata
+        if: env.HAS_KEY == 'true'
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          export RELEASE_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RELEASE_KEYSTORE_PATH"
+          build=$(git rev-list --count HEAD)
+          ./gradlew :app:assembleRelease -PversionCode="$build" --console=plain
+          rm -f "$RELEASE_KEYSTORE_PATH"
+          echo "BUILD_NUMBER=$build" >> "$GITHUB_ENV"
+
+      - name: Verifica firma release
+        if: env.HAS_KEY == 'true'
+        run: |
+          set -euo pipefail
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          apk=app/build/outputs/apk/release/app-release.apk
+          expected="a48f249096edae297c98b8e05f99eecea99e61948e6e510c6b49fd6d0271e2ab"
+          actual=$("$tools/apksigner" verify --print-certs "$apk" | grep -m1 "SHA-256 digest" | awk '{print $NF}')
+          echo "SHA-256 firma: $actual"
+          test "$actual" = "$expected"
+          if "$tools/aapt" dump badging "$apk" | grep -q "application-debuggable"; then echo "APK release debuggable"; exit 1; fi
+          version=$("$tools/aapt" dump badging "$apk" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Pubblica GitHub Release
+        if: env.HAS_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "Release $tag già presente"; exit 0
+          fi
+          cp app/build/outputs/apk/release/app-release.apk "card-collection-$VERSION.apk"
+          gh release create "$tag" "card-collection-$VERSION.apk" --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --title "$VERSION" --generate-notes --latest

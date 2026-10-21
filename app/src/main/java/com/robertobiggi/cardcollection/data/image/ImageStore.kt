@@ -104,15 +104,24 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         } catch (e: SecurityException) {
             null
         } ?: return@withContext null
+        recode(raw, MANUAL_MAX_SIDE)
+    }
 
+    /**
+     * Ricodifica un'immagine in WebP ridimensionata: scarta metadati e tutto ciò che non è un'immagine.
+     * @param raw ByteArray - immagine originale (JPEG, PNG, WebP…).
+     * @param maxSide Int - lato lungo massimo in pixel.
+     * @return ByteArray? - immagine WebP, oppure null se il contenuto non è decodificabile o il risultato supera [MAX_BYTES].
+     */
+    private fun recode(raw: ByteArray, maxSide: Int): ByteArray? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(raw, 0, raw.size, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@withContext null
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         var sample = 1
-        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MANUAL_MAX_SIDE) sample *= 2
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
         val decoded = BitmapFactory.decodeByteArray(raw, 0, raw.size, BitmapFactory.Options().apply { inSampleSize = sample })
-            ?: return@withContext null
-        val scale = MANUAL_MAX_SIDE.toFloat() / maxOf(decoded.width, decoded.height)
+            ?: return null
+        val scale = maxSide.toFloat() / maxOf(decoded.width, decoded.height)
         val bitmap = if (scale < 1f) {
             Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true)
         } else {
@@ -123,7 +132,7 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         val ok = bitmap.compress(format, MANUAL_QUALITY, out)
         if (bitmap !== decoded) bitmap.recycle()
         decoded.recycle()
-        out.toByteArray().takeIf { ok && it.isNotEmpty() && it.size <= MAX_BYTES }
+        return out.toByteArray().takeIf { ok && it.isNotEmpty() && it.size <= MAX_BYTES }
     }
 
     /**
@@ -199,26 +208,24 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
             if (type == null || type.type != "image") throw IOException("Non è un'immagine")
             if (body.contentLength() > MAX_BYTES) throw IOException("Immagine troppo grande")
             val tmp = File(target.parentFile, target.name + ".tmp")
-            var written = 0L
-            body.byteStream().use { input ->
-                tmp.outputStream().use { output ->
-                    val buffer = ByteArray(16 * 1024)
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        written += read
-                        if (written > MAX_BYTES) {
-                            output.close()
-                            tmp.delete()
-                            throw IOException("Immagine troppo grande")
+            try {
+                var written = 0L
+                body.byteStream().use { input ->
+                    tmp.outputStream().use { output ->
+                        val buffer = ByteArray(16 * 1024)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            written += read
+                            if (written > MAX_BYTES) throw IOException("Immagine troppo grande")
+                            output.write(buffer, 0, read)
                         }
-                        output.write(buffer, 0, read)
                     }
                 }
-            }
-            if (written == 0L || !tmp.renameTo(target)) {
+                if (written == 0L || !tmp.renameTo(target)) throw IOException("Salvataggio non riuscito")
+            } finally {
+                // Dopo un rename riuscito il file temporaneo non esiste più; negli altri casi va tolto.
                 tmp.delete()
-                throw IOException("Salvataggio non riuscito")
             }
         }
     }
@@ -257,7 +264,7 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         /** Dimensione massima del file scelto dall'utente prima della ricodifica (20 MB). */
         private const val MAX_PICKED_BYTES = 20L * 1024 * 1024
 
-        /** Lato lungo massimo dell'immagine scelta dall'utente, in pixel. */
+        /** Lato lungo massimo dell'immagine scelta dall'utente , in pixel. */
         private const val MANUAL_MAX_SIDE = 1200
 
         private const val MANUAL_QUALITY = 88

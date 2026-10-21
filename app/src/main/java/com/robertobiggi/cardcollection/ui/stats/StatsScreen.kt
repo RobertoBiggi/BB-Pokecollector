@@ -33,7 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.robertobiggi.cardcollection.core.stats.CollectionStats
+import com.robertobiggi.cardcollection.data.repo.LibraryAssembler
 import com.robertobiggi.cardcollection.core.stats.StatsSummary
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.ui.MainViewModel
@@ -45,8 +45,7 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
  * @param cards List<CardUi> - carte del gruppo.
  * @return StatsSummary - statistiche del gruppo.
  */
-private fun summaryOf(cards: List<CardUi>): StatsSummary =
-    CollectionStats.compute(cards.flatMap { c -> c.variants.map { it.toSlotInput() } })
+private fun summaryOf(cards: List<CardUi>): StatsSummary = LibraryAssembler.statsOf(cards)
 
 /**
  * Statistiche: completamento, valore della collezione, avanzamento per lingua e per serie.
