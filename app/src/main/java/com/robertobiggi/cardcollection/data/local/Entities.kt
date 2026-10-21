@@ -55,6 +55,8 @@ data class CardEntity(
     val queryId: Long,
     val catalogUpdatedAt: Long,
     val dexId: Int? = null,
+    /** Non più usata: la condizione CardTrader segue quella della variante. La colonna resta perché esistono database già alla versione 4. */
+    val cardTraderCondition: String? = null,
 )
 
 /** Variante di stampa di una carta: ogni riga è uno slot. */
