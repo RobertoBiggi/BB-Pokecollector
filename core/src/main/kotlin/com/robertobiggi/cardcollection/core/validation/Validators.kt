@@ -15,6 +15,9 @@ object Validators {
     /** Host da cui è consentito scaricare le immagini delle carte. */
     val ALLOWED_IMAGE_HOSTS = setOf("assets.tcgdex.net")
 
+    /** Host da cui è consentito scaricare le immagini di CardTrader ("cardtrader.com" rimanda a "www"). */
+    val ALLOWED_CARDTRADER_IMAGE_HOSTS = setOf("www.cardtrader.com", "cardtrader.com")
+
     /** Quantità massima di copie per variante. */
     const val MAX_QUANTITY = 999
 
@@ -65,6 +68,16 @@ object Validators {
     fun isAllowedImageUrl(url: String): Boolean {
         val parsed = url.toHttpUrlOrNull() ?: return false
         return parsed.isHttps && parsed.host in ALLOWED_IMAGE_HOSTS
+    }
+
+    /**
+     * Controlla l'URL di un'immagine di CardTrader.
+     * @param url String - indirizzo completo.
+     * @return Boolean - true se è HTTPS e l'host è in [ALLOWED_CARDTRADER_IMAGE_HOSTS].
+     */
+    fun isAllowedCardTraderImageUrl(url: String): Boolean {
+        val parsed = url.toHttpUrlOrNull() ?: return false
+        return parsed.isHttps && parsed.host in ALLOWED_CARDTRADER_IMAGE_HOSTS
     }
 
     /**

@@ -151,6 +151,13 @@ interface CatalogDao {
     suspend fun cardsMissingImages(): List<CardEntity>
 
     /**
+     * Elenca le carte inglesi e giapponesi senza URL immagine né immagini salvate (né scelte a mano).
+     * @return List<CardEntity> - carte per cui si può provare un'altra fonte.
+     */
+    @Query("SELECT * FROM card WHERE imageUrl IS NULL AND imageLowPath IS NULL AND imageHighPath IS NULL AND language IN ('en', 'ja')")
+    suspend fun cardsWithoutImage(): List<CardEntity>
+
+    /**
      * Inserisce o aggiorna una carta del catalogo.
      * @param card CardEntity - carta da salvare.
      * @return Unit

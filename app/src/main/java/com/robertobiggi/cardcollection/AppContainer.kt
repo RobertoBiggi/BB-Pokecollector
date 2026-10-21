@@ -56,8 +56,8 @@ class AppContainer(context: Context) {
 
     val collection = CollectionRepository(database, appScope)
     private val cardmarketCatalog = CardmarketCatalog(http, File(appContext.cacheDir, "cardmarket-products.json"))
-    val catalog = CatalogRepository(database, tcgdex, images, settings, CardmarketCardSearch(cardmarketCatalog, tcgdex))
-    val prices = PriceRepository(database, tcgdex, http, settings, appContext.cacheDir)
+    val catalog = CatalogRepository(database, tcgdex, images, settings, CardmarketCardSearch(cardmarketCatalog, tcgdex), http)
+    val prices = PriceRepository(database, tcgdex, http, settings, appContext.cacheDir, images)
     val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
     val work = WorkScheduler(appContext)
 
@@ -69,7 +69,7 @@ class AppContainer(context: Context) {
     private companion object {
         const val USER_AGENT = "CardCollection-Android (uso personale)"
 
-        /** Host raggiungibili dall'app: API e immagini di TCGdex, file prezzi e prodotti di Cardmarket, API di CardTrader. */
-        val ALLOWED_HOSTS = setOf("api.tcgdex.net", "downloads.s3.cardmarket.com", "api.cardtrader.com") + Validators.ALLOWED_IMAGE_HOSTS
+        /** Host raggiungibili dall'app: API e immagini di TCGdex, file prezzi e prodotti di Cardmarket, API e immagini di CardTrader. */
+        val ALLOWED_HOSTS = setOf("api.tcgdex.net", "downloads.s3.cardmarket.com", "api.cardtrader.com") + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS
     }
 }

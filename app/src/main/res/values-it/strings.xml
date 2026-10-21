@@ -212,10 +212,7 @@
     <string name="err_file_permission">Permesso negato per il file scelto.</string>
     <string name="err_file_not_found">Collezione non trovata.</string>
     <string name="lang_other">Altro</string>
-    <string name="label_collection_language">Lingua della collezione</string>
     <string name="lang_mixed">Mista</string>
-    <string name="lang_mixed_hint">Scegli la lingua a ogni ricerca: puoi mescolare carte inglesi, giapponesi e di altre lingue.</string>
-    <string name="lang_fixed_hint">Ricerche e aggiunte in: %1$s. Scegli Mista per aggiungere anche carte in altre lingue.</string>
     <string name="action_update_price">Aggiorna prezzo</string>
     <string name="action_download_image">Scarica immagine</string>
     <string name="action_pick_image">Scegli immagine</string>
