@@ -6,6 +6,7 @@ import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
+import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.price.CircuitBreaker
 import com.robertobiggi.cardcollection.core.price.PriceChain
@@ -176,6 +177,7 @@ class PriceRepository(
             setName = card.setName,
             setCode = card.setCode,
             localId = card.localId,
+            cardTraderCondition = card.cardTraderCondition?.let { CtCondition.fromName(it) },
         )
         val outcome = chain.fetch(request)
         val quote = outcome.quote
@@ -221,11 +223,21 @@ class PriceRepository(
         val token = settings.cardTraderToken.first()
         if (token.isEmpty()) return null
         val slot = ProviderSlot(
-            CardTraderPriceProvider(CardTraderClient(http, token)),
+            CardTraderPriceProvider(CardTraderClient(http, token), settings.cardTraderCondition.first()),
             RateLimiter(REQUEST_INTERVAL_MS),
             CircuitBreaker(),
         )
         return PriceChain(listOf(slot))
+    }
+
+    /**
+     * Sceglie la condizione CardTrader di una carta.
+     * @param cardId String - id locale della carta.
+     * @param condition CtCondition? - condizione peggiore accettata, null per usare quella delle impostazioni.
+     * @return Unit
+     */
+    suspend fun setCardTraderCondition(cardId: String, condition: CtCondition?) {
+        db.catalogDao().setCardTraderCondition(cardId, condition?.name)
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.core.price
 
+import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
@@ -15,6 +16,7 @@ import com.robertobiggi.cardcollection.core.model.VariantType
  * @property setName nome del set.
  * @property setCode sigla stampata del set, se c'è.
  * @property localId numero della carta nel set (es. "075").
+ * @property cardTraderCondition condizione peggiore accettata per CardTrader scelta per questa carta, null = predefinita.
  */
 data class PriceRequest(
     val language: Language,
@@ -25,6 +27,7 @@ data class PriceRequest(
     val setName: String = "",
     val setCode: String? = null,
     val localId: String = "",
+    val cardTraderCondition: CtCondition? = null,
 )
 
 /** Fonte di prezzi. Le implementazioni lanciano le eccezioni di [com.robertobiggi.cardcollection.core.net]. */

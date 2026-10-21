@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -30,6 +31,18 @@ class SettingsStore(context: Context) {
 
     /** Token API di CardTrader inserito dall'utente (stringa vuota = CardTrader disattivato). */
     val cardTraderToken: Flow<String> = store.data.map { it[CARDTRADER_TOKEN].orEmpty() }
+
+    /** Nome di [CtCondition], la condizione peggiore accettata per i prezzi CardTrader (default Near Mint). */
+    val cardTraderCondition: Flow<CtCondition> = store.data.map { CtCondition.fromName(it[CARDTRADER_CONDITION]) }
+
+    /**
+     * Salva la condizione peggiore accettata per i prezzi CardTrader.
+     * @param condition CtCondition - condizione scelta.
+     * @return Unit
+     */
+    suspend fun setCardTraderCondition(condition: CtCondition) {
+        store.edit { it[CARDTRADER_CONDITION] = condition.name }
+    }
 
     /**
      * Salva il token API di CardTrader.
@@ -67,6 +80,7 @@ class SettingsStore(context: Context) {
     private companion object {
         val TCGDEX_PAUSED_UNTIL = longPreferencesKey("tcgdex_paused_until")
         val CARDTRADER_TOKEN = stringPreferencesKey("cardtrader_token")
+        val CARDTRADER_CONDITION = stringPreferencesKey("cardtrader_condition")
         val LAST_CATALOG_SYNC = longPreferencesKey("last_catalog_sync")
     }
 }

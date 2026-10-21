@@ -4,6 +4,7 @@ import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderMatcher
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderPicker
 import com.robertobiggi.cardcollection.core.cardtrader.CtBlueprintDto
+import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import com.robertobiggi.cardcollection.core.cardtrader.CtExpansionDto
 import com.robertobiggi.cardcollection.core.cardtrader.CtProductDto
 import com.robertobiggi.cardcollection.core.model.Confidence
@@ -18,8 +19,12 @@ import kotlinx.coroutines.sync.withLock
  * crea una nuova istanza per ogni aggiornamento prezzi.
  *
  * @param client client CardTrader con il token dell'utente.
+ * @param worstCondition condizione peggiore accettata predefinita, se la carta non ne ha una sua.
  */
-class CardTraderPriceProvider(private val client: CardTraderClient) : PriceProvider {
+class CardTraderPriceProvider(
+    private val client: CardTraderClient,
+    private val worstCondition: CtCondition = CtCondition.NEAR_MINT,
+) : PriceProvider {
     override val id: String = ID
     override val displayName: String = DISPLAY_NAME
 
@@ -41,7 +46,7 @@ class CardTraderPriceProvider(private val client: CardTraderClient) : PriceProvi
         val matching = CardTraderMatcher.blueprintsFor(blueprintsOf(expansion.id), request.localId)
         if (matching.isEmpty()) return null
         val listings = matching.flatMap { productsOf(it.id, languageCode) }
-        val pick = CardTraderPicker.lowest(listings, request.variant, languageCode) ?: return null
+        val pick = CardTraderPicker.lowest(listings, request.variant, languageCode, request.cardTraderCondition ?: worstCondition) ?: return null
         if (pick.currency != "EUR") return null
         val eur = pick.cents / 100.0
         PriceQuote(DISPLAY_NAME, eur, eur, null, null, null, null, Confidence.HIGH)

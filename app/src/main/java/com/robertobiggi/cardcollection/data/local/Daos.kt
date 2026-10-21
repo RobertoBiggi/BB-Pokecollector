@@ -67,6 +67,9 @@ interface CatalogDao {
     @Upsert
     suspend fun upsertCard(card: CardEntity)
 
+    @Query("UPDATE card SET cardTraderCondition = :condition WHERE id = :id")
+    suspend fun setCardTraderCondition(id: String, condition: String?)
+
     @Query("UPDATE card SET imageLowPath = :low, imageHighPath = :high WHERE id = :id")
     suspend fun setImagePaths(id: String, low: String?, high: String?)
 

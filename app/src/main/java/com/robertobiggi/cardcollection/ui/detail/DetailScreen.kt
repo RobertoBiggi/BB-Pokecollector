@@ -5,6 +5,8 @@ package com.robertobiggi.cardcollection.ui.detail
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.ui.common.labelRes
 import com.robertobiggi.cardcollection.R
+import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
+import com.robertobiggi.cardcollection.ui.settings.conditionLabel
 import androidx.compose.ui.res.stringResource
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -93,6 +95,8 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     val library by vm.library.collectAsStateWithLifecycle()
     val card = library?.firstOrNull { it.card.id == cardId }
     val action by vm.cardAction.collectAsStateWithLifecycle()
+    val cardTraderToken by vm.cardTraderToken.collectAsStateWithLifecycle()
+    val defaultCtCondition by vm.cardTraderCondition.collectAsStateWithLifecycle()
     var manualFor by remember { mutableStateOf<VariantUi?>(null) }
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) vm.setCardImage(cardId, uri)
@@ -122,6 +126,15 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
                     onDownload = { vm.downloadCardImage(card.card.id) },
                     onPick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 )
+            }
+            if (cardTraderToken.isNotEmpty()) {
+                item {
+                    CardTraderCondition(
+                        selected = card.card.cardTraderCondition?.let { CtCondition.fromName(it) },
+                        default = defaultCtCondition,
+                        onSelect = { vm.saveCardTraderCondition(card.card.id, it) },
+                    )
+                }
             }
             item { Links(card) }
             item { Text(stringResource(R.string.variants_title), style = MaterialTheme.typography.titleMedium) }
@@ -395,3 +408,35 @@ private fun ManualPriceDialog(variantLabel: String, onDismiss: () -> Unit, onSav
 @Composable
 private fun sourceLabel(source: String): String =
     if (source == CollectionFiles.MANUAL_SOURCE) stringResource(R.string.source_manual) else source
+
+/**
+ * Scelta della condizione peggiore accettata per il prezzo CardTrader di questa carta.
+ * @param selected CtCondition? - scelta della carta, null se usa la predefinita.
+ * @param default CtCondition - predefinita delle impostazioni.
+ * @param onSelect (CtCondition?) -> Unit - nuova scelta (null = predefinita).
+ * @return Unit
+ */
+@Composable
+private fun CardTraderCondition(selected: CtCondition?, default: CtCondition, onSelect: (CtCondition?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.ct_card_condition), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Box {
+            OutlinedButton(onClick = { open = true }) {
+                Text(
+                    selected?.let { stringResource(conditionLabel(it)) }
+                        ?: stringResource(R.string.ct_card_condition_default, stringResource(conditionLabel(default))),
+                )
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.ct_card_condition_default, stringResource(conditionLabel(default)))) },
+                    onClick = { onSelect(null); open = false },
+                )
+                CtCondition.entries.forEach { c ->
+                    DropdownMenuItem(text = { Text(stringResource(conditionLabel(c))) }, onClick = { onSelect(c); open = false })
+                }
+            }
+        }
+    }
+}

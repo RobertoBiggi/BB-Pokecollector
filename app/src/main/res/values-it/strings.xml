@@ -174,6 +174,15 @@
     <string name="settings_cardtrader_token">Token API</string>
     <string name="settings_cardtrader_save">Salva</string>
     <string name="settings_cardtrader_active">I prezzi CardTrader sono attivi.</string>
+    <string name="settings_cardtrader_condition">Condizione peggiore predefinita per il prezzo più basso (ogni carta può cambiarla):</string>
+    <string name="ct_cond_mint">Solo Mint</string>
+    <string name="ct_cond_nm">Near Mint o migliore</string>
+    <string name="ct_cond_sp">Slightly Played o migliore</string>
+    <string name="ct_cond_mp">Moderately Played o migliore</string>
+    <string name="ct_cond_played">Played o migliore</string>
+    <string name="ct_cond_any">Qualsiasi condizione (anche Poor)</string>
+    <string name="ct_card_condition">Condizione CardTrader</string>
+    <string name="ct_card_condition_default">Predefinita (%1$s)</string>
     <string name="settings_collections">Collezioni e file JSON</string>
     <string name="settings_collections_text">Ogni collezione ha ricerche, carte e quantità proprie; catalogo, immagini e prezzi sono condivisi. Dal menu di una collezione puoi esportarla in un file JSON, con o senza immagini, e importarla su un altro telefono dall\'icona in alto nell\'elenco. L\'import crea sempre una nuova collezione.</string>
     <string name="settings_v1">Sono accettati anche i backup della prima versione dell\'app.</string>
