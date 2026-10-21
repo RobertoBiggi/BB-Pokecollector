@@ -146,6 +146,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
                     onCondition = { vm.setCondition(variant.id, it) },
                     onWanted = { vm.setWanted(variant.id, it) },
                     onManual = { manualFor = variant },
+                    showCardTrader = cardTraderToken.isNotEmpty(),
                 )
             }
             item {
@@ -269,6 +270,7 @@ private fun Links(card: CardUi) {
  * @param onCondition (Condition) -> Unit - nuova condizione.
  * @param onWanted (Boolean) -> Unit - nuovo stato "la voglio".
  * @param onManual () -> Unit - apre l'inserimento del prezzo manuale.
+ * @param showCardTrader Boolean - true se c'è il token CardTrader: mostra il riquadro accanto agli altri mercati.
  * @return Unit
  */
 @Composable
@@ -279,6 +281,7 @@ private fun VariantCard(
     onCondition: (Condition) -> Unit,
     onWanted: (Boolean) -> Unit,
     onManual: () -> Unit,
+    showCardTrader: Boolean,
 ) {
     var conditionOpen by remember { mutableStateOf(false) }
     Card {
@@ -329,11 +332,8 @@ private fun VariantCard(
                     Modifier.weight(1f),
                     emptyText = stringResource(if (card.language == Language.EN) R.string.no_price else R.string.not_sold),
                 )
-            }
-            if (variant.latestCardTrader != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PriceBox(stringResource(R.string.price_cardtrader), variant.latestCardTrader.eur?.let { Format.eur(it) }, Modifier.weight(1f))
-                    Spacer(Modifier.weight(1f))
+                if (showCardTrader) {
+                    PriceBox(stringResource(R.string.price_cardtrader), variant.latestCardTrader?.eur?.let { Format.eur(it) }, Modifier.weight(1f))
                 }
             }
             val last = variant.lastSnapshot
