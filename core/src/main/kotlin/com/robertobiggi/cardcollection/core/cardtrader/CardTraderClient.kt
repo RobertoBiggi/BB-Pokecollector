@@ -31,9 +31,10 @@ class CardTraderClient(
 
     /**
      * Elenca i giochi supportati.
-     * @return List<CtGameDto> - giochi di CardTrader.
+     * @return List<CtGameDto> - giochi di CardTrader (la risposta li avvolge in `{"array": [...]}`).
      */
-    suspend fun games(): List<CtGameDto> = get(url("games"), ListSerializer(CtGameDto.serializer()))
+    suspend fun games(): List<CtGameDto> =
+        get(url("games"), CtGamesResponse.serializer()).array
 
     /**
      * Elenca tutte le espansioni di tutti i giochi.

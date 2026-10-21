@@ -78,7 +78,7 @@ class CardTraderTest {
                 if (request.getHeader("Authorization") != "Bearer secret") return MockResponse().setResponseCode(401)
                 val path = request.path.orEmpty()
                 val body = when {
-                    path.startsWith("/api/v2/games") -> """[{"id":1,"name":"Magic"},{"id":5,"name":"Pokémon"}]"""
+                    path.startsWith("/api/v2/games") -> """{"array":[{"id":1,"name":"Magic"},{"id":5,"name":"Pokémon"}]}"""
                     path.startsWith("/api/v2/expansions") ->
                         """[{"id":10,"game_id":1,"code":"lc","name":"Legendary Collection"},{"id":20,"game_id":5,"code":"lc","name":"Legendary Collection"}]"""
                     path.startsWith("/api/v2/blueprints/export") && path.contains("expansion_id=20") ->
