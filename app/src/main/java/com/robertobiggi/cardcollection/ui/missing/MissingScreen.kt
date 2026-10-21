@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.robertobiggi.cardcollection.core.stats.CollectionStats
+import com.robertobiggi.cardcollection.data.repo.LibraryAssembler
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.VariantUi
 import com.robertobiggi.cardcollection.ui.MainViewModel
@@ -52,10 +52,10 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val name by vm.collectionName.collectAsStateWithLifecycle()
     val cards = library.orEmpty()
     val missing = remember(cards) {
-        cards.sortedWith(compareBy({ it.card.releaseDate ?: "9999" }, { it.card.localId.padStart(4, '0') }))
+        cards.sortedWith(CardUi.RELEASE_ORDER)
             .flatMap { c -> c.variants.filter { it.wanted && it.quantity == 0 }.map { c to it } }
     }
-    val stats = remember(cards) { CollectionStats.compute(cards.flatMap { c -> c.variants.map { it.toSlotInput() } }) }
+    val stats = remember(cards) { LibraryAssembler.statsOf(cards) }
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.missing_title, name.orEmpty()), maxLines = 1, overflow = TextOverflow.Ellipsis) })
@@ -80,14 +80,11 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                     )
                 }
             } else {
-                item {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column {
-                            missing.forEachIndexed { index, (card, variant) ->
-                                if (index > 0) HorizontalDivider()
-                                MissingRow(card, variant, onClick = { onOpen(card.card.id) })
-                            }
-                        }
+                // Una riga per elemento della lista: con molte mancanti si disegnano solo quelle visibili.
+                itemsIndexed(missing, key = { _, row -> row.second.id }) { index, (card, variant) ->
+                    Column {
+                        if (index > 0) HorizontalDivider()
+                        MissingRow(card, variant, onClick = { onOpen(card.card.id) })
                     }
                 }
             }

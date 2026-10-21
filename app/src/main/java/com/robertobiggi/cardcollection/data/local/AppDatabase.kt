@@ -17,12 +17,26 @@ import androidx.room.RoomDatabase
         PriceSnapshotEntity::class,
         PriceRunEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
+    /**
+     * Accesso a collezioni, ricerche, carte e varianti.
+     * @return CatalogDao - DAO generato da Room.
+     */
     abstract fun catalogDao(): CatalogDao
+
+    /**
+     * Accesso ai dati dell'utente di ogni collezione.
+     * @return CollectionDao - DAO generato da Room.
+     */
     abstract fun collectionDao(): CollectionDao
+
+    /**
+     * Accesso a prezzi e registro degli aggiornamenti.
+     * @return PriceDao - DAO generato da Room.
+     */
     abstract fun priceDao(): PriceDao
 
     companion object {
@@ -36,7 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
          */
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
-                .addMigrations(Migrations.MIGRATION_1_2, Migrations.MIGRATION_2_3)
+                .addMigrations(Migrations.MIGRATION_1_2, Migrations.MIGRATION_2_3, Migrations.MIGRATION_3_4)
                 .build()
     }
 }
