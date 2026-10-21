@@ -1,13 +1,14 @@
 package com.robertobiggi.cardcollection.core.cardtrader
 
+import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.VariantType
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 
 /**
- * Condizioni degli annunci CardTrader, dalla migliore alla peggiore. Nelle impostazioni si sceglie
- * la peggiore accettata: [NEAR_MINT] accetta Mint e Near Mint, [POOR] accetta qualsiasi condizione.
+ * Condizioni degli annunci CardTrader, dalla migliore alla peggiore. Per ogni variante si accetta la
+ * condizione della copia posseduta o una migliore: [NEAR_MINT] accetta Mint e Near Mint, [POOR] qualsiasi.
  */
 enum class CtCondition(val label: String) {
     MINT("Mint"),
@@ -24,6 +25,19 @@ enum class CtCondition(val label: String) {
          * @return CtCondition - la condizione, [NEAR_MINT] se assente o sconosciuta.
          */
         fun fromName(name: String?): CtCondition = entries.firstOrNull { it.name == name } ?: NEAR_MINT
+
+        /**
+         * Traduce la condizione della copia posseduta (scala Cardmarket) in quella di CardTrader.
+         * @param condition Condition - condizione della variante.
+         * @return CtCondition - NM → Near Mint, LP → Slightly Played, MP → Moderately Played, HP → Played, DMG → Poor.
+         */
+        fun fromCondition(condition: Condition): CtCondition = when (condition) {
+            Condition.NM -> NEAR_MINT
+            Condition.LP -> SLIGHTLY_PLAYED
+            Condition.MP -> MODERATELY_PLAYED
+            Condition.HP -> PLAYED
+            Condition.DMG -> POOR
+        }
 
         /**
          * Converte la condizione scritta in un annuncio.

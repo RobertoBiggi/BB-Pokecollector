@@ -6,6 +6,7 @@ import com.robertobiggi.cardcollection.core.cardtrader.CardTraderPicker
 import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import com.robertobiggi.cardcollection.core.cardtrader.CtExpansionDto
 import com.robertobiggi.cardcollection.core.cardtrader.CtProductDto
+import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.net.BlockedException
@@ -58,6 +59,14 @@ class CardTraderTest {
         assertNull(CardTraderPicker.lowest(played, VariantType.NORMAL, "en", CtCondition.MODERATELY_PLAYED))
         assertEquals(20L, CardTraderPicker.lowest(played, VariantType.NORMAL, "en", CtCondition.PLAYED)?.cents)
         assertEquals(20L, CardTraderPicker.lowest(omastar, VariantType.NORMAL, "en", CtCondition.POOR)?.cents)
+    }
+
+    @Test
+    fun `la condizione della copia diventa quella CardTrader`() {
+        assertEquals(CtCondition.NEAR_MINT, CtCondition.fromCondition(Condition.NM))
+        assertEquals(CtCondition.POOR, CtCondition.fromCondition(Condition.DMG))
+        val reverse = omastar.filter { it.id == 3L || it.id == 4L }
+        assertEquals(450L, CardTraderPicker.lowest(reverse, VariantType.REVERSE, "en", CtCondition.fromCondition(Condition.NM))?.cents)
     }
 
     @Test

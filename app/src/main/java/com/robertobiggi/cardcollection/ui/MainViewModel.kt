@@ -1,6 +1,5 @@
 package com.robertobiggi.cardcollection.ui
 
-import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
@@ -103,7 +102,6 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val tcgdexPausedUntil: StateFlow<Long> = container.settings.tcgdexPausedUntil.stateInVm(0L)
     val lastCatalogSync: StateFlow<Long> = container.settings.lastCatalogSync.stateInVm(0L)
     val cardTraderToken: StateFlow<String> = container.settings.cardTraderToken.stateInVm("")
-    val cardTraderCondition: StateFlow<CtCondition> = container.settings.cardTraderCondition.stateInVm(CtCondition.NEAR_MINT)
 
     private val _filter = MutableStateFlow(CollectionFilter())
     val filter: StateFlow<CollectionFilter> = _filter.asStateFlow()
@@ -311,25 +309,6 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     fun setWanted(variantId: String, wanted: Boolean) = withSelected { container.collection.setWanted(it, variantId, wanted) }
 
     /**
-     * Sceglie la condizione CardTrader di una sola carta.
-     * @param cardId String - id locale della carta.
-     * @param condition CtCondition? - condizione peggiore accettata, null per usare la predefinita.
-     * @return Unit
-     */
-    fun saveCardTraderCondition(cardId: String, condition: CtCondition?) {
-        viewModelScope.launch { container.prices.setCardTraderCondition(cardId, condition) }
-    }
-
-    /**
-     * Salva la condizione predefinita per i prezzi CardTrader.
-     * @param condition CtCondition - condizione scelta.
-     * @return Unit
-     */
-    fun saveCardTraderCondition(condition: CtCondition) {
-        viewModelScope.launch { container.settings.setCardTraderCondition(condition) }
-    }
-
-    /**
      * Salva il token CardTrader (spazi e a capo ai bordi vengono tolti).
      * @param input String - testo incollato dall'utente.
      * @return Unit
@@ -359,7 +338,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @return Unit
      */
     fun checkCardPrice(cardId: String) = runCardAction(CardAction.PRICE) {
-        val result = container.prices.checkCard(cardId)
+        val result = container.prices.checkCard(cardId, _selected.value)
         val found = result.ok + result.fallback
         when {
             result.abort == AbortReason.SOURCE_PAUSED -> say(R.string.abort_source_paused)
