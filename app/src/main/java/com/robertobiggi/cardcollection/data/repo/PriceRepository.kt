@@ -16,6 +16,9 @@ import com.robertobiggi.cardcollection.core.price.ProviderSlot
 import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.price.StepOutcome
 import com.robertobiggi.cardcollection.core.price.TcgdexPriceProvider
+import com.robertobiggi.cardcollection.core.tcgdex.CardRepair
+import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
+import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinalFinder
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -23,6 +26,7 @@ import com.robertobiggi.cardcollection.data.local.CardVariantEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 
@@ -48,6 +52,19 @@ class PriceRepository(
     private val settings: SettingsStore,
 ) {
     private val priceDao = db.priceDao()
+
+    /** Carte per cui si è già cercato il Pokédex in questa sessione, per non rifare la richiesta a ogni aggiornamento. */
+    private val dexLookedUp = HashSet<String>()
+
+    /** Carte scheletro per cui si è già cercato l'illustratore in questa sessione. */
+    private val illustratorLookedUp = HashSet<String>()
+
+    /** Posizioni già calcolate per le carte senza Pokédex (il valore può essere null: non trovata). */
+    private val ordinals = HashMap<String, Optional>()
+
+    private class Optional(val value: SetOrdinal?)
+
+    private val ordinalFinder = SetOrdinalFinder(client)
 
     /**
      * Esegue l'aggiornamento prezzi delle carte visibili di una collezione.
@@ -170,7 +187,8 @@ class PriceRepository(
      * @param types List<String> - tipi di tutte le varianti della carta (per l'affidabilità del prezzo Cardmarket).
      * @return VariantCheck - esito; SKIPPED se lingua o tipo non sono riconosciuti.
      */
-    private suspend fun checkVariant(chain: PriceChain, cardTrader: PriceChain?, card: CardEntity, variant: CardVariantEntity, types: List<String>, condition: Condition): VariantCheck {
+    private suspend fun checkVariant(chain: PriceChain, cardTrader: PriceChain?, storedCard: CardEntity, variant: CardVariantEntity, types: List<String>, condition: Condition): VariantCheck {
+        val card = withIllustrator(if (cardTrader != null) withDexId(storedCard) else storedCard)
         val type = VariantType.entries.firstOrNull { it.name == variant.type } ?: return VariantCheck.SKIPPED
         val language = Language.fromCode(card.language) ?: return VariantCheck.SKIPPED
         val request = PriceRequest(
@@ -178,10 +196,13 @@ class PriceRepository(
             tcgdexId = card.tcgdexId,
             variant = type,
             cardHasNormalAndHolo = VariantType.NORMAL.name in types && VariantType.HOLO.name in types,
+            cardHasFirstEdition = VariantType.FIRST_EDITION.name in types,
             setId = card.setId,
             setName = card.setName,
             setCode = card.setCode,
             localId = card.localId,
+            dexId = card.dexId,
+            ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
             cardTraderCondition = CtCondition.fromCondition(condition),
         )
         val outcome = chain.fetch(request)
@@ -193,6 +214,65 @@ class PriceRepository(
         }
         saveQuote(variant.id, quote)
         return if (outcome.usedFallback) VariantCheck.FALLBACK else VariantCheck.OK
+    }
+
+    /**
+     * Completa il numero del Pokédex di una carta giapponese salvata prima che esistesse la colonna:
+     * senza, CardTrader non riesce ad abbinare le carte delle espansioni del 1996-1999.
+     * @param card CardEntity - carta salvata.
+     * @return CardEntity - la carta con il Pokédex, oppure quella di partenza se non si trova (Allenatori, Energie, rete assente).
+     */
+    private suspend fun withDexId(card: CardEntity): CardEntity {
+        if (card.dexId != null || card.language != Language.JA.code || !dexLookedUp.add(card.id)) return card
+        val dexId = try {
+            client.getCard(Language.JA, card.tcgdexId).dexId?.firstOrNull()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return card
+        val updated = card.copy(dexId = dexId)
+        db.catalogDao().upsertCard(updated)
+        return updated
+    }
+
+    /**
+     * Posizione di una carta senza Pokédex tra le carte Pokémon del suo set, per abbinarla a CardTrader
+     * quando l'espansione non ha numeri di collezione. Calcolata una sola volta per carta e sessione.
+     * @param card CardEntity - carta senza Pokédex (Allenatore o Energia).
+     * @param language Language - lingua del catalogo.
+     * @return SetOrdinal? - posizione, oppure null se non si trova o TCGdex non risponde.
+     */
+    private suspend fun ordinalOf(card: CardEntity, language: Language): SetOrdinal? {
+        ordinals[card.id]?.let { return it.value }
+        val ordinal = try {
+            ordinalFinder.of(language, card.setId, card.localId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return null
+        }
+        ordinals[card.id] = Optional(ordinal)
+        return ordinal
+    }
+
+    /**
+     * Completa l'illustratore di una carta "scheletro" (senza dettaglio TCGdex) dalla stessa carta nel catalogo inglese.
+     * @param card CardEntity - carta salvata.
+     * @return CardEntity - la carta con l'illustratore, oppure quella di partenza se non è uno scheletro o la ricerca non è univoca.
+     */
+    private suspend fun withIllustrator(card: CardEntity): CardEntity {
+        if (!CardRepair.isStub(card.rarity, card.illustrator, card.releaseDate, card.imageUrl != null) || !illustratorLookedUp.add(card.id)) return card
+        val illustrator = try {
+            CardRepair.illustratorFromEnglish(client, card.name, card.dexId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return card
+        val updated = card.copy(illustrator = illustrator)
+        db.catalogDao().upsertCard(updated)
+        return updated
     }
 
     /**

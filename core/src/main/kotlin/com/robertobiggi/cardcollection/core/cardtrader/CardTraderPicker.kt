@@ -65,6 +65,10 @@ object CardTraderPicker {
      * @param variant VariantType - variante richiesta.
      * @param languageCode String? - lingua richiesta (es. "en"), null per non filtrare.
      * @param worstCondition CtCondition - condizione peggiore accettata; gli annunci senza condizione nota restano esclusi.
+     * @param firstEditionFallback Boolean - se per una variante normal/holo non c'è nessun annuncio "non 1st Edition", usa i più economici tra quelli 1st Edition.
+     *        Serve alle carte giapponesi, che per interi set escono solo con il marchio 1st Edition e che TCGdex non distingue.
+     * @param lowerCondition Boolean - se nessun annuncio rispetta [worstCondition], scende una condizione alla volta
+     *        (Near Mint → Slightly Played → … → Poor) e usa il primo prezzo trovato; se manca anche in Poor, nessun prezzo.
      * @return CtPick? - prezzo più basso, oppure null se nessun annuncio corrisponde.
      */
     fun lowest(
@@ -72,14 +76,29 @@ object CardTraderPicker {
         variant: VariantType,
         languageCode: String?,
         worstCondition: CtCondition = CtCondition.NEAR_MINT,
+        firstEditionFallback: Boolean = false,
+        lowerCondition: Boolean = false,
     ): CtPick? {
-        val matching = products.filter { p ->
+        val candidates = products.filter { p ->
             p.graded != true && (p.quantity ?: 1) > 0 && priceOf(p) != null &&
-                matchesVariant(p.propertiesHash, variant) && matchesLanguage(p.propertiesHash, languageCode) &&
-                (condition(p.propertiesHash)?.let { it <= worstCondition } ?: false)
+                matchesLanguage(p.propertiesHash, languageCode) && condition(p.propertiesHash) != null
         }
-        return matching.mapNotNull { priceOf(it) }.minByOrNull { it.cents }
+        val pools = buildList {
+            add(candidates.filter { matchesVariant(it.propertiesHash, variant) })
+            if (firstEditionFallback && variant in FIRST_EDITION_FALLBACK_VARIANTS) {
+                add(candidates.filter { !flag(it.propertiesHash, "reverse") && flag(it.propertiesHash, "first_edition") })
+            }
+        }
+        val levels = if (lowerCondition) CtCondition.entries.filter { it >= worstCondition } else listOf(worstCondition)
+        for (pool in pools) {
+            for (level in levels) {
+                pool.filter { condition(it.propertiesHash)!! <= level }.mapNotNull { priceOf(it) }.minByOrNull { it.cents }?.let { return it }
+            }
+        }
+        return null
     }
+
+    private val FIRST_EDITION_FALLBACK_VARIANTS = setOf(VariantType.NORMAL, VariantType.HOLO, VariantType.W_PROMO)
 
     private fun priceOf(p: CtProductDto): CtPick? {
         val cents = p.priceCents ?: p.price?.cents

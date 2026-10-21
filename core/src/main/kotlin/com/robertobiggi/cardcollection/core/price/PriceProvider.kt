@@ -4,6 +4,7 @@ import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
+import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
 
 /**
  * Richiesta di prezzo per una singola variante.
@@ -12,10 +13,13 @@ import com.robertobiggi.cardcollection.core.model.VariantType
  * @property tcgdexId id TCGdex della carta.
  * @property variant variante richiesta.
  * @property cardHasNormalAndHolo true se la carta esiste sia normal sia holo.
+ * @property cardHasFirstEdition true se TCGdex elenca anche la variante 1st Edition (allora CardTrader non la usa come ripiego per normal/holo).
  * @property setId id TCGdex del set.
  * @property setName nome del set.
  * @property setCode sigla stampata del set, se c'è.
  * @property localId numero della carta nel set (es. "075").
+ * @property dexId numero del Pokédex nazionale, null per Allenatori ed Energie.
+ * @property ordinal calcola, solo se serve, la posizione della carta senza Pokédex tra le carte Pokémon del set (vedi [SetOrdinal]).
  * @property cardTraderCondition condizione peggiore accettata per CardTrader (quella della variante), null = Near Mint.
  */
 data class PriceRequest(
@@ -23,10 +27,13 @@ data class PriceRequest(
     val tcgdexId: String,
     val variant: VariantType,
     val cardHasNormalAndHolo: Boolean,
+    val cardHasFirstEdition: Boolean = false,
     val setId: String = "",
     val setName: String = "",
     val setCode: String? = null,
     val localId: String = "",
+    val dexId: Int? = null,
+    val ordinal: (suspend () -> SetOrdinal?)? = null,
     val cardTraderCondition: CtCondition? = null,
 )
 

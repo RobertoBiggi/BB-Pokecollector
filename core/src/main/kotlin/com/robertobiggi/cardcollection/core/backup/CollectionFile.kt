@@ -82,7 +82,8 @@ data class PriceRecord(
     val usdLow: Double? = null,
     val sourceUpdatedAt: String? = null,
     val fetchedAt: Long = 0,
-    val confidence: String = "MEDIUM",
+    /** Un prezzo importato senza affidabilità dichiarata è "indicativo": non si sa a quale variante si riferisca. */
+    val confidence: String = "LOW",
 )
 
 /** File di una singola collezione (schema 2), con o senza immagini. */

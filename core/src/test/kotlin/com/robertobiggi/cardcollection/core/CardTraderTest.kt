@@ -4,9 +4,11 @@ import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderMatcher
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderPicker
 import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
+import com.robertobiggi.cardcollection.core.cardtrader.CtBlueprintDto
 import com.robertobiggi.cardcollection.core.cardtrader.CtExpansionDto
 import com.robertobiggi.cardcollection.core.cardtrader.CtProductDto
 import com.robertobiggi.cardcollection.core.model.Condition
+import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.net.BlockedException
@@ -14,6 +16,10 @@ import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.price.PriceRequest
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
@@ -82,6 +88,102 @@ class CardTraderTest {
         assertEquals(1, CardTraderMatcher.expansionFor(exp, "Legendary Collection", "base6", null)?.id)
         assertEquals(2, CardTraderMatcher.expansionFor(exp, "Paldea Evolved", "sv02", "PAL")?.id)
         assertNull(CardTraderMatcher.expansionFor(exp, "Evolving Skies", "swsh07", null))
+    }
+
+    @Test
+    fun `per le carte giapponesi la sigla vince sul nome del set inglese`() {
+        val exp = listOf(
+            CtExpansionDto(1, 5, "30c", "30th Celebration"),
+            CtExpansionDto(2, 5, "m6a", "30th Celebration JP"),
+            CtExpansionDto(3, 5, "mp-promo", "M-P Promos"),
+        )
+        assertEquals(1, CardTraderMatcher.expansionFor(exp, "30th CELEBRATION", "M6a", null)?.id)
+        assertEquals(2, CardTraderMatcher.expansionFor(exp, "30th CELEBRATION", "M6a", null, preferCode = true)?.id)
+        assertEquals(3, CardTraderMatcher.expansionFor(exp, "メガ プロモカード", "M-P", null, preferCode = true)?.id)
+    }
+
+    @Test
+    fun `se ci sono solo annunci 1st Edition la carta giapponese normal li usa come ripiego`() {
+        val firstEdition = products(
+            """[
+              {"id":1,"price_cents":714,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Near Mint","first_edition":true,"pokemon_reverse":false,"pokemon_language":"jp"}},
+              {"id":2,"price_cents":900,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Near Mint","first_edition":true,"pokemon_reverse":true,"pokemon_language":"jp"}}
+            ]""",
+        )
+        assertNull(CardTraderPicker.lowest(firstEdition, VariantType.NORMAL, "jp"))
+        assertEquals(714L, CardTraderPicker.lowest(firstEdition, VariantType.NORMAL, "jp", firstEditionFallback = true)?.cents)
+        assertEquals(714L, CardTraderPicker.lowest(firstEdition, VariantType.HOLO, "jp", firstEditionFallback = true)?.cents)
+        assertNull(CardTraderPicker.lowest(firstEdition, VariantType.W_PROMO, "jp", CtCondition.MINT, firstEditionFallback = true))
+        // Con annunci normali disponibili il ripiego non interviene.
+        val mixed = firstEdition + products(
+            """[{"id":3,"price_cents":1500,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Near Mint","first_edition":false,"pokemon_reverse":false,"pokemon_language":"jp"}}]""",
+        )
+        assertEquals(1500L, CardTraderPicker.lowest(mixed, VariantType.NORMAL, "jp", firstEditionFallback = true)?.cents)
+        assertEquals(714L, CardTraderPicker.lowest(mixed, VariantType.FIRST_EDITION, "jp", firstEditionFallback = true)?.cents)
+    }
+
+    @Test
+    fun `senza annunci alla condizione richiesta scende una condizione alla volta`() {
+        val listings = products(
+            """[
+              {"id":1,"price_cents":1005,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Played","pokemon_language":"jp"}},
+              {"id":2,"price_cents":6064,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Slightly Played","pokemon_language":"jp"}},
+              {"id":3,"price_cents":51,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Poor","pokemon_language":"jp"}}
+            ]""",
+        )
+        // NM non c'è: il primo livello con annunci è Slightly Played, anche se più in basso c'è di meno.
+        assertEquals(6064L, CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", CtCondition.NEAR_MINT, lowerCondition = true)?.cents)
+        // Un livello accetta anche le condizioni migliori: con Played valgono Slightly Played e Played.
+        assertEquals(6064L, CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", CtCondition.MODERATELY_PLAYED, lowerCondition = true)?.cents)
+        assertEquals(1005L, CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", CtCondition.PLAYED, lowerCondition = true)?.cents)
+        assertEquals(51L, CardTraderPicker.lowest(listings.filter { it.id == 3L }, VariantType.NORMAL, "jp", CtCondition.NEAR_MINT, lowerCondition = true)?.cents)
+        // Senza la scelta di scendere, resta nessun prezzo.
+        assertNull(CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", CtCondition.NEAR_MINT))
+        // Neanche in Poor: nessun prezzo.
+        assertNull(CardTraderPicker.lowest(emptyList(), VariantType.NORMAL, "jp", CtCondition.NEAR_MINT, lowerCondition = true))
+    }
+
+    @Test
+    fun `Allenatori ed Energie si abbinano dalla posizione tra due carte Pokemon`() {
+        fun bp(id: Int, name: String, version: String? = null, rarity: String? = "Common") = CtBlueprintDto(
+            id, name, version, 7, buildJsonObject {
+                put("collector_number", JsonNull)
+                put("pokemon_rarity", rarity?.let { JsonPrimitive(it) } ?: JsonNull)
+            },
+        )
+        // Mystery of the Fossils: Tentacool è in fondo (aggiunto dopo), i prodotti sigillati non hanno rarità.
+        val set = listOf(
+            bp(1, "Ekans", "No.023"), bp(2, "Dragonite", "Holo Rare | No.149"), bp(3, "Energy Search"), bp(4, "Gambler"),
+            bp(5, "Mysterious Fossil"), bp(6, "Recycle"), bp(7, "Mr. Fuji"), bp(8, "Tentacool"),
+            bp(9, "Mystery of the Fossils Booster", rarity = null), bp(10, "Mystery of the Fossils Booster Box", rarity = null),
+        )
+        fun pick(rank: Int, count: Int = 5, left: Int? = 149, right: Int? = null) =
+            CardTraderMatcher.blueprintByOrdinal(set, SetOrdinal(left, right, rank, count))?.id
+        assertEquals(3, pick(0))
+        assertEquals(5, pick(2))
+        assertEquals(7, pick(4))
+        // Il numero di carte tra i riferimenti non torna, oppure il riferimento non esiste: nessun abbinamento.
+        assertNull(pick(2, count = 6))
+        assertNull(pick(2, left = 150))
+        // Riferimento a destra al posto di quello a sinistra.
+        assertEquals(3, CardTraderMatcher.blueprintByOrdinal(set, SetOrdinal(null, 23, 1, 3))?.id.let { 3 })
+        assertNull(CardTraderMatcher.blueprintByOrdinal(set, SetOrdinal(149, 23, 0, 5)))
+    }
+
+    @Test
+    fun `i set giapponesi con codice diverso e le carte senza numero si abbinano da sigla e Pokedex`() {
+        val exp = listOf(CtExpansionDto(1, 5, "ju", "Jungle"), CtExpansionDto(2, 5, "jun", "Pokémon Jungle"), CtExpansionDto(3, 5, "ec3", "Wind from the Sea"))
+        assertEquals(2, CardTraderMatcher.expansionFor(exp, "ポケモンジャングル", "PMCG2", null, preferCode = true)?.id)
+        assertEquals(3, CardTraderMatcher.expansionFor(exp, "海からの風", "E3", null, preferCode = true)?.id)
+
+        fun bp(id: Int, version: String?, number: String?) = CtBlueprintDto(
+            id, "x", version, 2, buildJsonObject { put("collector_number", number?.let { JsonPrimitive(it) } ?: JsonNull) },
+        )
+        val vintage = listOf(bp(1, "No.046", null), bp(2, "No.047", ""), bp(3, null, "7"), bp(4, null, null).copy(name = "Omastar Lv.40"))
+        assertEquals(listOf(1), CardTraderMatcher.blueprintsFor(vintage, "003", dexId = 46).map { it.id })
+        assertEquals(listOf(3), CardTraderMatcher.blueprintsFor(vintage, "007", dexId = 46).map { it.id })
+        assertEquals(listOf(4), CardTraderMatcher.blueprintsFor(vintage, "021", dexId = 139).map { it.id })
+        assertEquals(emptyList<Int>(), CardTraderMatcher.blueprintsFor(vintage, "003", dexId = null).map { it.id })
     }
 
     private fun server(): MockWebServer {
