@@ -205,7 +205,8 @@ class CardTraderTest {
                     path.startsWith("/api/v2/expansions") ->
                         """[{"id":10,"game_id":1,"code":"lc","name":"Legendary Collection"},{"id":20,"game_id":5,"code":"lc","name":"Legendary Collection"}]"""
                     path.startsWith("/api/v2/blueprints/export") && path.contains("expansion_id=20") ->
-                        """[{"id":300,"name":"Omastar","expansion_id":20,"fixed_properties":{"collector_number":"39/110"}},
+                        """[{"id":300,"name":"Omastar","expansion_id":20,"fixed_properties":{"collector_number":"39/110"},"card_market_ids":[555],
+                             "image":{"url":"/uploads/blueprints/image/300/omastar.png","show":{"url":"/uploads/blueprints/image/300/show_omastar.png"}}},
                             {"id":301,"name":"Other","expansion_id":20,"fixed_properties":{"collector_number":"40/110"}}]"""
                     path.startsWith("/api/v2/marketplace/products") && path.contains("blueprint_id=300") && path.contains("language=en") ->
                         """{"300":[
@@ -243,6 +244,24 @@ class CardTraderTest {
         try {
             val provider = CardTraderPriceProvider(CardTraderClient(OkHttpClient(), "wrong", s.url("/api/v2/").toString()))
             assertThrows(BlockedException::class.java) { kotlinx.coroutines.runBlocking { provider.fetch(request(VariantType.NORMAL)) } }
+        } finally {
+            s.shutdown()
+        }
+    }
+
+    @Test
+    fun `l'immagine della carta e la versione media del blueprint`() = runTest {
+        val s = server()
+        try {
+            val provider = CardTraderPriceProvider(CardTraderClient(OkHttpClient(), "secret", s.url("/api/v2/").toString()))
+            assertEquals("https://www.cardtrader.com/uploads/blueprints/image/300/show_omastar.png", provider.imageUrl(request(VariantType.NORMAL)))
+            assertNull(provider.imageUrl(request(VariantType.NORMAL).copy(localId = "040")))
+            // Una carta Cardmarket si trova dall'id, anche se il suo numero (dedotto dalla posizione) non coincide.
+            assertEquals(
+                "https://www.cardtrader.com/uploads/blueprints/image/300/show_omastar.png",
+                provider.imageUrl(request(VariantType.NORMAL).copy(localId = "086", cardmarketId = 555)),
+            )
+            assertNull(provider.imageUrl(request(VariantType.NORMAL).copy(localId = "039", cardmarketId = 999)))
         } finally {
             s.shutdown()
         }

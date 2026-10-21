@@ -139,21 +139,22 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope) {
     /**
      * Crea una collezione, con una prima ricerca facoltativa.
      * @param rawName String - nome inserito dall'utente.
-     * @param collectionLanguage Language? - lingua fissa della collezione, oppure null per una collezione mista.
-     * @param queryLanguage Language - lingua della prima ricerca, usata solo se la collezione è mista.
+     * @param languages Collection<Language> - lingue della prima ricerca: una ricerca per lingua. La lingua della
+     *        collezione ne è dedotta (una sola tra EN e JP, altrimenti mista).
      * @param pattern String? - testo della prima ricerca (vuoto = nessuna ricerca).
      * @return CreateResult - id della collezione creata, oppure l'errore da mostrare.
      */
-    suspend fun createCollection(rawName: String, collectionLanguage: Language?, queryLanguage: Language, pattern: String?): CreateResult {
+    suspend fun createCollection(rawName: String, languages: Collection<Language>, pattern: String?): CreateResult {
         val name = CollectionFiles.cleanName(rawName) ?: return CreateResult.Invalid(InputError.NAME_EMPTY)
         val clean = pattern?.trim().orEmpty()
         if (clean.isNotEmpty() && !Validators.isValidQueryPattern(clean)) return CreateResult.Invalid(InputError.QUERY_INVALID)
-        val code = CollectionLanguage.codeOf(collectionLanguage)
-        val searchLanguage = CollectionLanguage.fixedLanguage(code) ?: queryLanguage
+        val code = CollectionLanguage.infer(languages.map { it.code })
         val id = db.withTransaction {
             val id = catalogDao.insertCollection(CollectionEntity(name = uniqueName(name), createdAt = System.currentTimeMillis(), language = code))
             if (clean.isNotEmpty()) {
-                catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = searchLanguage.code, pattern = clean))
+                languages.distinct().forEach { language ->
+                    catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = language.code, pattern = clean))
+                }
             }
             id
         }

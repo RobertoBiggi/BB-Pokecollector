@@ -1,6 +1,7 @@
 package com.robertobiggi.cardcollection.core
 
 import com.robertobiggi.cardcollection.core.model.PokemonNames
+import com.robertobiggi.cardcollection.core.model.Language
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -46,5 +47,12 @@ class PokemonNamesTest {
         assertEquals("mrmime", PokemonNames.normalize("Mr. Mime"))
         assertEquals(PokemonNames.normalize("クチート"), PokemonNames.normalize("くちーと"))
         assertEquals(PokemonNames.normalize("クチート"), PokemonNames.normalize("ｸﾁｰﾄ"))
+    }
+
+    @Test
+    fun `il nome inglese si cerca anche in giapponese e viceversa`() {
+        assertEquals(listOf("Pikachu", "ピカチュウ"), PokemonNames.searchTerms("Pikachu", Language.JA))
+        assertEquals(listOf("ピカチュウ", "Pikachu"), PokemonNames.searchTerms("ピカチュウ", Language.EN))
+        assertEquals(listOf("Pikachu"), PokemonNames.searchTerms("Pikachu", Language.FR))
     }
 }

@@ -63,6 +63,42 @@ class CardTraderPriceProvider(
         match(request)?.flatMap { it.cardMarketIds.orEmpty() }?.distinct()?.singleOrNull()
     }
 
+    /**
+     * Restituisce il numero stampato della carta con l'id Cardmarket indicato.
+     * @param request PriceRequest - set e [PriceRequest.cardmarketId] della carta.
+     * @return String? - numero di collezione (es. "066", "SM210"), oppure null se la carta non si abbina o il blueprint non ha numero.
+     */
+    suspend fun collectorNumber(request: PriceRequest): String? = mutex.withLock {
+        val number = (matchByCardmarketId(request)?.fixedProperties?.get("collector_number") as? kotlinx.serialization.json.JsonPrimitive)?.content
+        number?.substringBefore('/')?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Restituisce l'indirizzo dell'immagine della carta, nella versione media.
+     * @param request PriceRequest - carta da cercare.
+     * @return String? - URL completo, oppure null se la carta non si abbina, i blueprint sono più d'uno (non si sa quale sia) o non hanno immagine.
+     */
+    suspend fun imageUrl(request: PriceRequest): String? = mutex.withLock {
+        // Per una carta Cardmarket il numero è dedotto dalla posizione: conta solo l'id, altrimenti si rischia la carta sbagliata.
+        val blueprint = if (request.cardmarketId != null) matchByCardmarketId(request) else match(request)?.singleOrNull()
+        val image = blueprint?.image ?: return null
+        val path = (image.show?.url ?: image.url)?.takeIf { it.isNotBlank() } ?: return null
+        if (path.startsWith("/")) "$SITE$path" else path
+    }
+
+    /**
+     * Blueprint con lo stesso id Cardmarket della carta, nell'espansione abbinata al set. Non usa il numero della carta.
+     * @return CtBlueprintDto? - il blueprint, oppure null se la carta non ha l'id o l'espansione non lo contiene.
+     */
+    private suspend fun matchByCardmarketId(request: PriceRequest): CtBlueprintDto? {
+        val id = request.cardmarketId ?: return null
+        val expansion = CardTraderMatcher.expansionFor(
+            expansions(), request.setName, request.setId, request.setCode,
+            preferCode = request.language == Language.JA,
+        ) ?: return null
+        return blueprintsOf(expansion.id).firstOrNull { id in it.cardMarketIds.orEmpty() }
+    }
+
     /** Blueprint della carta, o null se l'espansione o la carta non si trovano. Va chiamata con [mutex] preso. */
     private suspend fun match(request: PriceRequest): List<CtBlueprintDto>? {
         val expansion = CardTraderMatcher.expansionFor(
@@ -104,5 +140,6 @@ class CardTraderPriceProvider(
     companion object {
         const val ID = "cardtrader"
         const val DISPLAY_NAME = "CardTrader"
+        private const val SITE = "https://www.cardtrader.com"
     }
 }

@@ -4,8 +4,7 @@ package com.robertobiggi.cardcollection.ui.home
 
 import com.robertobiggi.cardcollection.ui.common.exportFileName
 import com.robertobiggi.cardcollection.ui.common.messageRes
-import com.robertobiggi.cardcollection.ui.common.CollectionLanguagePicker
-import com.robertobiggi.cardcollection.ui.common.LanguagePicker
+import com.robertobiggi.cardcollection.ui.common.LanguageMultiPicker
 import com.robertobiggi.cardcollection.data.repo.InputError
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
@@ -150,8 +149,8 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
     if (creating) {
         CreateCollectionDialog(
             onDismiss = { creating = false },
-            onCreate = { name, collectionLanguage, queryLanguage, pattern, setError ->
-                vm.createCollection(name, collectionLanguage, queryLanguage, pattern) { error, id ->
+            onCreate = { name, languages, pattern, setError ->
+                vm.createCollection(name, languages, pattern) { error, id ->
                     if (error != null) setError(error.messageRes()) else {
                         creating = false
                         id?.let(onOpen)
@@ -267,20 +266,16 @@ private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRen
 }
 
 /**
- * Finestra di creazione di una collezione: nome, lingua (EN, JP o mista) e una prima ricerca facoltativa.
- * La lingua della ricerca si sceglie solo per le collezioni miste.
+ * Finestra di creazione di una collezione: nome, lingue (EN, JP o altre, anche insieme) e una prima ricerca facoltativa.
  * @param onDismiss () -> Unit - chiude.
- * @param onCreate (String, Language?, Language, String, (Int) -> Unit) -> Unit - crea con nome, lingua
- *        della collezione (null = mista), lingua della prima ricerca e testo; l'ultimo parametro mostra
- *        un errore (risorsa stringa).
+ * @param onCreate (String, List<Language>, String, (Int) -> Unit) -> Unit - crea; l'ultimo parametro mostra un errore (risorsa stringa).
  * @return Unit
  */
 @Composable
-private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Language?, Language, String, (Int) -> Unit) -> Unit) {
+private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, List<Language>, String, (Int) -> Unit) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     var pattern by rememberSaveable { mutableStateOf("") }
-    var collectionLanguage by rememberSaveable { mutableStateOf<Language?>(Language.EN) }
-    var language by rememberSaveable { mutableStateOf(Language.EN) }
+    var languages by rememberSaveable { mutableStateOf(listOf(Language.EN)) }
     var error by remember { mutableStateOf<Int?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -293,9 +288,8 @@ private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Lan
                     label = { Text(stringResource(R.string.create_name_label)) },
                     singleLine = true,
                 )
-                CollectionLanguagePicker(collectionLanguage) { collectionLanguage = it }
                 Text(stringResource(R.string.create_first_search), style = MaterialTheme.typography.bodySmall)
-                if (collectionLanguage == null) LanguagePicker(language) { language = it }
+                LanguageMultiPicker(languages) { languages = it }
                 OutlinedTextField(
                     value = pattern,
                     onValueChange = { pattern = it.take(40); error = null },
@@ -307,7 +301,7 @@ private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Lan
             }
         },
         confirmButton = {
-            TextButton(onClick = { onCreate(name, collectionLanguage, language, pattern) { error = it } }) { Text(stringResource(R.string.action_create)) }
+            TextButton(onClick = { onCreate(name, languages, pattern) { error = it } }) { Text(stringResource(R.string.action_create)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )

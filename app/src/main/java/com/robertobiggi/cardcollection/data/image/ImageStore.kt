@@ -66,6 +66,44 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
+     * Scarica l'immagine di una carta da CardTrader, la ricodifica in WebP e la salva in bassa e alta qualità.
+     * @param cardId String - id locale della carta.
+     * @param url String - indirizzo dell'immagine (host consentito, vedi [Validators.isAllowedCardTraderImageUrl]).
+     * @return Pair<String, String>? - percorsi (bassa, alta qualità), oppure null se l'URL non è consentito o il download o la ricodifica falliscono.
+     */
+    suspend fun saveFromCardTrader(cardId: String, url: String): Pair<String, String>? = withContext(Dispatchers.IO) {
+        if (!Validators.isAllowedCardTraderImageUrl(url)) return@withContext null
+        val raw = try {
+            downloadBytes(url, MAX_PICKED_BYTES)
+        } catch (e: IOException) {
+            null
+        } ?: return@withContext null
+        val high = recode(raw, EXTERNAL_HIGH_SIDE) ?: return@withContext null
+        val low = recode(raw, EXTERNAL_LOW_SIDE) ?: return@withContext null
+        val highPath = write(cardId, Quality.HIGH, high) ?: return@withContext null
+        val lowPath = write(cardId, Quality.LOW, low) ?: return@withContext null
+        lowPath to highPath
+    }
+
+    /**
+     * Scarica un'immagine in memoria, controllando codice HTTP, tipo di contenuto e dimensione massima.
+     * @param url String - URL già validato.
+     * @param limit Long - byte massimi accettati.
+     * @return ByteArray? - contenuto, oppure null se supera il limite.
+     * @throws IOException se la risposta non è un'immagine.
+     */
+    private fun downloadBytes(url: String, limit: Long): ByteArray? {
+        val request = Request.Builder().url(url).get().build()
+        http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            val body = response.body ?: throw IOException("Corpo vuoto")
+            if (body.contentType()?.type != "image") throw IOException("Non è un'immagine")
+            if (body.contentLength() > limit) return null
+            return readAtMost(body.byteStream(), limit)
+        }
+    }
+
+    /**
      * Salva un'immagine ricevuta da un file importato (già validata come WebP, PNG o JPEG).
      * @param cardId String - id locale della carta.
      * @param quality Quality - qualità dell'immagine.
@@ -268,6 +306,10 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         private const val MANUAL_MAX_SIDE = 1200
 
         private const val MANUAL_QUALITY = 88
+
+        /** Lato lungo delle immagini scaricate da altre fonti: alta qualità per il dettaglio, bassa per la griglia. */
+        private const val EXTERNAL_HIGH_SIDE = 900
+        private const val EXTERNAL_LOW_SIDE = 400
 
         /** Parte del nome che distingue le immagini scelte a mano. */
         private const val MANUAL_MARKER = "-manual-"

@@ -21,17 +21,28 @@ object PokemonNames {
      * mancasse la ricerca resterebbe solo sul nome della carta (la CI controlla che sia nell'APK).
      */
     private val namesByDex: Map<Int, List<String>> by lazy {
+        rawNamesByDex.mapValues { (_, names) -> names.map { normalize(it) }.filter { it.isNotEmpty() } }
+    }
+
+    /**
+     * Numero del Pokédex → nomi come scritti nel file, nell'ordine delle colonne: il giapponese è sempre il
+     * primo e l'inglese l'ultimo; le altre lingue possono mancare.
+     */
+    private val rawNamesByDex: Map<Int, List<String>> by lazy {
         val stream = PokemonNames::class.java.getResourceAsStream(RESOURCE) ?: return@lazy emptyMap()
         stream.bufferedReader(Charsets.UTF_8).useLines { lines ->
             lines.filter { it.isNotBlank() }.associate { line ->
                 val parts = line.split('\t')
-                parts[0].toInt() to parts.drop(1).map { normalize(it) }.filter { it.isNotEmpty() }
+                parts[0].toInt() to parts.drop(1).filter { it.isNotBlank() }
             }
         }
     }
 
     /** Lunghezza minima del testo cercato in alfabeto latino; per i caratteri CJK bastano 2 (es. "伊布"). */
     const val MIN_QUERY_LENGTH = 3
+
+    /** Numero massimo di termini di [searchTerms], per non fare troppe richieste con un testo breve. */
+    const val MAX_TERMS = 12
 
     /** Tutti i nomi di Pokémon (solo lettere, minuscoli), per riconoscere le carte Pokémon dal nome. */
     private val allNameKeys: Set<String> by lazy {
@@ -72,6 +83,27 @@ object PokemonNames {
      * @return List<String> - nomi in minuscolo, vuoto se il numero è sconosciuto.
      */
     fun namesOf(dexId: Int): List<String> = namesByDex[dexId].orEmpty()
+
+    /**
+     * Termini con cui cercare un nome nel catalogo di una lingua: il testo cercato e, se è il nome di uno o più
+     * Pokémon in un'altra lingua, il loro nome in quella del catalogo. Così "Pikachu" trova ピカチュウ nel catalogo
+     * giapponese. Per le lingue diverse da inglese e giapponese resta solo il testo cercato.
+     * @param query String - testo cercato, così come l'ha scritto l'utente.
+     * @param language Language - lingua del catalogo.
+     * @return List<String> - termini da cercare, il testo originale per primo, al massimo [MAX_TERMS].
+     */
+    fun searchTerms(query: String, language: Language): List<String> {
+        val index = when (language) {
+            Language.JA -> 0
+            Language.EN -> -1
+            else -> return listOf(query)
+        }
+        val translated = dexIdsMatching(query).sorted().mapNotNull { dex ->
+            val names = rawNamesByDex[dex].orEmpty()
+            if (index == 0) names.firstOrNull() else names.lastOrNull()
+        }
+        return (listOf(query) + translated).distinct().take(MAX_TERMS)
+    }
 
     /**
      * Carica in anticipo i nomi, così la prima ricerca non legge il file sul thread dell'interfaccia.

@@ -71,6 +71,21 @@ object Migrations {
         inferLanguage("ja"),
     )
 
+    /** Versione 5 → 6: id prodotto Cardmarket delle carte trovate nel catalogo Cardmarket. */
+    val SQL_5_6: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `cardmarketId` INTEGER")
+
+    /** Migrazione Room 5 → 6. */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        /**
+         * Esegue le istruzioni di [SQL_5_6].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_5_6.forEach { db.execSQL(it) }
+        }
+    }
+
     /**
      * Migrazione Room 4 → 5: unisce le due versioni 4 apparse in parallelo (una con `collection.language`,
      * l'altra con `card.cardTraderCondition`), aggiungendo la colonna che manca.

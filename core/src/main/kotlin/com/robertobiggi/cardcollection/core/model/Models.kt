@@ -124,6 +124,8 @@ data class CatalogVariant(
  * @property setCode sigla stampata in basso a sinistra (es. "POR", "M1L"), null se la carta non la riporta.
  * @property dexId numero del Pokédex nazionale, null per Allenatori ed Energie (serve a cercare la carta per nome in ogni lingua).
  * @property printedNumber numero stampato (es. "094/132" oppure "XY103" per le promo).
+ * @property cardmarketId id prodotto Cardmarket, solo per le carte trovate nel catalogo Cardmarket: identifica la carta
+ *           senza passare dal numero, che per queste carte è dedotto dalla posizione.
  */
 data class CatalogCard(
     val id: String,
@@ -143,6 +145,7 @@ data class CatalogCard(
     val imageBaseUrl: String?,
     val variants: List<CatalogVariant>,
     val dexId: Int? = null,
+    val cardmarketId: Int? = null,
 )
 
 /**
