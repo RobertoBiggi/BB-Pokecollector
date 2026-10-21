@@ -5,6 +5,35 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 
+/**
+ * Condizioni degli annunci CardTrader, dalla migliore alla peggiore. Nelle impostazioni si sceglie
+ * la peggiore accettata: [NEAR_MINT] accetta Mint e Near Mint, [POOR] accetta qualsiasi condizione.
+ */
+enum class CtCondition(val label: String) {
+    MINT("Mint"),
+    NEAR_MINT("Near Mint"),
+    SLIGHTLY_PLAYED("Slightly Played"),
+    MODERATELY_PLAYED("Moderately Played"),
+    PLAYED("Played"),
+    POOR("Poor");
+
+    companion object {
+        /**
+         * Converte il nome salvato nelle impostazioni.
+         * @param name String? - nome dell'enum.
+         * @return CtCondition - la condizione, [NEAR_MINT] se assente o sconosciuta.
+         */
+        fun fromName(name: String?): CtCondition = entries.firstOrNull { it.name == name } ?: NEAR_MINT
+
+        /**
+         * Converte la condizione scritta in un annuncio.
+         * @param label String? - testo di `properties_hash.condition`.
+         * @return CtCondition? - la condizione, oppure null se mancante o sconosciuta.
+         */
+        fun fromLabel(label: String?): CtCondition? = entries.firstOrNull { it.label.equals(label, ignoreCase = true) }
+    }
+}
+
 /** Prezzo più basso trovato tra gli annunci. */
 data class CtPick(val cents: Long, val currency: String)
 
@@ -16,23 +45,26 @@ data class CtPick(val cents: Long, val currency: String)
  * quindi gli annunci giusti e si prende il più economico.
  */
 object CardTraderPicker {
-    private val GOOD_CONDITIONS = setOf("mint", "near mint")
-
     /**
      * Trova l'annuncio più economico per la variante.
      * @param products List<CtProductDto> - annunci di uno o più blueprint della stessa carta.
      * @param variant VariantType - variante richiesta.
      * @param languageCode String? - lingua richiesta (es. "en"), null per non filtrare.
+     * @param worstCondition CtCondition - condizione peggiore accettata; gli annunci senza condizione nota restano esclusi.
      * @return CtPick? - prezzo più basso, oppure null se nessun annuncio corrisponde.
      */
-    fun lowest(products: List<CtProductDto>, variant: VariantType, languageCode: String?): CtPick? {
+    fun lowest(
+        products: List<CtProductDto>,
+        variant: VariantType,
+        languageCode: String?,
+        worstCondition: CtCondition = CtCondition.NEAR_MINT,
+    ): CtPick? {
         val matching = products.filter { p ->
             p.graded != true && (p.quantity ?: 1) > 0 && priceOf(p) != null &&
-                matchesVariant(p.propertiesHash, variant) && matchesLanguage(p.propertiesHash, languageCode)
+                matchesVariant(p.propertiesHash, variant) && matchesLanguage(p.propertiesHash, languageCode) &&
+                (condition(p.propertiesHash)?.let { it <= worstCondition } ?: false)
         }
-        // Meglio una copia Near Mint o migliore; se non ce ne sono si accetta qualsiasi condizione.
-        val nearMint = matching.filter { condition(it.propertiesHash) in GOOD_CONDITIONS }
-        return (nearMint.ifEmpty { matching }).mapNotNull { priceOf(it) }.minByOrNull { it.cents }
+        return matching.mapNotNull { priceOf(it) }.minByOrNull { it.cents }
     }
 
     private fun priceOf(p: CtProductDto): CtPick? {
@@ -58,8 +90,8 @@ object CardTraderPicker {
         return value.content.lowercase() == languageCode
     }
 
-    private fun condition(props: JsonObject?): String? =
-        (props?.get("condition") as? JsonPrimitive)?.content?.lowercase()
+    private fun condition(props: JsonObject?): CtCondition? =
+        CtCondition.fromLabel((props?.get("condition") as? JsonPrimitive)?.content)
 
     /** Legge un flag booleano del tipo `pokemon_reverse` (accetta true, "true" e 1). */
     private fun flag(props: JsonObject?, suffix: String): Boolean {

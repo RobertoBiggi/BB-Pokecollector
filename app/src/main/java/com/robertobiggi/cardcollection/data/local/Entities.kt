@@ -55,6 +55,8 @@ data class CardEntity(
     val queryId: Long,
     val catalogUpdatedAt: Long,
     val dexId: Int? = null,
+    /** Nome di CtCondition scelto per questa carta; null = usa quella predefinita delle impostazioni. */
+    val cardTraderCondition: String? = null,
 )
 
 /** Variante di stampa di una carta: ogni riga è uno slot. */

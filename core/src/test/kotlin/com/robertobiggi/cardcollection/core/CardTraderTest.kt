@@ -3,6 +3,7 @@ package com.robertobiggi.cardcollection.core
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderMatcher
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderPicker
+import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import com.robertobiggi.cardcollection.core.cardtrader.CtExpansionDto
 import com.robertobiggi.cardcollection.core.cardtrader.CtProductDto
 import com.robertobiggi.cardcollection.core.model.Language
@@ -51,9 +52,12 @@ class CardTraderTest {
     }
 
     @Test
-    fun `senza annunci Near Mint accetta altre condizioni`() {
+    fun `la condizione peggiore accettata è rispettata senza ripieghi`() {
         val played = omastar.filter { it.id == 5L }
-        assertEquals(20L, CardTraderPicker.lowest(played, VariantType.NORMAL, "en")?.cents)
+        assertNull(CardTraderPicker.lowest(played, VariantType.NORMAL, "en", CtCondition.NEAR_MINT))
+        assertNull(CardTraderPicker.lowest(played, VariantType.NORMAL, "en", CtCondition.MODERATELY_PLAYED))
+        assertEquals(20L, CardTraderPicker.lowest(played, VariantType.NORMAL, "en", CtCondition.PLAYED)?.cents)
+        assertEquals(20L, CardTraderPicker.lowest(omastar, VariantType.NORMAL, "en", CtCondition.POOR)?.cents)
     }
 
     @Test
