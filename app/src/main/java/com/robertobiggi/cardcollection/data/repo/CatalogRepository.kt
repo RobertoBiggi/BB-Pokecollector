@@ -2,6 +2,7 @@ package com.robertobiggi.cardcollection.data.repo
 
 import android.net.Uri
 import androidx.room.withTransaction
+import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCardSearch
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.model.Language
@@ -22,11 +23,12 @@ import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.CardVariantEntity
 import com.robertobiggi.cardcollection.data.local.CollectionCardEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import java.io.IOException
 
 /** Fase del sync del catalogo. */
-enum class SyncPhase { SEARCH, CARD, IMAGES }
+enum class SyncPhase { SEARCH, CARD, IMAGES, CARDMARKET, CARDMARKET_DOWNLOAD, CARDMARKET_READ }
 
 /**
  * Avanzamento del sync del catalogo.
@@ -66,6 +68,7 @@ sealed interface AddCardResult {
 
 /**
  * Scarica il catalogo delle ricerche di una collezione da TCGdex e lo salva in locale, immagini comprese.
+ * Le carte che TCGdex non ha (es. i set giapponesi senza carte) si cercano anche nel catalogo Cardmarket.
  * Non modifica mai quantità, condizioni o slot desiderati dell'utente.
  */
 class CatalogRepository(
@@ -73,6 +76,7 @@ class CatalogRepository(
     private val client: TcgdexClient,
     private val images: ImageStore,
     private val settings: SettingsStore,
+    private val cardmarket: CardmarketCardSearch,
 ) {
     private val dao = db.catalogDao()
 
@@ -112,6 +116,12 @@ class CatalogRepository(
                     errors++
                 }
             }
+            progress(SyncProgress(SyncPhase.CARDMARKET, query.pattern, qIndex, queries.size))
+            for (card in cardmarketCards(language, query.pattern, progress, qIndex, queries.size)) {
+                saveCard(card, legacyQueryId = query.id)
+                dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
+                saved++
+            }
         }
         val imagesSaved = downloadMissingImages(progress)
         if (errors == 0 || saved > 0) settings.setLastCatalogSync(System.currentTimeMillis())
@@ -131,10 +141,17 @@ class CatalogRepository(
         if (code == null && !Validators.isValidQueryPattern(text)) return SearchResult.InvalidQuery
         return try {
             val cards = if (code != null) CardCodeSearch.find(client, language, code) else client.searchCards(language, text)
+            val missing = try {
+                if (code != null) cardmarket.findByCode(language, code) else cardmarket.find(language, text)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyList()
+            }
             SearchResult.Found(
-                cards
-                    .filterNot { CatalogMapper.isDigitalOnly(it) }
+                (cards.filterNot { CatalogMapper.isDigitalOnly(it) } + missing.map { CardBriefDto(it.tcgdexId, it.localId, it.name, null) })
                     .filter { Validators.isValidRemoteId(it.id) }
+                    .distinctBy { it.id }
                     .take(MAX_SEARCH_RESULTS),
             )
         } catch (e: Exception) {
@@ -153,8 +170,12 @@ class CatalogRepository(
     suspend fun addSingleCard(collectionId: Long, language: Language, tcgdexId: String): AddCardResult {
         if (!Validators.isValidRemoteId(tcgdexId)) return AddCardResult.NotAllowed
         return try {
-            val card = fetchCatalogCard(language, tcgdexId, RateLimiter(0), HashMap(), requirePokemon = false)
-                ?: return AddCardResult.NotAllowed
+            val card = try {
+                fetchCatalogCard(language, tcgdexId, RateLimiter(0), HashMap(), requirePokemon = false)
+            } catch (e: NotFoundException) {
+                // TCGdex non ha la carta: potrebbe essere una carta trovata nel catalogo Cardmarket.
+                cardmarket.cardFor(language, tcgdexId.substringBeforeLast('-'), tcgdexId.substringAfterLast('-'))
+            } ?: return AddCardResult.NotAllowed
             saveCard(card, legacyQueryId = 0)
             if (dao.insertMembership(CollectionCardEntity(collectionId, card.id, null)) == -1L) dao.makeManual(collectionId, card.id)
             downloadMissingImages { }
@@ -321,6 +342,29 @@ class CatalogRepository(
      * @param e Exception - errore intercettato.
      * @return Boolean - true se recuperabile.
      */
+    /**
+     * Cerca nel catalogo Cardmarket le carte che TCGdex non ha. Un errore (rete assente, catalogo non scaricabile)
+     * non fa fallire il sync: le carte di TCGdex sono già salvate.
+     * @param language Language - lingua del catalogo.
+     * @param pattern String - testo cercato.
+     * @param progress suspend (SyncProgress) -> Unit - avanzamento, per mostrare lo scaricamento e la lettura del catalogo.
+     * @param index Int - posizione della ricerca.
+     * @param total Int - numero di ricerche.
+     * @return List<CatalogCard> - carte trovate, vuoto in caso di errore.
+     */
+    private suspend fun cardmarketCards(language: Language, pattern: String, progress: suspend (SyncProgress) -> Unit, index: Int, total: Int): List<CatalogCard> =
+        try {
+            cardmarket.find(
+                language, pattern,
+                onDownload = { progress(SyncProgress(SyncPhase.CARDMARKET_DOWNLOAD, CARDMARKET_LABEL, index, total)) },
+                onRead = { progress(SyncProgress(SyncPhase.CARDMARKET_READ, CARDMARKET_LABEL, index, total)) },
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+
     private fun isRecoverable(e: Exception): Boolean =
         e is ApiException || e is IOException || e is InvalidResponseException || e is IllegalArgumentException
 
@@ -328,5 +372,6 @@ class CatalogRepository(
         const val REQUEST_INTERVAL_MS = 250L
         const val RETRY_DELAY_MS = 5_000L
         const val MAX_SEARCH_RESULTS = 60
+        const val CARDMARKET_LABEL = "Cardmarket"
     }
 }

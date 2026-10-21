@@ -1,0 +1,785 @@
+1469	popr	Pokémon Products	2107
+1470	pr	Miscellaneous Promos	2107
+1471	lpr	League Promos	2107
+1472	bs	Base Set	1523
+1473	ju	Jungle	1525
+1474	wiz	Wizards Black Star Promos	1607
+1475	wpromos	W Promos	1606
+1476	fo	Fossil	1526
+1478	b2	Base Set 2	1527
+1479	tr	Team Rocket	1528
+1480	g1	Gym Heroes	1529
+1481	g2	Gym Challenge	1530
+1482	n1	Neo Genesis	1531
+1483	n2	Neo Discovery	1532
+1484	si	Southern Islands	1633
+1485	n3	Neo Revelation	1533
+1486	n4	Neo Destiny	1534
+1487	lc	Legendary Collection	1535
+1488	ex	Expedition Base Set	1536
+1491	aq	Aquapolis	1537
+1492	skg	Skyridge	1538
+1493	rs	EX Ruby & Sapphire	1539
+1494	ss	EX Sandstorm	1540
+1496	dr	EX Dragon	1541
+1499	hl	EX Hidden Legends	1543
+1500	rg	EX FireRed & LeafGreen	1544
+1501	pop1	POP Series 1	1613
+1502	trr	EX Team Rocket Returns	1545
+1503	dx	EX Deoxys	1546
+1505	em	EX Emerald	1547
+1506	pop2	POP Series 2	1614
+1507	uf	EX Unseen Forces	1548
+1508	ds	EX Delta Species	1549
+1509	lm	EX Legend Maker	1550
+1510	pop3	POP Series 3	1615
+1511	hp	EX Holon Phantoms	1551
+1512	pop4	POP Series 4	1616
+1513	cg	EX Crystal Guardians	1552
+1514	df	EX Dragon Frontiers	1553
+1515	pk	EX Power Keepers	1554
+1516	pop5	POP Series 5	1617
+1517	dpbsp	DP Black Star Promos	1609
+1518	dp	Diamond & Pearl	1555
+1519	mt	Mysterious Treasures	1556
+1520	pop6	POP Series 6	1618
+1522	sw	Secret Wonders	1557
+1523	ge	Great Encounters	1558
+1524	pop7	POP Series 7	1619
+1525	md	Majestic Dawn	1559
+1526	pr19	Burger King DP Promos 2008	1622
+1527	la	Legends Awakened	1560
+1528	pop8	POP Series 8	1620
+1529	sft	Stormfront	1561
+1530	pl	Platinum	1562
+1531	pop9	POP Series 9	1621
+1532	rr	Rising Rivals	1563
+1533	sv	Supreme Victors	1564
+1535	rmbl	Pokémon Rumble	1634
+1536	hggsbs	HGSS Black Star Promos	1610
+1537	hgs	HeartGold & SoulSilver	1566
+1539	ul	Unleashed	1567
+1540	und	Undaunted	1568
+1541	tri	Triumphant	1569
+1542	clo	Call of Legends	1570
+1543	bwbsp	BW Black Star Promos	1611
+1544	blw	Black & White	1571
+1545	mc11	McDonald's Collection 2011	1623
+1546	epo	Emerging Powers	1572
+1548	nvi	Noble Victories	1573
+1549	nxd	Next Destinies	1574
+1551	mc12	McDonald's Collection 2012	1624
+1552	drx	Dragons Exalted	1576
+1553	drv	Dragon Vault	1636
+1554	bcr	Boundaries Crossed	1577
+1555	pls	Plasma Storm	1578
+1556	plf	Plasma Freeze	1579
+1557	plb	Plasma Blast	1580
+1558	xybsp	XY Black Star Promos	1612
+1561	kss	XY Kalos Starter Set	1637
+1562	xy-en	XY	1582
+1564	flf	Flashfire	1583
+1565	mc14	McDonald's Collection 2014	1625
+1566	ffi	Furious Fists	1584
+1568	phf	Phantom Forces	1521
+1569	prc	Primal Clash	1585
+1570	dcr	Double Crisis	1648
+1572	ros	Roaring Skies	1649
+1573	aor	Ancient Origins	1660
+1574	mc15	McDonald's Collection 2015	1741
+1575	bkt	BREAKthrough	1678
+1576	bkp	BREAKpoint	1687
+1577	gen	Generations	1693
+1579	fco	Fates Collide	1706
+1580	sts	Steam Siege	1716
+1581	mc16	McDonald's Collection 2016	1752
+1586	evo	Evolutions	1742
+1587	smbs	SM Black Star Promos	1757
+1588	sum	Sun & Moon	1745
+1590	gri	Guardians Rising	1800
+1591	mc17	McDonald's Collection 2017	1845
+1594	cinv	Crimson Invasion	1843
+1599	upr	Ultra Prism	2065
+1600	fli	Forbidden Light	2075
+1601	tk11	SM Trainer Kit: Alolan Sandslash & Alolan Ninetales	2070
+1602	mc18	McDonald's Collection 2018	2404
+1603	ces	Celestial Storm	2320
+1604	drm	Dragon Majesty	2351
+1606	lot	Lost Thunder	2370
+1611	teu	Team Up	2407
+1612	det	Detective Pikachu	2438
+1613	unb	Unbroken Bonds	2437
+1614	unm	Unified Minds	2487
+1615	hif	Hidden Fates	2514
+1616	mc19	McDonald's Collection 2019	2829
+1617	cec	Cosmic Eclipse	2644
+1618	swshbs	SWSH Black Star Promos	2916
+1623	ssh	Sword & Shield	2921
+1635	pcec	Cosmic Eclipse Promos	2644
+1647	s-p	S-P: Sword & Shield Promos	3214
+1649	sm-p	SM-P: Sun & Moon Promos	3324
+1672	rcl	Rebel Clash	3143
+1853	exma	EX Team Magma vs Team Aqua	1542
+1860	suf	Unown sub-set Unseen Forces	1548
+1876	prr	Rising Rivals Promos	1563
+1878	ar	Platinum Arceus	1565
+1880	phs	HeartGold & SoulSilver Promos	1566
+1887	pnvi	Noble Victories Promos	1573
+1889	dex	Dark Explorers	1575
+1892	pbcr	Boundaries Crossed Promos	1577
+1893	ppls	Plasma Storm Promos	1578
+1894	pplf	Plasma Freeze Promos	1579
+1895	pplb	Plasma Blast Promos	1580
+1896	ltr	Legendary Treasures	1581
+1897	pltr	Legendary Treasures Promos	1581
+1898	pxy	XY Promos	4159
+1901	pphf	Phantom Forces Promos	1521
+1906	pbkp	BREAKpoint Promos	1687
+1907	rc	Radiant Collection Generation	1693
+1911	pevo	Evolutions Promos	1742
+1913	bus	Burning Shadows	1824
+1915	slg	Shining Legends	1842
+1916	pslg	Shining Legends Promos	1842
+1918	pupr	Ultra Prism Promos	2065
+1921	pdrm	Dragon Majesty Promos	2351
+1922	plot	Lost Thunder Promos	2370
+1926	mcf13	McDonald's Collection 2013 French	2352
+1927	mcf18	McDonald's Collection 2018 French	2361
+1929	nbsp	Nintendo Black Star Promos	1608
+1930	bog	Best of Game	1605
+1931	rclt	Radiant Collection Legendary Treasure	1581
+1932	bt	Box Topper	1536
+1933	xytkas	XY Trainer Kit: Latias	1683
+1934	xytkos	XY Trainer Kit: Latios	1683
+1935	plusle	EX Trainer Kit 2 (Plusle)	1627
+1936	minun	EX Trainer Kit 2 (Minun)	1627
+1937	manaphy	DP Trainer Kit (Manaphy)	1628
+1938	lucario	DP Trainer Kit (Lucario)	1628
+1939	gyarados	HS Trainer Kit (Gyarados)	1629
+1940	raichu	HS Trainer Kit (Raichu)	1629
+1941	bwtke	BW Trainer Kit Excadrill	1630
+1942	bwtkz	BW Trainer Kit Zoroark	1630
+1943	xyths	XY Trainer Kit: Sylveon	1631
+1944	xytkn	XY Trainer Kit: Noivern	1631
+1945	bisharp	XY Trainer Kit: Bisharp	1632
+1946	wigglytuff	XY Trainer Kit: Wigglytuff	1632
+1947	xytkp	XY Trainer Kit: Pikachu Libre & Suicune (Pikachu Libre)	1707
+1948	suicune	XY Trainer Kit: Pikachu Libre & Suicune (Suicune)	1707
+1949	xytkl	Sun & Moon Trainer Kit: Lycanroc & Alolan Raichu (Lycanroc)	1758
+1950	xytka	Sun & Moon Trainer Kit: Lycanroc & Alolan Raichu (Alolan Raichu)	1758
+1969	shbs	Base Set Shadowless	1523
+1970	1ep	Expansion Pack & Starter Pack	4169
+1972	jun	Pokémon Jungle	4463
+1973	myf	Mystery of the Fossils	4464
+1974	rog	Rocket Gang	4465
+1975	gls	Gym Booster 1 Leaders' Stadium	4466
+1976	gcd	Gym Booster 2: Challenge from the Darkness	4467
+1977	gstnw	Gold, Silver, to a New World...	4506
+1979	ctr	Crossing the Ruins...	4507
+1981	awl	Awakening Legends	4508
+1982	awlpf	Awakening Legends Premium File 3	4170
+1983	del	Darkness, and to Light...	4509
+1984	pvs	Pokémon VS	4168
+1985	pwe	Pokémon Web	4355
+1986	ec1	Base Expansion Pack	5021
+1987	ec2	The Town on No Map	5022
+1988	ec3	Wind from the Sea	5023
+1989	ec4	Split Earth	5024
+1990	ec5	Mysterious Mountains	5025
+1991	exp	ADV Expansion Pack	5877
+1992	mod	Miracle of the Desert	5873
+1993	roh	Rulers of the Heavens	5872
+1994	mvsa	Magma VS Aqua: Two Ambitions	5869
+1995	uns	Undone Seal	5864
+1996	fol	Flight of Legends	5714
+1997	rgsb	Rocket Gang Strikes Back	5712
+1998	cbs	Clash of the Blue Sky	5713
+1999	gsso	Golden Sky, Silvery Ocean	5711
+2000	hrt	Holon Research Tower	5709
+2001	mif	Mirage Forest	5710
+2002	hof	Holon Phantoms	5703
+2003	mic	Miracle Crystal	5700
+2004	odffe	Offense and Defense of the Furthest Ends	5693
+2005	wcp	World Champions Pack	4314
+2007	dp1	Space-Time Creation	4318
+2008	dp2-sol	Secret of the Lakes	4317
+2010	dp4	Moonlit Pursuit	4309
+2011	dad	Dawn Dash	4308
+2012	cfm	Cry from the Mysterious	4305
+2013	dp5	Temple of Anger	4304
+2014	ifd	Intense Fight in the Destroyed Sky	4302
+2015	pt1	Galactic's Conquest	4297
+2016	pt2	Bonds to the End of Time	4289
+2017	pt3	Beat of the Frontier	4286
+2018	aoa	Advent of Arceus	4280
+2019	l1	HeartGold Collection	4273
+2020	l1ss	SoulSilver Collection	4272
+2021	l2	Reviving Legends	4265
+2022	l3	Clash at the Summit	4261
+2023	bw1b	Black Collection	4214
+2024	bw1	White Collection	4213
+2025	bw2	Red Collection	4210
+2026	bw3	Psycho Drive	4209
+2027	hab	Hail Blizzard	4208
+2028	bw4	Dark Rush	4204
+2029	bw5b	Dragon Blast	4201
+2030	bw5	Dragon Blade	4200
+2031	bw6	Freeze Bolt	4195
+2032	bw6b	Cold Flare	4194
+2033	bw7	Plasma Gale	4193
+2034	bw8b	Spiral Force	4186
+2035	bw8	Thunder Knuckle	4185
+2036	bw9	Megalo Cannon	4182
+2037	ebb	EX Battle Boost	4180
+2038	xy1	Collection X	4064
+2039	xy1y	Collection Y	4059
+2040	xy2	Wild Blaze	4054
+2041	xy3	Rising Fist	4049
+2042	xy4	Phantom Gate	4044
+2043	xy5	Gaia Volcano	4039
+2044	xy5t	Tidal Storm	4034
+2045	xy6	Emerald Break	4029
+2046	xy7	Bandit Ring	4024
+2047	xy8	Blue Shock	4014
+2048	xy8r	Red Flash	4019
+2049	xy9	Rage of the Broken Heavens	4009
+2050	20th	Starter Pack	4089
+2051	xy10	Awakening Psychic King	4004
+2052	xy11f	Fever-Burst Fighter	3999
+2053	xy11	Cruel Traitor	3994
+2054	ep20	Expansion Pack 20th Anniversary	3989
+2055	sm1s	Collection Sun	3971
+2056	sm1m	Collection Moon	3966
+2057	sm2k	Islands Await You	3956
+2058	sm2l	Alolan Moonlight	3951
+2059	sm3h	To Have Seen the Battle Rainbow	3941
+2060	sm3n	Darkness that Consumes Light	3936
+2061	sm3	Strength Expansion Pack Shining Legends	3931
+2062	sm4s	Awakened Heroes	3926
+2063	sm4a	Ultradimensional Beasts	3921
+2064	sm5s	Ultra Sun	3911
+2065	sm5m	Ultra Moon	3906
+2066	sm7	Sky-Splitting Charisma	3881
+2068	sm8	Super-Burst Impact	3866
+2069	sm9	Tag Bolt	3851
+2070	sm10	Double Blaze	3836
+2071	sm11	Miracle Twin	3816
+2072	sm8b	High Class Pack GX Ultra Shiny	3856
+2073	sm12	Alter Genesis	3801
+2074	s1w	Sword	3289
+2075	s1h	Shield	3294
+2076	s2	Rebellion Crash	3279
+2077	s3	Infinity Zone	3274
+2082	daa	Darkness Ablaze	3199
+2084	cpa	Champion's Path	3419
+2094	pt5	Shaymin LV. X COLLECTION PACK	4283
+2095	ll	Lost Link	4262
+2101	bwpr	BW Promos	4218
+2107	viv	Vivid Voltage	3484
+2112	futsal	Futsal Promos	3510
+2113	ls3	Legendary Heartbeat	3384
+2123	s4a	Shiny Star V	3580
+2124	sek	VMAX Starter Deck: Blastoise VMAX	3590
+2125	sef	VMAX Starter Deck: Venusaur VMAX	3585
+2126	shf	Shining Fates	3630
+2127	s4	Shocking Volt Tackle	3479
+2128	sp2	VMAX Special Set	3610
+2130	bst	Battle Styles	3675
+2139	mc21	McDonald's Collection 25th Anniversary	3738
+2150	sp3	Silver Lance & Jet Black Spirit Jumbo Pack Set	4173
+2151	s6k	Jet Black Spirit	4172
+2152	s6h	Silver Lance	4171
+2153	cre	Chilling Reign	4174
+2174	cp5	Mythical & Legendary Dream Shine Collection	4069
+2185	sgl	Inteleon VMAX High-Class Deck	4242
+2186	sgg	Gengar VMAX High-Class Deck	4241
+2187	sp4	Eevee Heroes VMAX Special Set	4240
+2306	s7r	Blue Sky Stream	4330
+2307	s7d	Towering Perfection	4329
+2308	sh	Sword & Shield Family Pokémon Card Game	4243
+2309	evs	Evolving Skies	4328
+2310	c25	Celebrations	4347
+2311	s8ap	25th Anniversary Edition	4346
+2312	s8a	25th Anniversary Collection	4345
+2547	fst	Fusion Strike	4382
+2548	s8	Fusion Arts	4360
+2613	pwc	Pikachu World Collection	4392
+2627	sj	Special Deck Set Zacian Zamazenta vs Eternatus	4385
+2781	sm6a	Dragon Storm	3891
+2782	cp2	Legendary Shine Collection	4114
+2783	sm6	Forbidden Light JP	3896
+2911	brs	Brilliant Stars	4434
+2917	s8b	VMAX Climax	4390
+2919	s8ag	25th Anniversary Golden Box	4389
+2937	unpromo	Unnumbered Promos	4170
+2938	playp	PLAY Promos	4349
+3007	astr	Astral Radiance	4979
+3008	s10d	Time Gazer	4973
+3009	s10p	Space Juggler	4974
+3057	s10b	Pokémon GO Enhanced Expansion Pack	4786
+3058	pkmgo	Pokémon TCG: Pokémon GO	5051
+3108	lorg	Lost Origin	5093
+3138	trickortrade	Trick or Trade	5138
+3141	mc22	McDonald's Match Battle 2022	5135
+3142	sit	Silver Tempest	5142
+3156	s12a	VSTAR Universe	5198
+3169	s12	Paradigm Trigger	5156
+3171	crz	Crown Zenith	5201
+3182	s11a	Incandescent Arcana	5127
+3192	s11	Lost Abyss	5094
+3193	s6a	Eevee Heroes	4239
+3195	sp6	VSTAR Special Set	5098
+3196	so	Special Battle Set Charizard VSTAR vs Rayquaza VMAX	5179
+3197	spz	VSTAR & VMAX High Class Deck Zeraora	5096
+3198	spd	VSTAR & VMAX High Class Deck Deoxys	5097
+3199	s10a	Dark Phantasma	5048
+3200	s9a	Battle Region	4441
+3201	sll	Sword & Shield Starter Set Lucario VSTAR	4516
+3202	sld	Sword & Shield Starter Set Darkrai VSTAR	4517
+3203	s9	Star Birth	4440
+3204	sk	Premium Trainer Box VSTAR	4515
+3205	sp5	V-UNION Special Card Sets	4381
+3206	sl	Start Deck 100	4388
+3209	s5a	Matchless Fighters	3751
+3215	sv1v	Violet ex	5217
+3216	sv1s	Scarlet ex	5216
+3221	svpromo	SV Black Star Promos	5241
+3238	sv1a	Triplet Beat	5257
+3239	svi	Scarlet & Violet	5223
+3240	svb	Scarlet & Violet JP: Premium Trainer Box ex	5221
+3241	sval	ex Starter Set: Fuecoco & Ampharos ex	5219
+3242	svam	ex Starter Set: Sprigatito & Lucario ex	5218
+3243	svaw	ex Starter Set: Quaxly & Mimikyu ex	5220
+3247	sveen	Scarlet & Violet Energies	5224
+3268	promosv	Scarlet & Violet Promos	5212
+3269	sf	Single Strike & Rapid Strike Premium Trainer Boxes	3717
+3270	s5r	Rapid Strike Master	3697
+3271	s5l	Single Strike Master	3712
+3272	playprizep	Play! Pokémon Prize Pack Series	5204
+3273	sn	Start Deck 100 CoroCoro Comic Version	4518
+3304	vpromosp	V-UNION Special Collection	2916
+3308	sm11a	Remix Bout	3811
+3313	svc	ex Starter Set Pikachu ex & Pawmot	5299
+3314	sv2d	Clay Burst	5315
+3315	sv2p	Snow Hazard	5314
+3316	pal	Paldea Evolved	5318
+3338	dpt-p	DPt Promos	4298
+3339	mcrp	Movie Commemoration Random	4276
+3340	ppromos	P Promos	4353
+3341	mcmp	McDonald's Pokémon-e Minimum Pack	4178
+3342	sm9a	Night Unison	3846
+3347	ptm	Mewtwo LV.X Collection Pack	4282
+3348	ptr	Regigigas LV.X Collection	4281
+3349	dps	Heatran vs Regigigas Deck Kit	4303
+3350	pt	Infernape SP Half Deck	4288
+3351	ptg	Gallade SP Half Deck	4287
+3352	pcgpromo	PCG Promos	4341
+3371	obf	Obsidian Flames	5385
+3387	sv2a	Pokémon Card 151	5328
+3388	svd	ex Start Decks	5362
+3391	svp1	Scarlet & Violet ex Special Set	5351
+3402	sv3	Ruler of the Black Flame	5409
+3403	mew	151	5402
+3404	exsh	Expansion Sheet	3781
+3405	ipbulb	Intro Pack Bulbasaur	5059
+3406	ipsqt	Intro Pack Squirtle	5060
+3407	southjp	Southern Islands JP	4357
+3408	iptot	Intro Pack Neo Totodile	5062
+3409	tpromo	T Promos	4354
+3410	tvlp	Theater Limited VS Pack	4351
+3411	adv-p	ADV Promos	4350
+3412	mcvsp	Movie Commemoration VS Pack	4348
+3413	mcvsp-d	Movie Commemoration VS Pack: Sky-Splitting Deoxys	4340
+3414	pp-f	PokéPark Forest	4343
+3415	pp-b	PokéPark Blue	4342
+3416	mcvsp-al	Movie Commemoration VS Pack: Aura's Lucario	4339
+3417	l-ppromo	L-P Promo	4274
+3418	gbox-m-l	Gift Box Mew • Lucario	4361
+3419	mcvsp-mph	Movie Commemoration VS Pack: Sea's Manaphy	4319
+3420	dp-promos	DP Promos	4322
+3421	dp2-bas	Bastiodon the Defender	4316
+3422	dp2-rpd	Rampardos the Attacker	4315
+3423	ppp-promo	PPP Promos	4321
+3424	dp3-dial	Dialga LV.X Constructed Standard Deck	4312
+3425	dp3-pal	Palkia LV.X Constructed Standard Deck	4311
+3426	10th-mcs	10th Movie Commemoration Set	4310
+3427	dp4-me	Magmortar vs Electivire Deck Kit	4307
+3428	dp-ep08	Entry Pack '08	4306
+3429	k-gym	Kuchiba City Gym	5683
+3430	ghd	Giratina Half Deck	4301
+3431	11-mcs	11th Movie Commemoration Set	4299
+3437	sm7b	Fairy Rise	3871
+3438	smp2	Great Detective Pikachu	3826
+3439	gym2-s	Yamabuki City Gym	5685
+3440	gym2-g	Guren Town Gym	5686
+3442	ipn-c	Intro Pack Neo Chikorita	5061
+3444	sm12a	Tag Team GX: Tag All Stars	3776
+3445	sm6b	Champion Road	3886
+3446	s1a	VMAX Rising	3284
+3447	gym2-navi	Nivi City Gym	5681
+3448	sm8a	Dark Order	3861
+3449	sm11b	Dream League	3806
+3450	sm10a	GG End	3831
+3451	sm10b	Sky Legend	3821
+3452	deckexclusives	Theme Deck & Blisters Exclusives	5444
+3456	mc23	McDonald's Match Battle 2023	5430
+3467	tot23	Trick or Trade 2023	5405
+3468	par	Paradox Rift	5444
+3488	sv3a	Raging Surf	5432
+3518	sv4m	Future Flash	5479
+3519	sv4k	Ancient Roar	5478
+3520	svel	Terastal Starter Set Skeledirge ex	5476
+3522	svem	Terastal Starter Set Mewtwo ex	5477
+3523	wcs23	World Championships 2023 Yokohama Deck -Pikachu-	5410
+3524	yunagaba	YU NAGABA x Pokemon Card Game	5212
+3535	dialga-hd	Dialga Half Deck	4300
+3536	giratina-dpt	Giratina DPt Half Deck	4296
+3537	palkia-dpt	Palkia DPt Half Deck	4294
+3538	dialga-dpt	Dialga DPt Half Deck	4295
+3539	sv4a	Shiny Treasure ex	5519
+3547	svg	Venusaur & Charizard & Blastoise Special Deck Set ex	5525
+3548	clk	Pokémon Card Game Classic: Blastoise & Suicune ex Deck	5529
+3549	my1battle	My First Battle	5526
+3550	clf	Pokémon Card Game Classic: Venusaur & Lugia ex Deck	5527
+3551	cll	Pokémon Card Game Classic: Charizard & Ho-Oh ex Deck	5528
+3552	clb	Pokémon TCG Classic: Blastoise & Suicune ex Deck	5532
+3553	clc	Pokémon TCG Classic: Charizard & Ho-Oh ex Deck	5531
+3554	clv	Pokémon TCG Classic: Venusaur & Lugia ex Deck	5530
+3561	paf	Paldean Fates	5546
+3578	cp3	PokéKyun Collection	4094
+3579	cp4	Premium Champion Pack	4074
+3583	1stpp	First Partner Pack	1523
+3588	svhk	Starter Deck & Build Set Ancient Koraidon ex	5575
+3589	svhm	Starter Deck & Build Set Future Miraidon ex	5576
+3590	sv5m	Cyber Judge	5574
+3591	sv5k	Wild Force	5573
+3593	smm	Tag Team GX Starter Sets	4245
+3594	sc	Shiny Collection	4184
+3605	tef	Temporal Forces	5589
+3608	s2a	Explosive Flame Walker	3219
+3609	sm9b	Full Metal Wall	3841
+3616	hcg	Hanada City Gym	5682
+3626	sv5a	Crimson Haze	5636
+3652	cgt	Tamamushi City Gym	5684
+3653	prof	Professor Program	3108
+3655	ptch	Charizard SP Half Deck	4284
+3656	rayst	Rayquaza Constructed Starter Deck	5727
+3665	xy	The Best of XY	3984
+3673	sv6	Mask of Change	5690
+3674	twm	Twilight Masquerade	5691
+3679	treecko	Treecko Constructed Starter Deck	5876
+3680	tcsd	Torchic Constructed Starter Deck	5875
+3681	mudkip	Mudkip Constructed Starter Deck	5874
+3682	flygon	Flygon Constructed Starter Deck	5871
+3683	salamance	Salamence Constructed Starter Deck	5870
+3684	latias	Latias ex Half Deck	5866
+3685	latios	Latios ex Half Deck	5865
+3686	metagross	Metagross Constructed Starter Deck	5863
+3688	deoxys	Deoxys Constructed Starter Deck	5728
+3689	bdk	Black Deck Kit	5726
+3690	silver	Silver Deck Kit	5725
+3691	gbed	Gift Box Emerald • Deoxys Half Deck	5724
+3692	gber	Gift Box Emerald • Rayquaza Half Deck	5724
+3694	meganium	Meganium Constructed Starter Deck	5722
+3695	typhlosion	Typhlosion Constructed Starter Deck	5721
+3696	feraligatr	Feraligatr Constructed Starter Deck	5720
+3697	mewc	Mirage's Mew Constructed Starter Deck	5719
+3698	masterkit	Master Kit	5718
+3700	egcsd	Earth's Groudon ex Constructed Starter Deck	5698
+3701	okcsd	Ocean's Kyogre ex Constructed Starter Deck	5699
+3705	gcspd	Garchomp vs Charizard SP Deck Kit	4285
+3708	hsbs	Beginning Set	4216
+3709	bk	Battle Strength Decks	4212
+3710	btv	Battle Theme Deck: Victini	4211
+3711	bgs	Battle Gift Set: Thundurus vs Tornadus	4205
+3712	szd	Hydreigon Half Deck	4199
+3713	gbr	Garchomp Half Deck	4198
+3714	kld	Keldeo Battle Strength Deck	4197
+3716	ppd	Team Plasma's Powered Half Deck	4192
+3717	pbg	Team Plasma Battle Gift Set	4188
+3718	wak	Everyone's Exciting Battle	4187
+3719	mg	Mewtwo vs Genesect Deck Kit	4179
+3720	x30	Xerneas Half Deck	4149
+3721	y30	Yveltal Half Deck	4144
+3730	bqdeck	Master Kit: Bulbasaur Quarter Deck	5718
+3731	tqdeck	Master Kit: Torchic Quarter Deck	5718
+3732	hrtfqd	Holon Research Tower: Fire Quarter Deck	5717
+3733	hrtwqd	Holon Research Tower: Water Quarter Deck	5716
+3734	hrtlqd	Holon Research Tower: Lightning Quarter Deck	5715
+3746	sd	GX Starter Decks	4251
+3752	sm4	GX Battle Boost	3916
+3754	151pkmr	Pokémon Card 151 - Master Ball Reverse Holo	6219
+3758	svjl	Battle Master Deck Tera Charizard ex	5737
+3759	svjp	Battle Master Deck Chien-Pao ex	5738
+3761	sv6a	Night Wanderer	5757
+3763	sfa	Shrouded Fable	5760
+3773	sv7	Stellar Miracle	5782
+3778	svf	Ruler of the Black Flame Deck Build Box	5422
+3786	tot24	Trick or Trade 2024	5796
+3787	scr	Stellar Crown	5802
+3794	sml	Eevee GX Starter Sets	4250
+3796	sm7a	Thunderclap Spark	3876
+3802	xyg	Zygarde EX Perfect Battle Deck	4084
+3803	smn	Tag Team GX Deck Build Box	4247
+3811	smp1	Rockruff Full Power Deck	4256
+3812	f-qcp	Fighting Quick Construction Pack	5723
+3813	g-qcp	Grass Quick Construction Pack	5723
+3814	fr-qcp	Fire Quick Construction Pack	5723
+3815	w-qcp	Water Quick Construction Pack	5723
+3816	l-qcp	Lightning Quick Construction Pack	5723
+3817	p-qcp	Psychic Quick Construction Pack	5723
+3819	magma	Magma Deck Kit	5868
+3822	scjp-c	VMAX Starter Deck: Charizard VMAX	3595
+3824	svk	Stellar Miracle Deck Build Box	5835
+3825	svls	Stellar Tera Type Starter Set Ceruledge ex	5842
+3826	svln	Stellar Tera Type Starter Set Sylveon ex	5841
+3827	sv7a	Paradise Dragona	5846
+3855	ba-2024	Battle Academy 2024	5890
+3864	pcga	Venusaur, Charizard & Blastoise Random Constructed Starter Decks	5729
+3878	ssp	Surging Sparks	5879
+3896	ba-22	Battle Academy 2022	6199
+3898	sv8	Super Electric Breaker	5901
+3903	ghsd	Imprison! Gardevoir ex Constructed Standard Deck	5695
+3904	sm1plus	Strength Expansion Pack Sun & Moon	3961
+3927	svm	Generations Start Decks	5927
+3928	sv8a	Terastal Festival ex	5928
+3929	pre	Prismatic Evolutions	5944
+3939	cp1	Magma Gang VS Aqua Gang: Double Crisis	4124
+3940	svl	Scarlet & Violet Battle Academy	5621
+3942	sa-gym	Southeast Asia Gym Promos	5834
+3946	pt-p	Pikachu DPt Half Deck	4290
+3947	dp-pi	Piplup DPt Half Deck	4291
+3948	dp-t	Turtwig DPt Half Deck	4292
+3949	dp-c	Chimchar DPt Half Deck	4293
+3950	pt-a-lp	Arceus LV.X Deck: Lightning & Psychic	4278
+3951	dp-a-gf	Arceus LV.X Deck: Grass & Fire	4279
+3952	scramble	Melee! Pokémon Scramble	4277
+3953	b-deck	Blastoise Battle Starter Deck	4270
+3954	b-deck-r	Raichu Battle Starter Deck	4271
+3955	b-deck-m	Magmortar Battle Starter Deck	4269
+3956	e-deck-m	Metagross Expert Deck	4267
+3957	e-deck-l	Leafeon Expert Deck	4266
+3958	b-deck-t	Torterra Battle Starter Deck	4268
+3959	bkw-k	White Kyurem EX Battle Strength Deck	4189
+3960	bkb-k	Black Kyurem EX Battle Strength Deck	4190
+3961	ds1	Dragon Selection	4203
+3962	xy8m	Hyper Metal Chain Deck	4134
+3963	xya	MCharizard EX Mega Battle Deck	4139
+3964	xyc	Super Legend Set: Xerneas EX & Yveltal EX	4129
+3965	mdb	Master Deck Build Box EX	4191
+3966	hsz-b	National Pokédex Beginning Set	4196
+3967	sc2	VMAX Starter Decks 2: Charizard VMAX	3595
+3974	sa1	Grass Starter Set V	3600
+3975	sa2	Fire Starter Set V	3600
+3976	sm5plus	Ultra Force	3901
+3983	cn-zh-p	Traditional Chinese Products	5960
+3984	shw-t	Shockwave! Tyranitar ex Constructed Standard Deck	5694
+3985	m-sv8a	Terastal Festival ex - Master Ball Reverse Holo	6220
+3986	m24	McDonald's Dragon Discovery	5978
+3988	sv9	Battle Partners	5996
+3989	svn	Battle Partners Deck Build Box	5997
+3997	aqua	Aqua Deck Kit	5867
+3998	sa3	Water Starter Set V	3600
+3999	sm2plus	Facing a New Trial	3946
+4000	smd	Ash vs Team Rocket Deck Kit	3974
+4004	hxy	XY Beginning Set	4154
+4005	bkr	Reshiram EX Battle Strength Deck	4207
+4006	ba-20	Battle Academy 2020	6200
+4007	cs3a	CS3a: Primordial Martial Arts - Overgrowth	6266
+4008	jtg	Journey Together	6006
+4009	cbb1c	Gem Pack Vol.1	6001
+4010	151c	Collect 151	6099
+4011	csm25	CSM2.5: Striking Competition	6313
+4012	csm2a	CSM2a: Shining Synergy - Shower	6319
+4013	csm2b	CSM2b: Shining Synergy - Supreme	6320
+4014	csm2c	CSM2c: Shining Synergy - Summon	6321
+4015	csm1a	CSM1a: Storming Emergence - Radiant	6341
+4016	csm1b	CSM1b: Storming Emergence - Verdant	6342
+4017	csm1c	CSM1c: Storming Emergence - Abundant	6343
+4018	csm	CSM: Brave Stars Promo Pack	6357
+4021	cs61	CS6.1: Shadow of the Blue Sea Promos	6274
+4022	csf	CSF: Return of the Dragon	6275
+4023	cs41	CS4.1: Brilliant Energy Promo Pack	6272
+4024	cs51	CS5.1: Shadow of Glory Promo Pack	6273
+4025	cs65	CS6.5: Victory Star Guide	6247
+4026	cs15	CS1.5: Dynamax Tactics	6288
+4027	cs25	CS2.5: Brilliant Counterattack	6276
+4028	cs35	CS3.5: Scorching Skies	6265
+4029	cs45	CS4.5: Final Flame Dance	6252
+4030	cs55	CS5.5: Shadow of Glory	6248
+4031	m-pre	Prismatic Evolutions - Master Ball Reverse Holo	6009
+4032	m-151c	Collect 151 - Master ball Reverse Holo	5328
+4035	csv1	CSV1: Eternal Birth	6193
+4036	sv10	The Glory of Team Rocket	6092
+4037	sv9a	Heat Wave Arena	6037
+4041	cs4a	CS4a: Nine Colors Gathering - Friends	6204
+4042	cs4b	CS4b: Nine Colors Gathering - Origin	6205
+4043	cs1a	CS1a: Dynamax Clash - Thunder	6297
+4044	cs1b	CS1b: Dynamax Clash - Flame	6298
+4045	cs2a	CS2a: Vivid Portrayals - Obsidian	6279
+4046	cs2b	CS2b: Vivid Portrayals - Indigo	6281
+4047	cs3b	CS3b: Primordial Martial Arts - Torrent	6267
+4048	cs5a	CS5a: Brave Enchanting Stars - Brave	6257
+4049	cs5b	CS5b: Brave Enchanting Stars - Charm	6258
+4050	cs6a	CS6a: Azure Shadow - Roar	6249
+4051	cs6b	CS6b: Azure Shadow - Pursuit	6250
+4052	csm15	CSM1.5: Battle Elite	6314
+4053	p-pre	Prismatic Evolutions - Poké Ball Reverse Holo	6009
+4063	svod	Starter Set ex Steven's Beldum & Metagross ex	6017
+4064	svom	Starter Set ex Marnie's Morpeko & Grimmsnarl ex	6016
+4067	sd-v	V Starter Decks	3389
+4068	xyd	MRayquaza EX Mega Battle Deck	4119
+4069	kplusk	Blastoise + Kyurem EX Combo Deck	4181
+4070	xyh	M Audino EX Mega Battle Deck	4079
+4072	xye	Emboar EX vs Togekiss EX Deck Kit	4238
+4073	bkz	Zekrom EX Battle Strength Deck	4206
+4074	smlf	Sun & Moon Family Pokémon Card Game	4246
+4075	sa4	Lightning Starter Set V	3600
+4076	sa5	Fighting Starter Set V	3600
+4079	dri	Destined Rivals	6096
+4089	l2-s	Steelix Constructed Standard Deck	4264
+4094	smj	Tag Team GX Premium Trainer Box	4249
+4095	sma	Sun & Moon Starter Set	4258
+4110	csh	CSH: Eevee GX Gift Box	6401
+4112	sp1	Zacian + Zamazenta BOX	3605
+4113	smk	Trainer Battle Decks	4248
+4114	xyf	Golduck BREAK + Palkia EX Combo Deck	4099
+4115	l2-t	Tyranitar Constructed Standard Deck	4263
+4151	es1	Pokémon-e Starter Deck	5021
+4158	qs1998	Quick Starter Gift Set 1998	4170
+4160	csv2	CSV2: Miracle Journey	6121
+4162	cbb2c	Gem Pack Vol.2	6111
+4163	csv3	CSV3: Fearless Terastal	6110
+4188	sv11b	Black Bolt | sv11B	6130
+4189	sv11w	White Flare | sv11W	6131
+4195	blk	Black Bolt	6134
+4196	wht	White Flare	6135
+4200	mmbp	M Master Deck Build Box Power Style	5915
+4201	mmbs	M Master Deck Build Box Speed Style	5914
+4210	sme	Solgaleo GX & Lunala GX Legendary Starter Set	4254
+4222	m-sv11w	White Flare | sv11W - Master Ball Reverse Holo	6223
+4223	m-sv11b	Black Bolt | sv11B - Master Ball Reverse Holo	6222
+4237	m1l	Mega Brave	6189
+4238	m1s	Mega Symphonia	6190
+4256	meg	Mega Evolution	6209
+4263	m-blk	Black Bolt - Master Ball Reverse Holo	6197
+4264	m-wht	White Flare - Master Ball Reverse Holo	6198
+4265	p-wht	White Flare - Poké Ball Reverse Holo	6198
+4266	p-blk	Black Bolt - Poké Ball Reverse Holo	6197
+4267	csv4	CSV4: Bonus Round	6169
+4274	csvl1	CSVL1: Adventure Special Pack	6168
+4277	ma-b	Premium Trainer Box MEGA	6239
+4278	meproducts	Mega Evolution Products	6290
+4279	csv5	CSV5: Dark Crystal Blaze	6237
+4280	mep	MEP Black Star Promos	6232
+4290	mp-promo	M-P Promos	6230
+4291	mbd	Starter Set MEGA Mega Diancie ex	6260
+4292	mbg	Starter Set MEGA Mega Gengar ex	6259
+4312	cbb3c	Gem Pack Vol.3	6292
+4313	m2	Inferno X	6291
+4314	m2a	MEGA Dream ex	6380
+4318	pfl	Phantasmal Flames	6299
+4322	svp-c	Scarlet & Violet Simplified Chinese Promos	6328
+4336	mee	Mega Evolution Energies	6324
+4337	pkm-center	Pokémon Center	5241
+4339	holy	Holiday Calendar	1556
+4366	csv6	CSV6: True Mystery	6362
+4367	csvl2	CSVL2: Travel Special Pack	6361
+4368	mc	MEGA Start Deck 100 Battle Collection	6381
+4374	pre-poke	Prerelease Promos	1742
+4382	promo-retail	Retail Exclusive Promos	1693
+4400	asc	Ascended Heroes	6395
+4403	p-m2a	MEGA Dream ex - Ball & Rocket Reverse Holo	6409
+4404	p-sv2a	Pokémon Card 151 - Poké Ball Reverse Holo	6219
+4405	p-sv8a	Terastal Festival ex - Poké Ball Reverse Holo	6220
+4406	p-sv11b	Black Bolt | sv11B - Poké Ball Reverse Holo	6222
+4407	p-sv11w	White Flare | sv11W - Poké Ball Reverse Holo	6223
+4408	e-m2a	MEGA Dream ex - Energy Reverse Holo	6409
+4414	csv6-r	CSV6: True Mystery - Reverse Holo	6362
+4427	corocoro	CoroCoro Promo	4170
+4432	mp1	MEGA Start Deck 100 Battle Collection Corociao Version	6382
+4433	m3	Nihil Zero	6427
+4434	csv7	CSV7: Blade Awakening	6416
+4448	por	Perfect Order	6443
+4460	e-asc	Ascended Heroes - Energy Reverse Holo	6455
+4461	p-asc	Ascended Heroes - Ball & Rocket Reverse Holo	6455
+4469	cbb4c	Gem Pack Vol.4	6447
+4472	cs5d	CS5D: Gallant Galaxy V Starter Deck	6397
+4473	csmpac	CSMPaC: Battle Party Combo | Grass Deck	6549
+4474	csmpbc	CSMPbC: Battle Party Combo | Fire Deck	6549
+4476	csmpdc	CSMPdC: Battle Party Combo | Lightning Deck	6549
+4478	csmpfc	CSMPfC: Battle Party Combo | Fighting Deck	6549
+4481	csmpic	CSMPiC: Battle Party Set Reward Pack	6549
+4485	csmpmc	CSMPmC: Lightning Modification Pack	6549
+4486	csmpnc	CSMPnC: Psychic Modification Pack	6549
+4487	csmpoc	CSMPoC: Fighting Modification Pack	6549
+4488	csmppc	CSMPpC: Darkness Modification Pack	6549
+4489	csmpqc	CSMPqC: Metal Modification Pack	6549
+4492	svp-id	Scarlet & Violet Indonesian Promos	6127
+4494	csml	CSML: Lillie's Support Box	6366
+4497	m4	Ninja Spinner	6494
+4498	csv8	CSV8: Brilliant Fantasy	6495
+4500	wcd2004	World Championship Decks 2004	1753
+4501	wcd2005	World Championship Decks 2005	1754
+4502	wcd2006	World Championship Decks 2006	1755
+4503	wcd2007	World Championship Decks 2007	1756
+4504	wcd2008	World Championship Decks 2008	2027
+4505	wcd2009	World Championship Decks 2009	2028
+4506	wcd2010	World Championship Decks 2010	2026
+4507	wcd2011	World Championship Decks 2011	2395
+4508	wcd2012	World Championship Decks 2012	2749
+4509	wcd2013	World Championship Decks 2013	2744
+4510	wcd2014	World Championship Decks 2014	2754
+4511	wcd2015	World Championship Decks 2015	2029
+4512	wcd2016	World Championship Decks 2016	2394
+4513	wcd2017	World Championship Decks 2017	2393
+4514	wcd2018	World Championship Decks 2018	2396
+4515	wcd2019	World Championship Decks 2019	2739
+4516	wcd2022	World Championship Decks 2022	6203
+4517	wcd2023	World Championship Decks 2023	6194
+4518	wcd2024	World Championship Decks 2024	5992
+4519	wcd2025	World Championship Decks 2025	6454
+4544	hsp	Beginning Set | Pikachu Version	6510
+4545	hs+	Beginning Set Plus	6509
+4546	cri	Chaos Rising	6517
+4558	csvh2	CSVH2: Happy Combination Lucario & Greninja & Zamazenta & Mabosstiff	6334
+4559	csuc	CSUC: Display Set Gift Box Gengar	6350
+4560	csgc	CSGC: Display Set Gift Box Eevee	6356
+4565	csve1	CSVE1: Battle Party Dream Together	6311
+4566	30th-ch	30th Anniversary Celebration: First Partner Illustration Collection	6514
+4587	csb	CSBC: Primordial Arts Deck Building Gift Box | Overgrow	6404
+4590	csma	CSMA: Arceus & Dialga & Palkia-GX Advanced Deck Building Gift Box	6368
+4591	csmjc	CSMJ: Shining Pokémon Poké Ball Gift Box	6369
+4592	cbb5c	Gem Pack Vol.5	6544
+4595	csvh4ac	CSVH4a: Happy Set Modification Pack	6543
+4596	csvh4ec	CSVH4eC: Happy Pack	6543
+4597	csvh4pc	CSVH4pC: Reward Pack	6543
+4607	csdc	CSDC: Pikachu Legendary Celebration	6348
+4610	cs1	Collection Sheet Journey Partners	4217
+4611	m5	Abyss Eye	6556
+4638	csv9	CSV9: Stellar Crystal	6568
+4639	pbl	Pitch Black	6569
+4645	csvn	CSVNC: Land of Kitakami Special Pack	6579
+4655	csv9.5	CSV9.5: Terastal Gathering	6595
+4656	scjp-g	VMAX Starter Deck: Grimmsnarl VMAX	3595
+4657	sb	Sword & Shield Premium Trainer Box	3615
+4669	csi	CSI: Sword & Shield Trainer Collection Gift Box	6354
+4678	m6a	30th Celebration JP	6602
+4679	30c	30th Celebration	6601
+4680	30thc	30th Celebration Simplified Chinese	6603
+4684	snp	Noivern BREAK Evolution Pack	4104
+4685	csv10	CSV10C: Chasing Glory	6633
+4686	csvh5	CSVH5C: Happy Set Mewtwo & Dragonite & Camerupt & Sinistcha	6634
+4690	m6	Storm Emeralda	6636
+4691	me	MEGA Starter Set Eevee ex	6637
+4692	mez	MEGA Starter Set Zorua & Zoroark ex	6638
+4693	mem	MEGA Starter Set Sprigatito & Meowscarada ex	6639
+4700	th-id-p	Thailand & Indonesia Products	6128
+4782	cbb6c	Gem Pack Vol.6	6669
+4808	bw	Extra Regulation Box	4490
+4821	csv9.5-p	CSV9.5: Poké Ball Reverse	6595
+4822	csv9.5-m	CSV9.5: Master Ball Reverse	6595
+4856	mf	30th Celebration Premium Deck Set	6628
+4865	m-p-id	M-P Asian Promos	6391
+4897	csv8-m	CSV8: Master Ball Reverse	6495
+4898	csv8-p	CSV8: Poké Ball Reverse	6495

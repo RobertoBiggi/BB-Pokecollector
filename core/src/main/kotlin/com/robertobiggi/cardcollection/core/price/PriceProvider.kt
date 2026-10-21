@@ -14,6 +14,7 @@ import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
  * @property variant variante richiesta.
  * @property cardHasNormalAndHolo true se la carta esiste sia normal sia holo.
  * @property cardHasFirstEdition true se TCGdex elenca anche la variante 1st Edition (allora CardTrader non la usa come ripiego per normal/holo).
+ * @property name nome della carta nel catalogo (inglese per le carte inglesi e per quelle importate).
  * @property setId id TCGdex del set.
  * @property setName nome del set.
  * @property setCode sigla stampata del set, se c'è.
@@ -32,6 +33,7 @@ data class PriceRequest(
     val setName: String = "",
     val setCode: String? = null,
     val localId: String = "",
+    val name: String = "",
     val dexId: Int? = null,
     val ordinal: (suspend () -> SetOrdinal?)? = null,
     val cardTraderCondition: CtCondition? = null,

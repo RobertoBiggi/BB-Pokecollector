@@ -70,7 +70,7 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
         if (collectionId < 0) return Result.failure()
         val container = (applicationContext as CardCollectionApp).container
         val result = container.prices.runPriceCheck(collectionId) { p ->
-            setProgress(workDataOf(WorkKeys.LABEL to p.cardName, WorkKeys.PHASE to p.variant.name, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
+            setProgress(workDataOf(WorkKeys.LABEL to p.cardName, WorkKeys.PHASE to (p.step?.name ?: p.variant?.name), WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
         }
         return Result.success(
             workDataOf(WorkKeys.OK to result.ok, WorkKeys.FALLBACK to result.fallback, WorkKeys.FAILED to result.failed, WorkKeys.ABORT to result.abort?.name),

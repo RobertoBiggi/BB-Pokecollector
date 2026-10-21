@@ -8,7 +8,12 @@ import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
 import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
+import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalog
+import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalogIdSource
+import com.robertobiggi.cardcollection.core.cardmarket.CardmarketPriceGuide
+import com.robertobiggi.cardcollection.core.cardmarket.orElse
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
+import com.robertobiggi.cardcollection.core.price.CardmarketGuidePriceProvider
 import com.robertobiggi.cardcollection.core.price.CircuitBreaker
 import com.robertobiggi.cardcollection.core.price.PriceChain
 import com.robertobiggi.cardcollection.core.price.PriceRequest
@@ -29,9 +34,16 @@ import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
+import java.io.File
 
-/** Avanzamento dell'aggiornamento prezzi: carta e variante in lavorazione. */
-data class PriceProgress(val cardName: String, val variant: VariantType, val done: Int, val total: Int)
+/** Lavoro preparatorio dell'aggiornamento prezzi che richiede tempo e che viene mostrato all'utente. */
+enum class PriceStep { DOWNLOAD_GUIDE, READ_GUIDE, DOWNLOAD_CATALOG, READ_CATALOG, LOAD_CARDTRADER }
+
+/**
+ * Avanzamento dell'aggiornamento prezzi: carta e variante in lavorazione, oppure (con [step]) un lavoro
+ * preparatorio (scaricare o leggere un file Cardmarket, caricare i set di CardTrader); in quel caso [variant] è null.
+ */
+data class PriceProgress(val cardName: String, val variant: VariantType?, val done: Int, val total: Int, val step: PriceStep? = null)
 
 /** Motivo per cui un aggiornamento prezzi si è interrotto prima della fine. */
 enum class AbortReason { SOURCE_PAUSED, OFFLINE }
@@ -50,6 +62,7 @@ class PriceRepository(
     private val client: TcgdexClient,
     private val http: OkHttpClient,
     private val settings: SettingsStore,
+    private val cacheDir: File,
 ) {
     private val priceDao = db.priceDao()
 
@@ -87,7 +100,8 @@ class PriceRepository(
 
         val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
         val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
-        val cardTrader = cardTraderChain()
+        var position = 0
+        val sources = priceSources { step -> progress(PriceProgress(STEP_LABEL, null, position, targets.size, step)) }
 
         var ok = 0
         var fallback = 0
@@ -101,8 +115,9 @@ class PriceRepository(
                 abortReason = AbortReason.SOURCE_PAUSED
                 break
             }
+            position = index
             progress(PriceProgress(card.name, type, index, targets.size))
-            when (checkVariant(chain, cardTrader, card, variant, typesByCard[card.id].orEmpty(), conditionOf(entries[variant.id]?.condition))) {
+            when (checkVariant(chain, sources, card, variant, typesByCard[card.id].orEmpty(), conditionOf(entries[variant.id]?.condition))) {
                 VariantCheck.OK -> { ok++; consecutiveNetworkErrors = 0 }
                 VariantCheck.FALLBACK -> { fallback++; consecutiveNetworkErrors = 0 }
                 VariantCheck.FAILED -> { failed++; consecutiveNetworkErrors = 0 }
@@ -148,7 +163,7 @@ class PriceRepository(
         val types = variants.map { it.type }
         val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
         val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
-        val cardTrader = cardTraderChain()
+        val sources = priceSources {}
         var ok = 0
         var fallback = 0
         var failed = 0
@@ -159,7 +174,7 @@ class PriceRepository(
                 abortReason = AbortReason.SOURCE_PAUSED
                 break
             }
-            when (checkVariant(chain, cardTrader, card, variant, types, conditionOf(entries[variant.id]?.condition))) {
+            when (checkVariant(chain, sources, card, variant, types, conditionOf(entries[variant.id]?.condition))) {
                 VariantCheck.OK -> ok++
                 VariantCheck.FALLBACK -> fallback++
                 VariantCheck.FAILED -> failed++
@@ -180,15 +195,15 @@ class PriceRepository(
     /**
      * Chiede il prezzo di una variante alla catena di fonti e, se lo trova, lo salva.
      * @param chain PriceChain - catena di fonti con limitatore e circuit breaker.
-     * @param cardTrader PriceChain? - catena CardTrader, null se manca il token.
+     * @param sources PriceSources - CardTrader (se c'è il token) e listino Cardmarket.
      * @param card CardEntity - carta della variante.
      * @param variant CardVariantEntity - variante da controllare.
      * @param condition Condition - condizione della copia nella collezione: CardTrader mostra il prezzo più basso di quella condizione o migliore.
      * @param types List<String> - tipi di tutte le varianti della carta (per l'affidabilità del prezzo Cardmarket).
      * @return VariantCheck - esito; SKIPPED se lingua o tipo non sono riconosciuti.
      */
-    private suspend fun checkVariant(chain: PriceChain, cardTrader: PriceChain?, storedCard: CardEntity, variant: CardVariantEntity, types: List<String>, condition: Condition): VariantCheck {
-        val card = withIllustrator(if (cardTrader != null) withDexId(storedCard) else storedCard)
+    private suspend fun checkVariant(chain: PriceChain, sources: PriceSources, storedCard: CardEntity, variant: CardVariantEntity, types: List<String>, condition: Condition): VariantCheck {
+        val card = withIllustrator(withDexId(storedCard))
         val type = VariantType.entries.firstOrNull { it.name == variant.type } ?: return VariantCheck.SKIPPED
         val language = Language.fromCode(card.language) ?: return VariantCheck.SKIPPED
         val request = PriceRequest(
@@ -201,18 +216,26 @@ class PriceRepository(
             setName = card.setName,
             setCode = card.setCode,
             localId = card.localId,
+            name = card.name,
             dexId = card.dexId,
             ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
             cardTraderCondition = CtCondition.fromCondition(condition),
         )
+        // Il listino Cardmarket (aggiornato ogni notte) è la fonte principale dei prezzi in euro; TCGdex serve
+        // per i dollari di TCGplayer e come ripiego per le carte che il listino non abbina.
+        val guideQuote = sources.cardmarketGuide.fetch(request).quote
         val outcome = chain.fetch(request)
-        val quote = outcome.quote
-        val cardTraderSaved = cardTrader?.fetch(request)?.quote?.let { saveQuote(variant.id, it) } == true
-        if (quote == null) {
+        val tcgdexQuote = outcome.quote
+        val cardTraderSaved = sources.cardTrader?.fetch(request)?.quote?.let { saveQuote(variant.id, it) } == true
+        if (guideQuote != null) {
+            saveQuote(variant.id, guideQuote.copy(usd = tcgdexQuote?.usd, usdLow = tcgdexQuote?.usdLow))
+            return VariantCheck.OK
+        }
+        if (tcgdexQuote == null) {
             if (cardTraderSaved) return VariantCheck.OK
             return if (outcome.steps.any { it.outcome == StepOutcome.NETWORK_ERROR }) VariantCheck.NETWORK_ERROR else VariantCheck.FAILED
         }
-        saveQuote(variant.id, quote)
+        saveQuote(variant.id, tcgdexQuote)
         return if (outcome.usedFallback) VariantCheck.FALLBACK else VariantCheck.OK
     }
 
@@ -300,19 +323,27 @@ class PriceRepository(
         return true
     }
 
+    /** Fonti oltre a TCGdex: CardTrader (solo con il token) e il listino Cardmarket. */
+    private class PriceSources(val cardTrader: PriceChain?, val cardmarketGuide: PriceChain)
+
     /**
-     * Crea la catena CardTrader se l'utente ha inserito il token.
-     * @return PriceChain? - catena con una sola fonte, oppure null senza token.
+     * Crea le fonti di un aggiornamento prezzi. Il listino Cardmarket c'è sempre: l'id prodotto della carta
+     * viene da CardTrader se c'è il token e la carta si abbina, altrimenti dal catalogo Cardmarket.
+     * @param onDownload suspend (PriceStep) -> Unit - chiamata quando sta per iniziare un lavoro preparatorio lungo.
+     * @return PriceSources - fonti pronte.
      */
-    private suspend fun cardTraderChain(): PriceChain? {
+    private suspend fun priceSources(onStep: suspend (PriceStep) -> Unit): PriceSources {
         val token = settings.cardTraderToken.first()
-        if (token.isEmpty()) return null
-        val slot = ProviderSlot(
-            CardTraderPriceProvider(CardTraderClient(http, token)),
-            RateLimiter(REQUEST_INTERVAL_MS),
-            CircuitBreaker(),
+        val cardTrader = token.takeIf { it.isNotEmpty() }?.let { CardTraderPriceProvider(CardTraderClient(http, it), onLoadingExpansions = { onStep(PriceStep.LOAD_CARDTRADER) }) }
+        val catalogIds = CardmarketCatalogIdSource(CardmarketCatalog(http, File(cacheDir, CATALOG_FILE), onDownload = { onStep(PriceStep.DOWNLOAD_CATALOG) }, onRead = { onStep(PriceStep.READ_CATALOG) }))
+        val guide = CardmarketGuidePriceProvider(
+            cardTrader?.orElse(catalogIds) ?: catalogIds,
+            CardmarketPriceGuide(http, File(cacheDir, GUIDE_FILE), onDownload = { onStep(PriceStep.DOWNLOAD_GUIDE) }, onRead = { onStep(PriceStep.READ_GUIDE) }),
         )
-        return PriceChain(listOf(slot))
+        return PriceSources(
+            cardTrader = cardTrader?.let { PriceChain(listOf(ProviderSlot(it, RateLimiter(REQUEST_INTERVAL_MS), CircuitBreaker()))) },
+            cardmarketGuide = PriceChain(listOf(ProviderSlot(guide, RateLimiter(0), CircuitBreaker()))),
+        )
     }
 
     /**
@@ -346,6 +377,9 @@ class PriceRepository(
         const val STATUS_DONE = "DONE"
         const val STATUS_ABORTED = "ABORTED"
         private const val REQUEST_INTERVAL_MS = 300L
+        private const val STEP_LABEL = "…"
+        private const val GUIDE_FILE = "cardmarket-price-guide.json"
+        private const val CATALOG_FILE = "cardmarket-products.json"
         private const val MAX_NETWORK_ERRORS = 5
         private const val SQL_CHUNK = 500
     }

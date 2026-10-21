@@ -20,11 +20,13 @@ import kotlinx.coroutines.sync.withLock
  *
  * @param client client CardTrader con il token dell'utente.
  * @param worstCondition condizione peggiore accettata predefinita, se la carta non ne ha una sua.
+ * @param onLoadingExpansions chiamata subito prima di scaricare l'elenco dei set (solo la prima volta), per mostrarlo all'utente.
  */
 class CardTraderPriceProvider(
     private val client: CardTraderClient,
     private val worstCondition: CtCondition = CtCondition.NEAR_MINT,
-) : PriceProvider {
+    private val onLoadingExpansions: suspend () -> Unit = {},
+) : PriceProvider, CardmarketIdSource {
     override val id: String = ID
     override val displayName: String = DISPLAY_NAME
 
@@ -40,16 +42,7 @@ class CardTraderPriceProvider(
      */
     override suspend fun fetch(request: PriceRequest): PriceQuote? = mutex.withLock {
         val languageCode = languageParam(request.language)
-        val expansion = CardTraderMatcher.expansionFor(
-            expansions(), request.setName, request.setId, request.setCode,
-            preferCode = request.language == Language.JA,
-        ) ?: return null
-        val all = blueprintsOf(expansion.id)
-        var matching = CardTraderMatcher.blueprintsFor(all, request.localId, request.dexId)
-        if (matching.isEmpty() && request.dexId == null) {
-            matching = request.ordinal?.invoke()?.let { CardTraderMatcher.blueprintByOrdinal(all, it) }?.let { listOf(it) }.orEmpty()
-        }
-        if (matching.isEmpty()) return null
+        val matching = match(request) ?: return null
         val listings = matching.flatMap { productsOf(it.id, languageCode) }
         val pick = CardTraderPicker.lowest(
             listings, request.variant, languageCode, request.cardTraderCondition ?: worstCondition,
@@ -61,8 +54,32 @@ class CardTraderPriceProvider(
         PriceQuote(DISPLAY_NAME, eur, eur, null, null, null, null, Confidence.HIGH)
     }
 
+    /**
+     * Restituisce l'id prodotto Cardmarket della carta, anche se non ha annunci su CardTrader.
+     * @param request PriceRequest - carta da cercare.
+     * @return Int? - l'id, oppure null se la carta non si abbina o i blueprint indicano prodotti diversi.
+     */
+    override suspend fun cardmarketProductId(request: PriceRequest): Int? = mutex.withLock {
+        match(request)?.flatMap { it.cardMarketIds.orEmpty() }?.distinct()?.singleOrNull()
+    }
+
+    /** Blueprint della carta, o null se l'espansione o la carta non si trovano. Va chiamata con [mutex] preso. */
+    private suspend fun match(request: PriceRequest): List<CtBlueprintDto>? {
+        val expansion = CardTraderMatcher.expansionFor(
+            expansions(), request.setName, request.setId, request.setCode,
+            preferCode = request.language == Language.JA,
+        ) ?: return null
+        val all = blueprintsOf(expansion.id)
+        var matching = CardTraderMatcher.blueprintsFor(all, request.localId, request.dexId)
+        if (matching.isEmpty() && request.dexId == null) {
+            matching = request.ordinal?.invoke()?.let { CardTraderMatcher.blueprintByOrdinal(all, it) }?.let { listOf(it) }.orEmpty()
+        }
+        return matching.takeIf { it.isNotEmpty() }
+    }
+
     private suspend fun expansions(): List<CtExpansionDto> {
         expansions?.let { return it }
+        onLoadingExpansions()
         val gameId = client.games().firstOrNull { g ->
             g.name.contains("pok", ignoreCase = true) || g.displayName?.contains("pok", ignoreCase = true) == true
         }?.id

@@ -128,6 +128,10 @@ object CardTraderMatcher {
         "pcg6" to "hrt", "pcg7" to "hof", "pcg8" to "mic", "pcg9" to "odffe",
         "s5i" to "s5l", "sm1p" to "sm1plus", "sm2p" to "sm2plus", "sm3p" to "sm3", "sm4p" to "sm4", "sm5p" to "sm5plus",
         "sv-p" to "promosv", "m-p" to "mp-promo",
+        // Set che TCGdex elenca senza carte: servono per cercarli nel catalogo Cardmarket (e per i prezzi CardTrader).
+        "adv1" to "exp", "adv2" to "mod", "adv3" to "roh", "adv4" to "mvsa", "adv5" to "uns", "pcg10" to "wcp",
+        "l1a" to "l1", "l1b" to "l1ss", "xy1a" to "xy1", "xy1b" to "xy1y", "xy5a" to "xy5", "xy5b" to "xy5t",
+        "xy8a" to "xy8", "xy8b" to "xy8r", "xy11a" to "xy11f", "xy11b" to "xy11", "cp6" to "ep20", "s3a" to "ls3",
     )
 
     private val LEVEL_SUFFIX = Regex("""\s+Lv\.\s*\d+.*""")
