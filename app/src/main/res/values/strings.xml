@@ -117,6 +117,7 @@
     <string name="state_duplicates">%1$d duplicates</string>
     <string name="price_cardmarket" translatable="false">Cardmarket · trend</string>
     <string name="price_tcgplayer" translatable="false">TCGplayer · market</string>
+    <string name="price_cardtrader" translatable="false">CardTrader · lowest</string>
     <string name="no_price">no price</string>
     <string name="source_manual">Manual</string>
     <string name="not_sold">not sold</string>
@@ -182,6 +183,11 @@
     <string name="settings_available">TCGdex available. If it blocks 3 times in a row, the app pauses it for 6 hours.</string>
     <string name="settings_last_catalog">Last catalog download: %1$s</string>
     <string name="settings_never_catalog">Catalog never downloaded</string>
+    <string name="settings_cardtrader">CardTrader</string>
+    <string name="settings_cardtrader_text">Optional. Paste your CardTrader API token (CardTrader → Settings → API) to also get the lowest listing price in EUR, per variant. The token stays on this phone.</string>
+    <string name="settings_cardtrader_token">API token</string>
+    <string name="settings_cardtrader_save">Save</string>
+    <string name="settings_cardtrader_active">CardTrader prices are on.</string>
     <string name="settings_collections">Collections and JSON files</string>
     <string name="settings_collections_text">Each collection has its own searches, cards and quantities; catalog, images and prices are shared. From a collection\'s menu you can export it to a JSON file, with or without images, and import it on another phone from the icon at the top of the list. Importing always creates a new collection.</string>
     <string name="settings_v1">Backups from the first version of the app are accepted too.</string>

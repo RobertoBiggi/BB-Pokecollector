@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.map
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 /**
- * Impostazioni persistenti dell'app (nessun segreto: le fonti usate non richiedono chiavi).
+ * Impostazioni persistenti dell'app. Unico dato personale: il token API di CardTrader, salvato solo sul telefono.
  *
  * @param context contesto dell'applicazione.
  */
@@ -26,6 +27,18 @@ class SettingsStore(context: Context) {
 
     /** Ultimo aggiornamento del catalogo riuscito (0 = mai). */
     val lastCatalogSync: Flow<Long> = store.data.map { it[LAST_CATALOG_SYNC] ?: 0L }
+
+    /** Token API di CardTrader inserito dall'utente (stringa vuota = CardTrader disattivato). */
+    val cardTraderToken: Flow<String> = store.data.map { it[CARDTRADER_TOKEN].orEmpty() }
+
+    /**
+     * Salva il token API di CardTrader.
+     * @param token String - token già ripulito; vuoto per disattivare la fonte.
+     * @return Unit
+     */
+    suspend fun setCardTraderToken(token: String) {
+        store.edit { if (token.isEmpty()) it.remove(CARDTRADER_TOKEN) else it[CARDTRADER_TOKEN] = token }
+    }
 
     /**
      * Legge la fine della pausa di TCGdex.
@@ -53,6 +66,7 @@ class SettingsStore(context: Context) {
 
     private companion object {
         val TCGDEX_PAUSED_UNTIL = longPreferencesKey("tcgdex_paused_until")
+        val CARDTRADER_TOKEN = stringPreferencesKey("cardtrader_token")
         val LAST_CATALOG_SYNC = longPreferencesKey("last_catalog_sync")
     }
 }

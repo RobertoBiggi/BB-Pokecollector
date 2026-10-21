@@ -317,6 +317,12 @@ private fun VariantCard(
                     emptyText = stringResource(if (card.language == Language.EN) R.string.no_price else R.string.not_sold),
                 )
             }
+            if (variant.latestCardTrader != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PriceBox(stringResource(R.string.price_cardtrader), variant.latestCardTrader.eur?.let { Format.eur(it) }, Modifier.weight(1f))
+                    Spacer(Modifier.weight(1f))
+                }
+            }
             val last = variant.lastSnapshot
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(

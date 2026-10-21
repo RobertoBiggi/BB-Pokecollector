@@ -169,6 +169,11 @@
     <string name="settings_available">TCGdex disponibile. Se blocca 3 volte di fila, l\'app lo mette in pausa per 6 ore.</string>
     <string name="settings_last_catalog">Ultimo catalogo scaricato il %1$s</string>
     <string name="settings_never_catalog">Catalogo mai scaricato</string>
+    <string name="settings_cardtrader">CardTrader</string>
+    <string name="settings_cardtrader_text">Facoltativo. Incolla il tuo token API di CardTrader (CardTrader → Impostazioni → API) per avere anche il prezzo più basso in EUR, per variante. Il token resta su questo telefono.</string>
+    <string name="settings_cardtrader_token">Token API</string>
+    <string name="settings_cardtrader_save">Salva</string>
+    <string name="settings_cardtrader_active">I prezzi CardTrader sono attivi.</string>
     <string name="settings_collections">Collezioni e file JSON</string>
     <string name="settings_collections_text">Ogni collezione ha ricerche, carte e quantità proprie; catalogo, immagini e prezzi sono condivisi. Dal menu di una collezione puoi esportarla in un file JSON, con o senza immagini, e importarla su un altro telefono dall\'icona in alto nell\'elenco. L\'import crea sempre una nuova collezione.</string>
     <string name="settings_v1">Sono accettati anche i backup della prima versione dell\'app.</string>

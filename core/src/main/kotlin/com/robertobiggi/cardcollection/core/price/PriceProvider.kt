@@ -11,12 +11,20 @@ import com.robertobiggi.cardcollection.core.model.VariantType
  * @property tcgdexId id TCGdex della carta.
  * @property variant variante richiesta.
  * @property cardHasNormalAndHolo true se la carta esiste sia normal sia holo.
+ * @property setId id TCGdex del set.
+ * @property setName nome del set.
+ * @property setCode sigla stampata del set, se c'è.
+ * @property localId numero della carta nel set (es. "075").
  */
 data class PriceRequest(
     val language: Language,
     val tcgdexId: String,
     val variant: VariantType,
     val cardHasNormalAndHolo: Boolean,
+    val setId: String = "",
+    val setName: String = "",
+    val setCode: String? = null,
+    val localId: String = "",
 )
 
 /** Fonte di prezzi. Le implementazioni lanciano le eccezioni di [com.robertobiggi.cardcollection.core.net]. */
