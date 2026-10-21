@@ -3,7 +3,10 @@ package com.robertobiggi.cardcollection.data.repo
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
+import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
+import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.price.CircuitBreaker
 import com.robertobiggi.cardcollection.core.price.PriceChain
 import com.robertobiggi.cardcollection.core.price.PriceRequest
@@ -18,6 +21,8 @@ import com.robertobiggi.cardcollection.data.local.CardVariantEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
+import kotlinx.coroutines.flow.first
+import okhttp3.OkHttpClient
 
 /** Avanzamento dell'aggiornamento prezzi: carta e variante in lavorazione. */
 data class PriceProgress(val cardName: String, val variant: VariantType, val done: Int, val total: Int)
@@ -31,10 +36,13 @@ data class PriceRunResult(val ok: Int, val fallback: Int, val failed: Int, val a
 /**
  * Aggiorna i prezzi delle varianti desiderate o possedute e salva l'ultimo risultato in locale.
  * Se una variante non ha dati nuovi resta valido il prezzo salvato in precedenza.
+ * Se l'utente ha inserito il token CardTrader, ogni variante ha anche il prezzo CardTrader, in una catena
+ * separata: non sostituisce Cardmarket e i suoi errori non contano come errori dell'aggiornamento.
  */
 class PriceRepository(
     private val db: AppDatabase,
     private val client: TcgdexClient,
+    private val http: OkHttpClient,
     private val settings: SettingsStore,
 ) {
     private val priceDao = db.priceDao()
@@ -60,6 +68,7 @@ class PriceRepository(
 
         val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
         val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
+        val cardTrader = cardTraderChain()
 
         var ok = 0
         var fallback = 0
@@ -74,7 +83,7 @@ class PriceRepository(
                 break
             }
             progress(PriceProgress(card.name, type, index, targets.size))
-            when (checkVariant(chain, card, variant, typesByCard[card.id].orEmpty())) {
+            when (checkVariant(chain, cardTrader, card, variant, typesByCard[card.id].orEmpty())) {
                 VariantCheck.OK -> { ok++; consecutiveNetworkErrors = 0 }
                 VariantCheck.FALLBACK -> { fallback++; consecutiveNetworkErrors = 0 }
                 VariantCheck.FAILED -> { failed++; consecutiveNetworkErrors = 0 }
@@ -119,6 +128,7 @@ class PriceRepository(
         val types = variants.map { it.type }
         val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
         val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
+        val cardTrader = cardTraderChain()
         var ok = 0
         var fallback = 0
         var failed = 0
@@ -129,7 +139,7 @@ class PriceRepository(
                 abortReason = AbortReason.SOURCE_PAUSED
                 break
             }
-            when (checkVariant(chain, card, variant, types)) {
+            when (checkVariant(chain, cardTrader, card, variant, types)) {
                 VariantCheck.OK -> ok++
                 VariantCheck.FALLBACK -> fallback++
                 VariantCheck.FAILED -> failed++
@@ -148,29 +158,46 @@ class PriceRepository(
     /**
      * Chiede il prezzo di una variante alla catena di fonti e, se lo trova, lo salva.
      * @param chain PriceChain - catena di fonti con limitatore e circuit breaker.
+     * @param cardTrader PriceChain? - catena CardTrader, null se manca il token.
      * @param card CardEntity - carta della variante.
      * @param variant CardVariantEntity - variante da controllare.
      * @param types List<String> - tipi di tutte le varianti della carta (per l'affidabilità del prezzo Cardmarket).
      * @return VariantCheck - esito; SKIPPED se lingua o tipo non sono riconosciuti.
      */
-    private suspend fun checkVariant(chain: PriceChain, card: CardEntity, variant: CardVariantEntity, types: List<String>): VariantCheck {
+    private suspend fun checkVariant(chain: PriceChain, cardTrader: PriceChain?, card: CardEntity, variant: CardVariantEntity, types: List<String>): VariantCheck {
         val type = VariantType.entries.firstOrNull { it.name == variant.type } ?: return VariantCheck.SKIPPED
         val language = Language.fromCode(card.language) ?: return VariantCheck.SKIPPED
-        val outcome = chain.fetch(
-            PriceRequest(
-                language = language,
-                tcgdexId = card.tcgdexId,
-                variant = type,
-                cardHasNormalAndHolo = VariantType.NORMAL.name in types && VariantType.HOLO.name in types,
-            ),
+        val request = PriceRequest(
+            language = language,
+            tcgdexId = card.tcgdexId,
+            variant = type,
+            cardHasNormalAndHolo = VariantType.NORMAL.name in types && VariantType.HOLO.name in types,
+            setId = card.setId,
+            setName = card.setName,
+            setCode = card.setCode,
+            localId = card.localId,
         )
+        val outcome = chain.fetch(request)
         val quote = outcome.quote
+        val cardTraderSaved = cardTrader?.fetch(request)?.quote?.let { saveQuote(variant.id, it) } == true
         if (quote == null) {
+            if (cardTraderSaved) return VariantCheck.OK
             return if (outcome.steps.any { it.outcome == StepOutcome.NETWORK_ERROR }) VariantCheck.NETWORK_ERROR else VariantCheck.FAILED
         }
+        saveQuote(variant.id, quote)
+        return if (outcome.usedFallback) VariantCheck.FALLBACK else VariantCheck.OK
+    }
+
+    /**
+     * Salva un prezzo trovato come ultimo snapshot della variante.
+     * @param variantId String - variante.
+     * @param quote PriceQuote - prezzo da salvare.
+     * @return Boolean - sempre true (comodo per concatenare).
+     */
+    private suspend fun saveQuote(variantId: String, quote: PriceQuote): Boolean {
         priceDao.insertSnapshot(
             PriceSnapshotEntity(
-                variantId = variant.id,
+                variantId = variantId,
                 source = quote.source,
                 eur = quote.eur,
                 eurLow = quote.eurLow,
@@ -182,8 +209,23 @@ class PriceRepository(
                 confidence = quote.confidence.name,
             ),
         )
-        priceDao.pruneSnapshots(variant.id, KEEP_SNAPSHOTS)
-        return if (outcome.usedFallback) VariantCheck.FALLBACK else VariantCheck.OK
+        priceDao.pruneSnapshots(variantId, KEEP_SNAPSHOTS)
+        return true
+    }
+
+    /**
+     * Crea la catena CardTrader se l'utente ha inserito il token.
+     * @return PriceChain? - catena con una sola fonte, oppure null senza token.
+     */
+    private suspend fun cardTraderChain(): PriceChain? {
+        val token = settings.cardTraderToken.first()
+        if (token.isEmpty()) return null
+        val slot = ProviderSlot(
+            CardTraderPriceProvider(CardTraderClient(http, token)),
+            RateLimiter(REQUEST_INTERVAL_MS),
+            CircuitBreaker(),
+        )
+        return PriceChain(listOf(slot))
     }
 
     /**
@@ -212,7 +254,7 @@ class PriceRepository(
 
     companion object {
         /** Snapshot conservati per variante. */
-        const val KEEP_SNAPSHOTS = 10
+        const val KEEP_SNAPSHOTS = 20
         const val STATUS_RUNNING = "RUNNING"
         const val STATUS_DONE = "DONE"
         const val STATUS_ABORTED = "ABORTED"

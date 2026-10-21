@@ -12,6 +12,7 @@ import com.robertobiggi.cardcollection.data.local.CollectionCardEntity
 import com.robertobiggi.cardcollection.data.local.CollectionEntity
 import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
+import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
 
@@ -20,6 +21,7 @@ import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
  *
  * @property latestEur ultimo snapshot con un prezzo in euro.
  * @property latestUsd ultimo snapshot con un prezzo in dollari.
+ * @property latestCardTrader ultimo snapshot CardTrader (tenuto separato da Cardmarket).
  * @property eurHistory prezzi in euro dal più vecchio al più recente (per la sparkline).
  */
 data class VariantUi(
@@ -30,6 +32,7 @@ data class VariantUi(
     val condition: Condition,
     val latestEur: PriceSnapshotEntity?,
     val latestUsd: PriceSnapshotEntity?,
+    val latestCardTrader: PriceSnapshotEntity? = null,
     val lastSnapshot: PriceSnapshotEntity?,
     val eurHistory: List<Double>,
 ) {
@@ -162,13 +165,17 @@ object LibraryAssembler {
                     wanted = entry?.wanted ?: true,
                     quantity = entry?.quantity ?: 0,
                     condition = Condition.entries.firstOrNull { it.name == entry?.condition } ?: Condition.NM,
-                    latestEur = snaps.lastOrNull { it.eur != null },
+                    latestEur = snaps.lastOrNull { it.eur != null && !it.isCardTrader() },
                     latestUsd = snaps.lastOrNull { it.usd != null },
-                    lastSnapshot = snaps.lastOrNull(),
-                    eurHistory = snaps.mapNotNull { it.eur },
+                    latestCardTrader = snaps.lastOrNull { it.eur != null && it.isCardTrader() },
+                    lastSnapshot = snaps.lastOrNull { !it.isCardTrader() } ?: snaps.lastOrNull(),
+                    eurHistory = snaps.filter { !it.isCardTrader() }.mapNotNull { it.eur },
                 )
             }.sortedBy { it.type.ordinal }
             CardUi(card, list)
         }
     }
 }
+
+/** CardTrader ha un prezzo proprio: non deve prendere il posto di quello Cardmarket. */
+private fun PriceSnapshotEntity.isCardTrader(): Boolean = source == CardTraderPriceProvider.DISPLAY_NAME

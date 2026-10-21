@@ -101,6 +101,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     val tcgdexPausedUntil: StateFlow<Long> = container.settings.tcgdexPausedUntil.stateInVm(0L)
     val lastCatalogSync: StateFlow<Long> = container.settings.lastCatalogSync.stateInVm(0L)
+    val cardTraderToken: StateFlow<String> = container.settings.cardTraderToken.stateInVm("")
 
     private val _filter = MutableStateFlow(CollectionFilter())
     val filter: StateFlow<CollectionFilter> = _filter.asStateFlow()
@@ -306,6 +307,15 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @return Unit
      */
     fun setWanted(variantId: String, wanted: Boolean) = withSelected { container.collection.setWanted(it, variantId, wanted) }
+
+    /**
+     * Salva il token CardTrader (spazi e a capo ai bordi vengono tolti).
+     * @param input String - testo incollato dall'utente.
+     * @return Unit
+     */
+    fun saveCardTraderToken(input: String) {
+        viewModelScope.launch { container.settings.setCardTraderToken(input.trim()) }
+    }
 
     /**
      * Valida e salva un prezzo manuale (i prezzi sono condivisi tra le collezioni).

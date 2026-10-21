@@ -37,7 +37,7 @@ class AppContainer(context: Context) {
 
     val collection = CollectionRepository(database)
     val catalog = CatalogRepository(database, tcgdex, images, settings)
-    val prices = PriceRepository(database, tcgdex, settings)
+    val prices = PriceRepository(database, tcgdex, http, settings)
     val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
     val work = WorkScheduler(appContext)
 
