@@ -35,6 +35,26 @@ object PokemonNames {
     fun mentionsPokemon(text: String): Boolean =
         text.lowercase().replace('♀', 'f').replace('♂', 'm').split(Regex("[^\\p{L}]+")).any { it in allNameKeys }
 
+    /** Nome (solo lettere, minuscolo) → numero del Pokédex; i nomi che appartengono a più Pokémon sono esclusi. */
+    private val dexByKey: Map<String, Int> by lazy {
+        val all = HashMap<String, Int?>()
+        for ((dex, names) in namesByDex) for (n in names) {
+            val key = n.replace('♀', 'f').replace('♂', 'm').filter { it.isLetter() }
+            if (key.length < 3) continue
+            all[key] = if (all.containsKey(key) && all[key] != dex) null else dex
+        }
+        all.mapNotNull { (k, v) -> v?.let { k to it } }.toMap()
+    }
+
+    /**
+     * Ricava il numero del Pokédex dal nome di una carta ("Dark Omastar Lv.33" → 139).
+     * @param text String - nome della carta.
+     * @return Int? - il Pokédex, oppure null se nel nome non c'è un Pokémon o ce ne sono più di uno (es. un Allenatore).
+     */
+    fun dexIdOfName(text: String): Int? =
+        text.lowercase().replace('♀', 'f').replace('♂', 'm').split(Regex("[^\\p{L}]+"))
+            .mapNotNull { dexByKey[it] }.distinct().singleOrNull()
+
     /**
      * Nomi di un Pokémon in tutte le lingue.
      * @param dexId Int - numero del Pokédex nazionale.

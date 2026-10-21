@@ -32,6 +32,7 @@
     <string name="lang_id">Indonesian</string>
     <string name="lang_limited_hint">%1$s: limited data on TCGdex (few cards, almost no images or prices).</string>
     <string name="label_card_language">Card language</string>
+    <string name="label_card_languages">Card languages</string>
     <string name="filter_all_languages">All languages</string>
     <string name="variant_normal">Normal</string>
     <string name="variant_holo">Holo</string>
@@ -85,8 +86,14 @@
     <string name="job_waiting">waiting for a connection…</string>
     <string name="job_starting">starting…</string>
     <string name="job_search">searching \"%1$s\"</string>
+    <string name="job_search_cardmarket">Cardmarket: searching \"%1$s\"</string>
     <string name="job_item" translatable="false">%1$s (%2$d/%3$d)</string>
     <string name="job_images">images %1$d/%2$d</string>
+    <string name="job_download_guide">downloading Cardmarket price list…</string>
+    <string name="job_download_catalog">downloading Cardmarket card catalog…</string>
+    <string name="job_read_guide">reading Cardmarket price list…</string>
+    <string name="job_read_catalog">reading Cardmarket card catalog…</string>
+    <string name="job_load_cardtrader">loading CardTrader sets…</string>
     <string name="job_price_item" translatable="false">%1$s · %2$s</string>
     <string name="catalog_done">%1$d cards updated, %2$d images downloaded</string>
     <string name="catalog_done_errors">%1$d cards updated, %2$d images downloaded · %3$d problems</string>

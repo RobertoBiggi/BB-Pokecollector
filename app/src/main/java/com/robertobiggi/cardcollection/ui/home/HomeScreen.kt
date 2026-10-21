@@ -4,7 +4,7 @@ package com.robertobiggi.cardcollection.ui.home
 
 import com.robertobiggi.cardcollection.ui.common.exportFileName
 import com.robertobiggi.cardcollection.ui.common.messageRes
-import com.robertobiggi.cardcollection.ui.common.LanguagePicker
+import com.robertobiggi.cardcollection.ui.common.LanguageMultiPicker
 import com.robertobiggi.cardcollection.data.repo.InputError
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
@@ -147,8 +147,8 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
     if (creating) {
         CreateCollectionDialog(
             onDismiss = { creating = false },
-            onCreate = { name, language, pattern, setError ->
-                vm.createCollection(name, language, pattern) { error, id ->
+            onCreate = { name, languages, pattern, setError ->
+                vm.createCollection(name, languages, pattern) { error, id ->
                     if (error != null) setError(error.messageRes()) else {
                         creating = false
                         id?.let(onOpen)
@@ -245,14 +245,14 @@ private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRen
 /**
  * Finestra di creazione di una collezione con una prima ricerca facoltativa.
  * @param onDismiss () -> Unit - chiude.
- * @param onCreate (String, Language, String, (Int) -> Unit) -> Unit - crea; l'ultimo parametro mostra un errore (risorsa stringa).
+ * @param onCreate (String, List<Language>, String, (Int) -> Unit) -> Unit - crea; l'ultimo parametro mostra un errore (risorsa stringa).
  * @return Unit
  */
 @Composable
-private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Language, String, (Int) -> Unit) -> Unit) {
+private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, List<Language>, String, (Int) -> Unit) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     var pattern by rememberSaveable { mutableStateOf("") }
-    var language by rememberSaveable { mutableStateOf(Language.EN) }
+    var languages by rememberSaveable { mutableStateOf(listOf(Language.EN)) }
     var error by remember { mutableStateOf<Int?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -266,7 +266,7 @@ private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Lan
                     singleLine = true,
                 )
                 Text(stringResource(R.string.create_first_search), style = MaterialTheme.typography.bodySmall)
-                LanguagePicker(language) { language = it }
+                LanguageMultiPicker(languages) { languages = it }
                 OutlinedTextField(
                     value = pattern,
                     onValueChange = { pattern = it.take(40); error = null },
@@ -277,7 +277,7 @@ private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Lan
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onCreate(name, language, pattern) { error = it } }) { Text(stringResource(R.string.action_create)) } },
+        confirmButton = { TextButton(onClick = { onCreate(name, languages, pattern) { error = it } }) { Text(stringResource(R.string.action_create)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

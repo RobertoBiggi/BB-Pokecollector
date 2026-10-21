@@ -13,6 +13,7 @@ import com.robertobiggi.cardcollection.data.repo.AbortReason
 import com.robertobiggi.cardcollection.data.repo.FileError
 import com.robertobiggi.cardcollection.data.repo.ImageResult
 import com.robertobiggi.cardcollection.data.repo.InputError
+import com.robertobiggi.cardcollection.data.repo.PriceStep
 import com.robertobiggi.cardcollection.data.repo.SyncPhase
 import com.robertobiggi.cardcollection.work.JobState
 import com.robertobiggi.cardcollection.work.WorkKeys
@@ -133,6 +134,16 @@ fun FileError.messageRes(): Int = when (this) {
 @Composable
 fun jobProgressText(state: JobState, prices: Boolean): String {
     if (state.waitingForNetwork) return stringResource(R.string.job_waiting)
+    if (prices) {
+        when (PriceStep.entries.firstOrNull { it.name == state.phase }) {
+            PriceStep.DOWNLOAD_GUIDE -> return stringResource(R.string.job_download_guide)
+            PriceStep.READ_GUIDE -> return stringResource(R.string.job_read_guide)
+            PriceStep.DOWNLOAD_CATALOG -> return stringResource(R.string.job_download_catalog)
+            PriceStep.READ_CATALOG -> return stringResource(R.string.job_read_catalog)
+            PriceStep.LOAD_CARDTRADER -> return stringResource(R.string.job_load_cardtrader)
+            null -> Unit
+        }
+    }
     val label = state.label ?: return stringResource(R.string.job_starting)
     if (prices) {
         val variant = VariantType.entries.firstOrNull { it.name == state.phase }
@@ -142,6 +153,9 @@ fun jobProgressText(state: JobState, prices: Boolean): String {
     return when (SyncPhase.entries.firstOrNull { it.name == state.phase }) {
         SyncPhase.SEARCH -> stringResource(R.string.job_search, label)
         SyncPhase.IMAGES -> stringResource(R.string.job_images, state.done + 1, state.total)
+        SyncPhase.CARDMARKET -> stringResource(R.string.job_search_cardmarket, label)
+        SyncPhase.CARDMARKET_DOWNLOAD -> stringResource(R.string.job_download_catalog)
+        SyncPhase.CARDMARKET_READ -> stringResource(R.string.job_read_catalog)
         else -> stringResource(R.string.job_item, label, state.done + 1, state.total)
     }
 }

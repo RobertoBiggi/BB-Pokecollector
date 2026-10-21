@@ -31,6 +31,7 @@
     <string name="lang_id">Indonesiano</string>
     <string name="lang_limited_hint">%1$s: dati limitati su TCGdex (poche carte, quasi senza immagini né prezzi).</string>
     <string name="label_card_language">Lingua delle carte</string>
+    <string name="label_card_languages">Lingue delle carte</string>
     <string name="filter_all_languages">Tutte le lingue</string>
     <string name="variant_normal">Normal</string>
     <string name="variant_holo">Holo</string>
@@ -83,7 +84,13 @@
     <string name="job_waiting">in attesa della connessione…</string>
     <string name="job_starting">avvio…</string>
     <string name="job_search">cerco \"%1$s\"</string>
+    <string name="job_search_cardmarket">Cardmarket: cerco \"%1$s\"</string>
     <string name="job_images">immagini %1$d/%2$d</string>
+    <string name="job_download_guide">scarico il listino prezzi Cardmarket…</string>
+    <string name="job_download_catalog">scarico il catalogo carte Cardmarket…</string>
+    <string name="job_read_guide">leggo il listino prezzi Cardmarket…</string>
+    <string name="job_read_catalog">leggo il catalogo carte Cardmarket…</string>
+    <string name="job_load_cardtrader">carico i set di CardTrader…</string>
     <string name="catalog_done">%1$d carte aggiornate, %2$d immagini scaricate</string>
     <string name="catalog_done_errors">%1$d carte aggiornate, %2$d immagini scaricate · %3$d problemi</string>
     <string name="prices_done">%1$d aggiornati, %2$d dopo un nuovo tentativo, %3$d senza dati nuovi</string>

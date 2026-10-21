@@ -186,6 +186,14 @@ class CardTraderTest {
         assertEquals(emptyList<Int>(), CardTraderMatcher.blueprintsFor(vintage, "003", dexId = null).map { it.id })
     }
 
+    @Test
+    fun `i set giapponesi che TCGdex elenca senza carte si abbinano al set CardTrader`() {
+        val exp = listOf(CtExpansionDto(1, 5, "wcp", "World Champions Pack"), CtExpansionDto(2, 5, "xy5", "Gaia Volcano"), CtExpansionDto(3, 5, "exp", "ADV Expansion Pack"))
+        assertEquals(1, CardTraderMatcher.expansionFor(exp, "ワールドチャンピオンズパック", "PCG10", null, preferCode = true)?.id)
+        assertEquals(2, CardTraderMatcher.expansionFor(exp, "ガイアボルケーノ", "XY5a", null, preferCode = true)?.id)
+        assertEquals(3, CardTraderMatcher.expansionFor(exp, "拡張パック", "ADV1", null, preferCode = true)?.id)
+    }
+
     private fun server(): MockWebServer {
         val s = MockWebServer()
         s.dispatcher = object : Dispatcher() {

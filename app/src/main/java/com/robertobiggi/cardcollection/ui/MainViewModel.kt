@@ -205,14 +205,14 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     /**
      * Crea una collezione e, se ha una ricerca, ne scarica subito il catalogo.
      * @param name String - nome.
-     * @param language Language - lingua della prima ricerca.
+     * @param languages List<Language> - lingue della prima ricerca (una ricerca per lingua).
      * @param pattern String - prima ricerca (vuota = nessuna).
      * @param onResult (InputError?, Long?) -> Unit - riceve l'errore oppure l'id creato.
      * @return Unit
      */
-    fun createCollection(name: String, language: Language, pattern: String, onResult: (InputError?, Long?) -> Unit) {
+    fun createCollection(name: String, languages: List<Language>, pattern: String, onResult: (InputError?, Long?) -> Unit) {
         viewModelScope.launch {
-            when (val result = container.collection.createCollection(name, language, pattern)) {
+            when (val result = container.collection.createCollection(name, languages, pattern)) {
                 is CreateResult.Created -> {
                     if (pattern.isNotBlank()) container.work.startCatalogSync(result.id)
                     onResult(null, result.id)

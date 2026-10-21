@@ -38,6 +38,7 @@ data class CtBlueprintDto(
     val version: String? = null,
     @SerialName("expansion_id") val expansionId: Int? = null,
     @SerialName("fixed_properties") val fixedProperties: JsonObject? = null,
+    @SerialName("card_market_ids") val cardMarketIds: List<Int>? = null,
 )
 
 /** Prezzo annidato di un annuncio. */

@@ -10,7 +10,10 @@ import com.robertobiggi.cardcollection.data.repo.PriceRepository
 import com.robertobiggi.cardcollection.data.repo.TransferRepository
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import com.robertobiggi.cardcollection.work.WorkScheduler
+import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCardSearch
+import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalog
 import okhttp3.OkHttpClient
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
@@ -36,8 +39,9 @@ class AppContainer(context: Context) {
     val images = ImageStore(appContext, http)
 
     val collection = CollectionRepository(database)
-    val catalog = CatalogRepository(database, tcgdex, images, settings)
-    val prices = PriceRepository(database, tcgdex, http, settings)
+    private val cardmarketCatalog = CardmarketCatalog(http, File(appContext.cacheDir, "cardmarket-products.json"))
+    val catalog = CatalogRepository(database, tcgdex, images, settings, CardmarketCardSearch(cardmarketCatalog, tcgdex))
+    val prices = PriceRepository(database, tcgdex, http, settings, appContext.cacheDir)
     val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
     val work = WorkScheduler(appContext)
 

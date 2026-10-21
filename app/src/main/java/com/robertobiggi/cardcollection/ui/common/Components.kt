@@ -261,3 +261,61 @@ fun LanguagePicker(selected: Language, onSelect: (Language) -> Unit) {
         }
     }
 }
+
+/**
+ * Scelta di una o più lingue delle carte: blocchetti EN e JP attivabili insieme, più "Altro" con il menu delle
+ * altre lingue (anch'esse a scelta multipla). Resta sempre almeno una lingua. Avvisa per le lingue con pochi dati.
+ * @param selected List<Language> - lingue selezionate.
+ * @param onChange (List<Language>) -> Unit - nuova scelta, mai vuota.
+ * @return Unit
+ */
+@Composable
+fun LanguageMultiPicker(selected: List<Language>, onChange: (List<Language>) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val main = listOf(Language.EN, Language.JA)
+    fun toggle(lang: Language) {
+        val next = if (lang in selected) selected - lang else selected + lang
+        if (next.isNotEmpty()) onChange(Language.entries.filter { it in next })
+    }
+    Column {
+        Text(stringResource(R.string.label_card_languages), style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            main.forEach { lang ->
+                FilterChip(
+                    selected = lang in selected,
+                    onClick = { toggle(lang) },
+                    label = { Text(lang.shortLabel()) },
+                )
+            }
+            Box {
+                val others = selected.filter { it !in main }
+                FilterChip(
+                    selected = others.isNotEmpty(),
+                    onClick = { open = true },
+                    label = {
+                        Text(
+                            if (others.isEmpty()) stringResource(R.string.lang_other)
+                            else "${stringResource(R.string.lang_other)} (${others.joinToString(", ") { it.shortLabel() }})",
+                        )
+                    },
+                    trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
+                )
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    Language.entries.filter { it !in main }.forEach { lang ->
+                        DropdownMenuItem(
+                            text = { Text("${if (lang in selected) "✓ " else ""}${stringResource(lang.labelRes())} (${lang.shortLabel()})") },
+                            onClick = { toggle(lang) },
+                        )
+                    }
+                }
+            }
+        }
+        selected.firstOrNull { it.limitedData }?.let { limited ->
+            Text(
+                stringResource(R.string.lang_limited_hint, stringResource(limited.labelRes())),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}

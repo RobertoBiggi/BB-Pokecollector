@@ -103,18 +103,20 @@ class CollectionRepository(private val db: AppDatabase) {
     /**
      * Crea una collezione, con una prima ricerca facoltativa.
      * @param rawName String - nome inserito dall'utente.
-     * @param language Language? - lingua della prima ricerca.
+     * @param languages Collection<Language> - lingue della prima ricerca: una ricerca per lingua.
      * @param pattern String? - testo della prima ricerca (vuoto = nessuna ricerca).
      * @return CreateResult - id della collezione creata, oppure l'errore da mostrare.
      */
-    suspend fun createCollection(rawName: String, language: Language?, pattern: String?): CreateResult {
+    suspend fun createCollection(rawName: String, languages: Collection<Language>, pattern: String?): CreateResult {
         val name = CollectionFiles.cleanName(rawName) ?: return CreateResult.Invalid(InputError.NAME_EMPTY)
         val clean = pattern?.trim().orEmpty()
         if (clean.isNotEmpty() && !Validators.isValidQueryPattern(clean)) return CreateResult.Invalid(InputError.QUERY_INVALID)
         val id = db.withTransaction {
             val id = catalogDao.insertCollection(CollectionEntity(name = uniqueName(name), createdAt = System.currentTimeMillis()))
-            if (clean.isNotEmpty() && language != null) {
-                catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = language.code, pattern = clean))
+            if (clean.isNotEmpty()) {
+                languages.distinct().forEach { language ->
+                    catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = language.code, pattern = clean))
+                }
             }
             id
         }
