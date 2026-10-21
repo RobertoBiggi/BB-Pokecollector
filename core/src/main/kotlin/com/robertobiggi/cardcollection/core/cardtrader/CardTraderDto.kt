@@ -12,6 +12,10 @@ data class CtGameDto(
     @SerialName("display_name") val displayName: String? = null,
 )
 
+/** Risposta di `GET /games`: l'elenco è dentro `array`. */
+@Serializable
+data class CtGamesResponse(val array: List<CtGameDto> = emptyList())
+
 /** Espansione di CardTrader (`GET /expansions`). */
 @Serializable
 data class CtExpansionDto(
