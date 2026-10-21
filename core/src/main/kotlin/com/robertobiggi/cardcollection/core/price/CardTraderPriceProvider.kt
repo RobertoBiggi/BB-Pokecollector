@@ -42,11 +42,20 @@ class CardTraderPriceProvider(
         val languageCode = languageParam(request.language)
         val expansion = CardTraderMatcher.expansionFor(
             expansions(), request.setName, request.setId, request.setCode,
+            preferCode = request.language == Language.JA,
         ) ?: return null
-        val matching = CardTraderMatcher.blueprintsFor(blueprintsOf(expansion.id), request.localId)
+        val all = blueprintsOf(expansion.id)
+        var matching = CardTraderMatcher.blueprintsFor(all, request.localId, request.dexId)
+        if (matching.isEmpty() && request.dexId == null) {
+            matching = request.ordinal?.invoke()?.let { CardTraderMatcher.blueprintByOrdinal(all, it) }?.let { listOf(it) }.orEmpty()
+        }
         if (matching.isEmpty()) return null
         val listings = matching.flatMap { productsOf(it.id, languageCode) }
-        val pick = CardTraderPicker.lowest(listings, request.variant, languageCode, request.cardTraderCondition ?: worstCondition) ?: return null
+        val pick = CardTraderPicker.lowest(
+            listings, request.variant, languageCode, request.cardTraderCondition ?: worstCondition,
+            firstEditionFallback = request.language == Language.JA && !request.cardHasFirstEdition,
+            lowerCondition = true,
+        ) ?: return null
         if (pick.currency != "EUR") return null
         val eur = pick.cents / 100.0
         PriceQuote(DISPLAY_NAME, eur, eur, null, null, null, null, Confidence.HIGH)
