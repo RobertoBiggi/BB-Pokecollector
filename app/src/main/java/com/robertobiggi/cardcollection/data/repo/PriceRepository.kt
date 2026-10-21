@@ -10,7 +10,10 @@ import com.robertobiggi.cardcollection.core.price.PriceRequest
 import com.robertobiggi.cardcollection.core.price.ProviderSlot
 import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.price.StepOutcome
+import com.robertobiggi.cardcollection.core.price.TcgcsvPriceProvider
 import com.robertobiggi.cardcollection.core.price.TcgdexPriceProvider
+import com.robertobiggi.cardcollection.core.tcgcsv.TcgcsvCatalog
+import com.robertobiggi.cardcollection.core.tcgcsv.TcgcsvClient
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -18,6 +21,8 @@ import com.robertobiggi.cardcollection.data.local.CardVariantEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 /** Avanzamento dell'aggiornamento prezzi: carta e variante in lavorazione. */
 data class PriceProgress(val cardName: String, val variant: VariantType, val done: Int, val total: Int)
@@ -35,9 +40,25 @@ data class PriceRunResult(val ok: Int, val fallback: Int, val failed: Int, val a
 class PriceRepository(
     private val db: AppDatabase,
     private val client: TcgdexClient,
+    private val tcgcsv: TcgcsvClient,
     private val settings: SettingsStore,
 ) {
     private val priceDao = db.priceDao()
+
+    /**
+     * Catena di fonti per un aggiornamento: TCGdex (Cardmarket e TCGplayer) e poi TCGCSV, che completa
+     * i prezzi in dollari mancanti. La pausa di TCGdex è salvata nelle impostazioni, quella di TCGCSV vale
+     * solo per l'aggiornamento in corso.
+     * @param tcgdexBreaker CircuitBreaker - circuit breaker di TCGdex, da salvare a fine aggiornamento.
+     * @return PriceChain - catena pronta.
+     */
+    private fun buildChain(tcgdexBreaker: CircuitBreaker): PriceChain = PriceChain(
+        listOf(
+            ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), tcgdexBreaker),
+            // Il client TCGCSV distanzia già le richieste reali: qui niente attese sulle risposte in cache.
+            ProviderSlot(TcgcsvPriceProvider(TcgcsvCatalog(tcgcsv)), RateLimiter(0), CircuitBreaker()),
+        ),
+    )
 
     /**
      * Esegue l'aggiornamento prezzi delle carte visibili di una collezione.
@@ -59,51 +80,59 @@ class PriceRepository(
         }
 
         val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
-        val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
+        val chain = buildChain(breaker)
 
         var ok = 0
         var fallback = 0
         var failed = 0
         var consecutiveNetworkErrors = 0
         var abortReason: AbortReason? = null
-        for ((index, variant) in targets.withIndex()) {
-            val card = cards[variant.cardId] ?: continue
-            val type = VariantType.entries.firstOrNull { it.name == variant.type } ?: continue
-            if (chain.allCircuitsOpen()) {
-                abortReason = AbortReason.SOURCE_PAUSED
-                break
-            }
-            progress(PriceProgress(card.name, type, index, targets.size))
-            when (checkVariant(chain, card, variant, typesByCard[card.id].orEmpty())) {
-                VariantCheck.OK -> { ok++; consecutiveNetworkErrors = 0 }
-                VariantCheck.FALLBACK -> { fallback++; consecutiveNetworkErrors = 0 }
-                VariantCheck.FAILED -> { failed++; consecutiveNetworkErrors = 0 }
-                VariantCheck.NETWORK_ERROR -> {
-                    failed++
-                    consecutiveNetworkErrors++
-                    if (consecutiveNetworkErrors >= MAX_NETWORK_ERRORS) {
-                        abortReason = AbortReason.OFFLINE
-                        break
-                    }
+        var completed = false
+        try {
+            for ((index, variant) in targets.withIndex()) {
+                val card = cards[variant.cardId] ?: continue
+                val type = VariantType.fromName(variant.type) ?: continue
+                if (chain.allCircuitsOpen()) {
+                    abortReason = AbortReason.SOURCE_PAUSED
+                    break
                 }
-                VariantCheck.SKIPPED -> Unit
+                progress(PriceProgress(card.name, type, index, targets.size))
+                when (checkVariant(chain, card, variant, typesByCard[card.id].orEmpty())) {
+                    VariantCheck.OK -> { ok++; consecutiveNetworkErrors = 0 }
+                    VariantCheck.FALLBACK -> { fallback++; consecutiveNetworkErrors = 0 }
+                    VariantCheck.FAILED -> { failed++; consecutiveNetworkErrors = 0 }
+                    VariantCheck.NETWORK_ERROR -> {
+                        failed++
+                        consecutiveNetworkErrors++
+                        if (consecutiveNetworkErrors >= MAX_NETWORK_ERRORS) {
+                            abortReason = AbortReason.OFFLINE
+                            break
+                        }
+                    }
+                    VariantCheck.SKIPPED -> Unit
+                }
+            }
+            completed = true
+        } finally {
+            // Anche se il lavoro viene interrotto, il run non resta "in corso" per sempre.
+            withContext(NonCancellable) {
+                settings.setTcgdexPausedUntil(breaker.openUntil)
+                priceDao.updateRun(
+                    PriceRunEntity(
+                        id = runId,
+                        startedAt = startedAt,
+                        finishedAt = System.currentTimeMillis(),
+                        status = if (completed && abortReason == null) STATUS_DONE else STATUS_ABORTED,
+                        okCount = ok,
+                        fallbackCount = fallback,
+                        failCount = failed,
+                        summary = abortReason?.name,
+                        collectionId = collectionId,
+                    ),
+                )
+                priceDao.pruneRuns(collectionId, KEEP_RUNS)
             }
         }
-        settings.setTcgdexPausedUntil(breaker.openUntil)
-
-        priceDao.updateRun(
-            PriceRunEntity(
-                id = runId,
-                startedAt = startedAt,
-                finishedAt = System.currentTimeMillis(),
-                status = if (abortReason == null) STATUS_DONE else STATUS_ABORTED,
-                okCount = ok,
-                fallbackCount = fallback,
-                failCount = failed,
-                summary = abortReason?.name,
-                collectionId = collectionId,
-            ),
-        )
         return PriceRunResult(ok, fallback, failed, abortReason)
     }
 
@@ -118,7 +147,7 @@ class PriceRepository(
         val variants = db.catalogDao().variantsOf(listOf(cardId))
         val types = variants.map { it.type }
         val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
-        val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
+        val chain = buildChain(breaker)
         var ok = 0
         var fallback = 0
         var failed = 0
@@ -154,7 +183,7 @@ class PriceRepository(
      * @return VariantCheck - esito; SKIPPED se lingua o tipo non sono riconosciuti.
      */
     private suspend fun checkVariant(chain: PriceChain, card: CardEntity, variant: CardVariantEntity, types: List<String>): VariantCheck {
-        val type = VariantType.entries.firstOrNull { it.name == variant.type } ?: return VariantCheck.SKIPPED
+        val type = VariantType.fromName(variant.type) ?: return VariantCheck.SKIPPED
         val language = Language.fromCode(card.language) ?: return VariantCheck.SKIPPED
         val outcome = chain.fetch(
             PriceRequest(
@@ -162,6 +191,10 @@ class PriceRepository(
                 tcgdexId = card.tcgdexId,
                 variant = type,
                 cardHasNormalAndHolo = VariantType.NORMAL.name in types && VariantType.HOLO.name in types,
+                setCode = card.setCode,
+                setName = card.setName,
+                localId = card.localId,
+                name = card.name,
             ),
         )
         val quote = outcome.quote
@@ -213,6 +246,9 @@ class PriceRepository(
     companion object {
         /** Snapshot conservati per variante. */
         const val KEEP_SNAPSHOTS = 10
+
+        /** Aggiornamenti prezzi conservati nel registro di ogni collezione. */
+        const val KEEP_RUNS = 10
         const val STATUS_RUNNING = "RUNNING"
         const val STATUS_DONE = "DONE"
         const val STATUS_ABORTED = "ABORTED"

@@ -4,6 +4,7 @@ package com.robertobiggi.cardcollection.ui.home
 
 import com.robertobiggi.cardcollection.ui.common.exportFileName
 import com.robertobiggi.cardcollection.ui.common.messageRes
+import com.robertobiggi.cardcollection.ui.common.CollectionLanguagePicker
 import com.robertobiggi.cardcollection.ui.common.LanguagePicker
 import com.robertobiggi.cardcollection.data.repo.InputError
 import com.robertobiggi.cardcollection.R
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.robertobiggi.cardcollection.core.backup.ImageExport
+import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.CollectionSummary
 import com.robertobiggi.cardcollection.ui.MainViewModel
@@ -67,6 +69,7 @@ import com.robertobiggi.cardcollection.ui.common.ConfirmDialog
 import com.robertobiggi.cardcollection.ui.common.ExportDialog
 import com.robertobiggi.cardcollection.ui.common.Format
 import com.robertobiggi.cardcollection.ui.common.TextInputDialog
+import com.robertobiggi.cardcollection.ui.common.shortLabel
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 import java.io.File
 
@@ -147,8 +150,8 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
     if (creating) {
         CreateCollectionDialog(
             onDismiss = { creating = false },
-            onCreate = { name, language, pattern, setError ->
-                vm.createCollection(name, language, pattern) { error, id ->
+            onCreate = { name, collectionLanguage, queryLanguage, pattern, setError ->
+                vm.createCollection(name, collectionLanguage, queryLanguage, pattern) { error, id ->
                     if (error != null) setError(error.messageRes()) else {
                         creating = false
                         id?.let(onOpen)
@@ -211,14 +214,35 @@ private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRen
                 contentAlignment = Alignment.Center,
             ) {
                 val cover = summary.coverPath
-                if (cover != null && File(cover).isFile) {
-                    AsyncImage(model = File(cover), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                // Se il file manca, Coil segnala l'errore e si torna all'iniziale (niente accessi al disco qui).
+                var coverFailed by remember(cover) { mutableStateOf(false) }
+                if (cover != null && !coverFailed) {
+                    AsyncImage(
+                        model = File(cover),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        onError = { coverFailed = true },
+                    )
                 } else {
                     Text(summary.collection.name.take(1).uppercase(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(summary.collection.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        summary.collection.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Text(
+                        CollectionLanguage.fixedLanguage(summary.collection.language)?.shortLabel() ?: stringResource(R.string.lang_mixed),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     stringResource(R.string.home_cards_variants, summary.cardCount, s.owned, s.slots),
                     style = MaterialTheme.typography.bodySmall,
@@ -243,15 +267,19 @@ private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRen
 }
 
 /**
- * Finestra di creazione di una collezione con una prima ricerca facoltativa.
+ * Finestra di creazione di una collezione: nome, lingua (EN, JP o mista) e una prima ricerca facoltativa.
+ * La lingua della ricerca si sceglie solo per le collezioni miste.
  * @param onDismiss () -> Unit - chiude.
- * @param onCreate (String, Language, String, (Int) -> Unit) -> Unit - crea; l'ultimo parametro mostra un errore (risorsa stringa).
+ * @param onCreate (String, Language?, Language, String, (Int) -> Unit) -> Unit - crea con nome, lingua
+ *        della collezione (null = mista), lingua della prima ricerca e testo; l'ultimo parametro mostra
+ *        un errore (risorsa stringa).
  * @return Unit
  */
 @Composable
-private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Language, String, (Int) -> Unit) -> Unit) {
+private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Language?, Language, String, (Int) -> Unit) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     var pattern by rememberSaveable { mutableStateOf("") }
+    var collectionLanguage by rememberSaveable { mutableStateOf<Language?>(Language.EN) }
     var language by rememberSaveable { mutableStateOf(Language.EN) }
     var error by remember { mutableStateOf<Int?>(null) }
     AlertDialog(
@@ -265,8 +293,9 @@ private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Lan
                     label = { Text(stringResource(R.string.create_name_label)) },
                     singleLine = true,
                 )
+                CollectionLanguagePicker(collectionLanguage) { collectionLanguage = it }
                 Text(stringResource(R.string.create_first_search), style = MaterialTheme.typography.bodySmall)
-                LanguagePicker(language) { language = it }
+                if (collectionLanguage == null) LanguagePicker(language) { language = it }
                 OutlinedTextField(
                     value = pattern,
                     onValueChange = { pattern = it.take(40); error = null },
@@ -277,7 +306,9 @@ private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Lan
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onCreate(name, language, pattern) { error = it } }) { Text(stringResource(R.string.action_create)) } },
+        confirmButton = {
+            TextButton(onClick = { onCreate(name, collectionLanguage, language, pattern) { error = it } }) { Text(stringResource(R.string.action_create)) }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

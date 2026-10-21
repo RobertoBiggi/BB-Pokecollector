@@ -2,6 +2,7 @@ package com.robertobiggi.cardcollection.data.repo
 
 import androidx.room.withTransaction
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
+import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.validation.Validators
@@ -14,9 +15,16 @@ import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 
 /** Errore di un dato inserito dall'utente; la UI lo traduce in un messaggio. */
 enum class InputError { NAME_EMPTY, QUERY_INVALID, QUERY_DUPLICATE }
@@ -30,14 +38,23 @@ sealed interface CreateResult {
     data class Invalid(val error: InputError) : CreateResult
 }
 
-/** Collezioni, libreria e modifiche dell'utente (quantità, condizione, slot, ricerche, carte). */
-class CollectionRepository(private val db: AppDatabase) {
+/**
+ * Collezioni, libreria e modifiche dell'utente (quantità, condizione, slot, ricerche, carte).
+ *
+ * @param db database dell'app.
+ * @param scope scope dell'applicazione, in cui viene condivisa la fotografia del database.
+ */
+class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope) {
 
     private val catalogDao = db.catalogDao()
     private val collectionDao = db.collectionDao()
     private val priceDao = db.priceDao()
 
-    /** Fotografia delle tabelle osservate: si aggiorna a ogni modifica del database. */
+    /**
+     * Fotografia delle tabelle osservate: si aggiorna a ogni modifica del database. È calcolata una
+     * sola volta per tutti gli osservatori, fuori dal thread dell'interfaccia; durante gli aggiornamenti
+     * prezzi le modifiche ravvicinate vengono accorpate.
+     */
     private val state: Flow<DbState> = combine(
         combine(catalogDao.observeCollections(), catalogDao.observeMemberships(), catalogDao.observeAllQueries(), catalogDao.observeCards()) { c, m, q, cards ->
             listOf<Any>(c, m, q, cards)
@@ -58,23 +75,35 @@ class CollectionRepository(private val db: AppDatabase) {
             runs = b[3] as List<PriceRunEntity>,
         )
     }
+        .conflate()
+        .flowOn(Dispatchers.Default)
+        .shareIn(scope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), replay = 1)
+
+    /**
+     * Ricava un dato dalla fotografia del database fuori dal thread dell'interfaccia, emettendo solo
+     * quando cambia.
+     * @param transform (DbState) -> T - calcolo da eseguire.
+     * @return Flow<T> - risultato aggiornato.
+     */
+    private fun <T> derive(transform: (DbState) -> T): Flow<T> =
+        state.map(transform).distinctUntilChanged().flowOn(Dispatchers.Default)
 
     /** Riepiloghi di tutte le collezioni per l'elenco iniziale. */
-    val summaries: Flow<List<CollectionSummary>> = state.map { LibraryAssembler.summaries(it) }
+    val summaries: Flow<List<CollectionSummary>> = derive { LibraryAssembler.summaries(it) }
 
     /**
      * Libreria di una collezione.
      * @param collectionId Long - collezione.
      * @return Flow<List<CardUi>> - carte visibili con varianti, quantità e prezzi.
      */
-    fun library(collectionId: Long): Flow<List<CardUi>> = state.map { LibraryAssembler.libraryOf(it, collectionId) }
+    fun library(collectionId: Long): Flow<List<CardUi>> = derive { LibraryAssembler.libraryOf(it, collectionId) }
 
     /**
      * Carte tolte dall'utente da una collezione.
      * @param collectionId Long - collezione.
      * @return Flow<List<CardEntity>> - carte nascoste.
      */
-    fun hiddenCards(collectionId: Long): Flow<List<CardEntity>> = state.map { s ->
+    fun hiddenCards(collectionId: Long): Flow<List<CardEntity>> = derive { s ->
         val ids = s.memberships.filter { it.collectionId == collectionId && it.hidden }.map { it.cardId }.toSet()
         s.cards.filter { it.id in ids }.sortedBy { it.name }
     }
@@ -84,42 +113,61 @@ class CollectionRepository(private val db: AppDatabase) {
      * @param collectionId Long - collezione.
      * @return Flow<List<TrackedQueryEntity>> - ricerche.
      */
-    fun queries(collectionId: Long): Flow<List<TrackedQueryEntity>> = state.map { s -> s.queries.filter { it.collectionId == collectionId } }
+    fun queries(collectionId: Long): Flow<List<TrackedQueryEntity>> = derive { s -> s.queries.filter { it.collectionId == collectionId } }
 
     /**
      * Ultimi aggiornamenti prezzi di una collezione.
      * @param collectionId Long - collezione.
      * @return Flow<List<PriceRunEntity>> - al massimo 10 run, dal più recente.
      */
-    fun runs(collectionId: Long): Flow<List<PriceRunEntity>> = state.map { s -> s.runs.filter { it.collectionId == collectionId }.take(10) }
+    fun runs(collectionId: Long): Flow<List<PriceRunEntity>> = derive { s -> s.runs.filter { it.collectionId == collectionId }.take(10) }
 
     /**
      * Nome di una collezione.
      * @param collectionId Long - collezione.
      * @return Flow<String?> - nome, oppure null se la collezione non esiste più.
      */
-    fun name(collectionId: Long): Flow<String?> = state.map { s -> s.collections.firstOrNull { it.id == collectionId }?.name }
+    fun name(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.name }
+
+    /**
+     * Lingua di una collezione.
+     * @param collectionId Long - collezione.
+     * @return Flow<String?> - valore di [CollectionLanguage] ("en", "ja" o "mixed"), oppure null se la collezione non esiste più.
+     */
+    fun language(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.language }
 
     /**
      * Crea una collezione, con una prima ricerca facoltativa.
      * @param rawName String - nome inserito dall'utente.
-     * @param language Language? - lingua della prima ricerca.
+     * @param collectionLanguage Language? - lingua fissa della collezione, oppure null per una collezione mista.
+     * @param queryLanguage Language - lingua della prima ricerca, usata solo se la collezione è mista.
      * @param pattern String? - testo della prima ricerca (vuoto = nessuna ricerca).
      * @return CreateResult - id della collezione creata, oppure l'errore da mostrare.
      */
-    suspend fun createCollection(rawName: String, language: Language?, pattern: String?): CreateResult {
+    suspend fun createCollection(rawName: String, collectionLanguage: Language?, queryLanguage: Language, pattern: String?): CreateResult {
         val name = CollectionFiles.cleanName(rawName) ?: return CreateResult.Invalid(InputError.NAME_EMPTY)
         val clean = pattern?.trim().orEmpty()
         if (clean.isNotEmpty() && !Validators.isValidQueryPattern(clean)) return CreateResult.Invalid(InputError.QUERY_INVALID)
+        val code = CollectionLanguage.codeOf(collectionLanguage)
+        val searchLanguage = CollectionLanguage.fixedLanguage(code) ?: queryLanguage
         val id = db.withTransaction {
-            val id = catalogDao.insertCollection(CollectionEntity(name = uniqueName(name), createdAt = System.currentTimeMillis()))
-            if (clean.isNotEmpty() && language != null) {
-                catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = language.code, pattern = clean))
+            val id = catalogDao.insertCollection(CollectionEntity(name = uniqueName(name), createdAt = System.currentTimeMillis(), language = code))
+            if (clean.isNotEmpty()) {
+                catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = searchLanguage.code, pattern = clean))
             }
             id
         }
         return CreateResult.Created(id)
     }
+
+    /**
+     * Cambia la lingua di una collezione. Le ricerche già salvate restano com'erano.
+     * @param collectionId Long - collezione.
+     * @param language Language? - lingua fissa, oppure null per una collezione mista.
+     * @return Unit
+     */
+    suspend fun setLanguage(collectionId: Long, language: Language?) =
+        catalogDao.setCollectionLanguage(collectionId, CollectionLanguage.codeOf(language))
 
     /**
      * Rende unico un nome di collezione aggiungendo " (2)", " (3)"… se serve.
@@ -154,14 +202,15 @@ class CollectionRepository(private val db: AppDatabase) {
     suspend fun delete(collectionId: Long) = catalogDao.deleteCollection(collectionId)
 
     /**
-     * Imposta le copie possedute di una variante nella collezione.
+     * Aggiunge o toglie copie partendo dal valore salvato (non da quello mostrato), così i tocchi
+     * ravvicinati su +/- non si perdono.
      * @param collectionId Long - collezione.
      * @param variantId String - variante.
-     * @param quantity Int - nuova quantità (limitata a 0..999).
+     * @param delta Int - copie da aggiungere (negativo per toglierle).
      * @return Unit
      */
-    suspend fun setQuantity(collectionId: Long, variantId: String, quantity: Int) =
-        update(collectionId, variantId) { it.copy(quantity = Validators.clampQuantity(quantity)) }
+    suspend fun changeQuantity(collectionId: Long, variantId: String, delta: Int) =
+        update(collectionId, variantId) { it.copy(quantity = Validators.clampQuantity(it.quantity + delta)) }
 
     /**
      * Imposta la condizione della copia posseduta.
@@ -236,7 +285,14 @@ class CollectionRepository(private val db: AppDatabase) {
      * @return Unit
      */
     private suspend fun update(collectionId: Long, variantId: String, change: (CollectionEntryEntity) -> CollectionEntryEntity) {
-        val current = collectionDao.getEntry(collectionId, variantId) ?: CollectionEntryEntity(collectionId = collectionId, variantId = variantId)
-        collectionDao.upsertEntry(change(current))
+        db.withTransaction {
+            val current = collectionDao.getEntry(collectionId, variantId) ?: CollectionEntryEntity(collectionId = collectionId, variantId = variantId)
+            collectionDao.upsertEntry(change(current))
+        }
+    }
+
+    private companion object {
+        /** Tempo per cui la fotografia resta attiva senza osservatori (es. rotazione dello schermo). */
+        const val STOP_TIMEOUT_MS = 5_000L
     }
 }

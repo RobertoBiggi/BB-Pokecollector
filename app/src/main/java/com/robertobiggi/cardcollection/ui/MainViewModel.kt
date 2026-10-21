@@ -31,6 +31,8 @@ import com.robertobiggi.cardcollection.data.repo.SearchResult
 import com.robertobiggi.cardcollection.ui.common.UiText
 import com.robertobiggi.cardcollection.ui.common.messageRes
 import com.robertobiggi.cardcollection.work.JobState
+import com.robertobiggi.cardcollection.ui.collection.applyFilter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -40,8 +42,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -92,6 +96,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val summaries: StateFlow<List<CollectionSummary>?> = container.collection.summaries.stateInVm(null)
 
     val collectionName: StateFlow<String?> = perCollection { container.collection.name(it) }.stateInVm(null)
+
+    /** Lingua della collezione aperta: valore di CollectionLanguage, null finché non è caricata. */
+    val collectionLanguage: StateFlow<String?> = perCollection { container.collection.language(it) }.stateInVm(null)
     val library: StateFlow<List<CardUi>?> = perCollection { container.collection.library(it) }.stateInVm(null)
     val queries: StateFlow<List<TrackedQueryEntity>> = perCollection(emptyList()) { container.collection.queries(it) }.stateInVm(emptyList())
     val hiddenCards: StateFlow<List<CardEntity>> = perCollection(emptyList()) { container.collection.hiddenCards(it) }.stateInVm(emptyList())
@@ -104,6 +111,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     private val _filter = MutableStateFlow(CollectionFilter())
     val filter: StateFlow<CollectionFilter> = _filter.asStateFlow()
+
+    /** Carte della collezione aperta dopo ricerca, filtri e ordinamento (calcolate fuori dal thread UI). */
+    val visibleCards: StateFlow<List<CardUi>> = combine(library, _filter) { cards, f -> applyFilter(cards.orEmpty(), f) }
+        .flowOn(Dispatchers.Default)
+        .stateInVm(emptyList())
 
     private val _search = MutableStateFlow(CardSearchState())
     val search: StateFlow<CardSearchState> = _search.asStateFlow()
@@ -204,14 +216,21 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     /**
      * Crea una collezione e, se ha una ricerca, ne scarica subito il catalogo.
      * @param name String - nome.
-     * @param language Language - lingua della prima ricerca.
+     * @param collectionLanguage Language? - lingua fissa della collezione, oppure null per una collezione mista.
+     * @param queryLanguage Language - lingua della prima ricerca nelle collezioni miste.
      * @param pattern String - prima ricerca (vuota = nessuna).
      * @param onResult (InputError?, Long?) -> Unit - riceve l'errore oppure l'id creato.
      * @return Unit
      */
-    fun createCollection(name: String, language: Language, pattern: String, onResult: (InputError?, Long?) -> Unit) {
+    fun createCollection(
+        name: String,
+        collectionLanguage: Language?,
+        queryLanguage: Language,
+        pattern: String,
+        onResult: (InputError?, Long?) -> Unit,
+    ) {
         viewModelScope.launch {
-            when (val result = container.collection.createCollection(name, language, pattern)) {
+            when (val result = container.collection.createCollection(name, collectionLanguage, queryLanguage, pattern)) {
                 is CreateResult.Created -> {
                     if (pattern.isNotBlank()) container.work.startCatalogSync(result.id)
                     onResult(null, result.id)
@@ -231,6 +250,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     fun renameCollection(collectionId: Long, name: String, onResult: (InputError?) -> Unit) {
         viewModelScope.launch { onResult(container.collection.rename(collectionId, name)) }
     }
+
+    /**
+     * Cambia la lingua della collezione aperta.
+     * @param language Language? - lingua fissa, oppure null per una collezione mista.
+     * @return Unit
+     */
+    fun setCollectionLanguage(language: Language?) = withSelected { id -> container.collection.setLanguage(id, language) }
 
     /**
      * Elimina una collezione.
@@ -284,12 +310,12 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Imposta le copie possedute di una variante nella collezione aperta.
+     * Aggiunge o toglie copie di una variante nella collezione aperta, partendo dal valore salvato.
      * @param variantId String - variante.
-     * @param quantity Int - nuova quantità.
+     * @param delta Int - copie da aggiungere (negativo per toglierle).
      * @return Unit
      */
-    fun setQuantity(variantId: String, quantity: Int) = withSelected { container.collection.setQuantity(it, variantId, quantity) }
+    fun changeQuantity(variantId: String, delta: Int) = withSelected { container.collection.changeQuantity(it, variantId, delta) }
 
     /**
      * Imposta la condizione di una variante nella collezione aperta.

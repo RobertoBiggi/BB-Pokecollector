@@ -1,16 +1,22 @@
 package com.robertobiggi.cardcollection.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 
-/** Collezione creata dall'utente (es. "Mawile"). Ogni collezione ha ricerche, carte e quantità proprie. */
+/**
+ * Collezione creata dall'utente (es. "Mawile"). Ogni collezione ha ricerche, carte e quantità proprie.
+ * [language] è il valore di [CollectionLanguage]: lingua fissa delle ricerche ("en", "ja") oppure "mixed".
+ */
 @Entity(tableName = "collection")
 data class CollectionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val createdAt: Long,
+    @ColumnInfo(defaultValue = CollectionLanguage.MIXED) val language: String = CollectionLanguage.MIXED,
 )
 
 /** Ricerca per nome di una collezione (es. "Mawile" in inglese). */
