@@ -1,6 +1,7 @@
 package com.robertobiggi.cardcollection.data.repo
 
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
+import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.PriceQuote
@@ -84,7 +85,7 @@ class PriceRepository(
                 break
             }
             progress(PriceProgress(card.name, type, index, targets.size))
-            when (checkVariant(chain, cardTrader, card, variant, typesByCard[card.id].orEmpty())) {
+            when (checkVariant(chain, cardTrader, card, variant, typesByCard[card.id].orEmpty(), conditionOf(entries[variant.id]?.condition))) {
                 VariantCheck.OK -> { ok++; consecutiveNetworkErrors = 0 }
                 VariantCheck.FALLBACK -> { fallback++; consecutiveNetworkErrors = 0 }
                 VariantCheck.FAILED -> { failed++; consecutiveNetworkErrors = 0 }
@@ -123,7 +124,8 @@ class PriceRepository(
      * @return PriceRunResult - conteggi; [PriceRunResult.abort] vale SOURCE_PAUSED se TCGdex è in
      *         pausa e OFFLINE se tutte le richieste sono fallite per la rete.
      */
-    suspend fun checkCard(cardId: String): PriceRunResult {
+    suspend fun checkCard(cardId: String, collectionId: Long?): PriceRunResult {
+        val entries = collectionId?.let { db.collectionDao().entriesOf(it) }.orEmpty().associateBy { it.variantId }
         val card = db.catalogDao().getCard(cardId) ?: return PriceRunResult(0, 0, 0, null)
         val variants = db.catalogDao().variantsOf(listOf(cardId))
         val types = variants.map { it.type }
@@ -140,7 +142,7 @@ class PriceRepository(
                 abortReason = AbortReason.SOURCE_PAUSED
                 break
             }
-            when (checkVariant(chain, cardTrader, card, variant, types)) {
+            when (checkVariant(chain, cardTrader, card, variant, types, conditionOf(entries[variant.id]?.condition))) {
                 VariantCheck.OK -> ok++
                 VariantCheck.FALLBACK -> fallback++
                 VariantCheck.FAILED -> failed++
@@ -153,6 +155,8 @@ class PriceRepository(
         return PriceRunResult(ok, fallback, failed, abortReason)
     }
 
+    private fun conditionOf(name: String?): Condition = Condition.entries.firstOrNull { it.name == name } ?: Condition.NM
+
     /** Esito del controllo di una singola variante. */
     private enum class VariantCheck { OK, FALLBACK, FAILED, NETWORK_ERROR, SKIPPED }
 
@@ -162,10 +166,11 @@ class PriceRepository(
      * @param cardTrader PriceChain? - catena CardTrader, null se manca il token.
      * @param card CardEntity - carta della variante.
      * @param variant CardVariantEntity - variante da controllare.
+     * @param condition Condition - condizione della copia nella collezione: CardTrader mostra il prezzo più basso di quella condizione o migliore.
      * @param types List<String> - tipi di tutte le varianti della carta (per l'affidabilità del prezzo Cardmarket).
      * @return VariantCheck - esito; SKIPPED se lingua o tipo non sono riconosciuti.
      */
-    private suspend fun checkVariant(chain: PriceChain, cardTrader: PriceChain?, card: CardEntity, variant: CardVariantEntity, types: List<String>): VariantCheck {
+    private suspend fun checkVariant(chain: PriceChain, cardTrader: PriceChain?, card: CardEntity, variant: CardVariantEntity, types: List<String>, condition: Condition): VariantCheck {
         val type = VariantType.entries.firstOrNull { it.name == variant.type } ?: return VariantCheck.SKIPPED
         val language = Language.fromCode(card.language) ?: return VariantCheck.SKIPPED
         val request = PriceRequest(
@@ -177,7 +182,7 @@ class PriceRepository(
             setName = card.setName,
             setCode = card.setCode,
             localId = card.localId,
-            cardTraderCondition = card.cardTraderCondition?.let { CtCondition.fromName(it) },
+            cardTraderCondition = CtCondition.fromCondition(condition),
         )
         val outcome = chain.fetch(request)
         val quote = outcome.quote
@@ -223,21 +228,11 @@ class PriceRepository(
         val token = settings.cardTraderToken.first()
         if (token.isEmpty()) return null
         val slot = ProviderSlot(
-            CardTraderPriceProvider(CardTraderClient(http, token), settings.cardTraderCondition.first()),
+            CardTraderPriceProvider(CardTraderClient(http, token)),
             RateLimiter(REQUEST_INTERVAL_MS),
             CircuitBreaker(),
         )
         return PriceChain(listOf(slot))
-    }
-
-    /**
-     * Sceglie la condizione CardTrader di una carta.
-     * @param cardId String - id locale della carta.
-     * @param condition CtCondition? - condizione peggiore accettata, null per usare quella delle impostazioni.
-     * @return Unit
-     */
-    suspend fun setCardTraderCondition(cardId: String, condition: CtCondition?) {
-        db.catalogDao().setCardTraderCondition(cardId, condition?.name)
     }
 
     /**

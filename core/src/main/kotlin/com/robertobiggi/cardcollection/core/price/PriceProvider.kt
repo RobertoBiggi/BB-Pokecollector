@@ -16,7 +16,7 @@ import com.robertobiggi.cardcollection.core.model.VariantType
  * @property setName nome del set.
  * @property setCode sigla stampata del set, se c'è.
  * @property localId numero della carta nel set (es. "075").
- * @property cardTraderCondition condizione peggiore accettata per CardTrader scelta per questa carta, null = predefinita.
+ * @property cardTraderCondition condizione peggiore accettata per CardTrader (quella della variante), null = Near Mint.
  */
 data class PriceRequest(
     val language: Language,

@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.robertobiggi.cardcollection.R
-import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import com.robertobiggi.cardcollection.ui.MainViewModel
 import com.robertobiggi.cardcollection.ui.common.Format
 import com.robertobiggi.cardcollection.ui.common.Section
@@ -60,7 +59,6 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val pausedUntil by vm.tcgdexPausedUntil.collectAsStateWithLifecycle()
     val lastSync by vm.lastCatalogSync.collectAsStateWithLifecycle()
     val savedToken by vm.cardTraderToken.collectAsStateWithLifecycle()
-    val ctCondition by vm.cardTraderCondition.collectAsStateWithLifecycle()
     var tokenInput by remember(savedToken) { mutableStateOf(savedToken) }
     val currentTag = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore('-')
     val current = AppLanguage.entries.firstOrNull { it.tag == currentTag } ?: AppLanguage.SYSTEM
@@ -118,20 +116,6 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Text(stringResource(R.string.settings_cardtrader_condition), style = MaterialTheme.typography.bodyMedium)
-                    CtCondition.entries.forEach { c ->
-                        Row(
-                            Modifier.fillMaxWidth().selectable(
-                                selected = c == ctCondition,
-                                role = Role.RadioButton,
-                                onClick = { vm.saveCardTraderCondition(c) },
-                            ),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = c == ctCondition, onClick = null)
-                            Text(stringResource(conditionLabel(c)))
-                        }
-                    }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = { vm.saveCardTraderToken(tokenInput) }, enabled = tokenInput.trim() != savedToken) {
                             Text(stringResource(R.string.settings_cardtrader_save))
@@ -154,14 +138,4 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
             }
         }
     }
-}
-
-/** Etichetta della condizione peggiore accettata: "X o meglio", tranne l'ultima che accetta tutto. */
-fun conditionLabel(c: CtCondition): Int = when (c) {
-    CtCondition.MINT -> R.string.ct_cond_mint
-    CtCondition.NEAR_MINT -> R.string.ct_cond_nm
-    CtCondition.SLIGHTLY_PLAYED -> R.string.ct_cond_sp
-    CtCondition.MODERATELY_PLAYED -> R.string.ct_cond_mp
-    CtCondition.PLAYED -> R.string.ct_cond_played
-    CtCondition.POOR -> R.string.ct_cond_any
 }

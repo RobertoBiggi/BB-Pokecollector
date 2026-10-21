@@ -275,7 +275,6 @@ class CatalogRepository(
                     queryId = existing?.queryId ?: legacyQueryId,
                     catalogUpdatedAt = System.currentTimeMillis(),
                     dexId = card.dexId ?: existing?.dexId,
-                    cardTraderCondition = existing?.cardTraderCondition,
                 ),
             )
             dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name) })
