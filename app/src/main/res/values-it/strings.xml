@@ -212,14 +212,19 @@
     <string name="err_file_permission">Permesso negato per il file scelto.</string>
     <string name="err_file_not_found">Collezione non trovata.</string>
     <string name="lang_other">Altro</string>
+    <string name="label_collection_language">Lingua della collezione</string>
+    <string name="lang_mixed">Mista</string>
+    <string name="lang_mixed_hint">Scegli la lingua a ogni ricerca: puoi mescolare carte inglesi, giapponesi e di altre lingue.</string>
+    <string name="lang_fixed_hint">Ricerche e aggiunte in: %1$s. Scegli Mista per aggiungere anche carte in altre lingue.</string>
     <string name="action_update_price">Aggiorna prezzo</string>
     <string name="action_download_image">Scarica immagine</string>
     <string name="action_pick_image">Scegli immagine</string>
-    <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Se TCGdex non ha l\'immagine (succede spesso con le carte giapponesi) puoi sceglierne una dalla galleria: resta salvata finché non scarichi quella ufficiale.</string>
+    <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Se TCGdex non ha l\'immagine (succede spesso con le carte giapponesi) l\'app la cerca su TCGplayer; altrimenti puoi sceglierne una dalla galleria, che resta salvata finché non scarichi quella ufficiale.</string>
     <string name="msg_card_price_updated">Prezzi aggiornati (%1$d varianti).</string>
     <string name="msg_card_price_none">Nessun prezzo trovato per questa carta.</string>
     <string name="msg_image_downloaded">Immagine scaricata.</string>
     <string name="msg_image_saved">Immagine salvata.</string>
-    <string name="msg_image_not_available">TCGdex non ha un\'immagine per questa carta: puoi sceglierne una tu.</string>
+    <string name="msg_image_not_available">Né TCGdex né TCGplayer hanno un\'immagine per questa carta: puoi sceglierne una tu.</string>
     <string name="msg_image_invalid">Non riesco a leggere l\'immagine scelta.</string>
+    <string name="source_imported">Importato</string>
 </resources>

@@ -106,7 +106,7 @@ fun InputError.messageRes(): Int = when (this) {
 @StringRes
 fun ImportError.messageRes(): Int = when (this) {
     ImportError.TOO_LARGE -> R.string.err_import_too_large
-    ImportError.INVALID_JSON, ImportError.MISSING_INFO -> R.string.err_import_invalid
+    ImportError.INVALID_JSON -> R.string.err_import_invalid
     ImportError.NOT_THIS_APP -> R.string.err_import_other_app
     ImportError.UNSUPPORTED_VERSION -> R.string.err_import_version
     ImportError.TOO_MANY_ITEMS -> R.string.err_import_too_many
@@ -146,7 +146,7 @@ fun jobProgressText(state: JobState, prices: Boolean): String {
     }
     val label = state.label ?: return stringResource(R.string.job_starting)
     if (prices) {
-        val variant = VariantType.entries.firstOrNull { it.name == state.phase }
+        val variant = VariantType.fromName(state.phase)
         val item = if (variant != null) stringResource(R.string.job_price_item, label, stringResource(variant.labelRes())) else label
         return stringResource(R.string.job_item, item, state.done + 1, state.total)
     }

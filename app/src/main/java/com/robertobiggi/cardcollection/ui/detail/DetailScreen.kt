@@ -6,6 +6,7 @@ import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.ui.common.labelRes
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
+import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -61,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -130,7 +132,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
                 VariantCard(
                     card = card,
                     variant = variant,
-                    onQuantity = { vm.setQuantity(variant.id, it) },
+                    onQuantityChange = { vm.changeQuantity(variant.id, it) },
                     onCondition = { vm.setCondition(variant.id, it) },
                     onWanted = { vm.setWanted(variant.id, it) },
                     onManual = { manualFor = variant },
@@ -239,11 +241,11 @@ private fun Links(card: CardUi) {
     val uriHandler = LocalUriHandler.current
     val term = Uri.encode(card.card.name)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { uriHandler.openUri("https://www.cardmarket.com/it/Pokemon/Products/Search?searchString=$term") }) {
+        OutlinedButton(onClick = { uriHandler.openSafely("https://www.cardmarket.com/it/Pokemon/Products/Search?searchString=$term") }) {
             Text(stringResource(R.string.link_cardmarket))
         }
         if (card.language == Language.EN) {
-            OutlinedButton(onClick = { uriHandler.openUri("https://www.tcgplayer.com/search/pokemon/product?q=$term") }) {
+            OutlinedButton(onClick = { uriHandler.openSafely("https://www.tcgplayer.com/search/pokemon/product?q=$term") }) {
                 Text(stringResource(R.string.link_tcgplayer))
             }
         }
@@ -251,10 +253,26 @@ private fun Links(card: CardUi) {
 }
 
 /**
+ * Apre un link nel browser, senza chiudere l'app se sul telefono non c'è un browser.
+ * @receiver UriHandler - gestore dei link di Compose.
+ * @param url String - indirizzo da aprire (costruito dall'app, solo https).
+ * @return Unit
+ */
+private fun UriHandler.openSafely(url: String) {
+    try {
+        openUri(url)
+    } catch (e: ActivityNotFoundException) {
+        // Nessuna app in grado di aprire il link: non c'è nulla da fare.
+    } catch (e: IllegalArgumentException) {
+        // Compose segnala così i link che nessuna app gestisce su alcune versioni.
+    }
+}
+
+/**
  * Riquadro di una variante: slot, quantità, condizione e prezzi.
  * @param card CardUi - carta di appartenenza.
  * @param variant VariantUi - variante.
- * @param onQuantity (Int) -> Unit - nuova quantità.
+ * @param onQuantityChange (Int) -> Unit - copie da aggiungere o togliere (+1 / -1).
  * @param onCondition (Condition) -> Unit - nuova condizione.
  * @param onWanted (Boolean) -> Unit - nuovo stato "la voglio".
  * @param onManual () -> Unit - apre l'inserimento del prezzo manuale.
@@ -265,7 +283,7 @@ private fun Links(card: CardUi) {
 private fun VariantCard(
     card: CardUi,
     variant: VariantUi,
-    onQuantity: (Int) -> Unit,
+    onQuantityChange: (Int) -> Unit,
     onCondition: (Condition) -> Unit,
     onWanted: (Boolean) -> Unit,
     onManual: () -> Unit,
@@ -286,11 +304,11 @@ private fun VariantCard(
                 Text(stringResource(R.string.want_it), style = MaterialTheme.typography.bodySmall)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalIconButton(onClick = { onQuantity(variant.quantity - 1) }, enabled = variant.quantity > 0) {
+                FilledTonalIconButton(onClick = { onQuantityChange(-1) }, enabled = variant.quantity > 0) {
                     Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.qty_remove))
                 }
                 Text("${variant.quantity}", style = MaterialTheme.typography.titleMedium)
-                FilledTonalIconButton(onClick = { onQuantity(variant.quantity + 1) }) {
+                FilledTonalIconButton(onClick = { onQuantityChange(1) }) {
                     Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.qty_add))
                 }
                 Box {
@@ -389,10 +407,13 @@ private fun ManualPriceDialog(variantLabel: String, onDismiss: () -> Unit, onSav
 }
 
 /**
- * Nome della fonte di un prezzo: i prezzi manuali hanno un'etichetta tradotta.
+ * Nome della fonte di un prezzo: i prezzi manuali e quelli importati hanno un'etichetta tradotta.
  * @param source String - fonte salvata nel database.
  * @return String - nome da mostrare.
  */
 @Composable
-private fun sourceLabel(source: String): String =
-    if (source == CollectionFiles.MANUAL_SOURCE) stringResource(R.string.source_manual) else source
+private fun sourceLabel(source: String): String = when (source) {
+    CollectionFiles.MANUAL_SOURCE -> stringResource(R.string.source_manual)
+    CollectionFiles.IMPORTED_SOURCE -> stringResource(R.string.source_imported)
+    else -> source
+}

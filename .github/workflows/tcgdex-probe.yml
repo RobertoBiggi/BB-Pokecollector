@@ -1,13 +1,23 @@
-# Interroga TCGdex e stampa nei log un riepilogo per lingua (set disponibili, ricerca di Mawile,
-# immagini e prezzi della prima carta). Serve a verificare l'API quando si sviluppa da un ambiente
-# che non raggiunge TCGdex. Si avvia a mano da Actions oppure modificando questo file.
+# Stampa nei log una risposta reale di TCGdex o pokemontcg.io, per verificare le API quando si
+# sviluppa da un ambiente che non le raggiunge. Si avvia a mano da Actions indicando API e percorso,
+# es. "tcgdex" + "ja/cards/M3-117".
 name: API probe
 
 on:
-  workflow_dispatch:
+  # Un push che modifica questo file esegue le interrogazioni fisse dello step "Probe predefinito".
   push:
-    paths:
-      - .github/workflows/tcgdex-probe.yml
+    paths: [".github/workflows/tcgdex-probe.yml"]
+  workflow_dispatch:
+    inputs:
+      api:
+        description: "API da interrogare"
+        type: choice
+        options: [tcgdex, pokemontcg]
+        default: tcgdex
+      path:
+        description: "Percorso dopo la base (tcgdex: https://api.tcgdex.net/v2/, pokemontcg: https://api.pokemontcg.io/v2/)"
+        required: true
+        default: "en/cards?name=Mawile"
 
 permissions:
   contents: read
@@ -15,42 +25,33 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
-      - name: Lingue TCGdex
+      - name: Risposta API
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          API: ${{ inputs.api }}
+          API_PATH: ${{ inputs.path }}
         run: |
-          set -uo pipefail
-          # lingua|nome di Mawile in quella lingua
-          for pair in "en|Mawile" "fr|Mysdibule" "es|Mawile" "es-mx|Mawile" "it|Mawile" "pt|Mawile" "pt-br|Mawile" "pt-pt|Mawile" \
-                      "de|Flunkifer" "nl|Mawile" "pl|Mawile" "ru|Мавайл" "ja|クチート" "ko|입치트" "zh-tw|大嘴娃" "zh-cn|大嘴娃" "id|Mawile" "th|คูชีท"; do
-            lang="${pair%%|*}"; name="${pair#*|}"
-            enc=$(jq -rn --arg v "$name" '$v|@uri')
-            sets=$(curl -s "https://api.tcgdex.net/v2/$lang/sets" | jq 'if type=="array" then length else "err" end' 2>/dev/null)
-            list=$(curl -s "https://api.tcgdex.net/v2/$lang/cards?name=$enc")
-            count=$(echo "$list" | jq 'if type=="array" then length else "err" end' 2>/dev/null)
-            withimg=$(echo "$list" | jq '[.[]? | select(.image != null)] | length' 2>/dev/null)
-            first=$(echo "$list" | jq -r '[.[]? | select((.image // "") | contains("/tcgp/") | not)][-1].id // empty' 2>/dev/null)
-            detail=""
-            if [ -n "$first" ]; then
-              detail=$(curl -s "https://api.tcgdex.net/v2/$lang/cards/$first" | jq -c '{id, name, rarity, set: .set.id, official: .set.cardCount.official, image: (.image != null), variants: [.variants_detailed[]?.type], cm: (.pricing.cardmarket.trend // null), tp: (.pricing.tcgplayer != null)}' 2>/dev/null)
-              setabbr=$(curl -s "https://api.tcgdex.net/v2/$lang/sets/$(echo "$detail" | jq -r .set)" | jq -c '{abbr: .abbreviation, serie: .serie.id}' 2>/dev/null)
-            fi
-            echo "LANG=$lang sets=$sets search($name)=$count img=$withimg first=$detail set=${setabbr:-}"
-            setabbr=""
-          done
+          set -euo pipefail
+          case "$API" in
+            tcgdex) base="https://api.tcgdex.net/v2/" ;;
+            pokemontcg) base="https://api.pokemontcg.io/v2/" ;;
+            *) echo "API non valida"; exit 1 ;;
+          esac
+          # Solo caratteri sicuri per un percorso con query string.
+          if ! [[ "$API_PATH" =~ ^[A-Za-z0-9._/?=\&%:,*-]{1,200}$ ]]; then echo "Percorso non valido"; exit 1; fi
+          code=$(curl -sS --max-time 120 -o body.json -w "%{http_code} %{time_total}s" "$base$API_PATH" || echo "errore curl")
+          echo "HTTP $code"
+          jq . body.json 2>/dev/null | head -c 200000 || head -c 5000 body.json
 
-      - name: Ricerca per codice stampato
+      - name: Probe predefinito
+        if: github.event_name == 'push'
         run: |
           set -uo pipefail
-          api=https://api.tcgdex.net/v2
-          echo "== set ja con 80 carte ufficiali"
-          curl -s "$api/ja/sets" | jq -c '[.[] | select(.cardCount.official == 80) | {id, name, cardCount}]'
-          echo "== primo elemento della lista set ja"; curl -s "$api/ja/sets" | jq -c '.[0]'
-          echo "== set ja M3"; curl -s "$api/ja/sets/M3" | jq -c '{id, name, cardCount, abbreviation, n: (.cards | length), last: [.cards[-3:][]? | {id, localId, name}]}'
-          echo "== carta ja M3-117"; curl -s "$api/ja/cards/M3-117" | jq -c '{id, localId, name, rarity, set: .set}'
-          echo "== filtro localId=117 (ja)"; curl -s "$api/ja/cards?localId=117" | jq -c 'if type=="array" then {n: length, ids: [.[].id][:30]} else . end'
-          echo "== filtro localId=eq:117 (ja)"; curl -s "$api/ja/cards?localId=eq:117" | jq -c 'if type=="array" then {n: length, ids: [.[].id][:30]} else . end'
-          echo "== filtro localId=eq:046 (en)"; curl -s "$api/en/cards?localId=eq:046" | jq -c 'if type=="array" then {n: length, ids: [.[].id][:20]} else . end'
-          echo "== set en con abbreviation POR"; curl -s "$api/en/sets" | jq -c '.[0:2]'
-          echo "== set en me01"; curl -s "$api/en/sets/me01" | jq -c '{id, name, cardCount, abbreviation}'
-          echo "== ricerca Zygarde ja"; curl -s "$api/ja/cards?name=%E3%82%B8%E3%82%AC%E3%83%AB%E3%83%87" | jq -c '[.[]? | .id] | .[-15:]'
+          for url in "https://api.tcgdex.net/v2/en/cards/me01-046"; do
+            echo "===== $url"
+            curl -sS --max-time 60 -o body.json -w "HTTP %{http_code} %{time_total}s\n" "$url" || echo "errore curl"
+            jq -c . body.json 2>/dev/null | head -c 3000
+            echo
+          done

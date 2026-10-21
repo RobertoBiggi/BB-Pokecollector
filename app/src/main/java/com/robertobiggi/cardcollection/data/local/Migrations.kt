@@ -48,8 +48,54 @@ object Migrations {
     /** Versione 2 → 3: numero del Pokédex sulle carte, per cercarle per nome in ogni lingua (si compila al prossimo aggiornamento del catalogo). */
     val SQL_2_3: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `dexId` INTEGER")
 
-    /** Versione 3 → 4: colonna `cardTraderCondition` sulle carte, rimasta inutilizzata (vedi CardEntity). */
-    val SQL_3_4: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `cardTraderCondition` TEXT")
+    /**
+     * Istruzione che dà la lingua [code] alle collezioni con almeno una ricerca o carta, tutte in quella lingua.
+     * @param code String - codice della lingua ("en" o "ja"), costante.
+     * @return String - istruzione UPDATE.
+     */
+    private fun inferLanguage(code: String): String =
+        "UPDATE `collection` SET `language` = '$code' WHERE " +
+            "(EXISTS (SELECT 1 FROM `tracked_query` q WHERE q.`collectionId` = `collection`.`id`) " +
+            "OR EXISTS (SELECT 1 FROM `collection_card` cc WHERE cc.`collectionId` = `collection`.`id`)) " +
+            "AND NOT EXISTS (SELECT 1 FROM `tracked_query` q WHERE q.`collectionId` = `collection`.`id` AND q.`language` <> '$code') " +
+            "AND NOT EXISTS (SELECT 1 FROM `collection_card` cc JOIN `card` c ON c.`id` = cc.`cardId` " +
+            "WHERE cc.`collectionId` = `collection`.`id` AND c.`language` <> '$code')"
+
+    /**
+     * Versione 3 → 4: lingua della collezione. Le collezioni esistenti diventano miste, tranne quelle
+     * con ricerche e carte tutte in inglese o tutte in giapponese, che prendono quella lingua.
+     */
+    val SQL_3_4: List<String> = listOf(
+        "ALTER TABLE `collection` ADD COLUMN `language` TEXT NOT NULL DEFAULT 'mixed'",
+        inferLanguage("en"),
+        inferLanguage("ja"),
+    )
+
+    /**
+     * Migrazione Room 4 → 5: unisce le due versioni 4 apparse in parallelo (una con `collection.language`,
+     * l'altra con `card.cardTraderCondition`), aggiungendo la colonna che manca.
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        /**
+         * Aggiunge `card.cardTraderCondition` e `collection.language` solo se non ci sono già.
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            if (!hasColumn(db, "card", "cardTraderCondition")) {
+                db.execSQL("ALTER TABLE `card` ADD COLUMN `cardTraderCondition` TEXT")
+            }
+            if (!hasColumn(db, "collection", "language")) {
+                db.execSQL("ALTER TABLE `collection` ADD COLUMN `language` TEXT NOT NULL DEFAULT 'mixed'")
+            }
+        }
+
+        private fun hasColumn(db: SupportSQLiteDatabase, table: String, column: String): Boolean =
+            db.query("PRAGMA table_info(`$table`)").use { c ->
+                val name = c.getColumnIndexOrThrow("name")
+                generateSequence { if (c.moveToNext()) c.getString(name) else null }.any { it == column }
+            }
+    }
 
     /** Migrazione Room 3 → 4. */
     val MIGRATION_3_4 = object : Migration(3, 4) {

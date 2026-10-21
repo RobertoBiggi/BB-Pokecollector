@@ -25,6 +25,21 @@ object WorkKeys {
     const val ABORT = "abort"
 }
 
+/**
+ * Porta il lavoro in primo piano con la sua notifica, così non viene interrotto dopo 10 minuti
+ * (i lavori in background normali hanno quel limite). Se il sistema non lo consente, il lavoro
+ * continua lo stesso in background.
+ * @receiver CoroutineWorker - worker in esecuzione.
+ * @return Unit
+ */
+private suspend fun CoroutineWorker.promoteToForeground() {
+    try {
+        setForeground(getForegroundInfo())
+    } catch (e: IllegalStateException) {
+        // Android 12+ può rifiutare l'avvio in primo piano (es. app in background senza esenzione).
+    }
+}
+
 /** Scarica il catalogo delle ricerche attive di una collezione e le immagini. Avviato solo a mano. */
 class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -35,6 +50,7 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
     override suspend fun doWork(): Result {
         val collectionId = inputData.getLong(WorkKeys.COLLECTION_ID, -1L)
         if (collectionId < 0) return Result.failure()
+        promoteToForeground()
         val container = (applicationContext as CardCollectionApp).container
         val result = container.catalog.sync(collectionId) { p ->
             setProgress(workDataOf(WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
@@ -68,6 +84,7 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
     override suspend fun doWork(): Result {
         val collectionId = inputData.getLong(WorkKeys.COLLECTION_ID, -1L)
         if (collectionId < 0) return Result.failure()
+        promoteToForeground()
         val container = (applicationContext as CardCollectionApp).container
         val result = container.prices.runPriceCheck(collectionId) { p ->
             setProgress(workDataOf(WorkKeys.LABEL to p.cardName, WorkKeys.PHASE to (p.step?.name ?: p.variant?.name), WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
