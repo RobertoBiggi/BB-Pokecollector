@@ -151,6 +151,13 @@ interface CatalogDao {
     suspend fun cardsMissingImages(): List<CardEntity>
 
     /**
+     * Elenca le carte inglesi e giapponesi senza URL immagine né immagini salvate (né scelte a mano).
+     * @return List<CardEntity> - carte per cui si può provare un'altra fonte.
+     */
+    @Query("SELECT * FROM card WHERE imageUrl IS NULL AND imageLowPath IS NULL AND imageHighPath IS NULL AND language IN ('en', 'ja')")
+    suspend fun cardsWithoutImage(): List<CardEntity>
+
+    /**
      * Inserisce o aggiorna una carta del catalogo.
      * @param card CardEntity - carta da salvare.
      * @return Unit
@@ -184,6 +191,15 @@ interface CatalogDao {
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertVariants(variants: List<CardVariantEntity>)
+
+    /**
+     * Toglie le varianti che il catalogo non elenca più (es. una reverse holo dedotta male), tranne quelle che l'utente
+     * ha già usato in una collezione.
+     * @param cardId String - carta.
+     * @param types List<String> - tipi di variante da tenere.
+     */
+    @Query("DELETE FROM card_variant WHERE cardId = :cardId AND type NOT IN (:types) AND id NOT IN (SELECT variantId FROM collection_entry)")
+    suspend fun deleteStaleVariants(cardId: String, types: List<String>)
 
     /**
      * Osserva tutte le varianti del catalogo.

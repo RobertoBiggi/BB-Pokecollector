@@ -114,6 +114,8 @@ object CardTraderPicker {
             VariantType.REVERSE -> reverse
             VariantType.FIRST_EDITION -> firstEdition
             VariantType.NORMAL, VariantType.HOLO, VariantType.W_PROMO -> !reverse && !firstEdition
+            // Hanno un blueprint a parte (set "... Poké Ball Reverse Holo"): lì sono tutti annunci della variante.
+            VariantType.POKE_BALL, VariantType.MASTER_BALL -> !firstEdition
         }
     }
 

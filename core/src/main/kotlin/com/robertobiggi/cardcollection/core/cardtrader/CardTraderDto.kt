@@ -39,7 +39,19 @@ data class CtBlueprintDto(
     @SerialName("expansion_id") val expansionId: Int? = null,
     @SerialName("fixed_properties") val fixedProperties: JsonObject? = null,
     @SerialName("card_market_ids") val cardMarketIds: List<Int>? = null,
+    val image: CtImageDto? = null,
 )
+
+/** Immagine di un blueprint: `show` è la versione media (circa 500 px di larghezza), `url` l'originale. Percorsi relativi al sito. */
+@Serializable
+data class CtImageDto(
+    val url: String? = null,
+    val show: CtImageSizeDto? = null,
+)
+
+/** Una dimensione dell'immagine di un blueprint. */
+@Serializable
+data class CtImageSizeDto(val url: String? = null)
 
 /** Prezzo annidato di un annuncio. */
 @Serializable

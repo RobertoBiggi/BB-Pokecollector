@@ -25,6 +25,7 @@ import com.robertobiggi.cardcollection.core.tcgdex.CardRepair
 import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
 import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinalFinder
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
+import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.CardVariantEntity
@@ -65,6 +66,7 @@ class PriceRepository(
     private val http: OkHttpClient,
     private val settings: SettingsStore,
     private val cacheDir: File,
+    private val images: ImageStore,
 ) {
     private val priceDao = db.priceDao()
 
@@ -247,6 +249,52 @@ class PriceRepository(
         }
         saveQuote(variant.id, tcgdexQuote)
         return if (outcome.usedFallback) VariantCheck.FALLBACK else VariantCheck.OK
+    }
+
+    /**
+     * Scarica da CardTrader l'immagine delle carte inglesi e giapponesi che TCGdex non ha (es. i set giapponesi senza
+     * carte). Serve il token CardTrader; senza, o con la rete assente, non fa nulla. Una carta che non si abbina
+     * con certezza resta senza immagine.
+     * @return Int - numero di carte a cui è stata aggiunta l'immagine.
+     */
+    suspend fun fillImagesFromCardTrader(): Int {
+        val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return 0
+        val missing = db.catalogDao().cardsWithoutImage()
+        if (missing.isEmpty()) return 0
+        val provider = CardTraderPriceProvider(CardTraderClient(http, token))
+        val limiter = RateLimiter(REQUEST_INTERVAL_MS)
+        var saved = 0
+        for (stored in missing) {
+            try {
+                val card = withDexId(stored)
+                val language = Language.fromCode(card.language) ?: continue
+                limiter.acquire()
+                val url = provider.imageUrl(
+                    PriceRequest(
+                        language = language,
+                        tcgdexId = card.tcgdexId,
+                        variant = VariantType.NORMAL,
+                        cardHasNormalAndHolo = false,
+                        setId = card.setId,
+                        setName = card.setName,
+                        setCode = card.setCode,
+                        localId = card.localId,
+                        name = card.name,
+                        dexId = card.dexId,
+                        ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
+                        cardmarketId = card.cardmarketId,
+                    ),
+                ) ?: continue
+                val (low, high) = images.saveFromCardTrader(card.id, url) ?: continue
+                db.catalogDao().setImagePaths(card.id, low, high)
+                saved++
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Rete assente o risposta non valida: le altre carte possono andare a buon fine, e il prossimo aggiornamento riprova.
+            }
+        }
+        return saved
     }
 
     /**

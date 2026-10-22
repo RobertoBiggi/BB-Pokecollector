@@ -5,7 +5,15 @@ import androidx.room.withTransaction
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCardSearch
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.Ids
+import com.robertobiggi.cardcollection.core.cardmarket.CardNumberResolver
+import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
+import com.robertobiggi.cardcollection.core.model.VariantType
+import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
+import com.robertobiggi.cardcollection.core.price.PriceRequest
+import kotlinx.coroutines.flow.first
+import okhttp3.OkHttpClient
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.core.model.PokemonNames
 import com.robertobiggi.cardcollection.core.net.ApiException
 import com.robertobiggi.cardcollection.core.net.InvalidResponseException
 import com.robertobiggi.cardcollection.core.net.NotFoundException
@@ -77,6 +85,7 @@ class CatalogRepository(
     private val images: ImageStore,
     private val settings: SettingsStore,
     private val cardmarket: CardmarketCardSearch,
+    private val http: OkHttpClient,
 ) {
     private val dao = db.catalogDao()
 
@@ -92,18 +101,21 @@ class CatalogRepository(
         val setCache = HashMap<String, SetDto?>()
         var saved = 0
         val queries = dao.enabledQueriesOf(collectionId)
+        val resolver = cardTraderResolver()
         for ((qIndex, query) in queries.withIndex()) {
             val language = Language.fromCode(query.language) ?: continue
             progress(SyncProgress(SyncPhase.SEARCH, query.pattern, qIndex, queries.size))
-            val briefs = try {
-                limiter.acquire()
-                withRetry { client.searchCards(language, query.pattern) }
-            } catch (e: Exception) {
-                if (!isRecoverable(e)) throw e
-                errors++
-                continue
+            val briefs = ArrayList<CardBriefDto>()
+            for (term in PokemonNames.searchTerms(query.pattern, language)) {
+                try {
+                    limiter.acquire()
+                    briefs += withRetry { client.searchCards(language, term) }
+                } catch (e: Exception) {
+                    if (!isRecoverable(e)) throw e
+                    errors++
+                }
             }
-            val candidates = briefs.filterNot { CatalogMapper.isDigitalOnly(it) }.filter { Validators.isValidRemoteId(it.id) }
+            val candidates = briefs.filterNot { CatalogMapper.isDigitalOnly(it) }.filter { Validators.isValidRemoteId(it.id) }.distinctBy { it.id }
             for ((index, brief) in candidates.withIndex()) {
                 progress(SyncProgress(SyncPhase.CARD, brief.name, index, candidates.size))
                 try {
@@ -117,10 +129,25 @@ class CatalogRepository(
                 }
             }
             progress(SyncProgress(SyncPhase.CARDMARKET, query.pattern, qIndex, queries.size))
-            for (card in cardmarketCards(language, query.pattern, progress, qIndex, queries.size)) {
+            val known = LinkedHashSet<String>()
+            for (card in cardmarketCards(language, query.pattern, progress, qIndex, queries.size, resolver, known)) {
                 saveCard(card, legacyQueryId = query.id)
                 dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                 saved++
+            }
+            // Carte che TCGdex ha ma la sua ricerca per nome non ha trovato (nome scritto in modo diverso): Cardmarket le indica per posizione.
+            for (id in known) {
+                if (candidates.any { it.id == id } || !Validators.isValidRemoteId(id)) continue
+                try {
+                    limiter.acquire()
+                    val card = fetchCatalogCard(language, id, limiter, setCache) ?: continue
+                    saveCard(card, legacyQueryId = query.id)
+                    dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
+                    saved++
+                } catch (e: Exception) {
+                    if (!isRecoverable(e)) throw e
+                    errors++
+                }
             }
         }
         val imagesSaved = downloadMissingImages(progress)
@@ -140,9 +167,9 @@ class CatalogRepository(
         val code = CardCodeSearch.parse(text)
         if (code == null && !Validators.isValidQueryPattern(text)) return SearchResult.InvalidQuery
         return try {
-            val cards = if (code != null) CardCodeSearch.find(client, language, code) else client.searchCards(language, text)
+            val cards = if (code != null) CardCodeSearch.find(client, language, code) else searchByName(language, text)
             val missing = try {
-                if (code != null) cardmarket.findByCode(language, code) else cardmarket.find(language, text)
+                if (code != null) cardmarket.findByCode(language, code) else cardmarketTerms(text).flatMap { cardmarket.find(language, it) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -297,8 +324,10 @@ class CatalogRepository(
                     catalogUpdatedAt = System.currentTimeMillis(),
                     dexId = card.dexId ?: existing?.dexId,
                     cardTraderCondition = existing?.cardTraderCondition,
+                    cardmarketId = card.cardmarketId ?: existing?.cardmarketId,
                 ),
             )
+            dao.deleteStaleVariants(card.id, card.variants.map { it.type.name })
             dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name) })
         }
     }
@@ -350,20 +379,67 @@ class CatalogRepository(
      * @param progress suspend (SyncProgress) -> Unit - avanzamento, per mostrare lo scaricamento e la lettura del catalogo.
      * @param index Int - posizione della ricerca.
      * @param total Int - numero di ricerche.
+     * @param known MutableCollection<String> - riceve gli id TCGdex delle carte già note a TCGdex.
      * @return List<CatalogCard> - carte trovate, vuoto in caso di errore.
      */
-    private suspend fun cardmarketCards(language: Language, pattern: String, progress: suspend (SyncProgress) -> Unit, index: Int, total: Int): List<CatalogCard> =
+    private suspend fun cardmarketCards(language: Language, pattern: String, progress: suspend (SyncProgress) -> Unit, index: Int, total: Int, resolver: CardNumberResolver?, known: MutableCollection<String>): List<CatalogCard> =
         try {
-            cardmarket.find(
-                language, pattern,
-                onDownload = { progress(SyncProgress(SyncPhase.CARDMARKET_DOWNLOAD, CARDMARKET_LABEL, index, total)) },
-                onRead = { progress(SyncProgress(SyncPhase.CARDMARKET_READ, CARDMARKET_LABEL, index, total)) },
-            )
+            cardmarketTerms(pattern).flatMap { term ->
+                cardmarket.find(
+                    language, term,
+                    onDownload = { progress(SyncProgress(SyncPhase.CARDMARKET_DOWNLOAD, CARDMARKET_LABEL, index, total)) },
+                    onRead = { progress(SyncProgress(SyncPhase.CARDMARKET_READ, CARDMARKET_LABEL, index, total)) },
+                    resolver = resolver,
+                    known = known,
+                )
+            }.distinctBy { it.id }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             emptyList()
         }
+
+    /**
+     * Cerca per nome su TCGdex anche con il nome del Pokémon nella lingua del catalogo.
+     * @param language Language - lingua del catalogo.
+     * @param text String - nome cercato, in una lingua qualsiasi.
+     * @return List<CardBriefDto> - carte trovate, senza doppioni.
+     */
+    private suspend fun searchByName(language: Language, text: String): List<CardBriefDto> =
+        PokemonNames.searchTerms(text, language).flatMap { client.searchCards(language, it) }.distinctBy { it.id }
+
+    /**
+     * Numero vero delle carte Cardmarket la cui posizione nel set non coincide con il numero (Hidden Fates, promo),
+     * letto da CardTrader. Serve il token; senza, quelle carte si saltano.
+     * @return CardNumberResolver? - il resolver, oppure null senza token.
+     */
+    private suspend fun cardTraderResolver(): CardNumberResolver? {
+        val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return null
+        val provider = CardTraderPriceProvider(CardTraderClient(http, token))
+        return CardNumberResolver { language, set, detail, product ->
+            try {
+                provider.collectorNumber(
+                    PriceRequest(
+                        language = language,
+                        tcgdexId = "",
+                        variant = VariantType.NORMAL,
+                        cardHasNormalAndHolo = false,
+                        setId = set.id,
+                        setName = detail.name,
+                        setCode = CatalogMapper.printedSetCode(language, detail, set.id),
+                        cardmarketId = product.idProduct,
+                    ),
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    /** Termini per il catalogo Cardmarket, dove i nomi delle carte sono in inglese anche per i set giapponesi. */
+    private fun cardmarketTerms(text: String): List<String> = PokemonNames.searchTerms(text, Language.EN)
 
     private fun isRecoverable(e: Exception): Boolean =
         e is ApiException || e is IOException || e is InvalidResponseException || e is IllegalArgumentException
