@@ -30,7 +30,7 @@ L'app non è sul Play Store. A ogni push su `main` GitHub Actions pubblica una *
 
 Al primo avvio crea una collezione con una ricerca (es. "Mawile"), premi **Scarica catalogo** e poi **Prezzi**.
 
-Le build di prova di ogni push (artifact `card-collection-debug-apk` in Actions) hanno id `com.robertobiggi.cardcollection.debug` e nome "Card Collection (debug)": si installano accanto all'app vera, senza toccarne i dati.
+Le build di prova di ogni push (artifact `card-collection-apk` in Actions, file `card-collection-<versione>.apk`) hanno lo stesso id e lo stesso nome dell'app vera e si aggiornano a vicenda, ma sono firmate con la chiave di debug: per passare da una build di prova alla release (o viceversa) serve disinstallare l'app, quindi esporta prima le collezioni.
 
 **Passaggio dalle versioni fino alla 0.5.0** (firmate con la chiave di debug): Android non accetta l'aggiornamento a una firma diversa. Esporta ogni collezione in JSON con le immagini, disinstalla l'app, installa la release e reimporta. Serve solo una volta.
 
