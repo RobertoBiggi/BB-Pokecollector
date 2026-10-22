@@ -1,7 +1,9 @@
 package com.robertobiggi.cardcollection.core.price
 
+import com.robertobiggi.cardcollection.core.cardmarket.BallVariants
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketPriceGuide
 import com.robertobiggi.cardcollection.core.model.PriceQuote
+import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.tcgdex.PricingDto
 
 /** Fonte che sa dire a quale prodotto Cardmarket corrisponde una carta. */
@@ -20,10 +22,12 @@ fun interface CardmarketIdSource {
  *
  * @param ids fonte degli id prodotto.
  * @param guide listino Cardmarket.
+ * @param ballVariants prodotti delle varianti Poké Ball e Master Ball.
  */
 class CardmarketGuidePriceProvider(
     private val ids: CardmarketIdSource,
     private val guide: CardmarketPriceGuide,
+    private val ballVariants: BallVariants = BallVariants.bundled,
 ) : PriceProvider {
     override val id: String = ID
     override val displayName: String = DISPLAY_NAME
@@ -34,9 +38,11 @@ class CardmarketGuidePriceProvider(
      * @return PriceQuote? - prezzo trovato, oppure null se la carta non è abbinata o non è nel listino.
      */
     override suspend fun fetch(request: PriceRequest): PriceQuote? {
-        val productId = ids.cardmarketProductId(request) ?: return null
-        val cardmarket = guide.lookup(productId) ?: return null
-        return VariantMapper.quote(request.variant, PricingDto(cardmarket = cardmarket), request.cardHasNormalAndHolo, DISPLAY_NAME)
+        // Poké Ball e Master Ball sono prodotti Cardmarket a parte, ma sono reverse holo: il listino ha il loro prezzo nei campi "-holo".
+        val productId = if (request.variant.isBall) ballVariants.productId(request.setId, request.localId, request.variant) else ids.cardmarketProductId(request)
+        val cardmarket = guide.lookup(productId ?: return null) ?: return null
+        val variant = if (request.variant.isBall) VariantType.REVERSE else request.variant
+        return VariantMapper.quote(variant, PricingDto(cardmarket = cardmarket), request.cardHasNormalAndHolo, DISPLAY_NAME)
     }
 
     companion object {
