@@ -47,21 +47,30 @@ jobs:
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           apk=$(ls app/build/outputs/apk/debug/*.apk)
           "$tools/aapt" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-debuggable)" || true
-          # Le build di prova usano il keystore di debug del repo e l'id ".debug".
+          # Le build di prova usano il keystore di debug del repo.
           expected="b66e03971fb82eef2a2af8bcd4b64ecec1cdbc3fb18569d9ad612ba9e26e9589"
           actual=$("$tools/apksigner" verify --print-certs "$apk" | grep -m1 "SHA-256 digest" | awk '{print $NF}')
           test "$actual" = "$expected"
-          "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.robertobiggi.cardcollection.debug'"
+          "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.robertobiggi.cardcollection'"
           # La build release (minimizzata da R8) deve contenere i nomi dei Pokémon.
           unzip -l app/build/outputs/apk/release/*.apk | grep -q "com/robertobiggi/cardcollection/core/model/pokemon-names.tsv"
 
+      - name: Rinomina APK di prova
+        run: |
+          set -euo pipefail
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          apk=$(ls app/build/outputs/apk/debug/*.apk)
+          version=$("$tools/aapt" dump badging "$apk" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
+          mkdir -p dist
+          cp "$apk" "dist/card-collection-$version.apk"
+
       # Solo per i push del repo: gli APK delle pull request di terzi non vengono pubblicati.
-      - name: Pubblica APK debug
+      - name: Pubblica APK di prova
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
-          name: card-collection-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: card-collection-apk
+          path: dist/*.apk
           if-no-files-found: error
           retention-days: 14
 

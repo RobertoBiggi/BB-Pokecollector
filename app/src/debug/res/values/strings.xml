@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Nome delle build di prova, installabili accanto all'app vera. -->
-<resources>
-    <string name="app_name" translatable="false">Card Collection (debug)</string>
-</resources>

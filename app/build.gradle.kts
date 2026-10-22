@@ -25,8 +25,8 @@ android {
     }
 
     signingConfigs {
-        // Keystore di debug fisso nel repo, con password pubbliche: serve solo alle build di prova,
-        // che hanno un id diverso (".debug") e quindi non possono mai sostituire l'app vera.
+        // Keystore di debug fisso nel repo, con password pubbliche: le build di prova firmate così si aggiornano
+        // a vicenda (stesso id e stessa firma a ogni build), ma non possono sostituire la release firmata con la chiave vera.
         getByName("debug") {
             storeFile = file("signing/debug.keystore")
             storePassword = "android"
@@ -46,10 +46,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
-        }
         release {
             // Senza secret (build locali, pull request) l'APK release resta non firmato.
             signingConfig = signingConfigs.findByName("release")
