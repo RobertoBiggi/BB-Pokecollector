@@ -54,7 +54,7 @@ class AppContainer(context: Context) {
     val tcgdex = TcgdexClient(http)
     val images = ImageStore(appContext, http)
 
-    val collection = CollectionRepository(database, appScope)
+    val collection = CollectionRepository(database, appScope, settings)
     private val cardmarketCatalog = CardmarketCatalog(http, File(appContext.cacheDir, "cardmarket-products.json"))
     val catalog = CatalogRepository(database, tcgdex, images, settings, CardmarketCardSearch(cardmarketCatalog, tcgdex), http)
     val prices = PriceRepository(database, tcgdex, http, settings, appContext.cacheDir, images)

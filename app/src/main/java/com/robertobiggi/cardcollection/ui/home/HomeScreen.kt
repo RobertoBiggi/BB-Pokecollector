@@ -82,6 +82,7 @@ import java.io.File
 @Composable
 fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit) {
     val summaries by vm.summaries.collectAsStateWithLifecycle()
+    val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     val defaultImportName = stringResource(R.string.import_default_name)
     var creating by rememberSaveable { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<CollectionSummary?>(null) }
@@ -136,6 +137,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
                 items(list, key = { it.collection.id }) { summary ->
                     CollectionRow(
                         summary = summary,
+                        showEur = visibility.cardmarket,
                         onClick = { onOpen(summary.collection.id) },
                         onRename = { renameError = null; renaming = summary },
                         onExport = { exporting = summary },
@@ -196,6 +198,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
 /**
  * Riga di una collezione con copertina, completamento e valore.
  * @param summary CollectionSummary - dati della collezione.
+ * @param showEur Boolean - false se i prezzi Cardmarket sono nascosti: il valore non viene mostrato.
  * @param onClick () -> Unit - apre la collezione.
  * @param onRename () -> Unit - avvia la rinomina.
  * @param onExport () -> Unit - avvia l'export.
@@ -203,7 +206,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
  * @return Unit
  */
 @Composable
-private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
+private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick: () -> Unit, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val s = summary.stats
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
@@ -250,7 +253,7 @@ private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRen
                 LinearProgressIndicator(progress = { s.completionPercent() / 100f }, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.home_complete, s.completionPercent()), style = MaterialTheme.typography.labelMedium)
-                    Text(Format.eur(s.valueEur), style = MonoStyle)
+                    if (showEur) Text(Format.eur(s.valueEur), style = MonoStyle)
                 }
             }
             Box {

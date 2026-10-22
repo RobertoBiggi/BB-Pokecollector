@@ -57,6 +57,7 @@ fun StatsScreen(vm: MainViewModel) {
     val library by vm.library.collectAsStateWithLifecycle()
     val name by vm.collectionName.collectAsStateWithLifecycle()
     val runs by vm.runs.collectAsStateWithLifecycle()
+    val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     val cards = library.orEmpty()
     val total = remember(cards) { summaryOf(cards) }
     val byLanguage = remember(cards) {
@@ -91,16 +92,31 @@ fun StatsScreen(vm: MainViewModel) {
                     }
                 }
             }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatTile(stringResource(R.string.stats_value_eur), Format.eur(total.valueEur), stringResource(R.string.cardmarket_trend), Modifier.weight(1f))
-                    StatTile(stringResource(R.string.stats_value_usd), Format.usd(total.valueUsd), stringResource(R.string.tcgplayer_market), Modifier.weight(1f))
+            if (!visibility.showsNone) item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(stringResource(R.string.stats_value), style = MaterialTheme.typography.titleMedium)
+                        if (visibility.cardmarket) {
+                            ValueRow(stringResource(R.string.price_cardmarket), Format.eur(total.valueEur), total.pricedEur, total.owned)
+                        }
+                        if (visibility.tcgplayer) {
+                            ValueRow(stringResource(R.string.price_tcgplayer), Format.usd(total.valueUsd), total.pricedUsd, total.owned)
+                        }
+                        if (visibility.cardTrader) {
+                            ValueRow(stringResource(R.string.price_cardtrader), Format.eur(total.valueCardTrader), total.pricedCardTrader, total.owned)
+                        }
+                    }
                 }
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatTile(stringResource(R.string.stats_copies), "${total.copies}", stringResource(R.string.stats_copies_hint), Modifier.weight(1f))
-                    StatTile(stringResource(R.string.stats_missing), Format.eur(total.missingEur), stringResource(R.string.missing_count, total.missing), Modifier.weight(1f))
+                    StatTile(
+                        stringResource(R.string.stats_missing),
+                        if (visibility.cardmarket) Format.eur(total.missingEur) else "${total.missing}",
+                        if (visibility.cardmarket) stringResource(R.string.missing_count, total.missing) else stringResource(R.string.stats_missing_hint),
+                        Modifier.weight(1f),
+                    )
                 }
             }
             item { Bars(stringResource(R.string.stats_by_language), byLanguage.map { (lang, s) -> "${stringResource(lang.labelRes())} (${lang.shortLabel()})" to s }) }
@@ -125,6 +141,29 @@ fun StatsScreen(vm: MainViewModel) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Riga del valore della collezione per una fonte, con quante varianti possedute hanno un prezzo.
+ * @param label String - fonte del prezzo.
+ * @param value String - valore totale già formattato.
+ * @param priced Int - varianti possedute con un prezzo di questa fonte (incluse nel valore).
+ * @param owned Int - varianti possedute in tutto.
+ * @return Unit
+ */
+@Composable
+private fun ValueRow(label: String, value: String, priced: Int, owned: Int) {
+    Column {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.bodyMedium)
+            Text(value, style = MonoStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize))
+        }
+        Text(
+            stringResource(R.string.stats_priced, priced, owned),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

@@ -143,8 +143,6 @@
     <string name="stats_title">Statistiche · %1$s</string>
     <string name="stats_completion">Completamento</string>
     <string name="stats_completion_hint">varianti possedute su quelle che vuoi</string>
-    <string name="stats_value_eur">Valore EUR</string>
-    <string name="stats_value_usd">Valore USD</string>
     <string name="stats_copies">Copie</string>
     <string name="stats_copies_hint">doppioni compresi</string>
     <string name="stats_missing">Mancanti</string>
@@ -174,7 +172,7 @@
     <string name="settings_app_language">Lingua dell\'app</string>
     <string name="app_lang_system">Lingua di sistema</string>
     <string name="settings_sources">Fonti prezzi</string>
-    <string name="settings_sources_text">I prezzi arrivano da TCGdex, che riporta Cardmarket (EUR, anche per le carte giapponesi ed europee) e TCGplayer (USD). L\'app non contatta mai cardmarket.com: niente blocchi anti-bot.</string>
+    <string name="settings_sources_text">Scegli quali prezzi mostrare nell\'app. Quelli nascosti non compaiono nelle schede, nelle griglie né nei totali, ma vengono comunque scaricati: riattivandoli li ritrovi. L\'app non contatta mai cardmarket.com: niente blocchi anti-bot.</string>
     <string name="settings_paused">TCGdex in pausa fino al %1$s dopo troppi blocchi.</string>
     <string name="settings_available">TCGdex disponibile. Se blocca 3 volte di fila, l\'app lo mette in pausa per 6 ore.</string>
     <string name="settings_last_catalog">Ultimo catalogo scaricato il %1$s</string>
@@ -227,4 +225,10 @@
     <string name="msg_image_not_available">Né TCGdex né TCGplayer hanno un\'immagine per questa carta: puoi sceglierne una tu.</string>
     <string name="msg_image_invalid">Non riesco a leggere l\'immagine scelta.</string>
     <string name="source_imported">Importato</string>
+    <string name="source_cardmarket_text">Prezzi in EUR (compresi quelli inseriti a mano).</string>
+    <string name="source_tcgplayer_text">Prezzi in USD.</string>
+    <string name="source_cardtrader_text">Prezzo più basso in EUR per variante; serve il token API qui sotto.</string>
+    <string name="stats_value">Valore della collezione</string>
+    <string name="stats_priced">%1$d / %2$d varianti possedute con un prezzo</string>
+    <string name="stats_missing_hint">varianti che vuoi e non hai</string>
 </resources>

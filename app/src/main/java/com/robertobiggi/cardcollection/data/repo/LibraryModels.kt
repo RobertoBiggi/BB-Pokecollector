@@ -40,7 +40,7 @@ data class VariantUi(
      * Converte la variante nell'input del calcolo statistiche.
      * @return SlotInput - dati minimi per [com.robertobiggi.cardcollection.core.stats.CollectionStats].
      */
-    fun toSlotInput(): SlotInput = SlotInput(wanted, quantity, latestEur?.eur, latestUsd?.usd)
+    fun toSlotInput(): SlotInput = SlotInput(wanted, quantity, latestEur?.eur, latestUsd?.usd, latestCardTrader?.eur)
 }
 
 /** Carta pronta per la UI con le sue varianti. */
