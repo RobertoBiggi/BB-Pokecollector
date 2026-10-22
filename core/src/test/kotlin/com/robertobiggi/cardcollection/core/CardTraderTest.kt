@@ -187,6 +187,35 @@ class CardTraderTest {
     }
 
     @Test
+    fun `i set Trainer Gallery si abbinano al set principale di CardTrader`() {
+        val exp = listOf(CtExpansionDto(1, 5, "astr", "Astral Radiance"), CtExpansionDto(2, 5, "brsr", "Brilliant Stars"))
+        assertEquals(1, CardTraderMatcher.expansionFor(exp, "Astral Radiance Trainer Gallery", "swsh10tg", null)?.id)
+        val own = exp + CtExpansionDto(3, 5, "astrtg", "Astral Radiance Trainer Gallery")
+        assertEquals(3, CardTraderMatcher.expansionFor(own, "Astral Radiance Trainer Gallery", "swsh10tg", null)?.id)
+    }
+
+    @Test
+    fun `una promo senza id Cardmarket si abbina dal nome se e unico`() {
+        fun bp(id: Int, name: String, cm: List<Int>? = null) = CtBlueprintDto(id, name, null, 2, null, cm)
+        val promos = listOf(bp(1, "Moltres ex 014/135 Holo Promo"), bp(2, "Magnezone Lv.46 046/135 Non-Holo Theme Deck"), bp(3, "Colress 118/135", listOf(9)), bp(4, "Zapdos EX 048/135 Holo Promo"), bp(5, "Zapdos EX 049/135 Holo Promo"))
+        assertEquals(1, CardTraderMatcher.blueprintByName(promos, "Moltres EX [Destructive Flame | Power Flame]")?.id)
+        assertEquals(2, CardTraderMatcher.blueprintByName(promos, "Magnezone")?.id)
+        assertEquals(null, CardTraderMatcher.blueprintByName(promos, "Zapdos EX"))
+        assertEquals(null, CardTraderMatcher.blueprintByName(promos, "Colress"))
+    }
+
+    @Test
+    fun `il numero nella versione vale piu del collector_number sbagliato`() {
+        fun bp(id: Int, version: String, number: String) = CtBlueprintDto(
+            id, "x", version, 2, buildJsonObject { put("collector_number", JsonPrimitive(number)) },
+        )
+        // Sky Legend: la Moltres & Zapdos & Articuno GX 035/054 ha collector_number 032, come Poipole.
+        val set = listOf(bp(1, "Ultra Rare | 035/054", "032"), bp(2, "032/054", "032"))
+        assertEquals(listOf(1), CardTraderMatcher.blueprintsFor(set, "035").map { it.id })
+        assertEquals(listOf(2), CardTraderMatcher.blueprintsFor(set, "032").map { it.id })
+    }
+
+    @Test
     fun `i set giapponesi che TCGdex elenca senza carte si abbinano al set CardTrader`() {
         val exp = listOf(CtExpansionDto(1, 5, "wcp", "World Champions Pack"), CtExpansionDto(2, 5, "xy5", "Gaia Volcano"), CtExpansionDto(3, 5, "exp", "ADV Expansion Pack"))
         assertEquals(1, CardTraderMatcher.expansionFor(exp, "ワールドチャンピオンズパック", "PCG10", null, preferCode = true)?.id)
@@ -207,7 +236,10 @@ class CardTraderTest {
                     path.startsWith("/api/v2/blueprints/export") && path.contains("expansion_id=20") ->
                         """[{"id":300,"name":"Omastar","expansion_id":20,"fixed_properties":{"collector_number":"39/110"},"card_market_ids":[555],
                              "image":{"url":"/uploads/blueprints/image/300/omastar.png","show":{"url":"/uploads/blueprints/image/300/show_omastar.png"}}},
-                            {"id":301,"name":"Other","expansion_id":20,"fixed_properties":{"collector_number":"40/110"}}]"""
+                            {"id":301,"name":"Other","expansion_id":20,"fixed_properties":{"collector_number":"40/110"}},
+                            {"id":302,"name":"Kabuto 041/110 Holo Promo","expansion_id":20,"card_market_ids":[],
+                             "fixed_properties":{"collector_number":"041/110","pokemon_rarity":"Promo"},
+                             "image":{"url":"/uploads/blueprints/image/302/kabuto.png"}}]"""
                     path.startsWith("/api/v2/marketplace/products") && path.contains("blueprint_id=300") && path.contains("language=en") ->
                         """{"300":[
                           {"id":1,"price":{"cents":90,"currency":"EUR"},"quantity":1,"properties_hash":{"condition":"Near Mint","pokemon_reverse":false}},
@@ -262,8 +294,43 @@ class CardTraderTest {
                 provider.imageUrl(request(VariantType.NORMAL).copy(localId = "086", cardmarketId = 555)),
             )
             assertNull(provider.imageUrl(request(VariantType.NORMAL).copy(localId = "039", cardmarketId = 999)))
+            // Una promo senza id Cardmarket si trova dal nome, se indica un solo blueprint.
+            assertEquals(
+                "https://www.cardtrader.com/uploads/blueprints/image/302/kabuto.png",
+                provider.imageUrl(request(VariantType.NORMAL).copy(name = "Kabuto [Scratch]", localId = "unpromo-Cardmarket777", cardmarketId = 777)),
+            )
+            assertNull(provider.imageUrl(request(VariantType.NORMAL).copy(name = "Aerodactyl", localId = "unpromo-Cardmarket778", cardmarketId = 778)))
         } finally {
             s.shutdown()
         }
+    }
+
+    @Test
+    fun `rarita e numero stampato arrivano dal blueprint abbinato`() = runTest {
+        val s = server()
+        try {
+            val provider = CardTraderPriceProvider(CardTraderClient(OkHttpClient(), "secret", s.url("/api/v2/").toString()))
+            val promo = provider.details(request(VariantType.NORMAL).copy(name = "Kabuto", localId = "unpromo-Cardmarket777", cardmarketId = 777))
+            assertEquals("Promo", promo?.rarity)
+            assertEquals("041/110", promo?.printedNumber)
+            // Un blueprint senza rarità né totale (collector_number "39/110" c'è, la rarità no) dà solo ciò che ha.
+            val omastar = provider.details(request(VariantType.NORMAL).copy(cardmarketId = 555))
+            assertNull(omastar?.rarity)
+            assertEquals("39/110", omastar?.printedNumber)
+            assertNull(provider.details(request(VariantType.NORMAL).copy(name = "Aerodactyl", cardmarketId = 778)))
+        } finally {
+            s.shutdown()
+        }
+    }
+
+    @Test
+    fun `il numero stampato con il totale si legge dal campo o dalla versione`() {
+        fun bp(version: String?, number: String?) = CtBlueprintDto(
+            1, "x", version, 2, number?.let { buildJsonObject { put("collector_number", JsonPrimitive(it)) } },
+        )
+        assertEquals("014/135", CardTraderMatcher.printedNumber(bp("Holo Promo | 14/135", "014/135")))
+        assertEquals("14/135", CardTraderMatcher.printedNumber(bp("Ultra Rare | 14/135", "014")))
+        assertEquals("TG20/TG30", CardTraderMatcher.printedNumber(bp("Special Illustration Rare | TG20/TG30", "TG20")))
+        assertNull(CardTraderMatcher.printedNumber(bp("No.025", null)))
     }
 }

@@ -158,6 +158,13 @@ interface CatalogDao {
     suspend fun cardsWithoutImage(): List<CardEntity>
 
     /**
+     * Elenca le carte inglesi e giapponesi del catalogo Cardmarket senza rarità (o senza numero stampato).
+     * @return List<CardEntity> - carte per cui CardTrader può dare i dati mancanti.
+     */
+    @Query("SELECT * FROM card WHERE cardmarketId IS NOT NULL AND (rarity IS NULL OR printedNumber = '') AND language IN ('en', 'ja')")
+    suspend fun cardsMissingDetails(): List<CardEntity>
+
+    /**
      * Inserisce o aggiorna una carta del catalogo.
      * @param card CardEntity - carta da salvare.
      * @return Unit

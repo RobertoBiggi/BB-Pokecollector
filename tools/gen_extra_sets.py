@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Genera cardmarket-extra-sets.tsv: i set giapponesi che CardTrader/Cardmarket hanno e TCGdex no, con numero stampato
+Genera cardmarket-extra-sets.tsv: i set giapponesi e inglesi che CardTrader/Cardmarket hanno e TCGdex no, con numero stampato
 e id prodotto Cardmarket di ogni carta. Scrive anche cardmarket-ball-variants.tsv: le carte giapponesi con reverse holo Poké Ball e Master Ball, che su Cardmarket
-sono prodotti a parte (set "... - Poké Ball Reverse Holo"). Gli inglesi non si generano: quelli che sembrano mancanti sono quasi sempre
-set che TCGdex ha con un altro nome (es. "Platinum Arceus" = pl4), e produrrebbero doppioni.
+sono prodotti a parte (set "... - Poké Ball Reverse Holo"). Tra gli inglesi molti set sembrano mancanti ma TCGdex li ha con un altro nome
+(es. "Platinum Arceus" = pl4): l'app scarta le carte che TCGdex ha già (stesso prodotto Cardmarket) quando fa il sync.
 
 Uso: CARDTRADER_TOKEN=... tools/gen_extra_sets.py [--report]   (--report: solo elenco dei set, senza scrivere il file)
 
@@ -24,6 +24,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "core/src/main/resources/com/robertobiggi/cardcollection/core/cardmarket")
 TOKEN = os.environ.get("CARDTRADER_TOKEN", "")
 MIN_CONTAINED = 6
+MIN_CARDS = 4
 
 # Sigla stampata dei set giapponesi, quando non coincide con quella di CardTrader.
 PRINTED = {
@@ -143,6 +144,9 @@ def main():
         for s in get(f"https://api.tcgdex.net/v2/{lang}/sets"):
             if lang == "ja":
                 ja_ids[s["id"].lower()] = s["id"]
+            # Un set TCGdex con pochissime carte (es. "Miscellaneous Promos", una sola) non copre l'espansione CardTrader che gli somiglia.
+            if (s.get("cardCount") or {}).get("total", 0) < MIN_CARDS and s["id"].lower() not in ("sv-p", "m-p"):
+                continue
             e = expansion_for(exps, s["name"], s["id"], None, lang == "ja")
             if e:
                 matched.add(e["id"])
@@ -175,7 +179,7 @@ def main():
                         if bp.get("card_market_ids") and num:
                             balls.append((target, num, kind, bp["card_market_ids"][0], bp["id"]))
                 continue
-            if lang != "ja" or "reverse holo" in e["name"].lower() or CHINESE.match(e["name"]):
+            if lang not in ("ja", "en") or "reverse holo" in e["name"].lower() or CHINESE.match(e["name"]):
                 continue
             linked = [(bp, bp["card_market_ids"][0]) for bp in bps if bp.get("card_market_ids")]
             code = (e.get("code") or "").lower()

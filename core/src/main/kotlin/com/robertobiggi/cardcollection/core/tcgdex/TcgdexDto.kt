@@ -79,6 +79,7 @@ data class PricingDto(
  */
 @Serializable
 data class CardmarketPricingDto(
+    val idProduct: Int? = null,
     val updated: String? = null,
     val unit: String? = null,
     val avg: Double? = null,
