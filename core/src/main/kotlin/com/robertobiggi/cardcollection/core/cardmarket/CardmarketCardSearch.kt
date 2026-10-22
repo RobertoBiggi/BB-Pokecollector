@@ -24,11 +24,13 @@ import com.robertobiggi.cardcollection.core.validation.Validators
  * @param catalog catalogo Cardmarket.
  * @param tcgdex client TCGdex, per l'elenco e il dettaglio dei set.
  * @param expansions set con il loro id Cardmarket.
+ * @param extraSets set giapponesi che TCGdex non elenca, cercati a parte.
  */
 class CardmarketCardSearch(
     private val catalog: CardmarketCatalog,
     private val tcgdex: TcgdexClient,
     private val expansions: CardmarketExpansions = CardmarketExpansions.bundled,
+    private val extraSets: CardmarketExtraSets = CardmarketExtraSets.bundled,
 ) {
     private val setLists = HashMap<Language, List<SetBriefDto>>()
     private val setDetails = HashMap<Pair<Language, String>, SetDto>()
@@ -40,24 +42,96 @@ class CardmarketCardSearch(
      * @param pattern String - testo cercato nel nome (come per TCGdex, contenuto nel nome).
      * @param onDownload suspend () -> Unit - chiamata prima di scaricare il catalogo.
      * @param onRead suspend () -> Unit - chiamata prima di leggere il catalogo.
+     * @param resolver CardNumberResolver? - dà il numero vero di una carta quando la posizione non è affidabile; senza, quelle carte si saltano.
+     * @param known MutableCollection<String>? - riceve gli id TCGdex delle carte che Cardmarket indica come corrispondenti ma che TCGdex ha già
+     *   (la ricerca per nome di TCGdex può non trovarle, es. "Dark Omastar" scritto ダークオマスター): vanno scaricate da TCGdex.
      * @return List<CatalogCard> - carte trovate, senza immagine.
      */
-    suspend fun find(language: Language, pattern: String, onDownload: suspend () -> Unit = {}, onRead: suspend () -> Unit = {}): List<CatalogCard> {
+    suspend fun find(
+        language: Language,
+        pattern: String,
+        onDownload: suspend () -> Unit = {},
+        onRead: suspend () -> Unit = {},
+        resolver: CardNumberResolver? = null,
+        known: MutableCollection<String>? = null,
+    ): List<CatalogCard> {
         if (!supports(language)) return emptyList()
         val key = CardmarketCatalog.nameKey(pattern)
         if (key.length < MIN_KEY_LENGTH) return emptyList()
         val found = ArrayList<CatalogCard>()
         for (set in sets(language)) {
             val products = productsOf(language, set, onDownload, onRead) ?: continue
+            val total = totalOf(set)
             val hits = products.withIndex().filter { key in it.value.nameKey }
             if (hits.isEmpty()) continue
             val detail = detail(language, set.id)
+            val aligned = alignedWithNumbers(set, detail, products)
             val have = numbersIn(detail)
+            val haveDigits = detail.cards.mapNotNull { DIGITS.find(it.localId)?.value?.toIntOrNull() }.toSet()
             for ((index, product) in hits) {
-                if (index + 1 !in have) card(language, set, detail, product, index + 1)?.let { found += it }
+                if (aligned && index + 1 <= total) {
+                    val number = CardTraderMatcher.normalizeNumber((index + 1).toString())
+                    if (number !in have) {
+                        card(language, set, detail, product, (index + 1).toString())?.let { found += it }
+                    } else {
+                        // Cardmarket non sempre ordina per numero (Skyridge): la carta TCGdex a quella posizione vale solo se non è un altro Pokémon.
+                        detail.cards.firstOrNull { CardTraderMatcher.normalizeNumber(it.localId) == number }
+                            ?.takeIf { sameOrUnknownPokemon(it.name, product.name) }
+                            ?.let { known?.add(it.id) }
+                    }
+                    continue
+                }
+                // Numero vero da CardTrader. Solo numeri semplici, e non se TCGdex ha già quella carta con un altro formato
+                // ("SWSH125" contro "125"): le promo e le carte "TG" hanno numeri che TCGdex scrive o colloca altrove.
+                val localId = resolver?.localId(language, set, detail, product)?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) } ?: continue
+                if (localId.toIntOrNull() in haveDigits) continue
+                card(language, set, detail, product, localId)?.let { found += it }
             }
         }
+        if (language == Language.JA) found += extraSetCards(key, onDownload, onRead)
         return found
+    }
+
+    /**
+     * Carte dei set giapponesi che TCGdex non elenca (BW, DP, Platino, promo, mazzi), cercate per nome nel loro set
+     * Cardmarket. Il numero è quello stampato, letto da CardTrader; senza, la carta si identifica con il prodotto
+     * Cardmarket (id "unpromo-Cardmarket571821") e il numero stampato resta vuoto.
+     * @param key String - nome cercato, già normalizzato.
+     * @return List<CatalogCard> - carte trovate, senza immagine.
+     */
+    private suspend fun extraSetCards(key: String, onDownload: suspend () -> Unit, onRead: suspend () -> Unit): List<CatalogCard> =
+        extraSets.sets.flatMap { extra ->
+            catalog.productsOf(extra.cardmarketId, onDownload, onRead)
+                .filter { key in it.nameKey && (extra.whole || it.idProduct in extra.numbers) }
+                .mapNotNull { extraCard(extra, it) }
+        }
+
+    private fun extraCard(extra: CardmarketExtraSets.ExtraSet, product: CatalogProduct): CatalogCard? {
+        val printed = extra.numbers[product.idProduct].orEmpty()
+        val number = printed.substringBefore('/').trim().takeIf { it.isNotEmpty() && EXTRA_NUMBER.matches(it) }
+        val localId = number?.let { if (it.all(Char::isDigit)) it.padStart(3, '0') else it } ?: "$UNNUMBERED_PREFIX${product.idProduct}"
+        val tcgdexId = "${extra.setId}-$localId"
+        if (!Validators.isValidRemoteId(tcgdexId)) return null
+        return CatalogCard(
+            id = CatalogMapper.localCardId(Language.JA, tcgdexId),
+            language = Language.JA,
+            tcgdexId = tcgdexId,
+            name = product.name.take(MAX_NAME),
+            setId = extra.setId,
+            setName = extra.name.take(MAX_NAME),
+            setCode = extra.setCode,
+            serieId = null,
+            serieName = null,
+            localId = localId,
+            printedNumber = if (number == null) "" else if (printed.contains('/')) printed else localId,
+            rarity = null,
+            releaseDate = null,
+            illustrator = null,
+            imageBaseUrl = null,
+            variants = listOf(CatalogVariant(VariantType.NORMAL)),
+            dexId = PokemonNames.dexIdOfName(product.name),
+            cardmarketId = product.idProduct,
+        )
     }
 
     /**
@@ -81,12 +155,31 @@ class CardmarketCardSearch(
      */
     suspend fun cardFor(language: Language, setId: String, localId: String): CatalogCard? {
         if (!supports(language)) return null
+        extraSets.sets.firstOrNull { it.setId == setId }?.let { extra ->
+            if (language != Language.JA) return null
+            val wanted = CardTraderMatcher.normalizeNumber(localId)
+            val products = catalog.productsOf(extra.cardmarketId)
+            val product = products.firstOrNull { p ->
+                if (localId.startsWith(UNNUMBERED_PREFIX)) p.idProduct == localId.removePrefix(UNNUMBERED_PREFIX).toIntOrNull()
+                else extra.numbers[p.idProduct]?.let { CardTraderMatcher.normalizeNumber(it) == wanted } == true
+            } ?: return null
+            return extraCard(extra, product)
+        }
         val number = localId.toIntOrNull()?.takeIf { it > 0 } ?: return null
         val set = sets(language).firstOrNull { it.id == setId } ?: return null
-        val product = productsOf(language, set)?.getOrNull(number - 1) ?: return null
+        val products = productsOf(language, set) ?: return null
+        val product = products.getOrNull(number - 1) ?: return null
+        if (number > totalOf(set)) return null
         val detail = detail(language, set.id)
-        if (number in numbersIn(detail)) return null
-        return card(language, set, detail, product, number)
+        if (!alignedWithNumbers(set, detail, products)) return null
+        if (CardTraderMatcher.normalizeNumber(number.toString()) in numbersIn(detail)) return null
+        return card(language, set, detail, product, number.toString())
+    }
+
+    /** Il nome TCGdex non nomina un altro Pokémon: o è lo stesso, o non ne riconosciamo nessuno (es. "ダークオマスター"). */
+    private fun sameOrUnknownPokemon(tcgdexName: String, productName: String): Boolean {
+        val found = PokemonNames.dexIdsInName(tcgdexName)
+        return found.isEmpty() || PokemonNames.dexIdOfName(productName) in found
     }
 
     private fun supports(language: Language) = language == Language.EN || language == Language.JA
@@ -110,11 +203,23 @@ class CardmarketCardSearch(
         return catalog.productsOf(id, onDownload, onRead).takeIf { it.size >= official }
     }
 
-    private fun numbersIn(detail: SetDto): Set<Int> = detail.cards.mapNotNull { it.localId.toIntOrNull() }.toSet()
+    /** Numero di carte del set, comprese le segrete; i prodotti oltre questa posizione non sono carte numerate del set. */
+    private fun totalOf(set: SetBriefDto): Int = set.cardCount?.let { it.total ?: it.official } ?: 0
 
-    private fun card(language: Language, set: SetBriefDto, detail: SetDto, product: CatalogProduct, number: Int): CatalogCard? {
+    /**
+     * Dice se la posizione di un prodotto Cardmarket coincide con il numero della carta. Cardmarket ordina per id,
+     * cioè per data di inserimento: se il set ha molti più prodotti delle carte (ristampe, promo e carte aggiunte
+     * dopo, come in Hidden Fates) le posizioni slittano e il numero sarebbe sbagliato. Vale solo per i set che
+     * TCGdex elenca senza nessuna carta, dove non c'è altro modo di trovarle.
+     */
+    private fun alignedWithNumbers(set: SetBriefDto, detail: SetDto, products: List<CatalogProduct>): Boolean =
+        products.size <= totalOf(set) + MAX_EXTRA_PRODUCTS || detail.cards.isEmpty()
+
+    private fun numbersIn(detail: SetDto): Set<String> = detail.cards.map { CardTraderMatcher.normalizeNumber(it.localId) }.toSet()
+
+    private fun card(language: Language, set: SetBriefDto, detail: SetDto, product: CatalogProduct, number: String): CatalogCard? {
         val width = detail.cards.map { it.localId }.filter { it.all(Char::isDigit) }.maxOfOrNull { it.length } ?: if (language.asianSets) 3 else 1
-        val localId = number.toString().padStart(width, '0')
+        val localId = if (number.all(Char::isDigit)) number.padStart(width, '0') else number
         val tcgdexId = "${set.id}-$localId"
         if (!Validators.isValidRemoteId(tcgdexId)) return null
         return CatalogCard(
@@ -135,12 +240,39 @@ class CardmarketCardSearch(
             imageBaseUrl = null,
             variants = listOf(CatalogVariant(VariantType.NORMAL)),
             dexId = PokemonNames.dexIdOfName(product.name),
+            cardmarketId = product.idProduct,
         )
     }
 
     private companion object {
         const val MIN_KEY_LENGTH = 3
         const val MAX_CODE_SETS = 3
+
+        /** Prefisso dell'id locale delle carte di un set solo Cardmarket, seguito dall'id prodotto. */
+        const val UNNUMBERED_PREFIX = "Cardmarket"
+
+        private val EXTRA_NUMBER = Regex("[A-Za-z0-9-]{1,12}")
+
+        private val DIGITS = Regex("\\d+")
+
+        /** Prodotti in più del numero di carte oltre i quali l'ordine di Cardmarket non è più il numero di carta. */
+        const val MAX_EXTRA_PRODUCTS = 5
         const val MAX_NAME = 120
     }
+}
+
+/**
+ * Dà il numero vero di una carta del catalogo Cardmarket quando la sua posizione nel set non coincide con il numero
+ * (set con ristampe e carte aggiunte dopo). In pratica il numero stampato che CardTrader associa allo stesso prodotto.
+ */
+fun interface CardNumberResolver {
+    /**
+     * Cerca il numero della carta.
+     * @param language Language - lingua del catalogo.
+     * @param set SetBriefDto - set TCGdex.
+     * @param detail SetDto - dettaglio del set.
+     * @param product CatalogProduct - prodotto Cardmarket.
+     * @return String? - numero (es. "066" o "SM210"), oppure null se non si trova con certezza.
+     */
+    suspend fun localId(language: Language, set: SetBriefDto, detail: SetDto, product: CatalogProduct): String?
 }

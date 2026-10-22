@@ -165,6 +165,13 @@ class MigrationTest {
     }
 
     @Test
+    fun `la migrazione 5-6 aggiunge l'id Cardmarket delle carte`() {
+        val migrated = db(fromRoomSchema(5))
+        Migrations.SQL_5_6.forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
+        assertEquals(schema(db(fromRoomSchema(6))), schema(migrated))
+    }
+
+    @Test
     fun `la catena 1-2-3-4 produce lo schema attuale`() {
         val migrated = db(v1)
         (Migrations.SQL_1_2 + Migrations.SQL_2_3 + Migrations.SQL_3_4).forEach { sql -> migrated.createStatement().use { it.execute(sql) } }

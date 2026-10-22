@@ -37,6 +37,8 @@
     <string name="variant_normal">Normal</string>
     <string name="variant_holo">Holo</string>
     <string name="variant_reverse">Reverse holo</string>
+    <string name="variant_poke_ball">Poké Ball reverse holo</string>
+    <string name="variant_master_ball">Master Ball reverse holo</string>
     <string name="variant_first_edition">1st Edition</string>
     <string name="variant_w_promo">W Promo</string>
     <string name="home_title">My collections</string>
@@ -226,10 +228,7 @@
     <string name="err_file_permission">Permission denied for the chosen file.</string>
     <string name="err_file_not_found">Collection not found.</string>
     <string name="lang_other">Other</string>
-    <string name="label_collection_language">Collection language</string>
     <string name="lang_mixed">Mixed</string>
-    <string name="lang_mixed_hint">Pick the language for each search: you can mix English, Japanese and other cards.</string>
-    <string name="lang_fixed_hint">Searches and additions in: %1$s. Choose Mixed to also add cards in other languages.</string>
     <string name="action_update_price">Update price</string>
     <string name="action_download_image">Download image</string>
     <string name="action_pick_image">Choose image</string>

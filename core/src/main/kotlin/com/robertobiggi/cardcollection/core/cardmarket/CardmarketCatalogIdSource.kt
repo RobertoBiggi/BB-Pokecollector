@@ -35,7 +35,9 @@ class CardmarketCatalogIdSource(
             request.dexId?.let { dex -> PokemonNames.namesOf(dex).forEach { add(CardmarketCatalog.nameKey(it)) } }
             if (request.name.isNotBlank()) add(CardmarketCatalog.nameKey(request.name))
         }
-        val candidates = products.filter { it.nameKey in keys }
+        val exact = products.filter { it.nameKey in keys }
+        // Carte il cui nome Cardmarket aggiunge qualcosa ("Brock's Omastar", "Omastar δ Delta Species"): vale se nel set ce n'è una sola.
+        val candidates = exact.ifEmpty { products.filter { p -> keys.any { it.length >= MIN_CONTAINED_KEY && it in p.nameKey } } }
         if (candidates.size <= 1) return candidates.singleOrNull()?.idProduct
         // I prodotti di un set seguono l'ordine delle carte: il numero stampato è la posizione nel set.
         val number = CardTraderMatcher.normalizeNumber(request.localId).toIntOrNull() ?: return null
@@ -43,6 +45,8 @@ class CardmarketCatalogIdSource(
         return atPosition.idProduct.takeIf { p -> candidates.any { it.idProduct == p } }
     }
 }
+
+private const val MIN_CONTAINED_KEY = 4
 
 /**
  * Prova prima questa fonte e, se non trova la carta o non è disponibile (rete, token non valido), l'altra.
