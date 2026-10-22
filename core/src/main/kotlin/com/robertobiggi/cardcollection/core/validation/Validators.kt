@@ -31,6 +31,21 @@ object Validators {
      */
     fun isValidQueryPattern(pattern: String): Boolean = QUERY_PATTERN.matches(pattern.trim())
 
+    /** Numero massimo di nomi in un elenco separato da virgole. */
+    const val MAX_QUERY_PATTERNS = 20
+
+    /**
+     * Scompone un elenco di nomi separati da virgole ("Moltres, Zapdos, Articuno"). Le voci vuote si ignorano e i doppioni
+     * (senza distinguere maiuscole) si tengono una volta sola.
+     * @param raw String - testo inserito.
+     * @return List<String>? - nomi, vuota se il testo è vuoto; null se una voce non è valida o ce ne sono più di [MAX_QUERY_PATTERNS].
+     */
+    fun parseQueryPatterns(raw: String): List<String>? {
+        val names = raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() }
+        if (names.size > MAX_QUERY_PATTERNS || !names.all { isValidQueryPattern(it) }) return null
+        return names
+    }
+
     /**
      * Controlla un id ricevuto da TCGdex prima di usarlo in un URL o in un nome di file.
      * @param id String - id di carta o set (es. "me02.5-144", "SM10a").

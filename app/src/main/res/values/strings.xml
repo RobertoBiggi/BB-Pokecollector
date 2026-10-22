@@ -54,8 +54,8 @@
     <string name="delete_title">Delete \"%1$s\"?</string>
     <string name="delete_text">This removes the searches, quantities and added cards of this collection. Catalog, images and prices stay for the other collections. Export it first if you want to keep it.</string>
     <string name="create_name_label">Name, e.g. Sableye</string>
-    <string name="create_first_search">First search (optional): the app immediately downloads the cards whose name contains this text.</string>
-    <string name="create_pattern_label">Pokémon name to search</string>
+    <string name="create_first_search">First search (optional): the app immediately downloads the cards whose name contains any of these names. Separate several names with commas.</string>
+    <string name="create_pattern_label">Pokémon names, e.g. Moltres, Zapdos</string>
     <string name="import_default_name">Imported collection</string>
     <string name="export_title">Export collection</string>
     <string name="export_none">Without images · small file, images are downloaded again</string>
