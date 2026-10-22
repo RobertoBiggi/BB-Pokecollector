@@ -53,8 +53,8 @@
     <string name="delete_title">Eliminare \"%1$s\"?</string>
     <string name="delete_text">Vengono cancellate ricerche, quantità e carte aggiunte di questa collezione. Catalogo, immagini e prezzi restano per le altre collezioni. Se vuoi conservarla, esportala prima.</string>
     <string name="create_name_label">Nome, es. Sableye</string>
-    <string name="create_first_search">Prima ricerca (facoltativa): l\'app scarica subito le carte che contengono questo nome.</string>
-    <string name="create_pattern_label">Nome Pokémon da cercare</string>
+    <string name="create_first_search">Prima ricerca (facoltativa): l\'app scarica subito le carte che contengono questi nomi. Separa più nomi con una virgola.</string>
+    <string name="create_pattern_label">Nomi Pokémon, es. Moltres, Zapdos</string>
     <string name="import_default_name">Collezione importata</string>
     <string name="export_title">Esporta collezione</string>
     <string name="export_none">Senza immagini · file leggero, le immagini si riscaricano</string>

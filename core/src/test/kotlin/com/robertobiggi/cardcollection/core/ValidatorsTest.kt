@@ -23,6 +23,16 @@ class ValidatorsTest {
     }
 
     @Test
+    fun `elenco di nomi separati da virgole`() {
+        assertEquals(listOf("Moltres", "Zapdos", "Mr. Mime"), Validators.parseQueryPatterns(" Moltres, Zapdos ,, Mr. Mime "))
+        assertEquals(listOf("Moltres"), Validators.parseQueryPatterns("Moltres, moltres"))
+        assertEquals(emptyList<String>(), Validators.parseQueryPatterns("  , "))
+        assertNull(Validators.parseQueryPatterns("Moltres, a"))
+        assertNull(Validators.parseQueryPatterns("Moltres, <script>"))
+        assertNull(Validators.parseQueryPatterns((1..21).joinToString(",") { "Pokemon$it" }))
+    }
+
+    @Test
     fun `id remoti rifiutano path traversal`() {
         assertTrue(Validators.isValidRemoteId("me02.5-144"))
         assertTrue(Validators.isValidRemoteId("SM10a"))
