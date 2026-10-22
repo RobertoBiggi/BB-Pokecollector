@@ -5,6 +5,7 @@ import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -15,6 +16,8 @@ import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
+import com.robertobiggi.cardcollection.data.settings.PriceVisibility
+import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -43,8 +46,9 @@ sealed interface CreateResult {
  *
  * @param db database dell'app.
  * @param scope scope dell'applicazione, in cui viene condivisa la fotografia del database.
+ * @param settings impostazioni: decidono quali prezzi mostrare.
  */
-class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope) {
+class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, private val settings: SettingsStore) {
 
     private val catalogDao = db.catalogDao()
     private val collectionDao = db.collectionDao()
@@ -86,7 +90,26 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope) {
      * @return Flow<T> - risultato aggiornato.
      */
     private fun <T> derive(transform: (DbState) -> T): Flow<T> =
-        state.map(transform).distinctUntilChanged().flowOn(Dispatchers.Default)
+        combine(state, settings.priceVisibility) { s, visibility -> transform(s.withVisiblePrices(visibility)) }
+            .distinctUntilChanged().flowOn(Dispatchers.Default)
+
+    /**
+     * Toglie dalla fotografia i prezzi che l'utente ha nascosto: CardTrader sparisce del tutto, euro e dollari
+     * vengono azzerati nei prezzi che li contengono. I prezzi inseriti a mano contano come Cardmarket.
+     * @param visibility PriceVisibility - prezzi da mostrare.
+     * @return DbState - fotografia con i soli prezzi visibili.
+     */
+    private fun DbState.withVisiblePrices(visibility: PriceVisibility): DbState {
+        if (visibility.showsAll) return this
+        val visible = snapshots.mapNotNull { snap ->
+            if (snap.source == CardTraderPriceProvider.DISPLAY_NAME) return@mapNotNull snap.takeIf { visibility.cardTrader }
+            var shown = snap
+            if (!visibility.cardmarket) shown = shown.copy(eur = null, eurLow = null, eurAvg30 = null)
+            if (!visibility.tcgplayer) shown = shown.copy(usd = null, usdLow = null)
+            shown
+        }
+        return copy(snapshots = visible)
+    }
 
     /** Riepiloghi di tutte le collezioni per l'elenco iniziale. */
     val summaries: Flow<List<CollectionSummary>> = derive { LibraryAssembler.summaries(it) }

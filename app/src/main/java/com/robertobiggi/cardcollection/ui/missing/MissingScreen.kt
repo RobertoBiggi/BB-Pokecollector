@@ -55,6 +55,7 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
         cards.sortedWith(CardUi.RELEASE_ORDER)
             .flatMap { c -> c.variants.filter { it.wanted && it.quantity == 0 }.map { c to it } }
     }
+    val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     val stats = remember(cards) { LibraryAssembler.statsOf(cards) }
 
     Column(Modifier.fillMaxSize()) {
@@ -65,8 +66,10 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                     Column(Modifier.padding(16.dp)) {
                         Text(stringResource(R.string.missing_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(stringResource(R.string.missing_count, stats.missing), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                        Text(stringResource(R.string.missing_cost, Format.eur(stats.missingEur)), style = MaterialTheme.typography.bodySmall)
-                        if (stats.missingWithoutPrice > 0) {
+                        if (visibility.cardmarket) {
+                            Text(stringResource(R.string.missing_cost, Format.eur(stats.missingEur)), style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (visibility.cardmarket && stats.missingWithoutPrice > 0) {
                             Text(stringResource(R.string.missing_without_price, stats.missingWithoutPrice), style = MaterialTheme.typography.bodySmall)
                         }
                     }
@@ -84,7 +87,7 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                 itemsIndexed(missing, key = { _, row -> row.second.id }) { index, (card, variant) ->
                     Column {
                         if (index > 0) HorizontalDivider()
-                        MissingRow(card, variant, onClick = { onOpen(card.card.id) })
+                        MissingRow(card, variant, visibility.cardmarket, onClick = { onOpen(card.card.id) })
                     }
                 }
             }
@@ -103,11 +106,12 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
  * Riga di una variante mancante.
  * @param card CardUi - carta.
  * @param variant VariantUi - variante mancante.
+ * @param showPrice Boolean - false se i prezzi Cardmarket sono nascosti.
  * @param onClick () -> Unit - apre il dettaglio.
  * @return Unit
  */
 @Composable
-private fun MissingRow(card: CardUi, variant: VariantUi, onClick: () -> Unit) {
+private fun MissingRow(card: CardUi, variant: VariantUi, showPrice: Boolean, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -122,6 +126,6 @@ private fun MissingRow(card: CardUi, variant: VariantUi, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Text(variant.latestEur?.eur?.let { Format.eur(it) } ?: "—", style = MonoStyle)
+        if (showPrice) Text(variant.latestEur?.eur?.let { Format.eur(it) } ?: "—", style = MonoStyle)
     }
 }
