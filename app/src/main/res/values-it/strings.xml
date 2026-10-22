@@ -165,6 +165,7 @@
     <string name="add_single_title">Aggiungi una carta singola</string>
     <string name="search_tcgdex">Nome o codice, es. M3 117/080</string>
     <string name="add_card_cd">Aggiungi %1$s</string>
+    <string name="card_added_cd">Aggiunta: %1$s</string>
     <string name="add_single_hint">Utile per carte che nessuna ricerca trova (es. promo o carte con un nome diverso). Puoi scrivere il codice stampato in basso a sinistra: sigla e numero (M3 117/080), solo il numero (117/080) o l\'id TCGdex (M3-117). Le parole in più, come la rarità, vengono ignorate. Serve la connessione.</string>
     <string name="removed_cards">Carte tolte (%1$d)</string>
     <string name="export_section">Esporta</string>
