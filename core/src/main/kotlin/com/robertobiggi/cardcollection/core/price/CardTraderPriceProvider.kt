@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.core.price
 
+import com.robertobiggi.cardcollection.core.cardmarket.BallVariants
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderMatcher
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderPicker
@@ -21,11 +22,13 @@ import kotlinx.coroutines.sync.withLock
  * @param client client CardTrader con il token dell'utente.
  * @param worstCondition condizione peggiore accettata predefinita, se la carta non ne ha una sua.
  * @param onLoadingExpansions chiamata subito prima di scaricare l'elenco dei set (solo la prima volta), per mostrarlo all'utente.
+ * @param ballVariants blueprint delle varianti Poké Ball e Master Ball.
  */
 class CardTraderPriceProvider(
     private val client: CardTraderClient,
     private val worstCondition: CtCondition = CtCondition.NEAR_MINT,
     private val onLoadingExpansions: suspend () -> Unit = {},
+    private val ballVariants: BallVariants = BallVariants.bundled,
 ) : PriceProvider, CardmarketIdSource {
     override val id: String = ID
     override val displayName: String = DISPLAY_NAME
@@ -42,10 +45,15 @@ class CardTraderPriceProvider(
      */
     override suspend fun fetch(request: PriceRequest): PriceQuote? = mutex.withLock {
         val languageCode = languageParam(request.language)
-        val matching = match(request) ?: return null
-        val listings = matching.flatMap { productsOf(it.id, languageCode) }
+        val listings = if (request.variant.isBall) {
+            // Poké Ball e Master Ball hanno un blueprint a parte.
+            val blueprint = ballVariants.blueprintId(request.setId, request.localId, request.variant) ?: return null
+            productsOf(blueprint, languageCode)
+        } else {
+            (match(request) ?: return null).flatMap { productsOf(it.id, languageCode) }
+        }
         val pick = CardTraderPicker.lowest(
-            listings, request.variant, languageCode, request.cardTraderCondition ?: worstCondition,
+            listings, request.variant, pickerLanguage(request.language), request.cardTraderCondition ?: worstCondition,
             firstEditionFallback = request.language == Language.JA && !request.cardHasFirstEdition,
             lowerCondition = true,
         ) ?: return null
@@ -129,6 +137,15 @@ class CardTraderPriceProvider(
 
     private suspend fun productsOf(blueprintId: Int, languageCode: String?): List<CtProductDto> =
         products.getOrPut(blueprintId to languageCode) { client.products(blueprintId, languageCode) }
+
+    /**
+     * Lingua con cui scartare gli annunci di altre lingue (es. coreano per una carta giapponese): sempre quella della carta.
+     * CardTrader scrive `jp` per il giapponese e `zh-TW` per il cinese tradizionale; il confronto è senza maiuscole.
+     */
+    private fun pickerLanguage(language: Language): String = when (language) {
+        Language.JA -> "jp"
+        else -> language.code
+    }
 
     /** Lingue per cui CardTrader accetta il filtro; le altre non vengono filtrate. */
     private fun languageParam(language: Language): String? = when (language) {
