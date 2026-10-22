@@ -17,9 +17,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -53,6 +55,7 @@ import com.robertobiggi.cardcollection.ui.common.exportFileName
 import com.robertobiggi.cardcollection.ui.common.JobBanner
 import com.robertobiggi.cardcollection.ui.common.Section
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
+import com.robertobiggi.cardcollection.ui.theme.StatusColors
 
 /**
  * Gestione della collezione aperta: ricerche, carte singole, carte tolte, catalogo ed export.
@@ -72,6 +75,7 @@ fun ManageScreen(vm: MainViewModel) {
     var queryError by remember { mutableStateOf<InputError?>(null) }
     var searchLanguage by rememberSaveable { mutableStateOf(Language.EN) }
     var searchText by rememberSaveable { mutableStateOf("") }
+    var addedIds by remember { mutableStateOf(setOf<String>()) }
     var exportOpen by remember { mutableStateOf(false) }
     var pendingImages by rememberSaveable { mutableStateOf(ImageExport.NONE.name) }
 
@@ -146,7 +150,11 @@ fun ManageScreen(vm: MainViewModel) {
                                 Text(card.name, fontWeight = FontWeight.Bold)
                                 Text(card.id, style = MonoStyle)
                             }
-                            IconButton(onClick = { vm.addSingleCard(card) }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_card_cd, card.name)) }
+                            if (card.id in addedIds) {
+                                Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.card_added_cd, card.name), tint = StatusColors.ok, modifier = Modifier.padding(12.dp))
+                            } else {
+                                IconButton(onClick = { vm.addSingleCard(card) { addedIds = addedIds + card.id } }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_card_cd, card.name)) }
+                            }
                         }
                     }
                     Text(

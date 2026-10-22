@@ -469,10 +469,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @param card CardBriefDto - carta scelta.
      * @return Unit
      */
-    fun addSingleCard(card: CardBriefDto) = withSelected { id ->
+    fun addSingleCard(card: CardBriefDto, onAdded: () -> Unit = {}) = withSelected { id ->
         say(R.string.msg_adding_card, card.name)
         when (val result = container.catalog.addSingleCard(id, _search.value.language, card.id)) {
-            is AddCardResult.Added -> say(R.string.msg_card_added, result.name)
+            is AddCardResult.Added -> {
+                onAdded()
+                say(R.string.msg_card_added, result.name)
+            }
             AddCardResult.NotAllowed -> say(R.string.msg_card_not_allowed)
             AddCardResult.NetworkError -> say(R.string.msg_network_error)
         }

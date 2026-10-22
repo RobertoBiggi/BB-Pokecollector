@@ -177,6 +177,7 @@
     <string name="add_single_title">Add a single card</string>
     <string name="search_tcgdex">Name or code, e.g. M3 117/080</string>
     <string name="add_card_cd">Add %1$s</string>
+    <string name="card_added_cd">Added: %1$s</string>
     <string name="add_single_hint">Useful for cards that no search finds (e.g. promos or cards with a different name). You can type the code printed at the bottom left: set and number (M3 117/080), just the number (117/080) or the TCGdex id (M3-117). Extra words such as the rarity are ignored. Needs a connection.</string>
     <string name="removed_cards">Removed cards (%1$d)</string>
     <string name="export_section">Export</string>
