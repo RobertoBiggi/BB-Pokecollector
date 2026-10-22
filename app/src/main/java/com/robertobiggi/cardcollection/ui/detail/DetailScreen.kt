@@ -96,6 +96,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     val card = library?.firstOrNull { it.card.id == cardId }
     val action by vm.cardAction.collectAsStateWithLifecycle()
     val cardTraderToken by vm.cardTraderToken.collectAsStateWithLifecycle()
+    val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     var manualFor by remember { mutableStateOf<VariantUi?>(null) }
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) vm.setCardImage(cardId, uri)
@@ -136,7 +137,9 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
                     onCondition = { vm.setCondition(variant.id, it) },
                     onWanted = { vm.setWanted(variant.id, it) },
                     onManual = { manualFor = variant },
-                    showCardTrader = cardTraderToken.isNotEmpty(),
+                    showCardmarket = visibility.cardmarket,
+                    showTcgplayer = visibility.tcgplayer,
+                    showCardTrader = visibility.cardTrader && cardTraderToken.isNotEmpty(),
                 )
             }
             item {
@@ -276,7 +279,9 @@ private fun UriHandler.openSafely(url: String) {
  * @param onCondition (Condition) -> Unit - nuova condizione.
  * @param onWanted (Boolean) -> Unit - nuovo stato "la voglio".
  * @param onManual () -> Unit - apre l'inserimento del prezzo manuale.
- * @param showCardTrader Boolean - true se c'è il token CardTrader: mostra il riquadro accanto agli altri mercati.
+ * @param showCardmarket Boolean - false se l'utente ha nascosto i prezzi Cardmarket.
+ * @param showTcgplayer Boolean - false se l'utente ha nascosto i prezzi TCGplayer.
+ * @param showCardTrader Boolean - true se c'è il token CardTrader e il prezzo non è nascosto: mostra il riquadro accanto agli altri mercati.
  * @return Unit
  */
 @Composable
@@ -287,6 +292,8 @@ private fun VariantCard(
     onCondition: (Condition) -> Unit,
     onWanted: (Boolean) -> Unit,
     onManual: () -> Unit,
+    showCardmarket: Boolean,
+    showTcgplayer: Boolean,
     showCardTrader: Boolean,
 ) {
     var conditionOpen by remember { mutableStateOf(false) }
@@ -331,13 +338,17 @@ private fun VariantCard(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PriceBox(stringResource(R.string.price_cardmarket), variant.latestEur?.eur?.let { Format.eur(it) }, Modifier.weight(1f))
-                PriceBox(
-                    stringResource(R.string.price_tcgplayer),
-                    variant.latestUsd?.usd?.let { Format.usd(it) },
-                    Modifier.weight(1f),
-                    emptyText = stringResource(if (card.language == Language.EN) R.string.no_price else R.string.not_sold),
-                )
+                if (showCardmarket) {
+                    PriceBox(stringResource(R.string.price_cardmarket), variant.latestEur?.eur?.let { Format.eur(it) }, Modifier.weight(1f))
+                }
+                if (showTcgplayer) {
+                    PriceBox(
+                        stringResource(R.string.price_tcgplayer),
+                        variant.latestUsd?.usd?.let { Format.usd(it) },
+                        Modifier.weight(1f),
+                        emptyText = stringResource(if (card.language == Language.EN) R.string.no_price else R.string.not_sold),
+                    )
+                }
                 if (showCardTrader) {
                     PriceBox(stringResource(R.string.price_cardtrader), variant.latestCardTrader?.eur?.let { Format.eur(it) }, Modifier.weight(1f))
                 }

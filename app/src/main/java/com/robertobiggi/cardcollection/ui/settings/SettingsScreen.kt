@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.robertobiggi.cardcollection.R
+import com.robertobiggi.cardcollection.data.settings.PriceKind
 import com.robertobiggi.cardcollection.ui.MainViewModel
 import com.robertobiggi.cardcollection.ui.common.Format
 import com.robertobiggi.cardcollection.ui.common.Section
@@ -59,6 +61,7 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val pausedUntil by vm.tcgdexPausedUntil.collectAsStateWithLifecycle()
     val lastSync by vm.lastCatalogSync.collectAsStateWithLifecycle()
     val savedToken by vm.cardTraderToken.collectAsStateWithLifecycle()
+    val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     var tokenInput by remember(savedToken) { mutableStateOf(savedToken) }
     val currentTag = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore('-')
     val current = AppLanguage.entries.firstOrNull { it.tag == currentTag } ?: AppLanguage.SYSTEM
@@ -91,6 +94,15 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
             item {
                 Section(stringResource(R.string.settings_sources)) {
                     Text(stringResource(R.string.settings_sources_text), style = MaterialTheme.typography.bodyMedium)
+                    PriceSwitch(stringResource(R.string.price_cardmarket), stringResource(R.string.source_cardmarket_text), visibility.cardmarket) {
+                        vm.setPriceShown(PriceKind.CARDMARKET, it)
+                    }
+                    PriceSwitch(stringResource(R.string.price_tcgplayer), stringResource(R.string.source_tcgplayer_text), visibility.tcgplayer) {
+                        vm.setPriceShown(PriceKind.TCGPLAYER, it)
+                    }
+                    PriceSwitch(stringResource(R.string.settings_cardtrader), stringResource(R.string.source_cardtrader_text), visibility.cardTrader) {
+                        vm.setPriceShown(PriceKind.CARDTRADER, it)
+                    }
                     Text(
                         if (pausedUntil > System.currentTimeMillis()) {
                             stringResource(R.string.settings_paused, Format.dateTime(pausedUntil))
@@ -137,5 +149,24 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Riga con nome, descrizione e interruttore di un tipo di prezzo.
+ * @param title String - nome del prezzo.
+ * @param description String - da dove arriva.
+ * @param checked Boolean - prezzo mostrato.
+ * @param onChange (Boolean) -> Unit - nuovo stato scelto.
+ * @return Unit
+ */
+@Composable
+private fun PriceSwitch(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }

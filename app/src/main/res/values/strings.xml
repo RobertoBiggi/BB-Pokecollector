@@ -153,8 +153,6 @@
     <string name="stats_title">Stats · %1$s</string>
     <string name="stats_completion">Completion</string>
     <string name="stats_completion_hint">owned variants out of the ones you want</string>
-    <string name="stats_value_eur">Value EUR</string>
-    <string name="stats_value_usd">Value USD</string>
     <string name="stats_copies">Copies</string>
     <string name="stats_copies_hint">duplicates included</string>
     <string name="stats_missing">Missing</string>
@@ -164,8 +162,6 @@
     <string name="stats_runs">Latest price updates</string>
     <string name="stats_no_runs">No updates yet.</string>
     <string name="stats_currency_note">EUR and USD stay separate: the app does not convert currencies.</string>
-    <string name="cardmarket_trend" translatable="false">Cardmarket trend</string>
-    <string name="tcgplayer_market" translatable="false">TCGplayer market</string>
     <string name="manage_title">Manage · %1$s</string>
     <string name="manage_searches">Collection searches</string>
     <string name="manage_no_searches">No searches: add one or add single cards below.</string>
@@ -188,7 +184,7 @@
     <string name="app_lang_it" translatable="false">Italiano</string>
     <string name="app_lang_en" translatable="false">English</string>
     <string name="settings_sources">Price sources</string>
-    <string name="settings_sources_text">Prices come from TCGdex, which reports Cardmarket (EUR, also for Japanese and European cards) and TCGplayer (USD). The app never contacts cardmarket.com, so there are no anti-bot blocks.</string>
+    <string name="settings_sources_text">Choose which prices to show in the app. Hidden prices do not appear on cards, in grids or in totals, but are still downloaded, so turning them back on brings them back. The app never contacts cardmarket.com, so there are no anti-bot blocks.</string>
     <string name="settings_paused">TCGdex paused until %1$s after too many blocks.</string>
     <string name="settings_available">TCGdex available. If it blocks 3 times in a row, the app pauses it for 6 hours.</string>
     <string name="settings_last_catalog">Last catalog download: %1$s</string>
@@ -242,4 +238,10 @@
     <string name="msg_image_invalid">Couldn\'t read the chosen image.</string>
     <string name="copies_short" translatable="false">×%1$d</string>
     <string name="source_imported">Imported</string>
+    <string name="source_cardmarket_text">EUR prices (including ones you enter by hand).</string>
+    <string name="source_tcgplayer_text">USD prices.</string>
+    <string name="source_cardtrader_text">Lowest EUR listing per variant; needs the API token below.</string>
+    <string name="stats_value">Collection value</string>
+    <string name="stats_priced">%1$d / %2$d owned variants with a price</string>
+    <string name="stats_missing_hint">variants you want but don\'t own</string>
 </resources>
