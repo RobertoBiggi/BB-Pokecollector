@@ -265,6 +265,9 @@ private fun CollectionRow(summary: CollectionSummary, onClick: () -> Unit, onRen
     }
 }
 
+/** Lunghezza massima del testo con i nomi da cercare (fino a 20 nomi separati da virgole). */
+private const val CREATE_PATTERN_MAX = 400
+
 /**
  * Finestra di creazione di una collezione: nome, lingue (EN, JP o altre, anche insieme) e una prima ricerca facoltativa.
  * @param onDismiss () -> Unit - chiude.
@@ -292,7 +295,7 @@ private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, Lis
                 LanguageMultiPicker(languages) { languages = it }
                 OutlinedTextField(
                     value = pattern,
-                    onValueChange = { pattern = it.take(40); error = null },
+                    onValueChange = { pattern = it.take(CREATE_PATTERN_MAX); error = null },
                     label = { Text(stringResource(R.string.create_pattern_label)) },
                     singleLine = true,
                     isError = error != null,

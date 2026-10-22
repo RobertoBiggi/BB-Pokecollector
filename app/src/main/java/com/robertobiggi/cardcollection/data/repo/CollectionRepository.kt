@@ -141,17 +141,17 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope) {
      * @param rawName String - nome inserito dall'utente.
      * @param languages Collection<Language> - lingue della prima ricerca: una ricerca per lingua. La lingua della
      *        collezione ne è dedotta (una sola tra EN e JP, altrimenti mista).
-     * @param pattern String? - testo della prima ricerca (vuoto = nessuna ricerca).
+     * @param pattern String? - nomi della prima ricerca, anche più d'uno separati da virgole (vuoto = nessuna ricerca):
+     *        per ogni nome e ogni lingua si crea una ricerca.
      * @return CreateResult - id della collezione creata, oppure l'errore da mostrare.
      */
     suspend fun createCollection(rawName: String, languages: Collection<Language>, pattern: String?): CreateResult {
         val name = CollectionFiles.cleanName(rawName) ?: return CreateResult.Invalid(InputError.NAME_EMPTY)
-        val clean = pattern?.trim().orEmpty()
-        if (clean.isNotEmpty() && !Validators.isValidQueryPattern(clean)) return CreateResult.Invalid(InputError.QUERY_INVALID)
+        val names = Validators.parseQueryPatterns(pattern.orEmpty()) ?: return CreateResult.Invalid(InputError.QUERY_INVALID)
         val code = CollectionLanguage.infer(languages.map { it.code })
         val id = db.withTransaction {
             val id = catalogDao.insertCollection(CollectionEntity(name = uniqueName(name), createdAt = System.currentTimeMillis(), language = code))
-            if (clean.isNotEmpty()) {
+            names.forEach { clean ->
                 languages.distinct().forEach { language ->
                     catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = language.code, pattern = clean))
                 }
