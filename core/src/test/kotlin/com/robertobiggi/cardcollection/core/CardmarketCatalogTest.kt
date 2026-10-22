@@ -3,6 +3,10 @@ package com.robertobiggi.cardcollection.core
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalog
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalogIdSource
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketExpansions
+import com.robertobiggi.cardcollection.core.cardmarket.CatalogProduct
+import com.robertobiggi.cardcollection.core.cardmarket.productByOrdinal
+import com.robertobiggi.cardcollection.core.cardmarket.productByPosition
+import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
 import com.robertobiggi.cardcollection.core.cardmarket.orElse
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
@@ -86,6 +90,38 @@ class CardmarketCatalogTest {
         assertNull(s.cardmarketProductId(request("awk", "003", dex = 139)))
         assertNull(s.cardmarketProductId(request("awk", "009", dex = 139)))
         assertNull(s.cardmarketProductId(request("awk", "SWSH001", dex = 139)))
+    }
+
+    @Test
+    fun `un Allenatore giapponese si trova dalla posizione tra due Pokemon`() = runTest {
+        // Set 30 come Mystery of the Fossils: Omanyte, Omastar, due Allenatori, Kabuto. I nomi giapponesi non coincidono con quelli inglesi.
+        val products = listOf(
+            CatalogProduct(1, "omanyte"), CatalogProduct(2, "omastar"), CatalogProduct(3, "mysteriousfossil", "Mysterious Fossil"),
+            CatalogProduct(4, "bill", "Bill"), CatalogProduct(5, "kabuto"),
+        )
+        assertEquals(3, productByOrdinal(products, SetOrdinal(leftDex = 139, rightDex = 140, rank = 0, count = 2))?.idProduct)
+        assertEquals(4, productByOrdinal(products, SetOrdinal(leftDex = 139, rightDex = 140, rank = 1, count = 2))?.idProduct)
+        // Un numero di carte diverso da quello di TCGdex, o un riferimento che non c'è, non si indovina.
+        assertNull(productByOrdinal(products, SetOrdinal(leftDex = 139, rightDex = 140, rank = 0, count = 3)))
+        assertNull(productByOrdinal(products, SetOrdinal(leftDex = 25, rightDex = 140, rank = 0, count = 2)))
+    }
+
+    @Test
+    fun `un fossile giapponese si trova dal numero, verificato dai Pokemon di riferimento`() {
+        // Come Mirage Forest: l'ultimo Pokémon è "Registeel Gold Star" (079 = Pokédex 379), poi fossili e Allenatori fino alla fine.
+        val products = listOf(
+            CatalogProduct(1, "aron"), CatalogProduct(2, "registeelgoldstar", "Registeel Gold Star"), CatalogProduct(3, "clawfossil", "Claw Fossil"),
+            CatalogProduct(4, "mysteriousfossil", "Mysterious Fossil"), CatalogProduct(5, "rootfossil", "Root Fossil"), CatalogProduct(6, "fieldworker", "Fieldworker"),
+        )
+        val ordinal = SetOrdinal(leftDex = 379, rightDex = null, rank = 1, count = 4)
+        assertEquals(4, productByPosition(products, ordinal, 4)?.idProduct)
+        // Numero o ordine che non tornano con i riferimenti: nessuna risposta.
+        assertNull(productByPosition(products, ordinal, 5))
+        assertNull(productByPosition(products, ordinal.copy(leftDex = 25), 4))
+        assertNull(productByPosition(products, ordinal.copy(count = 3), 4))
+        assertNull(productByPosition(products + CatalogProduct(7, "extra"), ordinal, 4))
+        // Carta in cima al set: nessun Pokémon prima.
+        assertEquals(1, productByPosition(products, SetOrdinal(null, 379, 0, 1), 1)?.idProduct)
     }
 
     @Test
