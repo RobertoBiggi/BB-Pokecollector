@@ -72,20 +72,29 @@ object VariantMapper {
             VariantType.REVERSE -> positive(cm.trendHolo ?: cm.avgHolo)?.let {
                 CmPick(it, positive(cm.lowHolo), positive(cm.avg30Holo), Confidence.HIGH)
             }
-            else -> (positive(cm.trend) ?: positive(cm.avg))?.let {
-                val confidence = when (type) {
-                    VariantType.NORMAL -> Confidence.HIGH
-                    VariantType.HOLO -> if (cardHasNormalAndHolo) Confidence.MEDIUM else Confidence.HIGH
-                    VariantType.FIRST_EDITION -> Confidence.LOW
-                    else -> Confidence.MEDIUM
-                }
-                CmPick(it, positive(cm.low), positive(cm.avg30), confidence)
-            } ?: (positive(cm.trendHolo) ?: positive(cm.avgHolo))?.let {
-                // Prodotto solo foil (es. Moltres del Special Battle Set): Cardmarket mette il prezzo nei campi "-holo" e lascia vuoti quelli base.
-                CmPick(it, positive(cm.lowHolo), positive(cm.avg30Holo), Confidence.MEDIUM)
-            }
+            // Con normal e holo insieme Cardmarket quota la holo nei campi "-holo" e la normale in quelli base.
+            VariantType.HOLO -> if (cardHasNormalAndHolo) holoPick(cm) ?: basePick(type, cm, true) else basePick(type, cm, false)
+            else -> basePick(type, cm, cardHasNormalAndHolo)
         }
     }
+
+    private fun holoPick(cm: CardmarketPricingDto): CmPick? = positive(cm.trendHolo ?: cm.avgHolo)?.let {
+        CmPick(it, positive(cm.lowHolo), positive(cm.avg30Holo), Confidence.HIGH)
+    }
+
+    private fun basePick(type: VariantType, cm: CardmarketPricingDto, cardHasNormalAndHolo: Boolean): CmPick? =
+        (positive(cm.trend) ?: positive(cm.avg))?.let {
+            val confidence = when (type) {
+                VariantType.NORMAL -> Confidence.HIGH
+                VariantType.HOLO -> if (cardHasNormalAndHolo) Confidence.MEDIUM else Confidence.HIGH
+                VariantType.FIRST_EDITION -> Confidence.LOW
+                else -> Confidence.MEDIUM
+            }
+            CmPick(it, positive(cm.low), positive(cm.avg30), confidence)
+        } ?: (positive(cm.trendHolo) ?: positive(cm.avgHolo))?.let {
+            // Prodotto solo foil (es. Moltres del Special Battle Set): Cardmarket mette il prezzo nei campi "-holo" e lascia vuoti quelli base.
+            CmPick(it, positive(cm.lowHolo), positive(cm.avg30Holo), Confidence.MEDIUM)
+        }
 
     /**
      * Sceglie la riga TCGplayer corrispondente alla variante.

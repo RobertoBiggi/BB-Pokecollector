@@ -95,7 +95,7 @@ object CatalogMapper {
      * @param releaseDate String? - data di uscita del set (ISO), per sapere se la reverse holo esisteva già; senza, non se ne deduce nessuna dai prezzi.
      * @return List<CatalogVariant> - varianti senza duplicati, nell'ordine dell'enum.
      */
-    fun variantsOf(card: CardDto, releaseDate: String? = null, balls: Set<VariantType> = emptySet()): List<CatalogVariant> {
+    fun variantsOf(card: CardDto, releaseDate: String? = null, balls: Set<VariantType> = emptySet(), asian: Boolean = false): List<CatalogVariant> {
         val standard = card.variantsDetailed.orEmpty().filter { it.size == null || it.size == "standard" }
         val fromDetailed = standard.mapNotNull { VariantType.fromTcgdexKey(it.type) }
         val types = if (fromDetailed.isNotEmpty() && fromDetailed.size == standard.size) {
@@ -110,7 +110,9 @@ object CatalogMapper {
                 if (flags.wPromo) add(VariantType.W_PROMO)
             }
         }
-        val distinct = types.toSet().ifEmpty { setOf(VariantType.NORMAL) }.let { if (hasReverseHoloPrice(card, it, releaseDate)) it + VariantType.REVERSE else it }
+        // Nei set giapponesi i prezzi "-holo" sono quelli della holo (la reverse non esiste): la versione base è la normale.
+        val extra = if (asian) VariantType.NORMAL else VariantType.REVERSE
+        val distinct = types.toSet().ifEmpty { setOf(VariantType.NORMAL) }.let { if (hasReverseHoloPrice(card, it, releaseDate, asian)) it + extra else it }
             .let { if (balls.isEmpty()) it else it - VariantType.REVERSE + balls }
         return VariantType.entries.filter { it in distinct }.map { CatalogVariant(it) }
     }
@@ -120,10 +122,11 @@ object CatalogMapper {
      * reverse holo, ma solo se il prodotto ha anche i prezzi base (normal o holo rare): una carta con i soli prezzi "-holo"
      * è una holo e basta. TCGdex a volte dimentica il flag (es. Omastar Team Up 76/181 e Tag Bolt 057/095), mentre i prezzi ci sono.
      */
-    private fun hasReverseHoloPrice(card: CardDto, types: Set<VariantType>, releaseDate: String?): Boolean {
+    private fun hasReverseHoloPrice(card: CardDto, types: Set<VariantType>, releaseDate: String?, asian: Boolean): Boolean {
         // Le prime reverse holo escono con Legendary Collection; le carte BREAK non ne hanno. Prima e per quelle, i prezzi "-holo" sono altro (1ª edizione, ristampe).
         if (releaseDate == null || releaseDate < FIRST_REVERSE_HOLO_DATE || card.name.endsWith("BREAK")) return false
         if (VariantType.REVERSE in types || (VariantType.NORMAL !in types && VariantType.HOLO !in types)) return false
+        if (asian && VariantType.NORMAL in types) return false
         val cm = card.pricing?.cardmarket ?: return false
         val base = cm.trend.let { it != null && it > 0 }
         val reverse = cm.trendHolo.let { it != null && it > 0 }
@@ -155,7 +158,7 @@ object CatalogMapper {
             releaseDate = set?.releaseDate?.take(10),
             illustrator = card.illustrator?.take(80),
             imageBaseUrl = image,
-            variants = variantsOf(card, set?.releaseDate, if (language == Language.JA) ballVariants.variantsOf(card.set.id, card.localId) else emptySet()),
+            variants = variantsOf(card, set?.releaseDate, if (language == Language.JA) ballVariants.variantsOf(card.set.id, card.localId) else emptySet(), language.asianSets),
             dexId = card.dexId?.firstOrNull(),
         )
     }
