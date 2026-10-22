@@ -65,7 +65,7 @@ class CardmarketCardSearch(
             val hits = products.withIndex().filter { key in it.value.nameKey }
             if (hits.isEmpty()) continue
             val detail = detail(language, set.id)
-            val aligned = alignedWithNumbers(set, detail, products)
+            val aligned = alignedWithNumbers(set, products)
             val have = numbersIn(detail)
             val haveDigits = detail.cards.mapNotNull { DIGITS.find(it.localId)?.value?.toIntOrNull() }.toSet()
             for ((index, product) in hits) {
@@ -88,19 +88,19 @@ class CardmarketCardSearch(
                 card(language, set, detail, product, localId)?.let { found += it }
             }
         }
-        if (language == Language.JA) found += extraSetCards(key, onDownload, onRead)
+        found += extraSetCards(language, key, onDownload, onRead)
         return found
     }
 
     /**
-     * Carte dei set giapponesi che TCGdex non elenca (BW, DP, Platino, promo, mazzi), cercate per nome nel loro set
+     * Carte dei set (giapponesi o inglesi) che TCGdex non elenca (BW, DP, Platino, promo, mazzi), cercate per nome nel loro set
      * Cardmarket. Il numero è quello stampato, letto da CardTrader; senza, la carta si identifica con il prodotto
      * Cardmarket (id "unpromo-Cardmarket571821") e il numero stampato resta vuoto.
      * @param key String - nome cercato, già normalizzato.
      * @return List<CatalogCard> - carte trovate, senza immagine.
      */
-    private suspend fun extraSetCards(key: String, onDownload: suspend () -> Unit, onRead: suspend () -> Unit): List<CatalogCard> =
-        extraSets.sets.flatMap { extra ->
+    private suspend fun extraSetCards(language: Language, key: String, onDownload: suspend () -> Unit, onRead: suspend () -> Unit): List<CatalogCard> =
+        extraSets.sets.filter { it.language == language }.flatMap { extra ->
             catalog.productsOf(extra.cardmarketId, onDownload, onRead)
                 .filter { key in it.nameKey && (extra.whole || it.idProduct in extra.numbers) }
                 .mapNotNull { extraCard(extra, it) }
@@ -109,12 +109,12 @@ class CardmarketCardSearch(
     private fun extraCard(extra: CardmarketExtraSets.ExtraSet, product: CatalogProduct): CatalogCard? {
         val printed = extra.numbers[product.idProduct].orEmpty()
         val number = printed.substringBefore('/').trim().takeIf { it.isNotEmpty() && EXTRA_NUMBER.matches(it) }
-        val localId = number?.let { if (it.all(Char::isDigit)) it.padStart(3, '0') else it } ?: "$UNNUMBERED_PREFIX${product.idProduct}"
+        val localId = number?.let { if (it.all(Char::isDigit)) it.padStart(if (extra.language.asianSets) 3 else 1, '0') else it } ?: "$UNNUMBERED_PREFIX${product.idProduct}"
         val tcgdexId = "${extra.setId}-$localId"
         if (!Validators.isValidRemoteId(tcgdexId)) return null
         return CatalogCard(
-            id = CatalogMapper.localCardId(Language.JA, tcgdexId),
-            language = Language.JA,
+            id = CatalogMapper.localCardId(extra.language, tcgdexId),
+            language = extra.language,
             tcgdexId = tcgdexId,
             name = product.name.take(MAX_NAME),
             setId = extra.setId,
@@ -155,8 +155,7 @@ class CardmarketCardSearch(
      */
     suspend fun cardFor(language: Language, setId: String, localId: String): CatalogCard? {
         if (!supports(language)) return null
-        extraSets.sets.firstOrNull { it.setId == setId }?.let { extra ->
-            if (language != Language.JA) return null
+        extraSets.sets.firstOrNull { it.setId == setId && it.language == language }?.let { extra ->
             val wanted = CardTraderMatcher.normalizeNumber(localId)
             val products = catalog.productsOf(extra.cardmarketId)
             val product = products.firstOrNull { p ->
@@ -165,13 +164,15 @@ class CardmarketCardSearch(
             } ?: return null
             return extraCard(extra, product)
         }
+        // Un set solo Cardmarket di un'altra lingua non è un set TCGdex.
+        if (extraSets.sets.any { it.setId == setId }) return null
         val number = localId.toIntOrNull()?.takeIf { it > 0 } ?: return null
         val set = sets(language).firstOrNull { it.id == setId } ?: return null
         val products = productsOf(language, set) ?: return null
         val product = products.getOrNull(number - 1) ?: return null
         if (number > totalOf(set)) return null
         val detail = detail(language, set.id)
-        if (!alignedWithNumbers(set, detail, products)) return null
+        if (!alignedWithNumbers(set, products)) return null
         if (CardTraderMatcher.normalizeNumber(number.toString()) in numbersIn(detail)) return null
         return card(language, set, detail, product, number.toString())
     }
@@ -209,11 +210,11 @@ class CardmarketCardSearch(
     /**
      * Dice se la posizione di un prodotto Cardmarket coincide con il numero della carta. Cardmarket ordina per id,
      * cioè per data di inserimento: se il set ha molti più prodotti delle carte (ristampe, promo e carte aggiunte
-     * dopo, come in Hidden Fates) le posizioni slittano e il numero sarebbe sbagliato. Vale solo per i set che
-     * TCGdex elenca senza nessuna carta, dove non c'è altro modo di trovarle.
+     * dopo, come in Hidden Fates o in Matchless Fighters, che ha 96 prodotti per 70 carte) le posizioni slittano e il
+     * numero sarebbe sbagliato, anche se TCGdex elenca il set senza carte: lì si usa il numero di CardTrader.
      */
-    private fun alignedWithNumbers(set: SetBriefDto, detail: SetDto, products: List<CatalogProduct>): Boolean =
-        products.size <= totalOf(set) + MAX_EXTRA_PRODUCTS || detail.cards.isEmpty()
+    private fun alignedWithNumbers(set: SetBriefDto, products: List<CatalogProduct>): Boolean =
+        products.size <= totalOf(set) + MAX_EXTRA_PRODUCTS
 
     private fun numbersIn(detail: SetDto): Set<String> = detail.cards.map { CardTraderMatcher.normalizeNumber(it.localId) }.toSet()
 

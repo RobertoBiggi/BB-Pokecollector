@@ -1,7 +1,9 @@
 package com.robertobiggi.cardcollection.core.cardmarket
 
+import com.robertobiggi.cardcollection.core.model.Language
+
 /**
- * Set giapponesi che CardTrader e Cardmarket hanno e TCGdex no (serie BW, DP e Platino, promo, mazzi). L'elenco è incluso
+ * Set giapponesi e inglesi che CardTrader e Cardmarket hanno e TCGdex no (serie BW, DP e Platino, promo, mazzi, League Promos). L'elenco è incluso
  * nell'app (`cardmarket-extra-sets.tsv`) e lo genera `tools/gen_extra_sets.py` incrociando CardTrader con TCGdex: le carte
  * hanno il numero stampato di CardTrader e il prodotto Cardmarket, quindi si cercano per nome come quelle di TCGdex.
  *
@@ -10,6 +12,7 @@ package com.robertobiggi.cardcollection.core.cardmarket
 class CardmarketExtraSets(val sets: List<ExtraSet>) {
     /**
      * Un set che TCGdex non elenca.
+     * @property language lingua del catalogo in cui compare il set.
      * @property setId id con cui la carta è salvata (es. "Pt4").
      * @property setCode sigla stampata, se diversa dall'id.
      * @property name nome del set.
@@ -18,6 +21,7 @@ class CardmarketExtraSets(val sets: List<ExtraSet>) {
      * @property numbers numero stampato per id prodotto Cardmarket; vuoto se CardTrader non lo ha (promo senza numero).
      */
     class ExtraSet(
+        val language: Language,
         val setId: String,
         val setCode: String?,
         val name: String,
@@ -34,26 +38,34 @@ class CardmarketExtraSets(val sets: List<ExtraSet>) {
             parse(stream.bufferedReader(Charsets.UTF_8).readLines())
         }
 
+        private fun languageOf(code: String?): Language? = when (code) {
+            "ja" -> Language.JA
+            "en" -> Language.EN
+            else -> null
+        }
+
         /**
          * Legge le righe "S TAB lingua TAB id TAB sigla TAB nome TAB idExpansion TAB intero" (set) e
-         * "C TAB lingua TAB id TAB numero TAB idProdotto" (carta). Solo giapponese; le righe malformate sono ignorate.
+         * "C TAB lingua TAB id TAB numero TAB idProdotto" (carta). Solo giapponese e inglese; le righe malformate sono ignorate.
          * @param lines List<String> - righe del file.
          * @return CardmarketExtraSets - set letti.
          */
         fun parse(lines: List<String>): CardmarketExtraSets {
-            val numbers = HashMap<String, MutableMap<Int, String>>()
+            val numbers = HashMap<Pair<Language, String>, MutableMap<Int, String>>()
             for (line in lines) {
                 val p = line.split('\t')
-                if (p.getOrNull(0) != "C" || p.getOrNull(1) != "ja") continue
+                val language = languageOf(p.getOrNull(1))
+                if (p.getOrNull(0) != "C" || language == null) continue
                 val id = p.getOrNull(4)?.trim()?.toIntOrNull() ?: continue
-                numbers.getOrPut(p[2]) { HashMap() }[id] = p[3].trim()
+                numbers.getOrPut(language to p[2]) { HashMap() }[id] = p[3].trim()
             }
             val sets = ArrayList<ExtraSet>()
             for (line in lines) {
                 val p = line.split('\t')
-                if (p.getOrNull(0) != "S" || p.getOrNull(1) != "ja") continue
+                val language = languageOf(p.getOrNull(1))
+                if (p.getOrNull(0) != "S" || language == null) continue
                 val cardmarketId = p.getOrNull(5)?.trim()?.toIntOrNull() ?: continue
-                sets += ExtraSet(p[2], p[3].ifEmpty { null }, p[4], cardmarketId, p.getOrNull(6)?.trim() == "1", numbers[p[2]].orEmpty())
+                sets += ExtraSet(language, p[2], p[3].ifEmpty { null }, p[4], cardmarketId, p.getOrNull(6)?.trim() == "1", numbers[language to p[2]].orEmpty())
             }
             return CardmarketExtraSets(sets)
         }

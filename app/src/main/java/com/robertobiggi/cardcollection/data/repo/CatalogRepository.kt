@@ -99,6 +99,7 @@ class CatalogRepository(
         var errors = 0
         val limiter = RateLimiter(REQUEST_INTERVAL_MS)
         val setCache = HashMap<String, SetDto?>()
+        val tcgdexProducts = HashSet<Int>()
         var saved = 0
         val queries = dao.enabledQueriesOf(collectionId)
         val resolver = cardTraderResolver()
@@ -115,11 +116,13 @@ class CatalogRepository(
                     errors++
                 }
             }
+            // Cercando un Pokémon si scartano Allenatori ed Energie; cercando altro (es. "Mysterious Fossil", che è un Allenatore) no.
+            val pokemonOnly = PokemonNames.dexIdsMatching(query.pattern).isNotEmpty()
             val candidates = briefs.filterNot { CatalogMapper.isDigitalOnly(it) }.filter { Validators.isValidRemoteId(it.id) }.distinctBy { it.id }
             for ((index, brief) in candidates.withIndex()) {
                 progress(SyncProgress(SyncPhase.CARD, brief.name, index, candidates.size))
                 try {
-                    val card = fetchCatalogCard(language, brief.id, limiter, setCache) ?: continue
+                    val card = fetchCatalogCard(language, brief.id, limiter, setCache, requirePokemon = pokemonOnly, cardmarketProducts = tcgdexProducts) ?: continue
                     saveCard(card, legacyQueryId = query.id)
                     dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                     saved++
@@ -130,17 +133,13 @@ class CatalogRepository(
             }
             progress(SyncProgress(SyncPhase.CARDMARKET, query.pattern, qIndex, queries.size))
             val known = LinkedHashSet<String>()
-            for (card in cardmarketCards(language, query.pattern, progress, qIndex, queries.size, resolver, known)) {
-                saveCard(card, legacyQueryId = query.id)
-                dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
-                saved++
-            }
+            val fromCardmarket = cardmarketCards(language, query.pattern, progress, qIndex, queries.size, resolver, known)
             // Carte che TCGdex ha ma la sua ricerca per nome non ha trovato (nome scritto in modo diverso): Cardmarket le indica per posizione.
             for (id in known) {
                 if (candidates.any { it.id == id } || !Validators.isValidRemoteId(id)) continue
                 try {
                     limiter.acquire()
-                    val card = fetchCatalogCard(language, id, limiter, setCache) ?: continue
+                    val card = fetchCatalogCard(language, id, limiter, setCache, requirePokemon = pokemonOnly, cardmarketProducts = tcgdexProducts) ?: continue
                     saveCard(card, legacyQueryId = query.id)
                     dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                     saved++
@@ -148,6 +147,13 @@ class CatalogRepository(
                     if (!isRecoverable(e)) throw e
                     errors++
                 }
+            }
+            // Una carta che TCGdex ha già (stesso prodotto Cardmarket) non si aggiunge una seconda volta dal catalogo Cardmarket.
+            for (card in fromCardmarket) {
+                if (card.cardmarketId != null && card.cardmarketId in tcgdexProducts) continue
+                saveCard(card, legacyQueryId = query.id)
+                dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
+                saved++
             }
         }
         val imagesSaved = downloadMissingImages(progress)
@@ -168,15 +174,26 @@ class CatalogRepository(
         if (code == null && !Validators.isValidQueryPattern(text)) return SearchResult.InvalidQuery
         return try {
             val cards = if (code != null) CardCodeSearch.find(client, language, code) else searchByName(language, text)
+            val known = LinkedHashSet<String>()
             val missing = try {
-                if (code != null) cardmarket.findByCode(language, code) else cardmarketTerms(text).flatMap { cardmarket.find(language, it) }
+                if (code != null) cardmarket.findByCode(language, code) else cardmarketTerms(text).flatMap { cardmarket.find(language, it, known = known) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 emptyList()
             }
+            // Carte che TCGdex ha ma la sua ricerca per nome non trova (nome in giapponese, cercato in inglese): Cardmarket le indica.
+            val indicated = known.filter { id -> cards.none { it.id == id } }.take(MAX_SEARCH_RESULTS).mapNotNull { id ->
+                try {
+                    client.getCard(language, id).let { CardBriefDto(it.id, it.localId, it.name, it.image) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    null
+                }
+            }
             SearchResult.Found(
-                (cards.filterNot { CatalogMapper.isDigitalOnly(it) } + missing.map { CardBriefDto(it.tcgdexId, it.localId, it.name, null) })
+                (cards.filterNot { CatalogMapper.isDigitalOnly(it) } + indicated + missing.map { CardBriefDto(it.tcgdexId, it.localId, it.name, null) })
                     .filter { Validators.isValidRemoteId(it.id) }
                     .distinctBy { it.id }
                     .take(MAX_SEARCH_RESULTS),
@@ -263,6 +280,7 @@ class CatalogRepository(
      * @param limiter RateLimiter - limitatore delle richieste.
      * @param setCache HashMap<String, SetDto?> - cache dei set già scaricati.
      * @param requirePokemon Boolean - true per scartare Allenatori, Energie e carte digitali.
+     * @param cardmarketProducts MutableSet<Int>? - riceve il prodotto Cardmarket della carta, per non aggiungere la stessa carta anche dal catalogo Cardmarket.
      * @return CatalogCard? - carta normalizzata, oppure null se va scartata.
      */
     private suspend fun fetchCatalogCard(
@@ -271,9 +289,11 @@ class CatalogRepository(
         limiter: RateLimiter,
         setCache: HashMap<String, SetDto?>,
         requirePokemon: Boolean = true,
+        cardmarketProducts: MutableSet<Int>? = null,
     ): CatalogCard? {
         limiter.acquire()
         val card = withRetry { client.getCard(language, tcgdexId) }
+        card.pricing?.cardmarket?.idProduct?.let { cardmarketProducts?.add(it) }
         val setId = card.set.id
         val set = if (Validators.isValidRemoteId(setId)) {
             setCache.getOrPut("${language.code}/$setId") {
@@ -313,8 +333,9 @@ class CatalogRepository(
                     serieId = card.serieId,
                     serieName = card.serieName,
                     localId = card.localId,
-                    printedNumber = card.printedNumber,
-                    rarity = card.rarity,
+                    // Rarità e numero che le carte del catalogo Cardmarket prendono da CardTrader: il sync non li cancella.
+                    printedNumber = card.printedNumber.ifEmpty { existing?.printedNumber.orEmpty() },
+                    rarity = card.rarity ?: existing?.rarity,
                     releaseDate = card.releaseDate,
                     illustrator = card.illustrator,
                     imageUrl = card.imageBaseUrl ?: existing?.imageUrl,

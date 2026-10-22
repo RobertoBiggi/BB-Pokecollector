@@ -232,6 +232,7 @@ class PriceRepository(
             dexId = card.dexId,
             ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
             cardTraderCondition = CtCondition.fromCondition(condition),
+            cardmarketId = card.cardmarketId,
         )
         // Il listino Cardmarket (aggiornato ogni notte) è la fonte principale dei prezzi in euro; TCGdex serve
         // per i dollari di TCGplayer e come ripiego per le carte che il listino non abbina.
@@ -253,48 +254,101 @@ class PriceRepository(
 
     /**
      * Scarica da CardTrader l'immagine delle carte inglesi e giapponesi che TCGdex non ha (es. i set giapponesi senza
-     * carte). Serve il token CardTrader; senza, o con la rete assente, non fa nulla. Una carta che non si abbina
-     * con certezza resta senza immagine.
+     * carte) e completa rarità e numero stampato delle carte del catalogo Cardmarket. Serve il token CardTrader; senza,
+     * o con la rete assente, non fa nulla. Una carta che non si abbina con certezza resta com'è.
      * @return Int - numero di carte a cui è stata aggiunta l'immagine.
      */
     suspend fun fillImagesFromCardTrader(): Int {
         val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return 0
         val missing = db.catalogDao().cardsWithoutImage()
-        if (missing.isEmpty()) return 0
         val provider = CardTraderPriceProvider(CardTraderClient(http, token))
         val limiter = RateLimiter(REQUEST_INTERVAL_MS)
         var saved = 0
         for (stored in missing) {
             try {
-                val card = withDexId(stored)
-                val language = Language.fromCode(card.language) ?: continue
                 limiter.acquire()
-                val url = provider.imageUrl(
-                    PriceRequest(
-                        language = language,
-                        tcgdexId = card.tcgdexId,
-                        variant = VariantType.NORMAL,
-                        cardHasNormalAndHolo = false,
-                        setId = card.setId,
-                        setName = card.setName,
-                        setCode = card.setCode,
-                        localId = card.localId,
-                        name = card.name,
-                        dexId = card.dexId,
-                        ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
-                        cardmarketId = card.cardmarketId,
-                    ),
-                ) ?: continue
-                val (low, high) = images.saveFromCardTrader(card.id, url) ?: continue
-                db.catalogDao().setImagePaths(card.id, low, high)
-                saved++
+                if (saveCardTraderImage(provider, stored)) saved++
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 // Rete assente o risposta non valida: le altre carte possono andare a buon fine, e il prossimo aggiornamento riprova.
             }
         }
+        fillDetailsFromCardTrader(provider, limiter)
         return saved
+    }
+
+    /**
+     * Scarica da CardTrader l'immagine di una singola carta, anche se ne ha già una (quella scelta a mano viene sostituita).
+     * Serve il token CardTrader.
+     * @param cardId String - id locale della carta.
+     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE se manca il token o la carta non si abbina con certezza, NETWORK_ERROR.
+     */
+    suspend fun downloadImageFromCardTrader(cardId: String): ImageResult {
+        val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return ImageResult.NOT_AVAILABLE
+        val stored = db.catalogDao().getCard(cardId) ?: return ImageResult.NOT_AVAILABLE
+        if (Language.fromCode(stored.language) == null) return ImageResult.NOT_AVAILABLE
+        return try {
+            if (saveCardTraderImage(CardTraderPriceProvider(CardTraderClient(http, token)), stored)) ImageResult.DOWNLOADED else ImageResult.NOT_AVAILABLE
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            ImageResult.NETWORK_ERROR
+        }
+    }
+
+    private fun requestOf(card: CardEntity, language: Language) = PriceRequest(
+        language = language,
+        tcgdexId = card.tcgdexId,
+        variant = VariantType.NORMAL,
+        cardHasNormalAndHolo = false,
+        setId = card.setId,
+        setName = card.setName,
+        setCode = card.setCode,
+        localId = card.localId,
+        name = card.name,
+        dexId = card.dexId,
+        ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
+        cardmarketId = card.cardmarketId,
+    )
+
+    /**
+     * Completa rarità e numero stampato delle carte del catalogo Cardmarket con quelli di CardTrader. Non tocca i dati già presenti.
+     * @return Int - numero di carte aggiornate.
+     */
+    private suspend fun fillDetailsFromCardTrader(provider: CardTraderPriceProvider, limiter: RateLimiter): Int {
+        var saved = 0
+        for (stored in db.catalogDao().cardsMissingDetails()) {
+            try {
+                val card = withDexId(stored)
+                val language = Language.fromCode(card.language) ?: continue
+                limiter.acquire()
+                val found = provider.details(requestOf(card, language)) ?: continue
+                val rarity = card.rarity ?: found.rarity
+                val number = card.printedNumber.ifEmpty { found.printedNumber.orEmpty() }
+                if (rarity == card.rarity && number == card.printedNumber) continue
+                db.catalogDao().upsertCard(card.copy(rarity = rarity, printedNumber = number))
+                saved++
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Come per le immagini: le altre carte possono andare a buon fine, e il prossimo aggiornamento riprova.
+            }
+        }
+        return saved
+    }
+
+    /** Cerca la carta su CardTrader e ne salva l'immagine. @return Boolean - true se è stata salvata. */
+    private suspend fun saveCardTraderImage(provider: CardTraderPriceProvider, stored: CardEntity): Boolean {
+        val card = withDexId(stored)
+        val language = Language.fromCode(card.language) ?: return false
+        val url = provider.imageUrl(requestOf(card, language)) ?: return false
+        val (low, high) = images.saveFromCardTrader(card.id, url) ?: return false
+        val current = db.catalogDao().getCard(card.id)
+        if (images.isManual(current?.imageHighPath)) images.deleteManual(current?.imageHighPath)
+        if (images.isManual(current?.imageLowPath) && current?.imageLowPath != current?.imageHighPath) images.deleteManual(current?.imageLowPath)
+        db.catalogDao().setImagePaths(card.id, low, high)
+        return true
     }
 
     /**

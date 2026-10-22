@@ -50,7 +50,9 @@ class CardTraderPriceProvider(
             val blueprint = ballVariants.blueprintId(request.setId, request.localId, request.variant) ?: return null
             productsOf(blueprint, languageCode)
         } else {
-            (match(request) ?: return null).flatMap { productsOf(it.id, languageCode) }
+            // Una carta del catalogo Cardmarket si trova da quell'id: il suo numero può mancare o essere dedotto dalla posizione.
+            val matching = if (request.cardmarketId != null) listOfNotNull(matchByCardmarketId(request)) else match(request) ?: return null
+            matching.flatMap { productsOf(it.id, languageCode) }
         }
         val pick = CardTraderPicker.lowest(
             listings, request.variant, pickerLanguage(request.language), request.cardTraderCondition ?: worstCondition,
@@ -87,11 +89,28 @@ class CardTraderPriceProvider(
      * @return String? - URL completo, oppure null se la carta non si abbina, i blueprint sono più d'uno (non si sa quale sia) o non hanno immagine.
      */
     suspend fun imageUrl(request: PriceRequest): String? = mutex.withLock {
-        // Per una carta Cardmarket il numero è dedotto dalla posizione: conta solo l'id, altrimenti si rischia la carta sbagliata.
-        val blueprint = if (request.cardmarketId != null) matchByCardmarketId(request) else match(request)?.singleOrNull()
-        val image = blueprint?.image ?: return null
+        blueprintFor(request)?.let { imageOf(it) }
+    }
+
+    /**
+     * Rarità e numero stampato della carta, come li indica CardTrader. Serve alle carte del catalogo Cardmarket, che non li hanno.
+     * @param request PriceRequest - carta da cercare.
+     * @return CardTraderDetails? - dati trovati, oppure null se la carta non si abbina con certezza.
+     */
+    suspend fun details(request: PriceRequest): CardTraderDetails? = mutex.withLock {
+        val blueprint = blueprintFor(request) ?: return null
+        val rarity = (blueprint.fixedProperties?.get("pokemon_rarity") as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content?.trim()?.takeIf { it.isNotEmpty() }
+        CardTraderDetails(rarity, CardTraderMatcher.printedNumber(blueprint), imageOf(blueprint))
+    }
+
+    /** Per una carta Cardmarket il numero è dedotto dalla posizione: conta solo l'id, altrimenti si rischia la carta sbagliata. */
+    private suspend fun blueprintFor(request: PriceRequest): CtBlueprintDto? =
+        if (request.cardmarketId != null) matchByCardmarketId(request) else match(request)?.singleOrNull()
+
+    private fun imageOf(blueprint: CtBlueprintDto): String? {
+        val image = blueprint.image ?: return null
         val path = (image.show?.url ?: image.url)?.takeIf { it.isNotBlank() } ?: return null
-        if (path.startsWith("/")) "$SITE$path" else path
+        return if (path.startsWith("/")) "$SITE$path" else path
     }
 
     /**
@@ -104,7 +123,9 @@ class CardTraderPriceProvider(
             expansions(), request.setName, request.setId, request.setCode,
             preferCode = request.language == Language.JA,
         ) ?: return null
-        return blueprintsOf(expansion.id).firstOrNull { id in it.cardMarketIds.orEmpty() }
+        val all = blueprintsOf(expansion.id)
+        // Le promo di CardTrader spesso non hanno l'id Cardmarket: allora vale il nome, se indica una sola carta.
+        return all.firstOrNull { id in it.cardMarketIds.orEmpty() } ?: CardTraderMatcher.blueprintByName(all, request.name)
     }
 
     /** Blueprint della carta, o null se l'espansione o la carta non si trovano. Va chiamata con [mutex] preso. */
@@ -160,3 +181,11 @@ class CardTraderPriceProvider(
         private const val SITE = "https://www.cardtrader.com"
     }
 }
+
+/**
+ * Dati di una carta letti da CardTrader.
+ * @property rarity rarità ("Ultra Rare", "Promo"), se indicata.
+ * @property printedNumber numero con il totale del set ("014/135"), se indicato.
+ * @property imageUrl indirizzo dell'immagine, se c'è.
+ */
+data class CardTraderDetails(val rarity: String?, val printedNumber: String?, val imageUrl: String?)

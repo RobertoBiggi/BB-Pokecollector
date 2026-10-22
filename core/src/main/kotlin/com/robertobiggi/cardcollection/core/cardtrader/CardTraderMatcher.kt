@@ -51,6 +51,9 @@ object CardTraderMatcher {
         }
         val exact = if (preferCode) byCode() ?: byName().takeIf { wanted.isNotEmpty() } else byName().takeIf { wanted.isNotEmpty() } ?: byCode()
         if (exact != null) return exact
+        // Trainer Gallery e Galarian Gallery sono set a parte su TCGdex, ma su CardTrader le carte (TG01, GG01…) stanno nel set principale.
+        val base = GALLERY_SUFFIXES.firstNotNullOfOrNull { wanted.removeSuffix(it).takeIf { b -> b != wanted && b.isNotEmpty() } }
+        if (base != null) expansions.firstOrNull { normalizeName(it.name) == base }?.let { return it }
         // Nomi con prefissi diversi ("SV02: Paldea Evolved"): vale solo se uno contiene l'altro per intero.
         if (wanted.length >= MIN_CONTAINED_LENGTH) {
             val contained = expansions.filter {
@@ -77,6 +80,20 @@ object CardTraderMatcher {
         val names = PokemonNames.namesOf(dexId).map { pokemonKey(it) }.toSet()
         // Molti blueprint di queste espansioni non hanno nemmeno "No.": allora vale il nome della carta.
         return blueprints.filter { isPokemonOf(it, dexId, names) }
+    }
+
+    /**
+     * Blueprint senza id Cardmarket (promo, mazzi) che porta il nome della carta. Serve alle carte che arrivano da Cardmarket
+     * e non hanno un numero con cui cercarle: vale solo se il nome indica un solo blueprint, altrimenti non si indovina.
+     * @param blueprints List<CtBlueprintDto> - carte dell'espansione.
+     * @param name String - nome della carta (anche con le mosse tra parentesi quadre, come nel catalogo Cardmarket).
+     * @return CtBlueprintDto? - il blueprint, oppure null se il nome non c'è o è ambiguo.
+     */
+    fun blueprintByName(blueprints: List<CtBlueprintDto>, name: String): CtBlueprintDto? {
+        val wanted = pokemonKey(name.substringBefore('[').replace(LEVEL_SUFFIX, ""))
+        if (wanted.isEmpty()) return null
+        return blueprints.filter { it.cardMarketIds.isNullOrEmpty() && pokemonKey(it.name.replace(PRINTED_SUFFIX, "").replace(LEVEL_SUFFIX, "")) == wanted }
+            .singleOrNull()
     }
 
     /**
@@ -109,10 +126,26 @@ object CardTraderMatcher {
     private fun pokemonKey(name: String): String =
         name.lowercase().replace('♀', 'f').replace('♂', 'm').filter { it.isLetterOrDigit() }
 
+    /**
+     * Numero stampato con il totale del set ("014/135"), come lo scrive la carta.
+     * @param bp CtBlueprintDto - blueprint.
+     * @return String? - numero con totale, oppure null se CardTrader non lo indica (es. promo senza numero).
+     */
+    fun printedNumber(bp: CtBlueprintDto): String? =
+        (bp.fixedProperties?.get("collector_number") as? JsonPrimitive)?.content?.trim()?.takeIf { WITH_TOTAL.matches(it) }
+            ?: bp.version?.let { VERSION_NUMBER.find(it)?.value }
+
+    /**
+     * Numero stampato del blueprint. Il numero scritto nella versione ("Ultra Rare | 035/054") vale più del campo
+     * `collector_number`, che su CardTrader a volte è sbagliato (es. sm10b: 032 invece di 035, come un'altra carta).
+     */
     private fun collectorNumber(bp: CtBlueprintDto): String? =
-        (bp.fixedProperties?.get("collector_number") as? JsonPrimitive)?.content
+        bp.version?.let { PRINTED_NUMBER.find(it)?.groupValues?.get(1) }
+            ?: (bp.fixedProperties?.get("collector_number") as? JsonPrimitive)?.content
 
     private const val MIN_CONTAINED_LENGTH = 6
+
+    private val GALLERY_SUFFIXES = listOf("trainergallery", "galariangallery")
 
     /**
      * Set giapponesi di TCGdex (id in minuscolo) che su CardTrader hanno un codice diverso.
@@ -135,6 +168,15 @@ object CardTraderMatcher {
     )
 
     private val LEVEL_SUFFIX = Regex("""\s+Lv\.\s*\d+.*""")
+
+    /** Numero e dettagli che CardTrader aggiunge al nome delle promo ("Moltres ex 014/135 Holo Promo"). */
+    private val PRINTED_SUFFIX = Regex("""\s+\d+/\d+.*""")
+
+    private val WITH_TOTAL = Regex("""\w*\d\w*/\w*\d\w*""")
+
+    private val VERSION_NUMBER = Regex("""\w*\d\w*/\w*\d\w*\s*$""")
+
+    private val PRINTED_NUMBER = Regex("""(\w*\d\w*)/\w*\d\w*\s*$""")
 
     private val DEX_VERSION = Regex("""No\.(\d+)""")
 }

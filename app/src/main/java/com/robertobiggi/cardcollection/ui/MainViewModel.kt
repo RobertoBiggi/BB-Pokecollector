@@ -25,6 +25,7 @@ import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.CollectionSummary
 import com.robertobiggi.cardcollection.data.repo.CreateResult
 import com.robertobiggi.cardcollection.data.repo.ExportResult
+import com.robertobiggi.cardcollection.data.repo.ImageResult
 import com.robertobiggi.cardcollection.data.repo.ImportOutcome
 import com.robertobiggi.cardcollection.data.repo.InputError
 import com.robertobiggi.cardcollection.data.repo.SearchResult
@@ -368,12 +369,18 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Scarica da TCGdex l'immagine ufficiale di una carta.
+     * Scarica da TCGdex l'immagine ufficiale di una carta; se TCGdex non la ha (o non risponde) e c'è il token CardTrader, la prende da lì.
      * @param cardId String - carta.
      * @return Unit
      */
     fun downloadCardImage(cardId: String) = runCardAction(CardAction.DOWNLOAD_IMAGE) {
-        say(container.catalog.downloadImage(cardId).messageRes())
+        var result = container.catalog.downloadImage(cardId)
+        if (result == ImageResult.NOT_AVAILABLE || result == ImageResult.NETWORK_ERROR) {
+            val fromCardTrader = container.prices.downloadImageFromCardTrader(cardId)
+            // Senza token o senza abbinamento resta l'esito di TCGdex, che spiega meglio perché manca.
+            if (fromCardTrader == ImageResult.DOWNLOADED) result = fromCardTrader
+        }
+        say(result.messageRes())
     }
 
     /**
