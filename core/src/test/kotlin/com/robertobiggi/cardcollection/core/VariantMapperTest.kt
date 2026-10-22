@@ -47,10 +47,11 @@ class VariantMapperTest {
     }
 
     @Test
-    fun `holo con anche normal ha affidabilita media`() {
+    fun `holo con anche normal usa i prezzi holo di Cardmarket`() {
         val c = card("ja_card_SM10a-030.json")
         val q = VariantMapper.quote(VariantType.HOLO, c.pricing, cardHasNormalAndHolo = true, source = "TCGdex")!!
-        assertEquals(Confidence.MEDIUM, q.confidence)
+        assertEquals(Confidence.HIGH, q.confidence)
+        assertEquals(c.pricing!!.cardmarket!!.trendHolo, q.eur)
         assertNull(VariantMapper.quote(VariantType.HOLO, null, false, "TCGdex"))
     }
 }
