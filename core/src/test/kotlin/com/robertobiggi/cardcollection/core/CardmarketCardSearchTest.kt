@@ -4,6 +4,7 @@ import com.robertobiggi.cardcollection.core.cardmarket.CardNumberResolver
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCardSearch
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalog
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketExpansions
+import com.robertobiggi.cardcollection.core.cardmarket.CardmarketExtraSets
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.PokemonNames
 import com.robertobiggi.cardcollection.core.model.VariantType
@@ -40,7 +41,14 @@ class CardmarketCardSearchTest {
             {"id":"SM1","name":"サン&ムーン","cardCount":{"total":3,"official":3}},
             {"id":"SMX","name":"別のセット","cardCount":{"total":9,"official":9}},
             {"id":"ZZZ","name":"知らないセット","cardCount":{"total":3,"official":3}},
-            {"id":"HF","name":"隠れた運命","cardCount":{"total":2,"official":2}}]""",
+            {"id":"HF","name":"隠れた運命","cardCount":{"total":2,"official":2}},
+            {"id":"SK","name":"スカイリッジ","cardCount":{"total":3,"official":3}},
+            {"id":"S5A","name":"双璧のファイター","cardCount":{"total":3,"official":3}}]""",
+        "/v2/ja/sets/S5A" to """{"id":"S5A","name":"双璧のファイター","cardCount":{"total":3,"official":3},"cards":[]}""",
+        "/v2/en/sets" to "[]",
+        "/v2/ja/sets/SK" to """{"id":"SK","name":"スカイリッジ","cardCount":{"total":3,"official":3},
+            "cards":[{"id":"SK-001","localId":"001","name":"ピカチュウ"},{"id":"SK-002","localId":"002","name":"Farfetch'd"},
+            {"id":"SK-003","localId":"003","name":"ダークオマスター"}]}""",
         "/v2/ja/sets/HF" to """{"id":"HF","name":"隠れた運命","cardCount":{"total":2,"official":2},
             "cards":[{"id":"HF-001","localId":"001","name":"ピカチュウ"}]}""",
         "/v2/ja/sets/XY10" to """{"id":"XY10","name":"めざめる超王","releaseDate":"2016-03-18","serie":{"id":"XYb","name":"XY BREAK"},
@@ -55,6 +63,22 @@ class CardmarketCardSearchTest {
             {"idProduct":21,"name":"Omastar [Pull Down]","idCategory":51,"idExpansion":200},
             {"idProduct":22,"name":"Pikachu [Thunder Shock]","idCategory":51,"idExpansion":200},
             {"idProduct":30,"name":"Omastar [Solo]","idCategory":51,"idExpansion":300},
+            {"idProduct":50,"name":"Pikachu [Thunder Shock]","idCategory":51,"idExpansion":500},
+            {"idProduct":51,"name":"Omastar [Pull Down]","idCategory":51,"idExpansion":500},
+            {"idProduct":52,"name":"Dark Omastar [Tentacle]","idCategory":51,"idExpansion":500},
+            {"idProduct":60,"name":"Omastar Lv.55 [Time Spiral | Primal Tentacles]","idCategory":51,"idExpansion":600},
+            {"idProduct":61,"name":"Omastar [Tentacle Grip]","idCategory":51,"idExpansion":600},
+            {"idProduct":62,"name":"Pikachu [Thunder Shock]","idCategory":51,"idExpansion":600},
+            {"idProduct":70,"name":"Karen's Conviction","idCategory":51,"idExpansion":700},
+            {"idProduct":71,"name":"Galarian Moltres V [Direflame Wings]","idCategory":51,"idExpansion":700},
+            {"idProduct":72,"name":"Brawly","idCategory":51,"idExpansion":700},
+            {"idProduct":73,"name":"Heracross [Horn Attack]","idCategory":51,"idExpansion":700},
+            {"idProduct":74,"name":"Petilil [Seed Bomb]","idCategory":51,"idExpansion":700},
+            {"idProduct":75,"name":"Lilligant [Dizzying Flower]","idCategory":51,"idExpansion":700},
+            {"idProduct":76,"name":"Larvesta [Flame Charge]","idCategory":51,"idExpansion":700},
+            {"idProduct":77,"name":"Volcarona [Fire Spin]","idCategory":51,"idExpansion":700},
+            {"idProduct":78,"name":"Rare Candy","idCategory":51,"idExpansion":700},
+            {"idProduct":80,"name":"Articuno, Moltres, and Zapdos [Big Bang]","idCategory":51,"idExpansion":800},
             {"idProduct":40,"name":"Pikachu","idCategory":51,"idExpansion":400},
             {"idProduct":41,"name":"Raichu","idCategory":51,"idExpansion":400},
             {"idProduct":42,"name":"Mew","idCategory":51,"idExpansion":400},
@@ -67,7 +91,7 @@ class CardmarketCardSearchTest {
     )
 
     private val expansions = CardmarketExpansions.parse(
-        listOf("1\txy10\tAwakening Psychic King\t100", "2\tsm1\tSun & Moon\t200", "3\tsmx\tAltro\t300", "4\thf\t隠れた運命\t400"),
+        listOf("1\txy10\tAwakening Psychic King\t100", "2\tsm1\tSun & Moon\t200", "3\tsmx\tAltro\t300", "4\thf\t隠れた運命\t400", "5\tsk\tスカイリッジ\t500", "6\ts5a\t双璧のファイター\t700"),
     )
 
     @BeforeEach
@@ -84,10 +108,19 @@ class CardmarketCardSearchTest {
     @AfterEach
     fun tearDown() = server.shutdown()
 
-    private fun search() = CardmarketCardSearch(
+    /** Set giapponesi solo Cardmarket: Advent of Arceus (Omastar Lv.55 è la 023, l'altro Omastar non ha numero). */
+    private val extraSets = CardmarketExtraSets.parse(
+        listOf(
+            "S\tja\tPt4\tPt4\tAdvent of Arceus\t600\t1", "C\tja\tPt4\t023\t60",
+            "S\ten\tpr\t\tMiscellaneous Promos\t800\t0", "C\ten\tpr\t\t80",
+        ),
+    )
+
+    private fun search(extra: CardmarketExtraSets = CardmarketExtraSets(emptyList())) = CardmarketCardSearch(
         CardmarketCatalog(OkHttpClient(), File(dir, "c.json"), server.url("/v2/catalog").toString()),
         TcgdexClient(OkHttpClient(), server.url("/v2/").toString()),
         expansions,
+        extra,
     )
 
     @Test
@@ -156,5 +189,64 @@ class CardmarketCardSearchTest {
         assertEquals(139, PokemonNames.dexIdOfName("Brock's Omastar"))
         assertNull(PokemonNames.dexIdOfName("Mysterious Fossil"))
         assertNull(PokemonNames.dexIdOfName("Omanyte & Omastar"))
+    }
+
+    @Test
+    fun `i set solo Cardmarket si cercano per nome, col numero stampato o col prodotto Cardmarket`() = runTest {
+        val found = search(extraSets).find(Language.JA, "Omastar").filter { it.setId == "Pt4" }
+        assertEquals(listOf("Pt4-023", "Pt4-Cardmarket61"), found.map { it.tcgdexId })
+        val numbered = found.first()
+        assertEquals("ja:Pt4-023", numbered.id)
+        assertEquals("023", numbered.printedNumber)
+        assertEquals("Pt4", numbered.setCode)
+        assertEquals("Advent of Arceus", numbered.setName)
+        assertEquals(60, numbered.cardmarketId)
+        assertEquals(139, numbered.dexId)
+        // Senza numero la carta si riconosce dal prodotto e non ha un numero stampato inventato.
+        assertEquals("", found.last().printedNumber)
+        assertEquals(61, found.last().cardmarketId)
+        // Solo il catalogo giapponese li usa.
+        assertEquals(emptyList<String>(), search(extraSets).find(Language.FR, "Omastar").map { it.id })
+    }
+
+    @Test
+    fun `le carte dei set solo Cardmarket si ricostruiscono dall'id`() = runTest {
+        val s = search(extraSets)
+        assertEquals(60, s.cardFor(Language.JA, "Pt4", "023")?.cardmarketId)
+        assertEquals(61, s.cardFor(Language.JA, "Pt4", "Cardmarket61")?.cardmarketId)
+        assertNull(s.cardFor(Language.JA, "Pt4", "099"))
+        assertNull(s.cardFor(Language.EN, "Pt4", "023"))
+    }
+
+    @Test
+    fun `Cardmarket indica le carte TCGdex con nome diverso, ma non quelle di un altro Pokemon`() = runTest {
+        val known = mutableListOf<String>()
+        search().find(Language.JA, "Omastar", known = known)
+        // SK posizione 3: ダークオマスター non nomina nessun Pokémon noto, quindi vale (Dark Omastar).
+        // SK posizione 2: "Farfetch'd" è un altro Pokémon, quindi no. SM1-002 è l'Omastar giapponese vero.
+        assertEquals(true, "SK-003" in known)
+        assertEquals(false, "SK-002" in known)
+        assertEquals(true, "SM1-002" in known)
+    }
+
+    @Test
+    fun `un set elencato senza carte ma con molti prodotti in piu non si indovina dalla posizione`() = runTest {
+        // Matchless Fighters: 3 carte ufficiali e 9 prodotti, Moltres V alla posizione 2. Il numero vero è un altro (045/070).
+        assertEquals(emptyList<String>(), search().find(Language.JA, "Moltres").map { it.id })
+        // Con il numero vero di CardTrader, invece, la carta c'è.
+        val resolver = CardNumberResolver { _, _, _, product -> if (product.idProduct == 71) "045" else null }
+        assertEquals(listOf("S5A-045"), search().find(Language.JA, "Moltres", resolver = resolver).map { it.tcgdexId })
+    }
+
+    @Test
+    fun `le promo inglesi che TCGdex non ha si trovano nel catalogo Cardmarket`() = runTest {
+        val found = search(extraSets).find(Language.EN, "Moltres")
+        assertEquals(listOf("pr-Cardmarket80"), found.map { it.tcgdexId })
+        assertEquals("en:pr-Cardmarket80", found.single().id)
+        assertEquals(Language.EN, found.single().language)
+        assertEquals("", found.single().printedNumber)
+        assertEquals(80, found.single().cardmarketId)
+        // Il set inglese non compare nel catalogo giapponese.
+        assertEquals(emptyList<String>(), search(extraSets).find(Language.JA, "Moltres").filter { it.setId == "pr" }.map { it.id })
     }
 }

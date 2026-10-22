@@ -12,7 +12,7 @@ class CardmarketExtraSetsTest {
             listOf(
                 "S\tja\tPt4\tPt4\tAdvent of Arceus\t4280\t1",
                 "S\tja\tunpromo\t\tUnnumbered Promos\t4170\t0",
-                "S\ten\tpl4\t\tArceus\t1\t1",
+                "S\tfr\tpl4\t\tArceus\t1\t1",
                 "C\tja\tPt4\t023\t676156",
                 "C\tja\tunpromo\t\t571821",
                 "malformed",

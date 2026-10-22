@@ -38,8 +38,9 @@ class CardmarketGuidePriceProvider(
      * @return PriceQuote? - prezzo trovato, oppure null se la carta non è abbinata o non è nel listino.
      */
     override suspend fun fetch(request: PriceRequest): PriceQuote? {
+        // Una carta del catalogo Cardmarket porta già il suo prodotto: il numero della carta non serve (e spesso non c'è).
         // Poké Ball e Master Ball sono prodotti Cardmarket a parte, ma sono reverse holo: il listino ha il loro prezzo nei campi "-holo".
-        val productId = if (request.variant.isBall) ballVariants.productId(request.setId, request.localId, request.variant) else ids.cardmarketProductId(request)
+        val productId = if (request.variant.isBall) ballVariants.productId(request.setId, request.localId, request.variant) else request.cardmarketId ?: ids.cardmarketProductId(request)
         val cardmarket = guide.lookup(productId ?: return null) ?: return null
         val variant = if (request.variant.isBall) VariantType.REVERSE else request.variant
         return VariantMapper.quote(variant, PricingDto(cardmarket = cardmarket), request.cardHasNormalAndHolo, DISPLAY_NAME)
