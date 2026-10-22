@@ -74,8 +74,13 @@ enum class VariantType(val tcgdexKey: String) {
     NORMAL("normal"),
     HOLO("holo"),
     REVERSE("reverse"),
+    POKE_BALL("pokeBall"),
+    MASTER_BALL("masterBall"),
     FIRST_EDITION("firstEdition"),
     W_PROMO("wPromo");
+
+    /** Reverse holo Poké Ball o Master Ball: prodotti Cardmarket a parte, che TCGdex non elenca. */
+    val isBall: Boolean get() = this == POKE_BALL || this == MASTER_BALL
 
     companion object {
         /**

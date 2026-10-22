@@ -129,10 +129,25 @@ class CatalogRepository(
                 }
             }
             progress(SyncProgress(SyncPhase.CARDMARKET, query.pattern, qIndex, queries.size))
-            for (card in cardmarketCards(language, query.pattern, progress, qIndex, queries.size, resolver)) {
+            val known = LinkedHashSet<String>()
+            for (card in cardmarketCards(language, query.pattern, progress, qIndex, queries.size, resolver, known)) {
                 saveCard(card, legacyQueryId = query.id)
                 dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                 saved++
+            }
+            // Carte che TCGdex ha ma la sua ricerca per nome non ha trovato (nome scritto in modo diverso): Cardmarket le indica per posizione.
+            for (id in known) {
+                if (candidates.any { it.id == id } || !Validators.isValidRemoteId(id)) continue
+                try {
+                    limiter.acquire()
+                    val card = fetchCatalogCard(language, id, limiter, setCache) ?: continue
+                    saveCard(card, legacyQueryId = query.id)
+                    dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
+                    saved++
+                } catch (e: Exception) {
+                    if (!isRecoverable(e)) throw e
+                    errors++
+                }
             }
         }
         val imagesSaved = downloadMissingImages(progress)
@@ -312,6 +327,7 @@ class CatalogRepository(
                     cardmarketId = card.cardmarketId ?: existing?.cardmarketId,
                 ),
             )
+            dao.deleteStaleVariants(card.id, card.variants.map { it.type.name })
             dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name) })
         }
     }
@@ -363,9 +379,10 @@ class CatalogRepository(
      * @param progress suspend (SyncProgress) -> Unit - avanzamento, per mostrare lo scaricamento e la lettura del catalogo.
      * @param index Int - posizione della ricerca.
      * @param total Int - numero di ricerche.
+     * @param known MutableCollection<String> - riceve gli id TCGdex delle carte già note a TCGdex.
      * @return List<CatalogCard> - carte trovate, vuoto in caso di errore.
      */
-    private suspend fun cardmarketCards(language: Language, pattern: String, progress: suspend (SyncProgress) -> Unit, index: Int, total: Int, resolver: CardNumberResolver?): List<CatalogCard> =
+    private suspend fun cardmarketCards(language: Language, pattern: String, progress: suspend (SyncProgress) -> Unit, index: Int, total: Int, resolver: CardNumberResolver?, known: MutableCollection<String>): List<CatalogCard> =
         try {
             cardmarketTerms(pattern).flatMap { term ->
                 cardmarket.find(
@@ -373,6 +390,7 @@ class CatalogRepository(
                     onDownload = { progress(SyncProgress(SyncPhase.CARDMARKET_DOWNLOAD, CARDMARKET_LABEL, index, total)) },
                     onRead = { progress(SyncProgress(SyncPhase.CARDMARKET_READ, CARDMARKET_LABEL, index, total)) },
                     resolver = resolver,
+                    known = known,
                 )
             }.distinctBy { it.id }
         } catch (e: CancellationException) {
