@@ -5,7 +5,6 @@ package com.robertobiggi.cardcollection.ui.manage
 import com.robertobiggi.cardcollection.ui.common.messageRes
 import com.robertobiggi.cardcollection.ui.common.labelRes
 import com.robertobiggi.cardcollection.ui.common.catalogResultText
-import com.robertobiggi.cardcollection.ui.common.CollectionLanguagePicker
 import com.robertobiggi.cardcollection.ui.common.LanguagePicker
 import com.robertobiggi.cardcollection.data.repo.InputError
 import com.robertobiggi.cardcollection.R
@@ -47,7 +46,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.robertobiggi.cardcollection.core.backup.ImageExport
-import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.ui.MainViewModel
 import com.robertobiggi.cardcollection.ui.common.ExportDialog
@@ -65,9 +63,6 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 fun ManageScreen(vm: MainViewModel) {
     val selected by vm.selected.collectAsStateWithLifecycle()
     val name by vm.collectionName.collectAsStateWithLifecycle()
-    val collectionLanguage by vm.collectionLanguage.collectAsStateWithLifecycle()
-    // Lingua fissa della collezione: se c'è, ricerche e aggiunte la usano senza chiederla.
-    val fixedLanguage = CollectionLanguage.fixedLanguage(collectionLanguage)
     val queries by vm.queries.collectAsStateWithLifecycle()
     val hidden by vm.hiddenCards.collectAsStateWithLifecycle()
     val catalogJob by vm.catalogJob.collectAsStateWithLifecycle()
@@ -91,7 +86,6 @@ fun ManageScreen(vm: MainViewModel) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Section(stringResource(R.string.manage_searches)) {
-                    if (collectionLanguage != null) CollectionLanguagePicker(fixedLanguage) { vm.setCollectionLanguage(it) }
                     if (queries.isEmpty()) Text(stringResource(R.string.manage_no_searches), style = MaterialTheme.typography.bodySmall)
                     queries.forEach { q ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -104,7 +98,7 @@ fun ManageScreen(vm: MainViewModel) {
                             IconButton(onClick = { vm.deleteQuery(q.id) }) { Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete_search)) }
                         }
                     }
-                    if (fixedLanguage == null) LanguagePicker(queryLanguage) { queryLanguage = it }
+                    LanguagePicker(queryLanguage) { queryLanguage = it }
                     OutlinedTextField(
                         value = pattern,
                         onValueChange = { pattern = it.take(40); queryError = null },
@@ -115,7 +109,7 @@ fun ManageScreen(vm: MainViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Button(onClick = {
-                        vm.addQuery(fixedLanguage ?: queryLanguage, pattern) { err ->
+                        vm.addQuery(queryLanguage, pattern) { err ->
                             queryError = err
                             if (err == null) pattern = ""
                         }
@@ -133,7 +127,7 @@ fun ManageScreen(vm: MainViewModel) {
             }
             item {
                 Section(stringResource(R.string.add_single_title)) {
-                    if (fixedLanguage == null) LanguagePicker(searchLanguage) { searchLanguage = it }
+                    LanguagePicker(searchLanguage) { searchLanguage = it }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = searchText,
@@ -142,7 +136,7 @@ fun ManageScreen(vm: MainViewModel) {
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                         )
-                        Button(onClick = { vm.searchCards(fixedLanguage ?: searchLanguage, searchText) }, enabled = !search.loading) { Text(stringResource(R.string.action_search)) }
+                        Button(onClick = { vm.searchCards(searchLanguage, searchText) }, enabled = !search.loading) { Text(stringResource(R.string.action_search)) }
                     }
                     if (search.loading) CircularProgressIndicator()
                     search.messageRes?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall) }

@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.core
 
+import com.robertobiggi.cardcollection.core.cardmarket.CardNumberResolver
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCardSearch
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalog
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketExpansions
@@ -38,7 +39,10 @@ class CardmarketCardSearchTest {
             {"id":"XY10","name":"めざめる超王","cardCount":{"total":3,"official":3}},
             {"id":"SM1","name":"サン&ムーン","cardCount":{"total":3,"official":3}},
             {"id":"SMX","name":"別のセット","cardCount":{"total":9,"official":9}},
-            {"id":"ZZZ","name":"知らないセット","cardCount":{"total":3,"official":3}}]""",
+            {"id":"ZZZ","name":"知らないセット","cardCount":{"total":3,"official":3}},
+            {"id":"HF","name":"隠れた運命","cardCount":{"total":2,"official":2}}]""",
+        "/v2/ja/sets/HF" to """{"id":"HF","name":"隠れた運命","cardCount":{"total":2,"official":2},
+            "cards":[{"id":"HF-001","localId":"001","name":"ピカチュウ"}]}""",
         "/v2/ja/sets/XY10" to """{"id":"XY10","name":"めざめる超王","releaseDate":"2016-03-18","serie":{"id":"XYb","name":"XY BREAK"},
             "cardCount":{"total":3,"official":3},"cards":[]}""",
         "/v2/ja/sets/SM1" to """{"id":"SM1","name":"サン&ムーン","cardCount":{"total":3,"official":3},
@@ -50,11 +54,20 @@ class CardmarketCardSearchTest {
             {"idProduct":20,"name":"Omanyte [Hydro Pump]","idCategory":51,"idExpansion":200},
             {"idProduct":21,"name":"Omastar [Pull Down]","idCategory":51,"idExpansion":200},
             {"idProduct":22,"name":"Pikachu [Thunder Shock]","idCategory":51,"idExpansion":200},
-            {"idProduct":30,"name":"Omastar [Solo]","idCategory":51,"idExpansion":300}]}""",
+            {"idProduct":30,"name":"Omastar [Solo]","idCategory":51,"idExpansion":300},
+            {"idProduct":40,"name":"Pikachu","idCategory":51,"idExpansion":400},
+            {"idProduct":41,"name":"Raichu","idCategory":51,"idExpansion":400},
+            {"idProduct":42,"name":"Mew","idCategory":51,"idExpansion":400},
+            {"idProduct":43,"name":"Mewtwo","idCategory":51,"idExpansion":400},
+            {"idProduct":44,"name":"Eevee","idCategory":51,"idExpansion":400},
+            {"idProduct":45,"name":"Vaporeon","idCategory":51,"idExpansion":400},
+            {"idProduct":46,"name":"Jolteon","idCategory":51,"idExpansion":400},
+            {"idProduct":47,"name":"Flareon","idCategory":51,"idExpansion":400},
+            {"idProduct":48,"name":"Ditto","idCategory":51,"idExpansion":400}]}""",
     )
 
     private val expansions = CardmarketExpansions.parse(
-        listOf("1\txy10\tAwakening Psychic King\t100", "2\tsm1\tSun & Moon\t200", "3\tsmx\tAltro\t300"),
+        listOf("1\txy10\tAwakening Psychic King\t100", "2\tsm1\tSun & Moon\t200", "3\tsmx\tAltro\t300", "4\thf\t隠れた運命\t400"),
     )
 
     @BeforeEach
@@ -93,6 +106,24 @@ class CardmarketCardSearchTest {
         assertEquals(139, brk.dexId)
         assertNull(brk.imageBaseUrl)
         assertEquals(listOf(VariantType.NORMAL), brk.variants.map { it.type })
+    }
+
+    @Test
+    fun `un set con molti piu prodotti delle carte e già in parte su TCGdex non si indovina dalla posizione`() = runTest {
+        val s = search()
+        // HF ha 2 carte ma 9 prodotti: le posizioni slittano (come in Hidden Fates), quindi nessuna carta inventata.
+        assertEquals(emptyList<String>(), s.find(Language.JA, "Raichu").map { it.id })
+        assertNull(s.cardFor(Language.JA, "HF", "2"))
+    }
+
+    @Test
+    fun `con il numero vero da CardTrader si recuperano le carte fuori posizione, senza doppioni`() = runTest {
+        val resolver = CardNumberResolver { _, _, _, product -> mapOf(41 to "2", 42 to "1", 43 to "SM210")[product.idProduct] }
+        val s = search()
+        assertEquals(listOf("HF-002"), s.find(Language.JA, "Raichu", resolver = resolver).map { it.tcgdexId })
+        assertEquals(41, s.find(Language.JA, "Raichu", resolver = resolver).single().cardmarketId)
+        // Il numero 1 c'è già su TCGdex e "SM210" non è un numero semplice: niente carta.
+        assertEquals(emptyList<String>(), s.find(Language.JA, "Mew", resolver = resolver).map { it.id })
     }
 
     @Test

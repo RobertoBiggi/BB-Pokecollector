@@ -22,6 +22,7 @@ import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
  * @property dexId numero del Pokédex nazionale, null per Allenatori ed Energie.
  * @property ordinal calcola, solo se serve, la posizione della carta senza Pokédex tra le carte Pokémon del set (vedi [SetOrdinal]).
  * @property cardTraderCondition condizione peggiore accettata per CardTrader (quella della variante), null = Near Mint.
+ * @property cardmarketId id prodotto Cardmarket, se la carta viene dal catalogo Cardmarket: CardTrader la trova da questo, senza il numero.
  */
 data class PriceRequest(
     val language: Language,
@@ -37,6 +38,7 @@ data class PriceRequest(
     val dexId: Int? = null,
     val ordinal: (suspend () -> SetOrdinal?)? = null,
     val cardTraderCondition: CtCondition? = null,
+    val cardmarketId: Int? = null,
 )
 
 /** Fonte di prezzi. Le implementazioni lanciano le eccezioni di [com.robertobiggi.cardcollection.core.net]. */

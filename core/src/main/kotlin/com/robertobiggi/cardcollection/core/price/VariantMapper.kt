@@ -67,6 +67,8 @@ object VariantMapper {
         if (cm == null) return null
         if (cm.unit != null && cm.unit != "EUR") return null
         return when (type) {
+            // Prodotti a parte su Cardmarket: li prezza il listino con il loro id, non la scheda TCGdex della carta base.
+            VariantType.POKE_BALL, VariantType.MASTER_BALL -> null
             VariantType.REVERSE -> positive(cm.trendHolo ?: cm.avgHolo)?.let {
                 CmPick(it, positive(cm.lowHolo), positive(cm.avg30Holo), Confidence.HIGH)
             }
@@ -97,6 +99,7 @@ object VariantMapper {
             VariantType.REVERSE -> tp.reverseHolofoil
             VariantType.FIRST_EDITION -> tp.firstEditionHolofoil ?: tp.firstEditionNormal
             VariantType.W_PROMO -> tp.holofoil ?: tp.normal
+            VariantType.POKE_BALL, VariantType.MASTER_BALL -> null
         }
         return row?.takeIf { positive(it.marketPrice) != null || positive(it.midPrice) != null }
     }
