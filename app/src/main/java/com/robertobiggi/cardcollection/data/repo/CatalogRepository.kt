@@ -345,9 +345,28 @@ class CatalogRepository(
                     cardTraderBlueprintId = existing?.cardTraderBlueprintId,
                 ),
             )
-            dao.deleteStaleVariants(card.id, card.variants.map { it.type.name })
             dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name) })
+            moveStaleReverseToHolo(card.id, card.variants.map { it.type })
+            dao.deleteStaleVariants(card.id, card.variants.map { it.type.name })
         }
+    }
+
+    /**
+     * Sposta sulla holo le copie di una reverse holo che il catalogo non elenca più: quella reverse era dedotta dai prezzi
+     * "-holo", cioè dalla holo. Senza una holo tra le varianti, o se la reverse esiste ancora, non cambia nulla.
+     * @param cardId String - carta.
+     * @param types List<VariantType> - varianti attuali della carta.
+     * @return Unit
+     */
+    private suspend fun moveStaleReverseToHolo(cardId: String, types: List<VariantType>) {
+        if (VariantType.REVERSE in types || VariantType.HOLO !in types) return
+        val user = db.collectionDao()
+        val from = Ids.variantId(cardId, VariantType.REVERSE)
+        val to = Ids.variantId(cardId, VariantType.HOLO)
+        val entries = user.entriesOfVariant(from)
+        if (entries.isEmpty()) return
+        entries.forEach { user.upsertEntry(EntryMerge.move(it, to, user.getEntry(it.collectionId, to))) }
+        user.deleteEntriesOfVariant(from)
     }
 
     /**
