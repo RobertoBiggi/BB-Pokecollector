@@ -69,20 +69,23 @@ data class CardUi(
 
     /**
      * Rarità da mostrare al posto di "Holo" nelle carte solo holo (Double Rare, Illustration Rare…), dove "Holo" non dice nulla.
-     * Resta "Holo" se la carta ha anche la versione normale, se la rarità manca o se è già una holo rare.
+     * Resta "Holo" se la carta ha anche la versione normale, se la rarità manca, se è già una holo rare o se è una rarità
+     * semplice (Common, Uncommon, Rare), che non dice niente sulla stampa holo.
      * @param variant VariantUi - variante della carta.
      * @return String? - rarità, oppure null se si tiene il nome della variante.
      */
     fun rarityLabelFor(variant: VariantUi): String? {
         if (variant.type != VariantType.HOLO || variants.any { it.type == VariantType.NORMAL }) return null
         // "Fixed" è la "rarità" che CardTrader dà alle carte dei mazzi precostruiti: non dice niente sulla carta.
-        return card.rarity?.trim()?.takeIf { it.isNotEmpty() && !it.contains("holo", ignoreCase = true) && !it.equals("Fixed", ignoreCase = true) }
+        return card.rarity?.trim()?.takeIf { it.isNotEmpty() && !it.contains("holo", ignoreCase = true) && !it.equals("Fixed", ignoreCase = true) && it.lowercase() !in PLAIN_RARITIES }
     }
 
     /** Percorso dell'immagine locale migliore per la griglia. */
     val thumbnailPath: String? get() = card.imageLowPath ?: card.imageHighPath
 
     companion object {
+        private val PLAIN_RARITIES = setOf("common", "uncommon", "rare")
+
         /** Ordine di uscita: data del set, poi set e numero (le carte senza data in fondo). */
         val RELEASE_ORDER: Comparator<CardUi> =
             compareBy<CardUi>({ it.card.releaseDate ?: "9999" }, { it.card.setId }, { it.card.localId.padStart(4, '0') })
