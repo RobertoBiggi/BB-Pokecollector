@@ -54,6 +54,26 @@ class CardTraderTest {
     }
 
     @Test
+    fun `normal e holo dello stesso blueprint prendono solo gli annunci della propria rarita`() {
+        val listings = products(
+            """[
+              {"id":1,"price_cents":473,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Near Mint","pokemon_reverse":false,"pokemon_rarity":"Holo Rare","pokemon_language":"jp"}},
+              {"id":2,"price_cents":120,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Near Mint","pokemon_reverse":false,"pokemon_rarity":"Rare","pokemon_language":"jp"}},
+              {"id":3,"price_cents":90,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Near Mint","pokemon_reverse":false,"pokemon_rarity":"Promo","pokemon_language":"jp"}}
+            ]""",
+        )
+        // Annunci di due stampe: ognuna prende i suoi, e quelli con rarità ambigua (Promo) valgono per entrambe.
+        assertEquals(90L, CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", splitHolo = true)?.cents)
+        assertEquals(90L, CardTraderPicker.lowest(listings, VariantType.HOLO, "jp", splitHolo = true)?.cents)
+        // Solo annunci Holo Rare (come Moltres SM9 018): la normal non ha prezzo, la holo sì.
+        val onlyHolo = listings.filter { it.id == 1L }
+        assertNull(CardTraderPicker.lowest(onlyHolo, VariantType.NORMAL, "jp", splitHolo = true))
+        assertEquals(473L, CardTraderPicker.lowest(onlyHolo, VariantType.HOLO, "jp", splitHolo = true)?.cents)
+        // Senza splitHolo (la carta ha una sola stampa) nulla cambia.
+        assertEquals(473L, CardTraderPicker.lowest(onlyHolo, VariantType.NORMAL, "jp")?.cents)
+    }
+
+    @Test
     fun `reverse prende il piu basso tra i soli annunci reverse`() {
         assertEquals(450L, CardTraderPicker.lowest(omastar, VariantType.REVERSE, "en")?.cents)
     }

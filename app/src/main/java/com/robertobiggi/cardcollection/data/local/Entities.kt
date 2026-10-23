@@ -65,6 +65,8 @@ data class CardEntity(
     val cardTraderCondition: String? = null,
     /** Id prodotto Cardmarket, solo per le carte trovate nel catalogo Cardmarket. */
     val cardmarketId: Int? = null,
+    /** Id del blueprint CardTrader, noto dopo un aggiornamento prezzi che abbina la carta con certezza: serve al link diretto. */
+    val cardTraderBlueprintId: Int? = null,
 )
 
 /** Variante di stampa di una carta: ogni riga è uno slot. */
