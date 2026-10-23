@@ -56,6 +56,7 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
             setProgress(workDataOf(WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
         }
         val cardTraderImages = container.prices.fillImagesFromCardTrader()
+        container.prices.fillCardTraderBlueprints()
         val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + cardTraderImages, WorkKeys.ERRORS to result.errors)
         return if (result.cardsSaved == 0 && result.errors > 0) Result.failure(data) else Result.success(data)
     }
@@ -72,6 +73,19 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
 
     private companion object {
         const val NOTIFICATION_ID = 1001
+    }
+}
+
+/** Completa in silenzio le collezioni già esistenti con il link diretto a CardTrader. Parte da solo all'apertura dell'app. */
+class CardTraderLinksWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    /**
+     * Cerca il blueprint CardTrader delle carte che non ce l'hanno.
+     * @return Result - sempre successo: se qualcosa non va, riprova alla prossima apertura.
+     */
+    override suspend fun doWork(): Result {
+        (applicationContext as CardCollectionApp).container.prices.fillCardTraderBlueprints()
+        return Result.success()
     }
 }
 

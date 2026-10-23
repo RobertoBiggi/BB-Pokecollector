@@ -66,7 +66,7 @@
     <string name="update_catalog">Update catalog</string>
     <string name="prices_button">Prices</string>
     <string name="prices_never">Prices never updated</string>
-    <string name="prices_updated_at">Prices updated %1$s</string>
+    <string name="prices_updated_at">Prices checked %1$s</string>
     <string name="empty_collection_title">No cards in this collection</string>
     <string name="empty_collection_text">Download the catalog of this collection\'s searches, or add searches and single cards from Manage. Cards and images stay on the phone and can be browsed offline.</string>
     <string name="download_catalog">Download catalog</string>
@@ -99,7 +99,7 @@
     <string name="job_price_item" translatable="false">%1$s · %2$s</string>
     <string name="catalog_done">%1$d cards updated, %2$d images downloaded</string>
     <string name="catalog_done_errors">%1$d cards updated, %2$d images downloaded · %3$d problems</string>
-    <string name="prices_done">%1$d updated, %2$d after a retry, %3$d without new data</string>
+    <string name="prices_done">%1$d prices fetched, %2$d after a retry, %3$d not found</string>
     <string name="abort_source_paused">TCGdex blocked too many requests: try again later.</string>
     <string name="abort_offline">No connection: the prices already saved are still valid.</string>
     <string name="run_in_progress">In progress…</string>
@@ -117,6 +117,7 @@
     <string name="meta_illustrator">Illustrator</string>
     <string name="link_cardmarket" translatable="false">Cardmarket ↗</string>
     <string name="link_tcgplayer" translatable="false">TCGplayer ↗</string>
+    <string name="link_cardtrader" translatable="false">CardTrader ↗</string>
     <string name="want_it">want it</string>
     <string name="qty_remove">Remove a copy</string>
     <string name="qty_add">Add a copy</string>
@@ -230,7 +231,7 @@
     <string name="action_download_image">Download image</string>
     <string name="action_pick_image">Choose image</string>
     <string name="card_actions_hint">The price is updated for this card only. If TCGdex has no image (common for Japanese cards) the app looks for it on TCGplayer; otherwise you can pick one from your gallery, which stays until you download the official one.</string>
-    <string name="msg_card_price_updated">Prices updated (%1$d variants).</string>
+    <string name="msg_card_price_updated">Prices fetched (%1$d variants).</string>
     <string name="msg_card_price_none">No price found for this card.</string>
     <string name="msg_image_downloaded">Image downloaded.</string>
     <string name="msg_image_saved">Image saved.</string>

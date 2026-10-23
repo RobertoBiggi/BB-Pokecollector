@@ -58,11 +58,19 @@ class CardTraderPriceProvider(
             listings, request.variant, pickerLanguage(request.language), request.cardTraderCondition ?: worstCondition,
             firstEditionFallback = request.language == Language.JA && !request.cardHasFirstEdition,
             lowerCondition = true,
+            splitHolo = request.cardHasNormalAndHolo,
         ) ?: return null
         if (pick.currency != "EUR") return null
         val eur = pick.cents / 100.0
         PriceQuote(DISPLAY_NAME, eur, eur, null, null, null, null, Confidence.HIGH)
     }
+
+    /**
+     * Restituisce l'id del blueprint della carta, per il link diretto alla sua pagina.
+     * @param request PriceRequest - carta da cercare.
+     * @return Int? - l'id, oppure null se la carta non si abbina con certezza.
+     */
+    suspend fun blueprintId(request: PriceRequest): Int? = mutex.withLock { blueprintFor(request)?.id }
 
     /**
      * Restituisce l'id prodotto Cardmarket della carta, anche se non ha annunci su CardTrader.

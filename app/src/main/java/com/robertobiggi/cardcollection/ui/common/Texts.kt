@@ -10,11 +10,13 @@ import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.repo.AbortReason
+import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.FileError
 import com.robertobiggi.cardcollection.data.repo.ImageResult
 import com.robertobiggi.cardcollection.data.repo.InputError
 import com.robertobiggi.cardcollection.data.repo.PriceStep
 import com.robertobiggi.cardcollection.data.repo.SyncPhase
+import com.robertobiggi.cardcollection.data.repo.VariantUi
 import com.robertobiggi.cardcollection.work.JobState
 import com.robertobiggi.cardcollection.work.WorkKeys
 
@@ -73,6 +75,15 @@ fun VariantType.labelRes(): Int = when (this) {
     VariantType.FIRST_EDITION -> R.string.variant_first_edition
     VariantType.W_PROMO -> R.string.variant_w_promo
 }
+
+/**
+ * Nome della variante di una carta: nelle carte solo holo è la rarità (es. "Double Rare").
+ * @param card CardUi - carta.
+ * @param variant VariantUi - variante.
+ * @return String - nome da mostrare.
+ */
+@Composable
+fun variantLabel(card: CardUi, variant: VariantUi): String = card.rarityLabelFor(variant) ?: stringResource(variant.type.labelRes())
 
 /**
  * Messaggio per l'esito di un'azione sull'immagine di una carta.

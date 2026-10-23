@@ -67,6 +67,8 @@ object CardTraderPicker {
      * @param worstCondition CtCondition - condizione peggiore accettata; gli annunci senza condizione nota restano esclusi.
      * @param firstEditionFallback Boolean - se per una variante normal/holo non c'è nessun annuncio "non 1st Edition", usa i più economici tra quelli 1st Edition.
      *        Serve alle carte giapponesi, che per interi set escono solo con il marchio 1st Edition e che TCGdex non distingue.
+     * @param splitHolo Boolean - true se la carta ha sia normal sia holo: normal e holo condividono il blueprint, quindi ognuna tiene solo
+     *        gli annunci la cui rarità (`pokemon_rarity`) è quella della sua stampa. Una rarità assente o ambigua vale per entrambe.
      * @param lowerCondition Boolean - se nessun annuncio rispetta [worstCondition], scende una condizione alla volta
      *        (Near Mint → Slightly Played → … → Poor) e usa il primo prezzo trovato; se manca anche in Poor, nessun prezzo.
      * @return CtPick? - prezzo più basso, oppure null se nessun annuncio corrisponde.
@@ -78,10 +80,12 @@ object CardTraderPicker {
         worstCondition: CtCondition = CtCondition.NEAR_MINT,
         firstEditionFallback: Boolean = false,
         lowerCondition: Boolean = false,
+        splitHolo: Boolean = false,
     ): CtPick? {
         val candidates = products.filter { p ->
             p.graded != true && (p.quantity ?: 1) > 0 && priceOf(p) != null &&
-                matchesLanguage(p.propertiesHash, languageCode) && condition(p.propertiesHash) != null
+                matchesLanguage(p.propertiesHash, languageCode) && condition(p.propertiesHash) != null &&
+                (!splitHolo || matchesPrint(p.propertiesHash, variant))
         }
         val pools = buildList {
             add(candidates.filter { matchesVariant(it.propertiesHash, variant) })
@@ -118,6 +122,23 @@ object CardTraderPicker {
             VariantType.POKE_BALL, VariantType.MASTER_BALL -> !firstEdition
         }
     }
+
+    /**
+     * Dice se la rarità dell'annuncio è quella della stampa richiesta. "Common", "Uncommon" e "Rare" sono non holo, ogni altra
+     * rarità ("Holo Rare", "Ultra Rare"…) è holo; senza rarità, o con una ambigua ("Promo"), l'annuncio vale per entrambe.
+     */
+    private fun matchesPrint(props: JsonObject?, variant: VariantType): Boolean {
+        if (variant != VariantType.NORMAL && variant != VariantType.HOLO) return true
+        val rarity = (props?.entries?.firstOrNull { it.key.endsWith("rarity") }?.value as? JsonPrimitive)?.content?.trim()?.lowercase()
+        return when {
+            rarity.isNullOrEmpty() || rarity in AMBIGUOUS_RARITIES -> true
+            rarity in NON_HOLO_RARITIES -> variant == VariantType.NORMAL
+            else -> variant == VariantType.HOLO
+        }
+    }
+
+    private val NON_HOLO_RARITIES = setOf("common", "uncommon", "rare")
+    private val AMBIGUOUS_RARITIES = setOf("promo", "fixed", "none")
 
     private fun matchesLanguage(props: JsonObject?, languageCode: String?): Boolean {
         if (languageCode == null || props == null) return true

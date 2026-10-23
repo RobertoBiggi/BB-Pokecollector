@@ -4,6 +4,7 @@ package com.robertobiggi.cardcollection.ui.detail
 
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.ui.common.labelRes
+import com.robertobiggi.cardcollection.ui.common.variantLabel
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
 import android.content.ActivityNotFoundException
@@ -68,7 +69,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.robertobiggi.cardcollection.core.model.Condition
+import com.robertobiggi.cardcollection.core.cardtrader.CardTraderLinks
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.VariantUi
 import com.robertobiggi.cardcollection.ui.MainViewModel
@@ -127,7 +130,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
                     onPick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 )
             }
-            item { Links(card) }
+            item { Links(card, showCardTrader = visibility.cardTrader && cardTraderToken.isNotEmpty()) }
             item { Text(stringResource(R.string.variants_title), style = MaterialTheme.typography.titleMedium) }
             items(card.variants, key = { it.id }) { variant ->
                 VariantCard(
@@ -158,8 +161,9 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     }
 
     manualFor?.let { variant ->
+        val owner = card ?: return@let
         ManualPriceDialog(
-            variantLabel = stringResource(variant.type.labelRes()),
+            variantLabel = variantLabel(owner, variant),
             onDismiss = { manualFor = null },
             onSave = { text -> vm.addManualPrice(variant.id, text).also { saved -> if (saved) manualFor = null } },
         )
@@ -235,12 +239,13 @@ private fun ActionButton(label: String, icon: ImageVector, running: Boolean, ena
 }
 
 /**
- * Collegamenti alle ricerche su Cardmarket e TCGplayer (aperti nel browser, nessuna chiamata dall'app).
+ * Collegamenti alle ricerche su Cardmarket, TCGplayer e CardTrader (aperti nel browser, nessuna chiamata dall'app).
  * @param card CardUi - carta.
+ * @param showCardTrader Boolean - true se i prezzi CardTrader sono attivi.
  * @return Unit
  */
 @Composable
-private fun Links(card: CardUi) {
+private fun Links(card: CardUi, showCardTrader: Boolean) {
     val uriHandler = LocalUriHandler.current
     val term = Uri.encode(card.card.name)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -250,6 +255,13 @@ private fun Links(card: CardUi) {
         if (card.language == Language.EN) {
             OutlinedButton(onClick = { uriHandler.openSafely("https://www.tcgplayer.com/search/pokemon/product?q=$term") }) {
                 Text(stringResource(R.string.link_tcgplayer))
+            }
+        }
+        if (showCardTrader) {
+            val blueprintId = card.card.cardTraderBlueprintId
+            val url = if (blueprintId != null) CardTraderLinks.card(blueprintId, card.card.name) else CardTraderLinks.search(term)
+            OutlinedButton(onClick = { uriHandler.openSafely(url) }) {
+                Text(stringResource(R.string.link_cardtrader))
             }
         }
     }
@@ -306,7 +318,7 @@ private fun VariantCard(
                     modifier = Modifier.size(10.dp),
                 ) {}
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(variant.type.labelRes()), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(variantLabel(card, variant), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Checkbox(checked = variant.wanted, onCheckedChange = onWanted)
                 Text(stringResource(R.string.want_it), style = MaterialTheme.typography.bodySmall)
             }
@@ -354,18 +366,37 @@ private fun VariantCard(
                 }
             }
             val last = variant.lastSnapshot
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
+            if (showCardmarket) {
+                SourceStatusRow(
                     last?.let { stringResource(R.string.price_source_date, Format.date(it.fetchedAt), sourceLabel(it.source)) } ?: stringResource(R.string.no_price_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
+                    last, variant.eurHistory,
                 )
-                if (last != null) ConfidenceChip(last.confidence, System.currentTimeMillis() - last.fetchedAt > STALE_AFTER_MS)
-                Sparkline(variant.eurHistory, Modifier.width(72.dp).height(22.dp))
+            }
+            if (showTcgplayer) {
+                variant.latestUsd?.let { SourceStatusRow(stringResource(R.string.price_source_date, Format.date(it.fetchedAt), "TCGplayer"), it, variant.usdHistory) }
+            }
+            if (showCardTrader) {
+                variant.latestCardTrader?.let { SourceStatusRow(stringResource(R.string.price_source_date, Format.date(it.fetchedAt), "CardTrader"), it, variant.cardTraderHistory) }
             }
             TextButton(onClick = onManual) { Text(stringResource(R.string.manual_price_button)) }
         }
+    }
+}
+
+/**
+ * Riga con data e fonte dell'ultimo prezzo, affidabilità e andamento.
+ * @param text String - data e fonte già formattate.
+ * @param snapshot PriceSnapshotEntity? - ultimo prezzo della fonte, null se manca.
+ * @param history List<Double> - prezzi della fonte dal più vecchio.
+ * @return Unit
+ */
+@Composable
+private fun SourceStatusRow(text: String, snapshot: PriceSnapshotEntity?, history: List<Double>) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        // Il posto del grafico resta riservato anche quando manca, così l'etichetta sta sempre allineata a destra.
+        Box(Modifier.width(72.dp).height(22.dp)) { Sparkline(history, Modifier.fillMaxSize()) }
+        if (snapshot != null) ConfidenceChip(snapshot.confidence, System.currentTimeMillis() - snapshot.fetchedAt > STALE_AFTER_MS)
     }
 }
 

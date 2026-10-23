@@ -73,6 +73,9 @@ class PriceRepository(
     /** Carte per cui si è già cercato il Pokédex in questa sessione, per non rifare la richiesta a ogni aggiornamento. */
     private val dexLookedUp = HashSet<String>()
 
+    /** Carte per cui si è già cercato il blueprint CardTrader in questa sessione. */
+    private val blueprintLookedUp = HashSet<String>()
+
     /** Carte scheletro per cui si è già cercato l'illustratore in questa sessione. */
     private val illustratorLookedUp = HashSet<String>()
 
@@ -236,10 +239,18 @@ class PriceRepository(
         )
         // Il listino Cardmarket (aggiornato ogni notte) è la fonte principale dei prezzi in euro; TCGdex serve
         // per i dollari di TCGplayer e come ripiego per le carte che il listino non abbina.
+        saveCardTraderBlueprint(sources.cardTraderProvider, card, request)
         val guideQuote = sources.cardmarketGuide.fetch(request).quote
         val outcome = chain.fetch(request)
         val tcgdexQuote = outcome.quote
-        val cardTraderSaved = sources.cardTrader?.fetch(request)?.quote?.let { saveQuote(variant.id, it) } == true
+        val cardTraderOutcome = sources.cardTrader?.fetch(request)
+        val cardTraderSaved = cardTraderOutcome?.quote?.let { saveQuote(variant.id, it) } == true
+        // Normal e holo condividono il blueprint: se CardTrader ha una sola stampa, l'altra non ha prezzo e quello salvato prima era dell'altra.
+        if (cardTraderOutcome != null && cardTraderOutcome.quote == null && request.cardHasNormalAndHolo &&
+            (type == VariantType.NORMAL || type == VariantType.HOLO) && cardTraderOutcome.steps.all { it.outcome == StepOutcome.NO_DATA }
+        ) {
+            priceDao.deleteSnapshotsOf(variant.id, CardTraderPriceProvider.DISPLAY_NAME)
+        }
         if (guideQuote != null) {
             saveQuote(variant.id, guideQuote.copy(usd = tcgdexQuote?.usd, usdLow = tcgdexQuote?.usdLow))
             return VariantCheck.OK
@@ -250,6 +261,60 @@ class PriceRepository(
         }
         saveQuote(variant.id, tcgdexQuote)
         return if (outcome.usedFallback) VariantCheck.FALLBACK else VariantCheck.OK
+    }
+
+    /**
+     * Salva l'id del blueprint CardTrader della carta, una volta per carta, se si abbina con certezza.
+     * Le Poké Ball e le Master Ball hanno un blueprint a parte, quindi non servono per la carta.
+     * @param cardTrader CardTraderPriceProvider? - fonte CardTrader, null senza token.
+     * @param card CardEntity - carta.
+     * @param request PriceRequest - richiesta della variante.
+     * @return Unit
+     */
+    private suspend fun saveCardTraderBlueprint(cardTrader: CardTraderPriceProvider?, card: CardEntity, request: PriceRequest) {
+        if (cardTrader == null || card.cardTraderBlueprintId != null || request.variant.isBall || !blueprintLookedUp.add(card.id)) return
+        try {
+            val id = cardTrader.blueprintId(request) ?: return
+            db.catalogDao().setCardTraderBlueprint(card.id, id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Rete assente o risposta non valida: il link resta la ricerca per nome e il prossimo aggiornamento riprova.
+            blueprintLookedUp.remove(card.id)
+        }
+    }
+
+    /**
+     * Trova il blueprint CardTrader delle carte che non ce l'hanno ancora (collezioni già esistenti), per il link diretto.
+     * Serve il token CardTrader; senza, o con la rete assente, non fa nulla. Una carta che non si abbina con certezza resta com'è.
+     * @return Int - numero di carte a cui è stato aggiunto il blueprint.
+     */
+    suspend fun fillCardTraderBlueprints(): Int {
+        val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return 0
+        val missing = db.catalogDao().cardsWithoutCardTraderBlueprint()
+        if (missing.isEmpty()) return 0
+        val provider = CardTraderPriceProvider(CardTraderClient(http, token))
+        var saved = 0
+        var consecutiveErrors = 0
+        for (stored in missing) {
+            if (consecutiveErrors >= MAX_NETWORK_ERRORS) break
+            try {
+                val card = withDexId(stored)
+                val language = Language.fromCode(card.language) ?: continue
+                val id = provider.blueprintId(requestOf(card, language))
+                consecutiveErrors = 0
+                if (id != null) {
+                    db.catalogDao().setCardTraderBlueprint(card.id, id)
+                    saved++
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Rete assente o risposta non valida: le altre carte possono andare a buon fine, e la prossima apertura riprova.
+                consecutiveErrors++
+            }
+        }
+        return saved
     }
 
     /**
@@ -436,7 +501,7 @@ class PriceRepository(
     }
 
     /** Fonti oltre a TCGdex: CardTrader (solo con il token) e il listino Cardmarket. */
-    private class PriceSources(val cardTrader: PriceChain?, val cardmarketGuide: PriceChain)
+    private class PriceSources(val cardTrader: PriceChain?, val cardmarketGuide: PriceChain, val cardTraderProvider: CardTraderPriceProvider? = null)
 
     /**
      * Crea le fonti di un aggiornamento prezzi. Il listino Cardmarket c'è sempre: l'id prodotto della carta
@@ -455,6 +520,7 @@ class PriceRepository(
         return PriceSources(
             cardTrader = cardTrader?.let { PriceChain(listOf(ProviderSlot(it, RateLimiter(REQUEST_INTERVAL_MS), CircuitBreaker()))) },
             cardmarketGuide = PriceChain(listOf(ProviderSlot(guide, RateLimiter(0), CircuitBreaker()))),
+            cardTraderProvider = cardTrader,
         )
     }
 

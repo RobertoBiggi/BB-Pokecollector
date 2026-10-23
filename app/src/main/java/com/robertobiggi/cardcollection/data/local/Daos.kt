@@ -165,6 +165,13 @@ interface CatalogDao {
     suspend fun cardsMissingDetails(): List<CardEntity>
 
     /**
+     * Elenca le carte di cui non si conosce ancora il blueprint CardTrader.
+     * @return List<CardEntity> - carte per cui si può cercare il link diretto.
+     */
+    @Query("SELECT * FROM card WHERE cardTraderBlueprintId IS NULL")
+    suspend fun cardsWithoutCardTraderBlueprint(): List<CardEntity>
+
+    /**
      * Inserisce o aggiorna una carta del catalogo.
      * @param card CardEntity - carta da salvare.
      * @return Unit
@@ -190,6 +197,15 @@ interface CatalogDao {
      */
     @Query("UPDATE card SET dexId = :dexId WHERE id = :id AND dexId IS NULL")
     suspend fun fillDexId(id: String, dexId: Int)
+
+    /**
+     * Salva l'id del blueprint CardTrader di una carta.
+     * @param id String - id della riga.
+     * @param blueprintId Int - id del blueprint.
+     * @return Unit
+     */
+    @Query("UPDATE card SET cardTraderBlueprintId = :blueprintId WHERE id = :id")
+    suspend fun setCardTraderBlueprint(id: String, blueprintId: Int)
 
     /**
      * Aggiunge varianti, ignorando quelle già presenti.
@@ -337,6 +353,15 @@ interface PriceDao {
      */
     @Insert
     suspend fun insertSnapshot(snapshot: PriceSnapshotEntity): Long
+
+    /**
+     * Cancella i prezzi di una variante che vengono da una fonte.
+     * @param variantId String - variante.
+     * @param source String - fonte dei prezzi da cancellare.
+     * @return Unit
+     */
+    @Query("DELETE FROM price_snapshot WHERE variantId = :variantId AND source = :source")
+    suspend fun deleteSnapshotsOf(variantId: String, source: String)
 
     /**
      * Tiene solo i prezzi più recenti di una variante.

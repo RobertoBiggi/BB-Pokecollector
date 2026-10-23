@@ -23,6 +23,8 @@ import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
  * @property latestUsd ultimo snapshot con un prezzo in dollari.
  * @property latestCardTrader ultimo snapshot CardTrader (tenuto separato da Cardmarket).
  * @property eurHistory prezzi in euro dal più vecchio al più recente (per la sparkline).
+ * @property usdHistory prezzi in dollari dal più vecchio al più recente.
+ * @property cardTraderHistory prezzi CardTrader dal più vecchio al più recente.
  */
 data class VariantUi(
     val id: String,
@@ -35,6 +37,8 @@ data class VariantUi(
     val latestCardTrader: PriceSnapshotEntity? = null,
     val lastSnapshot: PriceSnapshotEntity?,
     val eurHistory: List<Double>,
+    val usdHistory: List<Double> = emptyList(),
+    val cardTraderHistory: List<Double> = emptyList(),
 ) {
     /**
      * Converte la variante nell'input del calcolo statistiche.
@@ -62,6 +66,18 @@ data class CardUi(
 
     /** Prezzo in euro più basso tra le varianti, usato in griglia ("da 0,30 €"). */
     val minEur: Double? get() = variants.mapNotNull { it.latestEur?.eur }.minOrNull()
+
+    /**
+     * Rarità da mostrare al posto di "Holo" nelle carte solo holo (Double Rare, Illustration Rare…), dove "Holo" non dice nulla.
+     * Resta "Holo" se la carta ha anche la versione normale, se la rarità manca o se è già una holo rare.
+     * @param variant VariantUi - variante della carta.
+     * @return String? - rarità, oppure null se si tiene il nome della variante.
+     */
+    fun rarityLabelFor(variant: VariantUi): String? {
+        if (variant.type != VariantType.HOLO || variants.any { it.type == VariantType.NORMAL }) return null
+        // "Fixed" è la "rarità" che CardTrader dà alle carte dei mazzi precostruiti: non dice niente sulla carta.
+        return card.rarity?.trim()?.takeIf { it.isNotEmpty() && !it.contains("holo", ignoreCase = true) && !it.equals("Fixed", ignoreCase = true) }
+    }
 
     /** Percorso dell'immagine locale migliore per la griglia. */
     val thumbnailPath: String? get() = card.imageLowPath ?: card.imageHighPath
@@ -230,6 +246,8 @@ object LibraryAssembler {
                     latestCardTrader = snaps.lastOrNull { it.eur != null && it.isCardTrader() },
                     lastSnapshot = snaps.lastOrNull { !it.isCardTrader() } ?: snaps.lastOrNull(),
                     eurHistory = snaps.filter { !it.isCardTrader() }.mapNotNull { it.eur },
+                    usdHistory = snaps.mapNotNull { it.usd },
+                    cardTraderHistory = snaps.filter { it.isCardTrader() }.mapNotNull { it.eur },
                 )
             }.sortedBy { it.type.ordinal }
             CardUi(card, list)

@@ -116,13 +116,11 @@ class CatalogRepository(
                     errors++
                 }
             }
-            // Cercando un Pokémon si scartano Allenatori ed Energie; cercando altro (es. "Mysterious Fossil", che è un Allenatore) no.
-            val pokemonOnly = PokemonNames.dexIdsMatching(query.pattern).isNotEmpty()
             val candidates = briefs.filterNot { CatalogMapper.isDigitalOnly(it) }.filter { Validators.isValidRemoteId(it.id) }.distinctBy { it.id }
             for ((index, brief) in candidates.withIndex()) {
                 progress(SyncProgress(SyncPhase.CARD, brief.name, index, candidates.size))
                 try {
-                    val card = fetchCatalogCard(language, brief.id, limiter, setCache, requirePokemon = pokemonOnly, cardmarketProducts = tcgdexProducts) ?: continue
+                    val card = fetchCatalogCard(language, brief.id, limiter, setCache, cardmarketProducts = tcgdexProducts) ?: continue
                     saveCard(card, legacyQueryId = query.id)
                     dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                     saved++
@@ -139,7 +137,7 @@ class CatalogRepository(
                 if (candidates.any { it.id == id } || !Validators.isValidRemoteId(id)) continue
                 try {
                     limiter.acquire()
-                    val card = fetchCatalogCard(language, id, limiter, setCache, requirePokemon = pokemonOnly, cardmarketProducts = tcgdexProducts) ?: continue
+                    val card = fetchCatalogCard(language, id, limiter, setCache, cardmarketProducts = tcgdexProducts) ?: continue
                     saveCard(card, legacyQueryId = query.id)
                     dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                     saved++
@@ -215,7 +213,7 @@ class CatalogRepository(
         if (!Validators.isValidRemoteId(tcgdexId)) return AddCardResult.NotAllowed
         return try {
             val card = try {
-                fetchCatalogCard(language, tcgdexId, RateLimiter(0), HashMap(), requirePokemon = false)
+                fetchCatalogCard(language, tcgdexId, RateLimiter(0), HashMap())
             } catch (e: NotFoundException) {
                 // TCGdex non ha la carta: potrebbe essere una carta trovata nel catalogo Cardmarket.
                 cardmarket.cardFor(language, tcgdexId.substringBeforeLast('-'), tcgdexId.substringAfterLast('-'))
@@ -240,7 +238,7 @@ class CatalogRepository(
         val stored = dao.getCard(cardId) ?: return ImageResult.NOT_AVAILABLE
         val language = Language.fromCode(stored.language) ?: return ImageResult.NOT_AVAILABLE
         val refreshedUrl = try {
-            fetchCatalogCard(language, stored.tcgdexId, RateLimiter(0), HashMap(), requirePokemon = false)?.let { saveCard(it, stored.queryId) }
+            fetchCatalogCard(language, stored.tcgdexId, RateLimiter(0), HashMap())?.let { saveCard(it, stored.queryId) }
             dao.getCard(cardId)?.imageUrl
         } catch (e: Exception) {
             if (!isRecoverable(e)) throw e
@@ -279,7 +277,6 @@ class CatalogRepository(
      * @param tcgdexId String - id TCGdex già validato.
      * @param limiter RateLimiter - limitatore delle richieste.
      * @param setCache HashMap<String, SetDto?> - cache dei set già scaricati.
-     * @param requirePokemon Boolean - true per scartare Allenatori, Energie e carte digitali.
      * @param cardmarketProducts MutableSet<Int>? - riceve il prodotto Cardmarket della carta, per non aggiungere la stessa carta anche dal catalogo Cardmarket.
      * @return CatalogCard? - carta normalizzata, oppure null se va scartata.
      */
@@ -288,7 +285,6 @@ class CatalogRepository(
         tcgdexId: String,
         limiter: RateLimiter,
         setCache: HashMap<String, SetDto?>,
-        requirePokemon: Boolean = true,
         cardmarketProducts: MutableSet<Int>? = null,
     ): CatalogCard? {
         limiter.acquire()
@@ -308,7 +304,7 @@ class CatalogRepository(
         } else {
             null
         }
-        if (requirePokemon && !CatalogMapper.isTrackablePokemon(card, set)) return null
+        if (!CatalogMapper.isTrackable(card, set)) return null
         return CatalogMapper.toCatalogCard(language, card, set)
     }
 
@@ -346,6 +342,7 @@ class CatalogRepository(
                     dexId = card.dexId ?: existing?.dexId,
                     cardTraderCondition = existing?.cardTraderCondition,
                     cardmarketId = card.cardmarketId ?: existing?.cardmarketId,
+                    cardTraderBlueprintId = existing?.cardTraderBlueprintId,
                 ),
             )
             dao.deleteStaleVariants(card.id, card.variants.map { it.type.name })
