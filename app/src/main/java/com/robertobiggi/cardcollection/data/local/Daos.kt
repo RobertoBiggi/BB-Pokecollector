@@ -216,12 +216,12 @@ interface CatalogDao {
     suspend fun insertVariants(variants: List<CardVariantEntity>)
 
     /**
-     * Toglie le varianti che il catalogo non elenca più (es. una reverse holo dedotta male), tranne quelle che l'utente
-     * ha già usato in una collezione.
+     * Toglie le varianti che il catalogo non elenca più (es. una reverse holo dedotta male), tranne quelle di cui l'utente
+     * possiede delle copie o ha scritto delle note.
      * @param cardId String - carta.
      * @param types List<String> - tipi di variante da tenere.
      */
-    @Query("DELETE FROM card_variant WHERE cardId = :cardId AND type NOT IN (:types) AND id NOT IN (SELECT variantId FROM collection_entry)")
+    @Query("DELETE FROM card_variant WHERE cardId = :cardId AND type NOT IN (:types) AND id NOT IN (SELECT variantId FROM collection_entry WHERE quantity > 0 OR notes IS NOT NULL)")
     suspend fun deleteStaleVariants(cardId: String, types: List<String>)
 
     /**
