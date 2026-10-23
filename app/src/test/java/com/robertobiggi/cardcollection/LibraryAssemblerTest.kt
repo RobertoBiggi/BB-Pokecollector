@@ -36,6 +36,7 @@ class LibraryAssemblerTest {
         assertNull(labelOf("Rare Holo", listOf(VariantType.HOLO)))
         assertNull(labelOf(null, listOf(VariantType.HOLO)))
         assertNull(labelOf("Fixed", listOf(VariantType.HOLO)))
+        assertNull(labelOf("Rare", listOf(VariantType.HOLO)))
         assertNull(labelOf("Rare", listOf(VariantType.NORMAL, VariantType.HOLO)))
     }
 
