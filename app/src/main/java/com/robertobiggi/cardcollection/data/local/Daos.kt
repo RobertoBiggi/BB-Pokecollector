@@ -311,6 +311,22 @@ interface CollectionDao {
     suspend fun getEntry(collectionId: Long, variantId: String): CollectionEntryEntity?
 
     /**
+     * Elenca i dati dell'utente per una variante, in tutte le collezioni.
+     * @param variantId String - variante.
+     * @return List<CollectionEntryEntity> - dati.
+     */
+    @Query("SELECT * FROM collection_entry WHERE variantId = :variantId")
+    suspend fun entriesOfVariant(variantId: String): List<CollectionEntryEntity>
+
+    /**
+     * Cancella i dati dell'utente per una variante, in tutte le collezioni.
+     * @param variantId String - variante.
+     * @return Unit
+     */
+    @Query("DELETE FROM collection_entry WHERE variantId = :variantId")
+    suspend fun deleteEntriesOfVariant(variantId: String)
+
+    /**
      * Inserisce o aggiorna i dati dell'utente per una variante.
      * @param entry CollectionEntryEntity - voce da salvare.
      * @return Unit

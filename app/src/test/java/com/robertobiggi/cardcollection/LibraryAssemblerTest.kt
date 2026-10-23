@@ -5,6 +5,7 @@ import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.CardVariantEntity
 import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
+import com.robertobiggi.cardcollection.data.repo.EntryMerge
 import com.robertobiggi.cardcollection.data.repo.LibraryAssembler
 import com.robertobiggi.cardcollection.ui.CollectionFilter
 import com.robertobiggi.cardcollection.ui.OwnedFilter
@@ -38,6 +39,17 @@ class LibraryAssemblerTest {
         assertNull(labelOf("Fixed", listOf(VariantType.HOLO)))
         assertNull(labelOf("Rare", listOf(VariantType.HOLO)))
         assertNull(labelOf("Rare", listOf(VariantType.NORMAL, VariantType.HOLO)))
+    }
+
+    @Test
+    fun `lo spostamento di una variante somma le copie e unisce le note`() {
+        val reverse = CollectionEntryEntity(1, "c|REVERSE", quantity = 1, wanted = false, notes = "da vendere")
+        assertEquals(CollectionEntryEntity(1, "c|HOLO", quantity = 1, wanted = false, notes = "da vendere"), EntryMerge.move(reverse, "c|HOLO", null))
+        val holo = CollectionEntryEntity(1, "c|HOLO", quantity = 2, wanted = true, notes = null)
+        val merged = EntryMerge.move(reverse, "c|HOLO", holo)
+        assertEquals(3, merged.quantity)
+        assertEquals(true, merged.wanted)
+        assertEquals("da vendere", merged.notes)
     }
 
     @Test
