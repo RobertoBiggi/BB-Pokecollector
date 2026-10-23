@@ -67,12 +67,18 @@ class CatalogMapperTest {
     }
 
     @Test
-    fun `solo carte Pokemon fisiche vengono tracciate`() {
-        assertTrue(CatalogMapper.isTrackablePokemon(card("en_card_me03-032.json"), null))
-        assertFalse(CatalogMapper.isTrackablePokemon(card("en_card_xyp-XY105.json"), null), "gli Allenatori sono esclusi")
+    fun `tutte le carte fisiche vengono tracciate`() {
+        assertTrue(CatalogMapper.isTrackable(card("en_card_me03-032.json"), null))
+        assertTrue(CatalogMapper.isTrackable(card("en_card_xyp-XY105.json"), null), "gli Allenatori restano")
         val list = JSON.decodeFromString(ListSerializer(CardBriefDto.serializer()), Fixtures.read("en_list_mawile.json"))
         val pocket = list.filter { CatalogMapper.isDigitalOnly(it) }.map { it.id }
         assertEquals(listOf("A3b-047"), pocket)
+    }
+
+    @Test
+    fun `le promo non hanno reverse holo anche con prezzi holo`() {
+        val variants = CatalogMapper.variantsOf(card("en_card_xyp-XY105.json"), releaseDate = "2016-01-01")
+        assertEquals(listOf(VariantType.NORMAL), variants.map { it.type })
     }
 
     @Test

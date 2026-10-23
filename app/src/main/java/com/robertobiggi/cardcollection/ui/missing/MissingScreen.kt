@@ -3,7 +3,7 @@
 package com.robertobiggi.cardcollection.ui.missing
 
 import com.robertobiggi.cardcollection.ui.common.shortLabel
-import com.robertobiggi.cardcollection.ui.common.labelRes
+import com.robertobiggi.cardcollection.ui.common.variantLabel
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
@@ -121,7 +121,7 @@ private fun MissingRow(card: CardUi, variant: VariantUi, showPrice: Boolean, onC
         Column(Modifier.weight(1f)) {
             Text(card.card.name, fontWeight = FontWeight.Bold)
             Text(
-                listOf(card.printedCode, stringResource(variant.type.labelRes()), card.language.shortLabel()).joinToString(" · "),
+                listOf(card.printedCode, variantLabel(card, variant), card.language.shortLabel()).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

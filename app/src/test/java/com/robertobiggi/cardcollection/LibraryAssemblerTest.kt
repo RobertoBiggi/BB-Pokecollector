@@ -26,6 +26,20 @@ class LibraryAssemblerTest {
         PriceSnapshotEntity(0, variantId, source, eur, null, null, usd, null, null, at, "HIGH")
 
     @Test
+    fun `nelle carte solo holo la variante prende il nome della rarita`() {
+        fun labelOf(rarity: String?, types: List<VariantType>): String? {
+            val c = card("en:sv10-031", "Moltres ex", "DRI").copy(rarity = rarity)
+            val ui = LibraryAssembler.assemble(listOf(c), types.map { CardVariantEntity("${c.id}|${it.name}", c.id, it.name) }, emptyList(), emptyList()).single()
+            return ui.rarityLabelFor(ui.variants.first { it.type == VariantType.HOLO })
+        }
+        assertEquals("Double rare", labelOf("Double rare", listOf(VariantType.HOLO)))
+        assertNull(labelOf("Rare Holo", listOf(VariantType.HOLO)))
+        assertNull(labelOf(null, listOf(VariantType.HOLO)))
+        assertNull(labelOf("Fixed", listOf(VariantType.HOLO)))
+        assertNull(labelOf("Rare", listOf(VariantType.NORMAL, VariantType.HOLO)))
+    }
+
+    @Test
     fun `assembla varianti, quantita e ultimo prezzo per valuta`() {
         val c = card("en:me03-032", "Mawile", "POR")
         val normal = "en:me03-032|NORMAL"

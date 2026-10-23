@@ -67,6 +67,14 @@ class VariantRulesTest {
     }
 
     @Test
+    fun `le carte solo holo da Scarlet e Violet non hanno reverse anche con il trend holo`() {
+        // Team Rocket's Moltres ex (Destined Rivals): TCGdex la dà solo holo, Cardmarket compila "trend-holo" lo stesso.
+        assertEquals(listOf(VariantType.HOLO), types(card("Team Rocket's Moltres ex", holoOnly, 0.57, 1.18), "2025-05-30"))
+        // Una carta normale dello stesso periodo con la reverse non segnalata da TCGdex la mantiene.
+        assertEquals(listOf(VariantType.NORMAL, VariantType.REVERSE), types(card("Omastar", normalOnly, 0.2, 0.4), "2025-05-30"))
+    }
+
+    @Test
     fun `prima delle reverse holo e per le BREAK i prezzi holo non dicono niente`() {
         // Fossil 1999 e Neo Discovery 2001: i prezzi "-holo" sono altro (1ª edizione), la reverse non esiste.
         assertEquals(listOf(VariantType.NORMAL), types(card("Omastar", normalOnly, 2.08, 1.94), "1999-10-10"))

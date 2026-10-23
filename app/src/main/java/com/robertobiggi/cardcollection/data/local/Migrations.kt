@@ -74,6 +74,21 @@ object Migrations {
     /** Versione 5 → 6: id prodotto Cardmarket delle carte trovate nel catalogo Cardmarket. */
     val SQL_5_6: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `cardmarketId` INTEGER")
 
+    /** Versione 6 → 7: id del blueprint CardTrader delle carte, per il link diretto. */
+    val SQL_6_7: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `cardTraderBlueprintId` INTEGER")
+
+    /** Migrazione Room 6 → 7. */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        /**
+         * Esegue le istruzioni di [SQL_6_7].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_6_7.forEach { db.execSQL(it) }
+        }
+    }
+
     /** Migrazione Room 5 → 6. */
     val MIGRATION_5_6 = object : Migration(5, 6) {
         /**

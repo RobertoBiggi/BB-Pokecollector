@@ -65,7 +65,7 @@
     <string name="update_catalog">Aggiorna catalogo</string>
     <string name="prices_button">Prezzi</string>
     <string name="prices_never">Prezzi mai aggiornati</string>
-    <string name="prices_updated_at">Prezzi aggiornati il %1$s</string>
+    <string name="prices_updated_at">Prezzi controllati il %1$s</string>
     <string name="empty_collection_title">Nessuna carta in questa collezione</string>
     <string name="empty_collection_text">Scarica il catalogo delle ricerche della collezione, oppure aggiungi ricerche e carte singole da Gestione. Carte e immagini restano sul telefono e sono consultabili anche offline.</string>
     <string name="download_catalog">Scarica catalogo</string>
@@ -95,7 +95,7 @@
     <string name="job_load_cardtrader">carico i set di CardTrader…</string>
     <string name="catalog_done">%1$d carte aggiornate, %2$d immagini scaricate</string>
     <string name="catalog_done_errors">%1$d carte aggiornate, %2$d immagini scaricate · %3$d problemi</string>
-    <string name="prices_done">%1$d aggiornati, %2$d dopo un nuovo tentativo, %3$d senza dati nuovi</string>
+    <string name="prices_done">%1$d prezzi scaricati, %2$d dopo un nuovo tentativo, %3$d non trovati</string>
     <string name="abort_source_paused">TCGdex ha bloccato troppe richieste: riprova più tardi.</string>
     <string name="abort_offline">Connessione assente: i prezzi già salvati restano validi.</string>
     <string name="run_in_progress">In corso…</string>
@@ -218,7 +218,7 @@
     <string name="action_download_image">Scarica immagine</string>
     <string name="action_pick_image">Scegli immagine</string>
     <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Se TCGdex non ha l\'immagine (succede spesso con le carte giapponesi) l\'app la cerca su TCGplayer; altrimenti puoi sceglierne una dalla galleria, che resta salvata finché non scarichi quella ufficiale.</string>
-    <string name="msg_card_price_updated">Prezzi aggiornati (%1$d varianti).</string>
+    <string name="msg_card_price_updated">Prezzi scaricati (%1$d varianti).</string>
     <string name="msg_card_price_none">Nessun prezzo trovato per questa carta.</string>
     <string name="msg_image_downloaded">Immagine scaricata.</string>
     <string name="msg_image_saved">Immagine salvata.</string>

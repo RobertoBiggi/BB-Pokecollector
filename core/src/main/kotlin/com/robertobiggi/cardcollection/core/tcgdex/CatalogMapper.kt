@@ -16,6 +16,7 @@ object CatalogMapper {
     /** Sigle stampate che TCGdex scrive con un altro id (il World Champions Pack giapponese è "WCP", per TCGdex "PCG10"). */
     private val PRINTED_CODES = mapOf("PCG10" to "WCP")
     private const val FIRST_REVERSE_HOLO_DATE = "2002-05-24"
+    private const val SCARLET_VIOLET_DATE = "2023-03-31"
 
     /**
      * Costruisce l'id locale univoco di una carta.
@@ -45,13 +46,12 @@ object CatalogMapper {
     fun isDigitalOnly(brief: CardBriefDto): Boolean = brief.image?.contains("/$POCKET_SERIE_ID/") == true
 
     /**
-     * Indica se la carta va tracciata: solo carte Pokémon fisiche (esclude Allenatori, Energie e TCG Pocket).
+     * Indica se la carta va tracciata: tutte le carte fisiche, Allenatori ed Energie compresi (esclude solo TCG Pocket).
      * @param card CardDto - dettaglio della carta.
      * @param set SetDto? - dettaglio del set, se disponibile.
      * @return Boolean - true se la carta va inclusa nella collezione.
      */
-    fun isTrackablePokemon(card: CardDto, set: SetDto?): Boolean {
-        if (!card.category.equals("Pokemon", ignoreCase = true)) return false
+    fun isTrackable(card: CardDto, set: SetDto?): Boolean {
         if (set?.serie?.id == POCKET_SERIE_ID) return false
         if (card.image?.contains("/$POCKET_SERIE_ID/") == true) return false
         return true
@@ -125,6 +125,10 @@ object CatalogMapper {
     private fun hasReverseHoloPrice(card: CardDto, types: Set<VariantType>, releaseDate: String?, asian: Boolean): Boolean {
         // Le prime reverse holo escono con Legendary Collection; le carte BREAK non ne hanno. Prima e per quelle, i prezzi "-holo" sono altro (1ª edizione, ristampe).
         if (releaseDate == null || releaseDate < FIRST_REVERSE_HOLO_DATE || card.name.endsWith("BREAK")) return false
+        // Le promo non hanno reverse holo: i loro prezzi "-holo" sono altro (es. Mawile Spirit Link XY105).
+        if (card.rarity.equals("Promo", ignoreCase = true) || card.set.name.contains("Promo", ignoreCase = true)) return false
+        // Da Scarlet & Violet le carte solo holo (Double Rare e superiori) non hanno reverse holo, anche se Cardmarket compila i prezzi "-holo".
+        if (releaseDate >= SCARLET_VIOLET_DATE && VariantType.NORMAL !in types) return false
         if (VariantType.REVERSE in types || (VariantType.NORMAL !in types && VariantType.HOLO !in types)) return false
         if (asian && VariantType.NORMAL in types) return false
         val cm = card.pricing?.cardmarket ?: return false
