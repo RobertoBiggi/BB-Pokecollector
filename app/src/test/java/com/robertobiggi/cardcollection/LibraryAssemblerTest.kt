@@ -53,6 +53,20 @@ class LibraryAssemblerTest {
     }
 
     @Test
+    fun `una variante non piu elencata passa a quella che la sostituisce`() {
+        val normalReverse = listOf(VariantType.NORMAL, VariantType.REVERSE)
+        assertEquals(VariantType.NORMAL, EntryMerge.replacement(VariantType.HOLO, normalReverse))
+        assertEquals(VariantType.HOLO, EntryMerge.replacement(VariantType.REVERSE, listOf(VariantType.NORMAL, VariantType.HOLO)))
+        assertEquals(VariantType.NORMAL, EntryMerge.replacement(VariantType.REVERSE, listOf(VariantType.NORMAL)))
+        assertNull(EntryMerge.replacement(VariantType.REVERSE, normalReverse))
+        assertEquals(VariantType.REVERSE, EntryMerge.replacement(VariantType.HOLO, listOf(VariantType.REVERSE)))
+        assertEquals(VariantType.HOLO, EntryMerge.replacement(VariantType.NORMAL, listOf(VariantType.HOLO)))
+        assertEquals(VariantType.HOLO, EntryMerge.replacement(VariantType.NORMAL, listOf(VariantType.HOLO, VariantType.REVERSE)))
+        assertNull(EntryMerge.replacement(VariantType.FIRST_EDITION, listOf(VariantType.NORMAL)))
+        assertNull(EntryMerge.replacement(VariantType.HOLO, listOf(VariantType.FIRST_EDITION)))
+    }
+
+    @Test
     fun `assembla varianti, quantita e ultimo prezzo per valuta`() {
         val c = card("en:me03-032", "Mawile", "POR")
         val normal = "en:me03-032|NORMAL"
