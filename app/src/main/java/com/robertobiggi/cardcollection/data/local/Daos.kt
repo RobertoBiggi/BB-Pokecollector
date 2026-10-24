@@ -172,6 +172,13 @@ interface CatalogDao {
     suspend fun cardsWithoutCardTraderBlueprint(): List<CardEntity>
 
     /**
+     * Elenca le carte con un blueprint CardTrader salvato e l'id Cardmarket di TCGdex, con cui si può controllare che l'abbinamento sia giusto.
+     * @return List<CardEntity> - carte da ricontrollare.
+     */
+    @Query("SELECT * FROM card WHERE cardTraderBlueprintId IS NOT NULL AND cardmarketProductHint IS NOT NULL")
+    suspend fun cardsWithCardTraderBlueprintToCheck(): List<CardEntity>
+
+    /**
      * Inserisce o aggiorna una carta del catalogo.
      * @param card CardEntity - carta da salvare.
      * @return Unit

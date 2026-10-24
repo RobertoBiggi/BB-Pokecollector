@@ -277,11 +277,7 @@ class PriceRepository(
         try {
             val id = cardTrader.blueprintId(request) ?: return
             if (id == card.cardTraderBlueprintId) return
-            db.catalogDao().setCardTraderBlueprint(card.id, id)
-            // Un abbinamento corretto in seguito: l'immagine presa da CardTrader per quello sbagliato va ripresa (le immagini di TCGdex o scelte a mano restano).
-            if (card.cardTraderBlueprintId != null && card.imageUrl == null && !images.isManual(card.imageHighPath)) {
-                db.catalogDao().setImagePaths(card.id, null, null)
-            }
+            storeBlueprint(card, id)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -297,8 +293,13 @@ class PriceRepository(
      */
     suspend fun fillCardTraderBlueprints(): Int {
         val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return 0
-        val missing = db.catalogDao().cardsWithoutCardTraderBlueprint()
-        if (missing.isEmpty()) return 0
+        // Dopo un cambio delle regole di abbinamento si ricontrollano una volta anche i blueprint già salvati.
+        val recheck = settings.cardTraderChecked.first() < BLUEPRINT_RULES_VERSION
+        val missing = db.catalogDao().cardsWithoutCardTraderBlueprint() + if (recheck) db.catalogDao().cardsWithCardTraderBlueprintToCheck() else emptyList()
+        if (missing.isEmpty()) {
+            if (recheck) settings.setCardTraderChecked(BLUEPRINT_RULES_VERSION)
+            return 0
+        }
         val provider = CardTraderPriceProvider(CardTraderClient(http, token))
         var saved = 0
         var consecutiveErrors = 0
@@ -309,8 +310,8 @@ class PriceRepository(
                 val language = Language.fromCode(card.language) ?: continue
                 val id = provider.blueprintId(requestOf(card, language))
                 consecutiveErrors = 0
-                if (id != null) {
-                    db.catalogDao().setCardTraderBlueprint(card.id, id)
+                if (id != null && id != card.cardTraderBlueprintId) {
+                    storeBlueprint(card, id)
                     saved++
                 }
             } catch (e: CancellationException) {
@@ -320,7 +321,23 @@ class PriceRepository(
                 consecutiveErrors++
             }
         }
+        // Il controllo dei blueprint già salvati è fatto solo se la rete ha risposto fino in fondo.
+        if (recheck && consecutiveErrors < MAX_NETWORK_ERRORS) settings.setCardTraderChecked(BLUEPRINT_RULES_VERSION)
         return saved
+    }
+
+    /**
+     * Salva il blueprint CardTrader di una carta. Se ne aveva già uno diverso (abbinamento sbagliato), l'immagine presa da CardTrader
+     * per quello sbagliato va ripresa; le immagini di TCGdex o scelte a mano restano.
+     * @param card CardEntity - carta prima della correzione.
+     * @param id Int - blueprint giusto.
+     * @return Unit
+     */
+    private suspend fun storeBlueprint(card: CardEntity, id: Int) {
+        db.catalogDao().setCardTraderBlueprint(card.id, id)
+        if (card.cardTraderBlueprintId != null && card.imageUrl == null && !images.isManual(card.imageHighPath)) {
+            db.catalogDao().setImagePaths(card.id, null, null)
+        }
     }
 
     /**
@@ -558,6 +575,9 @@ class PriceRepository(
     }
 
     companion object {
+        /** Cambia quando cambiano le regole di abbinamento a CardTrader: i blueprint già salvati si ricontrollano una volta. */
+        const val BLUEPRINT_RULES_VERSION = 1
+
         /** Snapshot conservati per variante. */
         const val KEEP_SNAPSHOTS = 20
 
