@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -47,6 +48,18 @@ class SettingsStore(context: Context) {
 
     /** Ultimo aggiornamento del catalogo riuscito (0 = mai). */
     val lastCatalogSync: Flow<Long> = store.data.map { it[LAST_CATALOG_SYNC] ?: 0L }
+
+    /** Versione delle regole di abbinamento CardTrader con cui sono stati controllati i blueprint salvati (0 = mai). */
+    val cardTraderChecked: Flow<Int> = store.data.map { it[CARDTRADER_CHECKED] ?: 0 }
+
+    /**
+     * Registra la versione delle regole di abbinamento con cui i blueprint salvati sono stati controllati.
+     * @param version Int - versione.
+     * @return Unit
+     */
+    suspend fun setCardTraderChecked(version: Int) {
+        store.edit { it[CARDTRADER_CHECKED] = version }
+    }
 
     /** Token API di CardTrader inserito dall'utente (stringa vuota = CardTrader disattivato). */
     val cardTraderToken: Flow<String> = store.data.map { it[CARDTRADER_TOKEN].orEmpty() }
@@ -111,5 +124,6 @@ class SettingsStore(context: Context) {
         val SHOW_TCGPLAYER = booleanPreferencesKey("show_price_tcgplayer")
         val SHOW_CARDTRADER = booleanPreferencesKey("show_price_cardtrader")
         val LAST_CATALOG_SYNC = longPreferencesKey("last_catalog_sync")
+        val CARDTRADER_CHECKED = intPreferencesKey("cardtrader_checked")
     }
 }

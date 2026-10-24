@@ -124,6 +124,9 @@ class CardTraderTest {
         assertEquals(1, CardTraderMatcher.expansionFor(exp, "SVP Black Star Promos", "svp", "SVP")?.id)
         assertEquals(2, CardTraderMatcher.expansionFor(exp, "Pokémon GO", "swsh10.5", "PGO")?.id)
         assertEquals(3, CardTraderMatcher.expansionFor(exp, "Shining Fates Shiny Vault", "swsh4.5sv", "SHF:SV")?.id)
+        // La sigla TCGdex "sma" è anche quella dello Starter Set Sole e Luna su CardTrader: vale il set principale.
+        val hidden = listOf(CtExpansionDto(1, 5, "hif", "Hidden Fates"), CtExpansionDto(2, 5, "sma", "Sun & Moon Starter Set"))
+        assertEquals(1, CardTraderMatcher.expansionFor(hidden, "Hidden Fates Shiny Vault", "sma", null)?.id)
     }
 
     @Test
