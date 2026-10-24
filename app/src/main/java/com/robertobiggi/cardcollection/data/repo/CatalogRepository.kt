@@ -36,7 +36,7 @@ import kotlinx.coroutines.delay
 import java.io.IOException
 
 /** Fase del sync del catalogo. */
-enum class SyncPhase { SEARCH, CARD, IMAGES, CARDMARKET, CARDMARKET_DOWNLOAD, CARDMARKET_READ }
+enum class SyncPhase { SEARCH, CARD, IMAGES, IMAGES_CARDTRADER, CARDMARKET, CARDMARKET_DOWNLOAD, CARDMARKET_READ }
 
 /**
  * Avanzamento del sync del catalogo.
@@ -102,6 +102,8 @@ class CatalogRepository(
         val tcgdexProducts = HashSet<Int>()
         var saved = 0
         val refreshed = HashSet<String>()
+        val unnumbered = ArrayList<Pair<CatalogCard, Long>>()
+        val numberedProducts = HashSet<Int>()
         val queries = dao.enabledQueriesOf(collectionId)
         val resolver = cardTraderResolver()
         for ((qIndex, query) in queries.withIndex()) {
@@ -121,7 +123,7 @@ class CatalogRepository(
             for ((index, brief) in candidates.withIndex()) {
                 progress(SyncProgress(SyncPhase.CARD, brief.name, index, candidates.size))
                 try {
-                    val card = fetchCatalogCard(language, brief.id, limiter, setCache, cardmarketProducts = tcgdexProducts) ?: continue
+                    val card = fetchCatalogCard(language, brief.id, limiter, setCache, cardmarketProducts = tcgdexProducts, lookupExpansion = true) ?: continue
                     saveCard(card, legacyQueryId = query.id)
                     refreshed += card.id
                     dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
@@ -139,7 +141,7 @@ class CatalogRepository(
                 if (candidates.any { it.id == id } || !Validators.isValidRemoteId(id)) continue
                 try {
                     limiter.acquire()
-                    val card = fetchCatalogCard(language, id, limiter, setCache, cardmarketProducts = tcgdexProducts) ?: continue
+                    val card = fetchCatalogCard(language, id, limiter, setCache, cardmarketProducts = tcgdexProducts, lookupExpansion = true) ?: continue
                     saveCard(card, legacyQueryId = query.id)
                     refreshed += card.id
                     dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
@@ -150,13 +152,27 @@ class CatalogRepository(
                 }
             }
             // Una carta che TCGdex ha già (stesso prodotto Cardmarket) non si aggiunge una seconda volta dal catalogo Cardmarket.
+            // Le carte senza numero aspettano la fine del sync: si scartano se sono un'altra scheda di una carta con numero
+            // trovata da qualunque ricerca (vedi sotto).
             for (card in fromCardmarket) {
                 if (card.cardmarketId != null && card.cardmarketId in tcgdexProducts) continue
+                if (card.printedNumber.isEmpty() && card.cardmarketId != null) {
+                    unnumbered += card to query.id
+                    continue
+                }
+                card.cardmarketId?.let { numberedProducts += it }
                 saveCard(card, legacyQueryId = query.id)
                 refreshed += card.id
                 dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                 saved++
             }
+        }
+        saved += saveUnnumbered(collectionId, unnumbered, tcgdexProducts + numberedProducts, refreshed)
+        // Le carte senza numero trovate da una ricerca e non più indicate dal catalogo (doppioni, set tolti) escono dalla collezione.
+        // Solo se la ricerca non ha avuto errori, altrimenti una rete assente le farebbe sembrare sparite.
+        if (errors == 0) {
+            val stale = dao.membershipsOf(collectionId).map { it.cardId }.filter { Ids.isUnnumberedCardmarket(it) && it !in refreshed }
+            if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
         }
         errors += refreshOtherCards(collectionId, refreshed, limiter, setCache, progress)
         val imagesSaved = downloadMissingImages(progress)
@@ -208,6 +224,38 @@ class CatalogRepository(
     }
 
     /**
+     * Salva le carte senza numero del catalogo Cardmarket, tranne quelle che sono un'altra scheda (stessa metacard) di una carta
+     * con numero che la collezione ha o ha appena trovato, in qualunque lingua: Cardmarket tiene nello stesso set stampe
+     * giapponesi (es. "Retail Exclusive Promos" ha MCharizard EX dello Starter Pack 20th) e doppioni (Lance's Charizard V in S-P e V-UNION).
+     * @param collectionId Long - collezione.
+     * @param cards List<Pair<CatalogCard, Long>> - carte senza numero e id della ricerca che le ha trovate.
+     * @param foundProducts Set<Int> - prodotti Cardmarket delle carte con numero trovate in questo sync.
+     * @param refreshed MutableSet<String> - riceve gli id delle carte salvate.
+     * @return Int - carte salvate.
+     */
+    private suspend fun saveUnnumbered(collectionId: Long, cards: List<Pair<CatalogCard, Long>>, foundProducts: Set<Int>, refreshed: MutableSet<String>): Int {
+        if (cards.isEmpty()) return 0
+        val owned = dao.membershipsOf(collectionId).map { it.cardId }.filterNot { Ids.isUnnumberedCardmarket(it) }
+            .mapNotNull { dao.getCard(it) }.flatMap { listOfNotNull(it.cardmarketId, it.cardmarketProductHint) }
+        val numbered = HashSet<Int>().apply { for (product in foundProducts + owned) metacardOrNull(product)?.let(::add) }
+        var saved = 0
+        for ((card, queryId) in cards) {
+            if (metacardOrNull(card.cardmarketId ?: continue) in numbered) continue
+            saveCard(card, legacyQueryId = queryId)
+            refreshed += card.id
+            dao.insertMembership(CollectionCardEntity(collectionId, card.id, queryId))
+            saved++
+        }
+        return saved
+    }
+
+    private suspend fun metacardOrNull(product: Int): Int? = try {
+        cardmarket.metacardOf(product)
+    } catch (e: IOException) {
+        null
+    }
+
+    /**
      * Riscarica dal catalogo le carte della collezione che nessuna ricerca ha aggiornato (aggiunte a mano, importate da un file,
      * ricerche tolte), così ogni sync corregge i dati sbagliati salvati da versioni precedenti, anche se possiedi copie.
      * @param collectionId Long - collezione.
@@ -231,7 +279,7 @@ class CatalogRepository(
             if (!Validators.isValidRemoteId(stored.tcgdexId)) continue
             progress(SyncProgress(SyncPhase.CARD, stored.name, index, others.size))
             try {
-                val card = fetchOrCardmarketCard(language, stored.tcgdexId, limiter, setCache) ?: continue
+                val card = fetchOrCardmarketCard(language, stored.tcgdexId, limiter, setCache, lookupExpansion = true) ?: continue
                 saveCard(card, stored.queryId)
             } catch (e: Exception) {
                 if (!isRecoverable(e)) throw e
@@ -247,11 +295,12 @@ class CatalogRepository(
      * @param tcgdexId String - id TCGdex già validato.
      * @param limiter RateLimiter - limitatore delle richieste.
      * @param setCache HashMap<String, SetDto?> - cache dei set già scaricati.
+     * @param lookupExpansion Boolean - true per ricavare anche il set Cardmarket.
      * @return CatalogCard? - carta normalizzata, oppure null se va scartata.
      */
-    private suspend fun fetchOrCardmarketCard(language: Language, tcgdexId: String, limiter: RateLimiter, setCache: HashMap<String, SetDto?>): CatalogCard? =
+    private suspend fun fetchOrCardmarketCard(language: Language, tcgdexId: String, limiter: RateLimiter, setCache: HashMap<String, SetDto?>, lookupExpansion: Boolean = false): CatalogCard? =
         try {
-            fetchCatalogCard(language, tcgdexId, limiter, setCache)
+            fetchCatalogCard(language, tcgdexId, limiter, setCache, lookupExpansion = lookupExpansion)
         } catch (e: NotFoundException) {
             cardmarket.cardFor(language, tcgdexId.substringBeforeLast('-'), tcgdexId.substringAfterLast('-'))
         }
@@ -328,6 +377,7 @@ class CatalogRepository(
      * @param limiter RateLimiter - limitatore delle richieste.
      * @param setCache HashMap<String, SetDto?> - cache dei set già scaricati.
      * @param cardmarketProducts MutableSet<Int>? - riceve il prodotto Cardmarket della carta, per non aggiungere la stessa carta anche dal catalogo Cardmarket.
+     * @param lookupExpansion Boolean - true per ricavare anche il set Cardmarket (legge il catalogo Cardmarket, quindi solo nel sync).
      * @return CatalogCard? - carta normalizzata, oppure null se va scartata.
      */
     private suspend fun fetchCatalogCard(
@@ -336,6 +386,7 @@ class CatalogRepository(
         limiter: RateLimiter,
         setCache: HashMap<String, SetDto?>,
         cardmarketProducts: MutableSet<Int>? = null,
+        lookupExpansion: Boolean = false,
     ): CatalogCard? {
         limiter.acquire()
         val card = withRetry { client.getCard(language, tcgdexId) }
@@ -355,7 +406,15 @@ class CatalogRepository(
             null
         }
         if (!CatalogMapper.isTrackable(card, set)) return null
-        return CatalogMapper.toCatalogCard(language, card, set)
+        val catalogCard = CatalogMapper.toCatalogCard(language, card, set).copy(cardmarketProductHint = card.pricing?.cardmarket?.idProduct)
+        if (!lookupExpansion) return catalogCard
+        // Set e nome inglese su Cardmarket servono al link; se il catalogo non c'è si riprova al prossimo sync, senza perdere quello già salvato.
+        val located = try {
+            card.pricing?.cardmarket?.idProduct?.let { cardmarket.locate(it) }
+        } catch (e: IOException) {
+            null
+        }
+        return catalogCard.copy(cardmarketExpansionId = located?.first, cardmarketName = located?.second)
     }
 
     /**
@@ -393,6 +452,9 @@ class CatalogRepository(
                     cardTraderCondition = existing?.cardTraderCondition,
                     cardmarketId = card.cardmarketId ?: existing?.cardmarketId,
                     cardTraderBlueprintId = existing?.cardTraderBlueprintId,
+                    cardmarketExpansionId = card.cardmarketExpansionId ?: existing?.cardmarketExpansionId,
+                    cardmarketName = card.cardmarketName ?: existing?.cardmarketName,
+                    cardmarketProductHint = card.cardmarketProductHint ?: existing?.cardmarketProductHint,
                 ),
             )
             dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name) })

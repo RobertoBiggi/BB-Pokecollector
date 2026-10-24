@@ -67,6 +67,12 @@ data class CardEntity(
     val cardmarketId: Int? = null,
     /** Id del blueprint CardTrader, noto dopo un aggiornamento prezzi che abbina la carta con certezza: serve al link diretto. */
     val cardTraderBlueprintId: Int? = null,
+    /** Set della carta su Cardmarket (`idExpansion`): serve al link, che cerca la carta nel suo set. */
+    val cardmarketExpansionId: Int? = null,
+    /** Nome inglese della carta su Cardmarket: nel suo set si cerca con questo, non con il nome nella lingua della carta. */
+    val cardmarketName: String? = null,
+    /** Id prodotto Cardmarket indicato da TCGdex, per abbinare la carta su CardTrader quando il numero non basta. */
+    val cardmarketProductHint: Int? = null,
 )
 
 /** Variante di stampa di una carta: ogni riga è uno slot. */

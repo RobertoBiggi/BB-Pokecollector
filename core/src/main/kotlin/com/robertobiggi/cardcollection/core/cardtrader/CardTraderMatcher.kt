@@ -51,7 +51,7 @@ object CardTraderMatcher {
         }
         val exact = if (preferCode) byCode() ?: byName().takeIf { wanted.isNotEmpty() } else byName().takeIf { wanted.isNotEmpty() } ?: byCode()
         if (exact != null) return exact
-        // Trainer Gallery e Galarian Gallery sono set a parte su TCGdex, ma su CardTrader le carte (TG01, GG01…) stanno nel set principale.
+        // Trainer Gallery, Galarian Gallery e Shiny Vault sono set a parte su TCGdex, ma su CardTrader le carte (TG01, GG01, SV1…) stanno nel set principale.
         val base = GALLERY_SUFFIXES.firstNotNullOfOrNull { wanted.removeSuffix(it).takeIf { b -> b != wanted && b.isNotEmpty() } }
         if (base != null) expansions.firstOrNull { normalizeName(it.name) == base }?.let { return it }
         // Nomi con prefissi diversi ("SV02: Paldea Evolved"): vale solo se uno contiene l'altro per intero.
@@ -65,6 +65,48 @@ object CardTraderMatcher {
         return null
     }
 
+    private fun looseNumber(raw: String): String = normalizeNumber(raw).replace(Regex("""(?<=\D)0+(?=\d)"""), "")
+
+    /**
+     * Restringe i blueprint a quelli con l'id prodotto Cardmarket indicato da TCGdex. Serve quando il numero non trova la carta
+     * (Celebrations Classic Collection: CardTrader usa il numero del set originale) o ne trova più d'una.
+     * @param blueprints List<CtBlueprintDto> - blueprint dell'espansione, o già scelti per numero.
+     * @param hint Int? - id prodotto Cardmarket.
+     * @return List<CtBlueprintDto> - blueprint con quell'id; vuota se nessuno lo ha o manca l'indizio.
+     */
+    fun byCardmarketHint(blueprints: List<CtBlueprintDto>, hint: Int?): List<CtBlueprintDto> =
+        if (hint == null) emptyList() else blueprints.filter { hint in it.cardMarketIds.orEmpty() }
+
+    /**
+     * Sceglie tra il blueprint trovato dal numero e quello indicato dall'id Cardmarket di TCGdex. Il numero può portare a un'altra
+     * carta (set con la stessa sigla, o numerazione diversa: 30th Celebration Classic Collection "001" è Exeggcute 001/128):
+     * se l'id Cardmarket indica un blueprint di un'altra carta (nome diverso) e quelli trovati dal numero non lo contengono, vale l'id.
+     * @param byNumber List<CtBlueprintDto> - blueprint con il numero della carta.
+     * @param byHint List<CtBlueprintDto> - blueprint con l'id Cardmarket indicato da TCGdex.
+     * @return List<CtBlueprintDto> - blueprint scelti.
+     */
+    fun preferHint(byNumber: List<CtBlueprintDto>, byHint: List<CtBlueprintDto>): List<CtBlueprintDto> {
+        if (byHint.isEmpty()) return byNumber
+        if (byNumber.isEmpty()) return byHint
+        val hintIds = byHint.map { it.id }.toSet()
+        val hintNames = byHint.map { pokemonKey(it.name.replace(LEVEL_SUFFIX, "")) }.toSet()
+        val sameCard = byNumber.any { it.id in hintIds || pokemonKey(it.name.replace(LEVEL_SUFFIX, "")) in hintNames }
+        return if (sameCard) byNumber else byHint
+    }
+
+    /**
+     * Sceglie il blueprint che rappresenta la carta quando ce ne sono più d'uno con lo stesso numero: se sono tutti la stessa
+     * carta in finiture diverse (normale, holo…), vale quello senza finitura o timbro nella versione; se sono carte diverse, nessuno.
+     * Serve a immagine e dettagli, che sono uguali per ogni finitura; i prezzi scelgono la finitura per conto loro.
+     * @param blueprints List<CtBlueprintDto> - blueprint con lo stesso numero.
+     * @return CtBlueprintDto? - blueprint scelto, oppure null se non c'è una carta sola.
+     */
+    fun representative(blueprints: List<CtBlueprintDto>): CtBlueprintDto? {
+        if (blueprints.size <= 1) return blueprints.singleOrNull()
+        if (blueprints.map { pokemonKey(it.name.replace(LEVEL_SUFFIX, "")) }.distinct().size != 1) return null
+        return blueprints.firstOrNull { bp -> bp.version?.let { VERSION_FINISH.containsMatchIn(it) } != true } ?: blueprints.first()
+    }
+
     /**
      * Seleziona i blueprint con il numero di carta indicato.
      * @param blueprints List<CtBlueprintDto> - carte dell'espansione.
@@ -76,6 +118,8 @@ object CardTraderMatcher {
         val wanted = normalizeNumber(localId)
         if (wanted.isEmpty()) return emptyList()
         val byNumber = blueprints.filter { bp -> collectorNumber(bp)?.let { normalizeNumber(it) == wanted } == true }
+            // Gli zeri dopo le lettere non sempre coincidono (TCGdex "SV001", CardTrader "SV1").
+            .ifEmpty { blueprints.filter { bp -> collectorNumber(bp)?.let { looseNumber(it) == looseNumber(localId) } == true } }
         if (byNumber.isNotEmpty() || dexId == null) return byNumber
         val names = PokemonNames.namesOf(dexId).map { pokemonKey(it) }.toSet()
         // Molti blueprint di queste espansioni non hanno nemmeno "No.": allora vale il nome della carta.
@@ -145,7 +189,7 @@ object CardTraderMatcher {
 
     private const val MIN_CONTAINED_LENGTH = 6
 
-    private val GALLERY_SUFFIXES = listOf("trainergallery", "galariangallery")
+    private val GALLERY_SUFFIXES = listOf("trainergallery", "galariangallery", "shinyvault")
 
     /**
      * Set giapponesi di TCGdex (id in minuscolo) che su CardTrader hanno un codice diverso.
@@ -158,6 +202,11 @@ object CardTraderMatcher {
         "vs1" to "pvs", "web1" to "pwe",
         "e1" to "ec1", "e2" to "ec2", "e3" to "ec3", "e4" to "ec4", "e5" to "ec5",
         "pcg1" to "fol", "pcg2" to "cbs", "pcg3" to "rgsb", "pcg4" to "gsso", "pcg5" to "mif",
+        // McDonald's: CardTrader dà ai set recenti un altro nome (25th Anniversary, Match Battle, Dragon Discovery) e una sigla diversa da TCGdex.
+        "2021swsh" to "mc21", "2022swsh" to "mc22", "2023sv" to "mc23", "2024sv" to "m24",
+        // Altri set che CardTrader chiama in modo diverso da TCGdex (confrontati numero e nome delle carte: tutte o quasi coincidono).
+        "cel25cc" to "c25", "30th-c" to "30c", "svp" to "svpromo", "swsh10.5" to "pkmgo", "fut2020" to "futsal", "exu" to "suf",
+        "tk-xy-su" to "suicune", "tk-xy-p" to "xytkp", "tk-sm-l" to "xytkl", "tk-sm-r" to "xytka",
         "pcg6" to "hrt", "pcg7" to "hof", "pcg8" to "mic", "pcg9" to "odffe",
         "s5i" to "s5l", "sm1p" to "sm1plus", "sm2p" to "sm2plus", "sm3p" to "sm3", "sm4p" to "sm4", "sm5p" to "sm5plus",
         "sv-p" to "promosv", "m-p" to "mp-promo",
@@ -166,6 +215,8 @@ object CardTraderMatcher {
         "l1a" to "l1", "l1b" to "l1ss", "xy1a" to "xy1", "xy1b" to "xy1y", "xy5a" to "xy5", "xy5b" to "xy5t",
         "xy8a" to "xy8", "xy8b" to "xy8r", "xy11a" to "xy11f", "xy11b" to "xy11", "cp6" to "ep20", "s3a" to "ls3",
     )
+
+    private val VERSION_FINISH = Regex("""holo|reverse|stamp""", RegexOption.IGNORE_CASE)
 
     private val LEVEL_SUFFIX = Regex("""\s+Lv\.\s*\d+.*""")
 

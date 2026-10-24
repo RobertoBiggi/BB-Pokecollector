@@ -101,6 +101,78 @@ class CardTraderTest {
     }
 
     @Test
+    fun `i set McDonald's con un altro nome su CardTrader si trovano dall'id TCGdex`() {
+        val exp = listOf(
+            CtExpansionDto(1, 5, "mc19", "McDonald's Collection 2019"),
+            CtExpansionDto(2, 5, "mc21", "McDonald's Collection 25th Anniversary"),
+            CtExpansionDto(3, 5, "mc22", "McDonald's Match Battle 2022"),
+            CtExpansionDto(4, 5, "m24", "McDonald's Dragon Discovery"),
+        )
+        assertEquals(1, CardTraderMatcher.expansionFor(exp, "McDonald's Collection 2019", "2019sm", "MCD19")?.id)
+        assertEquals(2, CardTraderMatcher.expansionFor(exp, "McDonald's Collection 2021", "2021swsh", "MCD21")?.id)
+        assertEquals(3, CardTraderMatcher.expansionFor(exp, "McDonald's Collection 2022", "2022swsh", "MCD22")?.id)
+        assertEquals(4, CardTraderMatcher.expansionFor(exp, "McDonald's Collection 2024", "2024sv", "MCD24")?.id)
+    }
+
+    @Test
+    fun `i set con un altro nome su CardTrader e la Shiny Vault si trovano`() {
+        val exp = listOf(
+            CtExpansionDto(1, 5, "svpromo", "SV Black Star Promos"),
+            CtExpansionDto(2, 5, "pkmgo", "Pokémon TCG: Pokémon GO"),
+            CtExpansionDto(3, 5, "shf", "Shining Fates"),
+        )
+        assertEquals(1, CardTraderMatcher.expansionFor(exp, "SVP Black Star Promos", "svp", "SVP")?.id)
+        assertEquals(2, CardTraderMatcher.expansionFor(exp, "Pokémon GO", "swsh10.5", "PGO")?.id)
+        assertEquals(3, CardTraderMatcher.expansionFor(exp, "Shining Fates Shiny Vault", "swsh4.5sv", "SHF:SV")?.id)
+    }
+
+    @Test
+    fun `gli zeri dopo le lettere non impediscono di trovare la carta`() {
+        fun bp(id: Int, number: String) = CtBlueprintDto(id, "x", null, 3, buildJsonObject { put("collector_number", JsonPrimitive(number)) })
+        val vault = listOf(bp(1, "SV1"), bp(2, "SV2"), bp(3, "001"))
+        assertEquals(listOf(1), CardTraderMatcher.blueprintsFor(vault, "SV001").map { it.id })
+        assertEquals(listOf(3), CardTraderMatcher.blueprintsFor(vault, "001").map { it.id })
+    }
+
+    @Test
+    fun `con piu finiture della stessa carta si sceglie quella senza finitura`() {
+        val normal = CtBlueprintDto(1, "Squirtle", "017/025")
+        val holo = CtBlueprintDto(2, "Squirtle", "Holo Promo | 017/025")
+        assertEquals(1, CardTraderMatcher.representative(listOf(holo, normal))?.id)
+        assertEquals(2, CardTraderMatcher.representative(listOf(holo))?.id)
+        assertEquals(2, CardTraderMatcher.representative(listOf(holo, CtBlueprintDto(3, "Squirtle", "Reverse Holo | 017/025")))?.id)
+        assertNull(CardTraderMatcher.representative(listOf(normal, CtBlueprintDto(4, "Wartortle", "017/025"))))
+        // My First Battle: nessun numero, e la stessa carta esiste anche con il timbro Poké Ball.
+        val stamped = CtBlueprintDto(5, "Squirtle", "Unnumbered | Pokemon Ball Stamped")
+        val plain = CtBlueprintDto(6, "Squirtle", "Unnumbered")
+        assertEquals(6, CardTraderMatcher.representative(listOf(stamped, plain))?.id)
+    }
+
+    @Test
+    fun `l'id Cardmarket di TCGdex abbina le carte che il numero non trova`() {
+        val gold = CtBlueprintDto(1, "Charizard", "Gold Metal", cardMarketIds = listOf(580162))
+        val holo = CtBlueprintDto(2, "Charizard", "Holo Rare | BS 004", cardMarketIds = listOf(576772))
+        assertEquals(listOf(2), CardTraderMatcher.byCardmarketHint(listOf(gold, holo), 576772).map { it.id })
+        assertEquals(emptyList<Int>(), CardTraderMatcher.byCardmarketHint(listOf(gold, holo), null).map { it.id })
+        val exp = listOf(CtExpansionDto(1, 5, "c25", "Celebrations"))
+        assertEquals(1, CardTraderMatcher.expansionFor(exp, "Celebrations Classic Collection", "cel25cc", "CEL:CC")?.id)
+    }
+
+    @Test
+    fun `l'id Cardmarket vale piu del numero quando questo porta a un'altra carta`() {
+        val exeggcute = CtBlueprintDto(1, "Exeggcute", "001/128", cardMarketIds = listOf(907607))
+        val charizard = CtBlueprintDto(2, "Charizard", "30th Celebration Stamp | 4/102", cardMarketIds = listOf(907940))
+        assertEquals(listOf(2), CardTraderMatcher.preferHint(listOf(exeggcute), listOf(charizard)).map { it.id })
+        // Stessa carta in un'altra finitura (id Cardmarket diverso): vale il numero, che le contiene tutte.
+        val holo = CtBlueprintDto(3, "Charizard", "Holo | 004", cardMarketIds = listOf(1))
+        assertEquals(listOf(2, 3), CardTraderMatcher.preferHint(listOf(charizard, holo), listOf(charizard)).map { it.id })
+        assertEquals(listOf(1), CardTraderMatcher.preferHint(listOf(exeggcute), emptyList()).map { it.id })
+        assertEquals(listOf(2), CardTraderMatcher.preferHint(emptyList(), listOf(charizard)).map { it.id })
+        val exp = listOf(CtExpansionDto(1, 5, "30c", "30th Celebration"))
+        assertEquals(1, CardTraderMatcher.expansionFor(exp, "30th Classic Collection", "30th-c", "30C")?.id)
+    }
+
+    @Test
     fun `numeri e nomi dei set vengono normalizzati`() {
         assertEquals("75", CardTraderMatcher.normalizeNumber("075/110"))
         assertEquals("SWSH001", CardTraderMatcher.normalizeNumber("SWSH001"))

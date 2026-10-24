@@ -179,6 +179,27 @@ class MigrationTest {
     }
 
     @Test
+    fun `la migrazione 7-8 aggiunge il set Cardmarket delle carte`() {
+        val migrated = db(fromRoomSchema(7))
+        Migrations.SQL_7_8.forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
+        assertEquals(schema(db(fromRoomSchema(8))), schema(migrated))
+    }
+
+    @Test
+    fun `la migrazione 8-9 aggiunge il nome Cardmarket delle carte`() {
+        val migrated = db(fromRoomSchema(8))
+        Migrations.SQL_8_9.forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
+        assertEquals(schema(db(fromRoomSchema(9))), schema(migrated))
+    }
+
+    @Test
+    fun `la migrazione 9-10 aggiunge l'id prodotto Cardmarket di TCGdex`() {
+        val migrated = db(fromRoomSchema(9))
+        Migrations.SQL_9_10.forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
+        assertEquals(schema(db(fromRoomSchema(10))), schema(migrated))
+    }
+
+    @Test
     fun `la catena 1-2-3-4 produce lo schema attuale`() {
         val migrated = db(v1)
         (Migrations.SQL_1_2 + Migrations.SQL_2_3 + Migrations.SQL_3_4).forEach { sql -> migrated.createStatement().use { it.execute(sql) } }

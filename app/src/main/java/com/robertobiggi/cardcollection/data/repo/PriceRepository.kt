@@ -236,6 +236,7 @@ class PriceRepository(
             ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
             cardTraderCondition = CtCondition.fromCondition(condition),
             cardmarketId = card.cardmarketId,
+            cardmarketHint = card.cardmarketProductHint,
         )
         // Il listino Cardmarket (aggiornato ogni notte) è la fonte principale dei prezzi in euro; TCGdex serve
         // per i dollari di TCGplayer e come ripiego per le carte che il listino non abbina.
@@ -264,7 +265,7 @@ class PriceRepository(
     }
 
     /**
-     * Salva l'id del blueprint CardTrader della carta, una volta per carta, se si abbina con certezza.
+     * Salva l'id del blueprint CardTrader della carta (una verifica per carta a ogni avvio), se si abbina con certezza; se l'abbinamento era sbagliato lo corregge.
      * Le Poké Ball e le Master Ball hanno un blueprint a parte, quindi non servono per la carta.
      * @param cardTrader CardTraderPriceProvider? - fonte CardTrader, null senza token.
      * @param card CardEntity - carta.
@@ -272,10 +273,15 @@ class PriceRepository(
      * @return Unit
      */
     private suspend fun saveCardTraderBlueprint(cardTrader: CardTraderPriceProvider?, card: CardEntity, request: PriceRequest) {
-        if (cardTrader == null || card.cardTraderBlueprintId != null || request.variant.isBall || !blueprintLookedUp.add(card.id)) return
+        if (cardTrader == null || request.variant.isBall || !blueprintLookedUp.add(card.id)) return
         try {
             val id = cardTrader.blueprintId(request) ?: return
+            if (id == card.cardTraderBlueprintId) return
             db.catalogDao().setCardTraderBlueprint(card.id, id)
+            // Un abbinamento corretto in seguito: l'immagine presa da CardTrader per quello sbagliato va ripresa (le immagini di TCGdex o scelte a mano restano).
+            if (card.cardTraderBlueprintId != null && card.imageUrl == null && !images.isManual(card.imageHighPath)) {
+                db.catalogDao().setImagePaths(card.id, null, null)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -321,16 +327,18 @@ class PriceRepository(
      * Scarica da CardTrader l'immagine delle carte inglesi e giapponesi che TCGdex non ha (es. i set giapponesi senza
      * carte) e completa rarità e numero stampato delle carte del catalogo Cardmarket. Serve il token CardTrader; senza,
      * o con la rete assente, non fa nulla. Una carta che non si abbina con certezza resta com'è.
+     * @param progress suspend (SyncProgress) -> Unit - avanzamento, una volta per carta.
      * @return Int - numero di carte a cui è stata aggiunta l'immagine.
      */
-    suspend fun fillImagesFromCardTrader(): Int {
+    suspend fun fillImagesFromCardTrader(progress: suspend (SyncProgress) -> Unit = {}): Int {
         val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return 0
         val missing = db.catalogDao().cardsWithoutImage()
         val provider = CardTraderPriceProvider(CardTraderClient(http, token))
         val limiter = RateLimiter(REQUEST_INTERVAL_MS)
         var saved = 0
-        for (stored in missing) {
+        for ((index, stored) in missing.withIndex()) {
             try {
+                progress(SyncProgress(SyncPhase.IMAGES_CARDTRADER, stored.name, index, missing.size))
                 limiter.acquire()
                 if (saveCardTraderImage(provider, stored)) saved++
             } catch (e: CancellationException) {
@@ -375,6 +383,7 @@ class PriceRepository(
         dexId = card.dexId,
         ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
         cardmarketId = card.cardmarketId,
+        cardmarketHint = card.cardmarketProductHint,
     )
 
     /**

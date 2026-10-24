@@ -162,7 +162,8 @@ def main():
         shared[cm[e["id"]]] = shared.get(cm[e["id"]], 0) + 1
     with cf.ThreadPoolExecutor(2) as pool:
         for e, bps in pool.map(blueprints, missing):
-            lang = LANGUAGE.get((e.get("code") or "").lower()) or language_of(bps)
+            # Il nome dice che è un set in un'altra lingua (es. "Traditional Chinese Products"), anche se qualche blueprint elenca l'inglese.
+            lang = None if FOREIGN.search(e["name"]) else LANGUAGE.get((e.get("code") or "").lower()) or language_of(bps)
             # I set giapponesi più vecchi non dichiarano la lingua: se non è dichiarata si considerano giapponesi, tranne quelli che lo dicono nel nome.
             if lang is None and not FOREIGN.search(e["name"]):
                 # Cinese (es. "Collect 151", "Gem Pack"), coreano ecc. si riconoscono dalla lingua delle carte in vendita.

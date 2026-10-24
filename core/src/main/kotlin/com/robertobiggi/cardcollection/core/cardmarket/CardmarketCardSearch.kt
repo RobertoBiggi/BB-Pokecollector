@@ -93,6 +93,22 @@ class CardmarketCardSearch(
     }
 
     /**
+     * Id con cui Cardmarket indica la stessa carta in tutte le sue stampe, dal suo id prodotto.
+     * @param idProduct Int - id prodotto Cardmarket.
+     * @return Int? - metacard, oppure null se il prodotto non è nel catalogo.
+     * @throws java.io.IOException se il catalogo non è in cache e non si riesce a scaricarlo.
+     */
+    suspend fun metacardOf(idProduct: Int): Int? = catalog.locate(idProduct)?.second?.metacard?.takeIf { it != 0 }
+
+    /**
+     * Set e nome inglese di una carta su Cardmarket, dal suo id prodotto.
+     * @param idProduct Int - id prodotto Cardmarket.
+     * @return Pair<Int, String>? - `idExpansion` e nome da cercare, oppure null se il prodotto non è nel catalogo.
+     * @throws java.io.IOException se il catalogo non è in cache e non si riesce a scaricarlo.
+     */
+    suspend fun locate(idProduct: Int): Pair<Int, String>? = catalog.locate(idProduct)?.let { (expansion, product) -> expansion to CardmarketCatalog.searchName(product.name) }
+
+    /**
      * Carte dei set (giapponesi o inglesi) che TCGdex non elenca (BW, DP, Platino, promo, mazzi), cercate per nome nel loro set
      * Cardmarket. Il numero è quello stampato, letto da CardTrader; senza, la carta si identifica con il prodotto
      * Cardmarket (id "unpromo-Cardmarket571821") e il numero stampato resta vuoto.
@@ -101,9 +117,11 @@ class CardmarketCardSearch(
      */
     private suspend fun extraSetCards(language: Language, key: String, onDownload: suspend () -> Unit, onRead: suspend () -> Unit): List<CatalogCard> =
         extraSets.sets.filter { it.language == language }.flatMap { extra ->
-            catalog.productsOf(extra.cardmarketId, onDownload, onRead)
-                .filter { key in it.nameKey && (extra.whole || it.idProduct in extra.numbers) }
-                .mapNotNull { extraCard(extra, it) }
+            catalog.productsOf(extra.cardmarketId, onDownload, onRead).let { all ->
+                // Un prodotto senza numero che è un'altra stampa di una carta già numerata del set (stessa metacard) non è una carta a parte.
+                val numbered = all.filter { it.idProduct in extra.numbers }.map { it.metacard }.filter { it != 0 }.toSet()
+                all.filter { key in it.nameKey && (it.idProduct in extra.numbers || (extra.whole && it.metacard !in numbered)) }
+            }.mapNotNull { extraCard(extra, it) }
         }
 
     private fun extraCard(extra: CardmarketExtraSets.ExtraSet, product: CatalogProduct): CatalogCard? {
@@ -131,6 +149,8 @@ class CardmarketCardSearch(
             variants = listOf(CatalogVariant(VariantType.NORMAL)),
             dexId = PokemonNames.dexIdOfName(product.name),
             cardmarketId = product.idProduct,
+            cardmarketExpansionId = extra.cardmarketId,
+            cardmarketName = CardmarketCatalog.searchName(product.name),
         )
     }
 

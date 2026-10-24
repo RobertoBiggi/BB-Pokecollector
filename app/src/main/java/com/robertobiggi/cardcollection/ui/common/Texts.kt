@@ -165,7 +165,8 @@ fun jobProgressText(state: JobState, prices: Boolean): String {
     }
     return when (SyncPhase.entries.firstOrNull { it.name == state.phase }) {
         SyncPhase.SEARCH -> stringResource(R.string.job_search, label)
-        SyncPhase.IMAGES -> stringResource(R.string.job_images, state.done + 1, state.total)
+        SyncPhase.IMAGES -> stringResource(R.string.job_images, state.done + 1, state.total, label)
+        SyncPhase.IMAGES_CARDTRADER -> stringResource(R.string.job_images_cardtrader, state.done + 1, state.total, label)
         SyncPhase.CARDMARKET -> stringResource(R.string.job_search_cardmarket, label)
         SyncPhase.CARDMARKET_DOWNLOAD -> stringResource(R.string.job_download_catalog)
         SyncPhase.CARDMARKET_READ -> stringResource(R.string.job_read_catalog)

@@ -23,6 +23,7 @@ import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
  * @property ordinal calcola, solo se serve, la posizione della carta senza Pokédex tra le carte Pokémon del set (vedi [SetOrdinal]).
  * @property cardTraderCondition condizione peggiore accettata per CardTrader (quella della variante), null = Near Mint.
  * @property cardmarketId id prodotto Cardmarket, se la carta viene dal catalogo Cardmarket: CardTrader la trova da questo, senza il numero.
+ * @property cardmarketHint id prodotto Cardmarket indicato da TCGdex: serve solo ad abbinare la carta su CardTrader quando il numero non basta.
  */
 data class PriceRequest(
     val language: Language,
@@ -39,6 +40,7 @@ data class PriceRequest(
     val ordinal: (suspend () -> SetOrdinal?)? = null,
     val cardTraderCondition: CtCondition? = null,
     val cardmarketId: Int? = null,
+    val cardmarketHint: Int? = null,
 )
 
 /** Fonte di prezzi. Le implementazioni lanciano le eccezioni di [com.robertobiggi.cardcollection.core.net]. */

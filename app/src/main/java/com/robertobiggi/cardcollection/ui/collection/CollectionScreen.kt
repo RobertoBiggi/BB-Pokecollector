@@ -143,17 +143,21 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
         when {
             cards == null -> Unit
             cards.isEmpty() -> EmptyLibrary(onSync = vm::startCatalogSync, syncing = catalogJob?.running == true)
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 150.dp),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Filters(filter, visible.size, cards.map { it.language }.distinct().sortedBy { it.ordinal }, vm::updateFilter)
+            else -> Column(Modifier.fillMaxSize()) {
+                // La ricerca resta fissa sopra l'elenco; i filtri scorrono con le carte.
+                SearchField(filter, vm::updateFilter, Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp))
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 150.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Filters(filter, visible.size, cards.map { it.language }.distinct().sortedBy { it.ordinal }, vm::updateFilter)
+                    }
+                    items(visible, key = { it.card.id }) { card -> CardTile(card, onClick = { onOpen(card.card.id) }) }
                 }
-                items(visible, key = { it.card.id }) { card -> CardTile(card, onClick = { onOpen(card.card.id) }) }
             }
         }
     }
@@ -194,7 +198,26 @@ private fun EmptyLibrary(onSync: () -> Unit, syncing: Boolean) {
 }
 
 /**
- * Ricerca, chip di filtro e ordinamento.
+ * Campo di ricerca per nome, sempre visibile sopra l'elenco.
+ * @param filter CollectionFilter - filtri correnti.
+ * @param onChange ((CollectionFilter) -> CollectionFilter) -> Unit - applica una modifica ai filtri.
+ * @param modifier Modifier - posizione e margini.
+ * @return Unit
+ */
+@Composable
+private fun SearchField(filter: CollectionFilter, onChange: ((CollectionFilter) -> CollectionFilter) -> Unit, modifier: Modifier = Modifier) {
+    OutlinedTextField(
+        value = filter.query,
+        onValueChange = { text -> onChange { it.copy(query = text) } },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        placeholder = { Text(stringResource(R.string.search_placeholder)) },
+        singleLine = true,
+        modifier = modifier.fillMaxWidth(),
+    )
+}
+
+/**
+ * Chip di filtro, ordinamento e numero di carte visibili.
  * @param filter CollectionFilter - filtri correnti.
  * @param count Int - carte visibili.
  * @param languages List<Language> - lingue presenti nella collezione.
@@ -205,14 +228,6 @@ private fun EmptyLibrary(onSync: () -> Unit, syncing: Boolean) {
 private fun Filters(filter: CollectionFilter, count: Int, languages: List<Language>, onChange: ((CollectionFilter) -> CollectionFilter) -> Unit) {
     var sortOpen by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = filter.query,
-            onValueChange = { text -> onChange { it.copy(query = text) } },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            placeholder = { Text(stringResource(R.string.search_placeholder)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OwnedFilter.entries.forEach { f ->
                 FilterChip(
