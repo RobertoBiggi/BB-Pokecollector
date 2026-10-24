@@ -49,11 +49,13 @@ object CardTraderMatcher {
             listOfNotNull(setId, setCode).map { it.lowercase() }.flatMap { listOfNotNull(JP_CODE_ALIASES[it], it) }
                 .firstNotNullOfOrNull { code -> expansions.firstOrNull { it.code?.lowercase() == code } }
         }
-        val exact = if (preferCode) byCode() ?: byName().takeIf { wanted.isNotEmpty() } else byName().takeIf { wanted.isNotEmpty() } ?: byCode()
-        if (exact != null) return exact
         // Trainer Gallery, Galarian Gallery e Shiny Vault sono set a parte su TCGdex, ma su CardTrader le carte (TG01, GG01, SV1…) stanno nel set principale.
+        // Va prima del codice: la sigla del set a parte può coincidere con quella di un altro set (Hidden Fates Shiny Vault "sma" è lo Starter Set Sole e Luna).
         val base = GALLERY_SUFFIXES.firstNotNullOfOrNull { wanted.removeSuffix(it).takeIf { b -> b != wanted && b.isNotEmpty() } }
-        if (base != null) expansions.firstOrNull { normalizeName(it.name) == base }?.let { return it }
+        val ofBase = { base?.let { b -> expansions.firstOrNull { normalizeName(it.name) == b } } }
+        val exact = if (preferCode) byCode() ?: byName().takeIf { wanted.isNotEmpty() } ?: ofBase()
+        else byName().takeIf { wanted.isNotEmpty() } ?: ofBase() ?: byCode()
+        if (exact != null) return exact
         // Nomi con prefissi diversi ("SV02: Paldea Evolved"): vale solo se uno contiene l'altro per intero.
         if (wanted.length >= MIN_CONTAINED_LENGTH) {
             val contained = expansions.filter {
