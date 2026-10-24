@@ -87,7 +87,10 @@ class CardmarketCardSearchTest {
             {"idProduct":45,"name":"Vaporeon","idCategory":51,"idExpansion":400},
             {"idProduct":46,"name":"Jolteon","idCategory":51,"idExpansion":400},
             {"idProduct":47,"name":"Flareon","idCategory":51,"idExpansion":400},
-            {"idProduct":48,"name":"Ditto","idCategory":51,"idExpansion":400}]}""",
+            {"idProduct":48,"name":"Ditto","idCategory":51,"idExpansion":400},
+            {"idProduct":90,"name":"Charizard [Collect Fire]","idCategory":51,"idExpansion":900,"idMetacard":5},
+            {"idProduct":91,"name":"Charizard [Collect Fire]","idCategory":51,"idExpansion":900,"idMetacard":5},
+            {"idProduct":92,"name":"Charizard Lv.76 [Solo Flame]","idCategory":51,"idExpansion":900,"idMetacard":6}]}""",
     )
 
     private val expansions = CardmarketExpansions.parse(
@@ -113,6 +116,7 @@ class CardmarketCardSearchTest {
         listOf(
             "S\tja\tPt4\tPt4\tAdvent of Arceus\t600\t1", "C\tja\tPt4\t023\t60",
             "S\ten\tpr\t\tMiscellaneous Promos\t800\t0", "C\ten\tpr\t\t80",
+            "S\ten\tdr\t\tEX Dragon\t900\t1", "C\ten\tdr\t100\t90",
         ),
     )
 
@@ -248,5 +252,12 @@ class CardmarketCardSearchTest {
         assertEquals(80, found.single().cardmarketId)
         // Il set inglese non compare nel catalogo giapponese.
         assertEquals(emptyList<String>(), search(extraSets).find(Language.JA, "Moltres").filter { it.setId == "pr" }.map { it.id })
+    }
+
+    @Test
+    fun `un prodotto senza numero che e un'altra stampa di una carta numerata del set non e una carta a parte`() = runTest {
+        val found = search(extraSets).find(Language.EN, "Charizard").filter { it.setId == "dr" }
+        // 90 è la 100; 91 ha la stessa metacard (altra stampa) e non conta; 92 è un'altra carta del set e senza numero resta.
+        assertEquals(listOf("dr-100", "dr-Cardmarket92"), found.map { it.tcgdexId }.sorted())
     }
 }

@@ -55,7 +55,9 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
         val result = container.catalog.sync(collectionId) { p ->
             setProgress(workDataOf(WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
         }
-        val cardTraderImages = container.prices.fillImagesFromCardTrader()
+        val cardTraderImages = container.prices.fillImagesFromCardTrader { p ->
+            setProgress(workDataOf(WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
+        }
         container.prices.fillCardTraderBlueprints()
         val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + cardTraderImages, WorkKeys.ERRORS to result.errors)
         return if (result.cardsSaved == 0 && result.errors > 0) Result.failure(data) else Result.success(data)

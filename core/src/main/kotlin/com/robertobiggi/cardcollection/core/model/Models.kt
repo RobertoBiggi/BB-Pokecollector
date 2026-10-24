@@ -131,6 +131,9 @@ data class CatalogVariant(
  * @property printedNumber numero stampato (es. "094/132" oppure "XY103" per le promo).
  * @property cardmarketId id prodotto Cardmarket, solo per le carte trovate nel catalogo Cardmarket: identifica la carta
  *           senza passare dal numero, che per queste carte è dedotto dalla posizione.
+ * @property cardmarketExpansionId set della carta su Cardmarket (`idExpansion`), per il link diretto; null se non si è potuto ricavare.
+ * @property cardmarketProductHint id prodotto Cardmarket che TCGdex indica per la carta: aiuta CardTrader a trovarla quando il numero non basta (es. Celebrations Classic Collection).
+ * @property cardmarketName nome inglese della carta su Cardmarket, da cercare nel suo set (il nome della carta può essere in un'altra lingua).
  */
 data class CatalogCard(
     val id: String,
@@ -151,6 +154,9 @@ data class CatalogCard(
     val variants: List<CatalogVariant>,
     val dexId: Int? = null,
     val cardmarketId: Int? = null,
+    val cardmarketExpansionId: Int? = null,
+    val cardmarketName: String? = null,
+    val cardmarketProductHint: Int? = null,
 )
 
 /**
@@ -220,6 +226,15 @@ object Ids {
      * @return String - id nel formato "en:me01-094|HOLO".
      */
     fun variantId(cardId: String, type: VariantType): String = "$cardId|${type.name}"
+
+    /**
+     * Dice se una carta viene dal catalogo Cardmarket senza numero (id "en:s-p-Cardmarket786632").
+     * @param cardId String - id locale della carta.
+     * @return Boolean - true se è una carta senza numero identificata dal prodotto Cardmarket.
+     */
+    fun isUnnumberedCardmarket(cardId: String): Boolean = UNNUMBERED.containsMatchIn(cardId)
+
+    private val UNNUMBERED = Regex("-Cardmarket\\d+$")
 
     /**
      * Controlla il formato di un id di variante proveniente da un backup.

@@ -113,7 +113,7 @@ class CardTraderPriceProvider(
 
     /** Per una carta Cardmarket il numero è dedotto dalla posizione: conta solo l'id, altrimenti si rischia la carta sbagliata. */
     private suspend fun blueprintFor(request: PriceRequest): CtBlueprintDto? =
-        if (request.cardmarketId != null) matchByCardmarketId(request) else match(request)?.singleOrNull()
+        if (request.cardmarketId != null) matchByCardmarketId(request) else match(request)?.let { CardTraderMatcher.representative(it) }
 
     private fun imageOf(blueprint: CtBlueprintDto): String? {
         val image = blueprint.image ?: return null
@@ -143,7 +143,10 @@ class CardTraderPriceProvider(
             preferCode = request.language == Language.JA,
         ) ?: return null
         val all = blueprintsOf(expansion.id)
-        var matching = CardTraderMatcher.blueprintsFor(all, request.localId, request.dexId)
+        // L'id Cardmarket di TCGdex vale più del numero se questo porta a un'altra carta, e più del nome del Pokémon (che ne trova anche altre stampe).
+        val byHint = CardTraderMatcher.byCardmarketHint(all, request.cardmarketHint)
+        var matching = CardTraderMatcher.preferHint(CardTraderMatcher.blueprintsFor(all, request.localId, null), byHint)
+            .ifEmpty { CardTraderMatcher.blueprintsFor(all, request.localId, request.dexId) }
         if (matching.isEmpty() && request.dexId == null) {
             matching = request.ordinal?.invoke()?.let { CardTraderMatcher.blueprintByOrdinal(all, it) }?.let { listOf(it) }.orEmpty()
         }
