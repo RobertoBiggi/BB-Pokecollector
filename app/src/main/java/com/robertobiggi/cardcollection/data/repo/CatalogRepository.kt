@@ -101,6 +101,7 @@ class CatalogRepository(
         val setCache = HashMap<String, SetDto?>()
         val tcgdexProducts = HashSet<Int>()
         var saved = 0
+        val refreshed = HashSet<String>()
         val queries = dao.enabledQueriesOf(collectionId)
         val resolver = cardTraderResolver()
         for ((qIndex, query) in queries.withIndex()) {
@@ -122,6 +123,7 @@ class CatalogRepository(
                 try {
                     val card = fetchCatalogCard(language, brief.id, limiter, setCache, cardmarketProducts = tcgdexProducts) ?: continue
                     saveCard(card, legacyQueryId = query.id)
+                    refreshed += card.id
                     dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                     saved++
                 } catch (e: Exception) {
@@ -139,6 +141,7 @@ class CatalogRepository(
                     limiter.acquire()
                     val card = fetchCatalogCard(language, id, limiter, setCache, cardmarketProducts = tcgdexProducts) ?: continue
                     saveCard(card, legacyQueryId = query.id)
+                    refreshed += card.id
                     dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                     saved++
                 } catch (e: Exception) {
@@ -150,10 +153,12 @@ class CatalogRepository(
             for (card in fromCardmarket) {
                 if (card.cardmarketId != null && card.cardmarketId in tcgdexProducts) continue
                 saveCard(card, legacyQueryId = query.id)
+                refreshed += card.id
                 dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                 saved++
             }
         }
+        errors += refreshOtherCards(collectionId, refreshed, limiter, setCache, progress)
         val imagesSaved = downloadMissingImages(progress)
         if (errors == 0 || saved > 0) settings.setLastCatalogSync(System.currentTimeMillis())
         return SyncResult(saved, imagesSaved, errors)
@@ -203,6 +208,55 @@ class CatalogRepository(
     }
 
     /**
+     * Riscarica dal catalogo le carte della collezione che nessuna ricerca ha aggiornato (aggiunte a mano, importate da un file,
+     * ricerche tolte), così ogni sync corregge i dati sbagliati salvati da versioni precedenti, anche se possiedi copie.
+     * @param collectionId Long - collezione.
+     * @param refreshed Set<String> - id delle carte già aggiornate in questo sync.
+     * @param limiter RateLimiter - limitatore delle richieste.
+     * @param setCache HashMap<String, SetDto?> - cache dei set già scaricati.
+     * @param progress suspend (SyncProgress) -> Unit - callback di avanzamento.
+     * @return Int - errori incontrati.
+     */
+    private suspend fun refreshOtherCards(
+        collectionId: Long,
+        refreshed: Set<String>,
+        limiter: RateLimiter,
+        setCache: HashMap<String, SetDto?>,
+        progress: suspend (SyncProgress) -> Unit,
+    ): Int {
+        var errors = 0
+        val others = dao.membershipsOf(collectionId).map { it.cardId }.filter { it !in refreshed }.mapNotNull { dao.getCard(it) }
+        for ((index, stored) in others.withIndex()) {
+            val language = Language.fromCode(stored.language) ?: continue
+            if (!Validators.isValidRemoteId(stored.tcgdexId)) continue
+            progress(SyncProgress(SyncPhase.CARD, stored.name, index, others.size))
+            try {
+                val card = fetchOrCardmarketCard(language, stored.tcgdexId, limiter, setCache) ?: continue
+                saveCard(card, stored.queryId)
+            } catch (e: Exception) {
+                if (!isRecoverable(e)) throw e
+                errors++
+            }
+        }
+        return errors
+    }
+
+    /**
+     * Scarica una carta da TCGdex; se TCGdex non la ha, la cerca nel catalogo Cardmarket.
+     * @param language Language - lingua.
+     * @param tcgdexId String - id TCGdex già validato.
+     * @param limiter RateLimiter - limitatore delle richieste.
+     * @param setCache HashMap<String, SetDto?> - cache dei set già scaricati.
+     * @return CatalogCard? - carta normalizzata, oppure null se va scartata.
+     */
+    private suspend fun fetchOrCardmarketCard(language: Language, tcgdexId: String, limiter: RateLimiter, setCache: HashMap<String, SetDto?>): CatalogCard? =
+        try {
+            fetchCatalogCard(language, tcgdexId, limiter, setCache)
+        } catch (e: NotFoundException) {
+            cardmarket.cardFor(language, tcgdexId.substringBeforeLast('-'), tcgdexId.substringAfterLast('-'))
+        }
+
+    /**
      * Aggiunge a mano una carta TCGdex a una collezione (anche se nessuna ricerca la trova).
      * @param collectionId Long - collezione.
      * @param language Language - lingua del catalogo.
@@ -212,12 +266,8 @@ class CatalogRepository(
     suspend fun addSingleCard(collectionId: Long, language: Language, tcgdexId: String): AddCardResult {
         if (!Validators.isValidRemoteId(tcgdexId)) return AddCardResult.NotAllowed
         return try {
-            val card = try {
-                fetchCatalogCard(language, tcgdexId, RateLimiter(0), HashMap())
-            } catch (e: NotFoundException) {
-                // TCGdex non ha la carta: potrebbe essere una carta trovata nel catalogo Cardmarket.
-                cardmarket.cardFor(language, tcgdexId.substringBeforeLast('-'), tcgdexId.substringAfterLast('-'))
-            } ?: return AddCardResult.NotAllowed
+            // Se TCGdex non ha la carta, potrebbe essere una carta trovata nel catalogo Cardmarket.
+            val card = fetchOrCardmarketCard(language, tcgdexId, RateLimiter(0), HashMap()) ?: return AddCardResult.NotAllowed
             saveCard(card, legacyQueryId = 0)
             if (dao.insertMembership(CollectionCardEntity(collectionId, card.id, null)) == -1L) dao.makeManual(collectionId, card.id)
             downloadMissingImages { }
@@ -346,27 +396,30 @@ class CatalogRepository(
                 ),
             )
             dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name) })
-            moveStaleReverseToHolo(card.id, card.variants.map { it.type })
+            moveStaleVariants(card.id, card.variants.map { it.type })
             dao.deleteStaleVariants(card.id, card.variants.map { it.type.name })
         }
     }
 
     /**
-     * Sposta sulla holo le copie di una reverse holo che il catalogo non elenca più: quella reverse era dedotta dai prezzi
-     * "-holo", cioè dalla holo. Senza una holo tra le varianti, o se la reverse esiste ancora, non cambia nulla.
+     * Sposta le copie di ogni finitura che il catalogo non elenca più su quella che la sostituisce (vedi [EntryMerge.replacement]),
+     * così le correzioni del catalogo valgono anche per i dati salvati da versioni precedenti.
+     * Se la variante esiste ancora o manca quella di arrivo, non cambia nulla.
      * @param cardId String - carta.
      * @param types List<VariantType> - varianti attuali della carta.
      * @return Unit
      */
-    private suspend fun moveStaleReverseToHolo(cardId: String, types: List<VariantType>) {
-        if (VariantType.REVERSE in types || VariantType.HOLO !in types) return
+    private suspend fun moveStaleVariants(cardId: String, types: List<VariantType>) {
         val user = db.collectionDao()
-        val from = Ids.variantId(cardId, VariantType.REVERSE)
-        val to = Ids.variantId(cardId, VariantType.HOLO)
-        val entries = user.entriesOfVariant(from)
-        if (entries.isEmpty()) return
-        entries.forEach { user.upsertEntry(EntryMerge.move(it, to, user.getEntry(it.collectionId, to))) }
-        user.deleteEntriesOfVariant(from)
+        for (stale in VariantType.entries) {
+            val target = EntryMerge.replacement(stale, types) ?: continue
+            val from = Ids.variantId(cardId, stale)
+            val to = Ids.variantId(cardId, target)
+            val entries = user.entriesOfVariant(from)
+            if (entries.isEmpty()) continue
+            entries.forEach { user.upsertEntry(EntryMerge.move(it, to, user.getEntry(it.collectionId, to))) }
+            user.deleteEntriesOfVariant(from)
+        }
     }
 
     /**
