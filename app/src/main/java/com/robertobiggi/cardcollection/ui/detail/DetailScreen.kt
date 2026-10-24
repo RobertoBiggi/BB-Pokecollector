@@ -69,6 +69,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.robertobiggi.cardcollection.core.model.Condition
+import com.robertobiggi.cardcollection.core.cardmarket.CardmarketLinks
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderLinks
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
@@ -249,7 +250,7 @@ private fun Links(card: CardUi, showCardTrader: Boolean) {
     val uriHandler = LocalUriHandler.current
     val term = Uri.encode(card.card.name)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { uriHandler.openSafely("https://www.cardmarket.com/it/Pokemon/Products/Search?searchString=$term") }) {
+        OutlinedButton(onClick = { uriHandler.openSafely(CardmarketLinks.search(card.card.cardmarketName ?: card.card.name, card.card.cardmarketExpansionId)) }) {
             Text(stringResource(R.string.link_cardmarket))
         }
         if (card.language == Language.EN) {

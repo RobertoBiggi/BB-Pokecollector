@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -17,9 +18,10 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Carta del catalogo Cardmarket: l'id prodotto, il nome senza attacchi (es. "Omastar Lv.53") e la sua forma
- * normalizzata per il confronto (es. "omastar", senza attacchi né livello).
+ * normalizzata per il confronto (es. "omastar", senza attacchi né livello). `metacard` è l'id che Cardmarket dà alla carta
+ * in tutte le sue stampe (0 se ignoto): due prodotti dello stesso set con lo stesso valore sono due stampe della stessa carta.
  */
-data class CatalogProduct(val idProduct: Int, val nameKey: String, val name: String = nameKey)
+data class CatalogProduct(val idProduct: Int, val nameKey: String, val name: String = nameKey, val metacard: Int = 0)
 
 /**
  * Catalogo delle carte Pokémon che Cardmarket pubblica per tutti (id prodotto, nome e set di ogni carta).
@@ -45,6 +47,7 @@ class CardmarketCatalog(
 ) {
     private val mutex = Mutex()
     private var byExpansion: Map<Int, List<CatalogProduct>>? = null
+    private var byProduct: Map<Int, Pair<Int, CatalogProduct>>? = null
     private var failure: IOException? = null
 
     /**
@@ -65,6 +68,25 @@ class CardmarketCatalog(
             throw e
         }
         all[idExpansion].orEmpty()
+    }
+
+    /**
+     * Trova una carta dal suo id prodotto.
+     * @param idProduct Int - id prodotto Cardmarket.
+     * @param onDownload suspend () -> Unit - chiamata prima di scaricare il catalogo, oltre a quella del costruttore.
+     * @param onRead suspend () -> Unit - chiamata prima di leggere il catalogo, oltre a quella del costruttore.
+     * @return Pair<Int, CatalogProduct>? - `idExpansion` e prodotto, oppure null se il prodotto non è nel catalogo.
+     * @throws IOException se il catalogo non è in cache e non si riesce a scaricarlo.
+     */
+    suspend fun locate(idProduct: Int, onDownload: suspend () -> Unit = {}, onRead: suspend () -> Unit = {}): Pair<Int, CatalogProduct>? {
+        productsOf(0, onDownload, onRead)
+        return mutex.withLock {
+            val index = byProduct ?: HashMap<Int, Pair<Int, CatalogProduct>>().also { map ->
+                byExpansion.orEmpty().forEach { (expansion, products) -> products.forEach { map[it.idProduct] = expansion to it } }
+                byProduct = map
+            }
+            index[idProduct]
+        }
     }
 
     private suspend fun load(extraDownload: suspend () -> Unit, extraRead: suspend () -> Unit): Map<Int, List<CatalogProduct>> = withContext(Dispatchers.IO) {
@@ -113,6 +135,13 @@ class CardmarketCatalog(
         private const val MAX_BYTES = 60L * 1024 * 1024
         private const val BUFFER_SIZE = 64 * 1024
         private val LEVEL = Regex("""\s+Lv\.\s*\d+.*""")
+
+        /**
+         * Nome con cui cercare la carta su Cardmarket: quello inglese del catalogo, senza il livello ("Omastar Lv.53" → "Omastar").
+         * @param name String - nome del prodotto, senza attacchi.
+         * @return String - nome da cercare.
+         */
+        fun searchName(name: String): String = name.replace(LEVEL, "").trim()
 
         /**
          * Normalizza il nome di una carta per il confronto: toglie gli attacchi tra parentesi quadre e il livello,
@@ -176,7 +205,8 @@ class CardmarketCatalog(
             val id = o["idProduct"]?.jsonPrimitive?.int ?: return
             val expansion = o["idExpansion"]?.jsonPrimitive?.int ?: return
             val name = o["name"]?.jsonPrimitive?.content ?: return
-            into.getOrPut(expansion) { ArrayList() } += CatalogProduct(id, nameKey(name), name.substringBefore(" [").trim())
+            val metacard = o["idMetacard"]?.jsonPrimitive?.intOrNull ?: 0
+            into.getOrPut(expansion) { ArrayList() } += CatalogProduct(id, nameKey(name), name.substringBefore(" [").trim(), metacard)
         }
     }
 }

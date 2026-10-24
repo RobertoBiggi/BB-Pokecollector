@@ -273,6 +273,19 @@ interface CatalogDao {
     suspend fun setHidden(collectionId: Long, cardId: String, hidden: Boolean)
 
     /**
+     * Toglie da una collezione le carte trovate da una ricerca che il catalogo non indica più, se non hanno copie, note né sono volute.
+     * @param collectionId Long - collezione.
+     * @param cardIds List<String> - carte da togliere.
+     * @return Unit
+     */
+    @Query(
+        "DELETE FROM collection_card WHERE collectionId = :collectionId AND queryId IS NOT NULL AND cardId IN (:cardIds) AND cardId NOT IN " +
+            "(SELECT v.cardId FROM card_variant v JOIN collection_entry e ON e.variantId = v.id " +
+            "WHERE e.collectionId = :collectionId AND (e.quantity > 0 OR e.notes IS NOT NULL OR e.wanted = 1))",
+    )
+    suspend fun dropStaleMemberships(collectionId: Long, cardIds: List<String>)
+
+    /**
      * Rende visibile una carta come aggiunta a mano (non dipende più da una ricerca).
      * @param collectionId Long - collezione.
      * @param cardId String - carta.

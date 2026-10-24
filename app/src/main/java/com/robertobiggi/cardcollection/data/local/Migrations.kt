@@ -77,6 +77,51 @@ object Migrations {
     /** Versione 6 → 7: id del blueprint CardTrader delle carte, per il link diretto. */
     val SQL_6_7: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `cardTraderBlueprintId` INTEGER")
 
+    /** Versione 7 → 8: set Cardmarket delle carte, per il link diretto. */
+    val SQL_7_8: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `cardmarketExpansionId` INTEGER")
+
+    /** Versione 8 → 9: nome inglese della carta su Cardmarket, per cercarla nel suo set anche se la carta è in un'altra lingua. */
+    val SQL_8_9: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `cardmarketName` TEXT")
+
+    /** Versione 9 → 10: id prodotto Cardmarket indicato da TCGdex, per abbinare le carte su CardTrader. */
+    val SQL_9_10: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `cardmarketProductHint` INTEGER")
+
+    /** Migrazione Room 9 → 10. */
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        /**
+         * Esegue le istruzioni di [SQL_9_10].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_9_10.forEach { db.execSQL(it) }
+        }
+    }
+
+    /** Migrazione Room 8 → 9. */
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        /**
+         * Esegue le istruzioni di [SQL_8_9].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_8_9.forEach { db.execSQL(it) }
+        }
+    }
+
+    /** Migrazione Room 7 → 8. */
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        /**
+         * Esegue le istruzioni di [SQL_7_8].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_7_8.forEach { db.execSQL(it) }
+        }
+    }
+
     /** Migrazione Room 6 → 7. */
     val MIGRATION_6_7 = object : Migration(6, 7) {
         /**
