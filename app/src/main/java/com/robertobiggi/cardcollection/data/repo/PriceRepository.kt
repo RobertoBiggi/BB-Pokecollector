@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.data.repo
 
+import java.io.IOException
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Confidence
@@ -237,13 +238,17 @@ class PriceRepository(
             cardTraderCondition = CtCondition.fromCondition(condition),
             cardmarketId = card.cardmarketId,
             cardmarketHint = card.cardmarketProductHint,
-        )
+        ).let { if (hintMatches(sources.catalog, it.cardmarketHint, card.name)) it else it.copy(cardmarketHint = null) }
+        // Se il prodotto indicato da TCGdex è un'altra carta, anche il prezzo Cardmarket di TCGdex lo è: resta solo TCGplayer.
+        val tcgdexHintWrong = card.cardmarketProductHint != null && request.cardmarketHint == null
         // Il listino Cardmarket (aggiornato ogni notte) è la fonte principale dei prezzi in euro; TCGdex serve
         // per i dollari di TCGplayer e come ripiego per le carte che il listino non abbina.
         saveCardTraderBlueprint(sources.cardTraderProvider, card, request)
         val guideQuote = sources.cardmarketGuide.fetch(request).quote
         val outcome = chain.fetch(request)
         val tcgdexQuote = outcome.quote
+            ?.let { if (tcgdexHintWrong) it.copy(eur = null, eurLow = null, eurAvg30 = null) else it }
+            ?.takeIf { it.hasAnyPrice() }
         val cardTraderOutcome = sources.cardTrader?.fetch(request)
         val cardTraderSaved = cardTraderOutcome?.quote?.let { saveQuote(variant.id, it) } == true
         // Normal e holo condividono il blueprint: se CardTrader ha una sola stampa, l'altra non ha prezzo e quello salvato prima era dell'altra.
@@ -526,8 +531,35 @@ class PriceRepository(
         return true
     }
 
-    /** Fonti oltre a TCGdex: CardTrader (solo con il token) e il listino Cardmarket. */
-    private class PriceSources(val cardTrader: PriceChain?, val cardmarketGuide: PriceChain, val cardTraderProvider: CardTraderPriceProvider? = null)
+    /**
+     * Fonti oltre a TCGdex: CardTrader (solo con il token) e il listino Cardmarket, più il catalogo Cardmarket
+     * per controllare il prodotto che TCGdex indica per una carta.
+     */
+    private class PriceSources(
+        val cardTrader: PriceChain?,
+        val cardmarketGuide: PriceChain,
+        val cardTraderProvider: CardTraderPriceProvider? = null,
+        val catalog: CardmarketCatalog? = null,
+    )
+
+    /**
+     * Controlla che il prodotto Cardmarket indicato da TCGdex sia davvero la carta: TCGdex a volte collega le carte
+     * Gold Star (☆), Delta Species (δ) o Prism Star (◇) al prodotto della versione normale (es. ex8-107 "Rayquaza ☆"
+     * al Rayquaza normale del set). I marcatori del nome del prodotto devono coincidere con quelli della carta.
+     * @param catalog CardmarketCatalog? - catalogo Cardmarket, null se non disponibile.
+     * @param hint Int? - id prodotto indicato da TCGdex.
+     * @param cardName String - nome della carta su TCGdex.
+     * @return Boolean - false solo se il prodotto è nel catalogo e i marcatori sono diversi.
+     */
+    private suspend fun hintMatches(catalog: CardmarketCatalog?, hint: Int?, cardName: String): Boolean {
+        if (catalog == null || hint == null) return true
+        val product = try {
+            catalog.locate(hint)?.second
+        } catch (e: IOException) {
+            null
+        } ?: return true
+        return CardmarketCatalog.markers(product.name) == CardmarketCatalog.markers(cardName)
+    }
 
     /**
      * Crea le fonti di un aggiornamento prezzi. Il listino Cardmarket c'è sempre: l'id prodotto della carta
@@ -538,7 +570,8 @@ class PriceRepository(
     private suspend fun priceSources(onStep: suspend (PriceStep) -> Unit): PriceSources {
         val token = settings.cardTraderToken.first()
         val cardTrader = token.takeIf { it.isNotEmpty() }?.let { CardTraderPriceProvider(CardTraderClient(http, it), onLoadingExpansions = { onStep(PriceStep.LOAD_CARDTRADER) }) }
-        val catalogIds = CardmarketCatalogIdSource(CardmarketCatalog(http, File(cacheDir, CATALOG_FILE), onDownload = { onStep(PriceStep.DOWNLOAD_CATALOG) }, onRead = { onStep(PriceStep.READ_CATALOG) }))
+        val catalog = CardmarketCatalog(http, File(cacheDir, CATALOG_FILE), onDownload = { onStep(PriceStep.DOWNLOAD_CATALOG) }, onRead = { onStep(PriceStep.READ_CATALOG) })
+        val catalogIds = CardmarketCatalogIdSource(catalog)
         val guide = CardmarketGuidePriceProvider(
             cardTrader?.orElse(catalogIds) ?: catalogIds,
             CardmarketPriceGuide(http, File(cacheDir, GUIDE_FILE), onDownload = { onStep(PriceStep.DOWNLOAD_GUIDE) }, onRead = { onStep(PriceStep.READ_GUIDE) }),
@@ -547,6 +580,7 @@ class PriceRepository(
             cardTrader = cardTrader?.let { PriceChain(listOf(ProviderSlot(it, RateLimiter(REQUEST_INTERVAL_MS), CircuitBreaker()))) },
             cardmarketGuide = PriceChain(listOf(ProviderSlot(guide, RateLimiter(0), CircuitBreaker()))),
             cardTraderProvider = cardTrader,
+            catalog = catalog,
         )
     }
 
