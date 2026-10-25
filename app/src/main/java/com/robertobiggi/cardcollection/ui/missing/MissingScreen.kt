@@ -17,7 +17,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.robertobiggi.cardcollection.ui.CollectionFilter
+import com.robertobiggi.cardcollection.ui.collection.applyFilter
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -51,8 +60,10 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val library by vm.library.collectAsStateWithLifecycle()
     val name by vm.collectionName.collectAsStateWithLifecycle()
     val cards = library.orEmpty()
-    val missing = remember(cards) {
-        cards.sortedWith(CardUi.RELEASE_ORDER)
+    var query by rememberSaveable { mutableStateOf("") }
+    val missing = remember(cards, query) {
+        // Stessa ricerca della collezione (nome, codice, set, rarità, nomi in altre lingue); ordine di uscita.
+        applyFilter(cards, CollectionFilter(query = query.take(40)))
             .flatMap { c -> c.variants.filter { it.wanted && it.quantity == 0 }.map { c to it } }
     }
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
@@ -75,10 +86,26 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                     }
                 }
             }
+            item {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             if (missing.isEmpty()) {
                 item {
                     Text(
-                        stringResource(if (cards.isEmpty()) R.string.missing_download_first else R.string.missing_complete),
+                        stringResource(
+                            when {
+                                cards.isEmpty() -> R.string.missing_download_first
+                                query.isNotBlank() -> R.string.search_no_results
+                                else -> R.string.missing_complete
+                            },
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
