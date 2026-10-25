@@ -97,7 +97,7 @@ class CardTraderPriceProvider(
      * @return String? - URL completo, oppure null se la carta non si abbina, i blueprint sono più d'uno (non si sa quale sia) o non hanno immagine.
      */
     suspend fun imageUrl(request: PriceRequest): String? = mutex.withLock {
-        blueprintFor(request)?.let { imageOf(it) }
+        blueprintFor(request)?.let { imageOrSibling(it) }
     }
 
     /**
@@ -108,12 +108,20 @@ class CardTraderPriceProvider(
     suspend fun details(request: PriceRequest): CardTraderDetails? = mutex.withLock {
         val blueprint = blueprintFor(request) ?: return null
         val rarity = (blueprint.fixedProperties?.get("pokemon_rarity") as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content?.trim()?.takeIf { it.isNotEmpty() }
-        CardTraderDetails(rarity, CardTraderMatcher.printedNumber(blueprint), imageOf(blueprint))
+        CardTraderDetails(rarity, CardTraderMatcher.printedNumber(blueprint), imageOrSibling(blueprint))
     }
 
     /** Per una carta Cardmarket il numero è dedotto dalla posizione: conta solo l'id, altrimenti si rischia la carta sbagliata. */
     private suspend fun blueprintFor(request: PriceRequest): CtBlueprintDto? =
         if (request.cardmarketId != null) matchByCardmarketId(request) else match(request)?.let { CardTraderMatcher.representative(it) }
+
+    /** Immagine del blueprint o, se ne è privo, quella del blueprint indicato da [CardTraderMatcher.imageSibling]. Va chiamata con [mutex] preso. */
+    private suspend fun imageOrSibling(blueprint: CtBlueprintDto): String? {
+        imageOf(blueprint)?.let { return it }
+        val (code, id) = blueprint.cardMarketIds.orEmpty().firstNotNullOfOrNull { CardTraderMatcher.imageSibling(it) } ?: return null
+        val expansion = expansions().firstOrNull { it.code?.lowercase() == code } ?: return null
+        return blueprintsOf(expansion.id).firstOrNull { it.id == id }?.let { imageOf(it) }
+    }
 
     private fun imageOf(blueprint: CtBlueprintDto): String? {
         val image = blueprint.image ?: return null
@@ -127,7 +135,7 @@ class CardTraderPriceProvider(
      */
     private suspend fun matchByCardmarketId(request: PriceRequest): CtBlueprintDto? {
         val id = request.cardmarketId ?: return null
-        val expansion = CardTraderMatcher.expansionFor(
+        val expansion = CardTraderMatcher.expansionForCardmarketId(expansions(), id) ?: CardTraderMatcher.expansionFor(
             expansions(), request.setName, request.setId, request.setCode,
             preferCode = request.language == Language.JA,
         ) ?: return null

@@ -115,6 +115,21 @@ class CardTraderTest {
     }
 
     @Test
+    fun `i Trainer Kit EX Latias e Latios stanno nei set XY Trainer Kit e alcune carte Cardmarket in un altro set`() {
+        val exp = listOf(
+            CtExpansionDto(1, 5, "xytkas", "XY Trainer Kit: Latias"),
+            CtExpansionDto(2, 5, "xytkos", "XY Trainer Kit: Latios"),
+            CtExpansionDto(3, 5, "c25", "Celebrations"),
+            CtExpansionDto(4, 5, "unpromo", "Unnumbered Promos"),
+        )
+        assertEquals(1, CardTraderMatcher.expansionFor(exp, "EX trainer Kit (Latias)", "tk-ex-latia", null)?.id)
+        assertEquals(2, CardTraderMatcher.expansionFor(exp, "EX trainer Kit (Latios)", "tk-ex-latio", null)?.id)
+        assertEquals(3, CardTraderMatcher.expansionForCardmarketId(exp, 576911)?.id)
+        assertEquals(4, CardTraderMatcher.expansionForCardmarketId(exp, 571918)?.id)
+        assertNull(CardTraderMatcher.expansionForCardmarketId(exp, 1))
+    }
+
+    @Test
     fun `i set con un altro nome su CardTrader e la Shiny Vault si trovano`() {
         val exp = listOf(
             CtExpansionDto(1, 5, "svpromo", "SV Black Star Promos"),
@@ -170,6 +185,11 @@ class CardTraderTest {
         val holo = CtBlueprintDto(3, "Charizard", "Holo | 004", cardMarketIds = listOf(1))
         assertEquals(listOf(2, 3), CardTraderMatcher.preferHint(listOf(charizard, holo), listOf(charizard)).map { it.id })
         assertEquals(listOf(1), CardTraderMatcher.preferHint(listOf(exeggcute), emptyList()).map { it.id })
+        // Trainer Kit 6/10 (Pikachu) e 6/30 (Fighting Energy) hanno lo stesso numero: vale la carta dell'id Cardmarket.
+        val pikachu = CtBlueprintDto(4, "Pikachu", "Non-Holo | Trainer Kit 6/10", cardMarketIds = listOf(275763))
+        val energy = CtBlueprintDto(5, "Fighting Energy", "Non-Holo | Trainer Kit 6/30", cardMarketIds = listOf(289755))
+        assertEquals(listOf(4), CardTraderMatcher.preferHint(listOf(pikachu, energy), listOf(pikachu)).map { it.id })
+        assertEquals("corocoro" to 363633, CardTraderMatcher.imageSibling(571918))
         assertEquals(listOf(2), CardTraderMatcher.preferHint(emptyList(), listOf(charizard)).map { it.id })
         val exp = listOf(CtExpansionDto(1, 5, "30c", "30th Celebration"))
         assertEquals(1, CardTraderMatcher.expansionFor(exp, "30th Classic Collection", "30th-c", "30C")?.id)
