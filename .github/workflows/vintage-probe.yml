@@ -45,14 +45,13 @@ jobs:
                   f"abbr={(s.get('abbreviation') or {}).get('official')}",
               ])
 
-          for lang, cutoff in (("en", "2012"), ("ja", "2012")):
+          for lang in ("ja",):
               sets = get(f"{T}/{lang}/sets")
-              print(f"===== TCGdex {lang}: {len(sets)} set in totale")
+              print(f"===== TCGdex {lang}: {len(sets)} set in totale (tutti)")
               with cf.ThreadPoolExecutor(6) as ex:
                   rows = list(ex.map(lambda s: tcgdex_set(lang, s["id"]), sets))
-              old = [r for r in rows if r.split("\t")[3][:4] < cutoff or "ERRORE" in r or r.split("\t")[3] == "None"]
-              print(f"set con data < {cutoff} o senza data: {len(old)}")
-              for r in sorted(old, key=lambda r: r.split("\t")[3]):
+              key = lambda r: (r.split("\t") + ["", "", "", ""])[3]
+              for r in sorted(rows, key=key):
                   print(r)
 
           print("===== TCGdex en: varianti di alcune carte vintage")
