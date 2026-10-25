@@ -23,9 +23,8 @@ jobs:
                   return json.load(r)
           cm = get("https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json")["products"]
           guide = {g["idProduct"]: g for g in get("https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json")["priceGuides"]}
-          special = re.compile(r"Star|Prism|δ|Delta|◇|★|☆|LV|Lv|Shining|Crystal|BREAK|Radiant|Dark |Light |Rocket|\bG\b|\bC\b|\bGL\b|\bFB\b|\b4\b|e-Reader|Level", re.I)
-          sets = {1546: "EX Deoxys", 1548: "Unseen Forces", 1551: "Holon Phantoms", 1552: "Crystal Guardians", 1553: "Dragon Frontiers",
-                  1617: "POP 5", 1562: "Platinum", 2065: "Ultra Prism", 2075: "Forbidden Light", 1534: "Neo Destiny", 1533: "Neo Revelation"}
+          special = re.compile(r"Star|Prism|δ|Delta|◇|★|☆", re.I)
+          sets = {1546: "EX Deoxys", 1548: "Unseen Forces", 1551: "Holon Phantoms", 1553: "Dragon Frontiers", 1617: "POP 5", 2065: "Ultra Prism"}
           for exp, label in sets.items():
               prods = [p for p in cm if p.get("idExpansion") == exp]
               print(f"===== Cardmarket {label} ({exp}): {len(prods)} prodotti")
@@ -33,17 +32,8 @@ jobs:
                   if special.search(p["name"]) or "Rayquaza" in p["name"]:
                       g = guide.get(p["idProduct"], {})
                       print(f'  {p["idProduct"]}\t{p["name"]}\tmeta={p.get("idMetacard")}\ttrend={g.get("trend")}\ttrend-holo={g.get("trend-holo")}')
-          T = "https://api.tcgdex.net/v2/en"
-          plain = re.compile(r"^[A-Za-z0-9 '.,:&()/-]+$")
-          for sid in ["ex8", "ex10", "ex13", "ex14", "ex15", "pop5", "pl1", "sm5", "sm6", "neo3", "neo4", "dp7", "swsh9"]:
-              s = get(f"{T}/sets/{sid}")
-              odd = [(c["id"], c["name"]) for c in s.get("cards", []) if not plain.match(c["name"]) or "Rayquaza" in c["name"]]
-              print(f"===== TCGdex {sid} {s.get('name')}: {len(odd)} nomi speciali")
-              for cid, name in odd:
-                  print(f"  {cid}\t{name}\t{[hex(ord(ch)) for ch in name if ord(ch) > 127]}")
-          for cid in ["ex8-107", "ex8-13", "ex8-97"]:
-              c = get(f"{T}/cards/{cid}")
-              cmk = (c.get("pricing") or {}).get("cardmarket") or {}
-              print("TCGdex", cid, c.get("name"), "idProduct=", cmk.get("idProduct"), "trend=", cmk.get("trend"))
+          for pid in [276425, 276416]:
+              p = next((x for x in cm if x["idProduct"] == pid), None)
+              print("PRODOTTO", pid, p and p["name"], p and p.get("idExpansion"), guide.get(pid, {}).get("trend"))
           PY
           python3 probe.py
