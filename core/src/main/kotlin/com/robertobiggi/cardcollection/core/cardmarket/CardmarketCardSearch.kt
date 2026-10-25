@@ -117,17 +117,29 @@ class CardmarketCardSearch(
      */
     private suspend fun extraSetCards(language: Language, key: String, onDownload: suspend () -> Unit, onRead: suspend () -> Unit): List<CatalogCard> =
         extraSets.sets.filter { it.language == language }.flatMap { extra ->
-            catalog.productsOf(extra.cardmarketId, onDownload, onRead).let { all ->
-                // Un prodotto senza numero che è un'altra stampa di una carta già numerata del set (stessa metacard) non è una carta a parte.
-                val numbered = all.filter { it.idProduct in extra.numbers }.map { it.metacard }.filter { it != 0 }.toSet()
-                all.filter { key in it.nameKey && (it.idProduct in extra.numbers || (extra.whole && it.metacard !in numbered)) }
-            }.mapNotNull { extraCard(extra, it) }
+            val all = catalog.productsOf(extra.cardmarketId, onDownload, onRead)
+            // Un prodotto senza numero che è un'altra stampa di una carta già numerata del set (stessa metacard) non è una carta a parte.
+            val numbered = all.filter { it.idProduct in extra.numbers }.map { it.metacard }.filter { it != 0 }.toSet()
+            all.filter { key in it.nameKey && (it.idProduct in extra.numbers || (extra.whole && it.metacard !in numbered)) }
+                .mapNotNull { extraCard(extra, it, all) }
         }
 
-    private fun extraCard(extra: CardmarketExtraSets.ExtraSet, product: CatalogProduct): CatalogCard? {
+    /**
+     * @param all List<CatalogProduct> - prodotti del set: servono a riconoscere le stampe diverse della stessa carta che portano lo stesso numero.
+     */
+    private fun extraCard(extra: CardmarketExtraSets.ExtraSet, product: CatalogProduct, all: List<CatalogProduct>): CatalogCard? {
         val printed = extra.numbers[product.idProduct].orEmpty()
         val number = printed.substringBefore('/').trim().takeIf { it.isNotEmpty() && EXTRA_NUMBER.matches(it) }
-        val localId = number?.let { if (it.all(Char::isDigit)) it.padStart(if (extra.language.asianSets) 3 else 1, '0') else it } ?: "$UNNUMBERED_PREFIX${product.idProduct}"
+        val baseId = number?.let { if (it.all(Char::isDigit)) it.padStart(if (extra.language.asianSets) 3 else 1, '0') else it }
+        // Più stampe della stessa carta con lo stesso numero (Pikachu 064/XY-P: Marumiya, Daiichi Pan, McDonald's, Black Mega Gardevoir)
+        // sono carte diverse: la più semplice (numero senza sigle, poi id più basso) tiene il numero, le altre aggiungono il prodotto.
+        val twins = if (number == null) emptyList() else all.filter {
+            it.idProduct != product.idProduct && it.nameKey == product.nameKey &&
+                extra.numbers[it.idProduct]?.substringBefore('/')?.trim() == number
+        }
+        val rank = compareBy<Int>({ extra.numbers[it].orEmpty().length }, { it })
+        val shadowed = twins.any { rank.compare(it.idProduct, product.idProduct) < 0 }
+        val localId = baseId?.let { if (shadowed) "$it-${product.idProduct}" else it } ?: "$UNNUMBERED_PREFIX${product.idProduct}"
         val tcgdexId = "${extra.setId}-$localId"
         if (!Validators.isValidRemoteId(tcgdexId)) return null
         return CatalogCard(
@@ -178,11 +190,14 @@ class CardmarketCardSearch(
         extraSets.sets.firstOrNull { it.setId == setId && it.language == language }?.let { extra ->
             val wanted = CardTraderMatcher.normalizeNumber(localId)
             val products = catalog.productsOf(extra.cardmarketId)
-            val product = products.firstOrNull { p ->
+            // "064-553034": una delle stampe che portano lo stesso numero, indicata dal prodotto Cardmarket.
+            val twin = SHADOWED_ID.matchEntire(localId)?.groupValues?.get(2)?.toIntOrNull()
+            val product = products.filter { p ->
                 if (localId.startsWith(UNNUMBERED_PREFIX)) p.idProduct == localId.removePrefix(UNNUMBERED_PREFIX).toIntOrNull()
+                else if (twin != null && p.idProduct == twin) extra.numbers[twin]?.substringBefore('/')?.trim() == SHADOWED_ID.matchEntire(localId)!!.groupValues[1]
                 else extra.numbers[p.idProduct]?.let { CardTraderMatcher.normalizeNumber(it) == wanted } == true
-            } ?: return null
-            return extraCard(extra, product)
+            }.minWithOrNull(compareBy({ extra.numbers[it.idProduct].orEmpty().length }, { it.idProduct })) ?: return null
+            return extraCard(extra, product, products)
         }
         // Un set solo Cardmarket di un'altra lingua non è un set TCGdex.
         if (extraSets.sets.any { it.setId == setId }) return null
@@ -273,6 +288,7 @@ class CardmarketCardSearch(
         const val UNNUMBERED_PREFIX = "Cardmarket"
 
         private val EXTRA_NUMBER = Regex("[A-Za-z0-9-]{1,12}")
+        private val SHADOWED_ID = Regex("""(.+)-(\d{3,})""")
 
         private val DIGITS = Regex("\\d+")
 

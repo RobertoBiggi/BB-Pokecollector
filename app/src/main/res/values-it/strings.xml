@@ -217,6 +217,11 @@
     <string name="lang_mixed">Mista</string>
     <string name="action_update_price">Aggiorna prezzo</string>
     <string name="action_download_image">Scarica immagine</string>
+    <string name="card_dialog_price">Aggiornamento prezzo</string>
+    <string name="card_dialog_download_image">Download immagine</string>
+    <string name="card_dialog_pick_image">Scelta immagine</string>
+    <string name="card_dialog_running">Operazione in corso…</string>
+    <string name="action_ok">OK</string>
     <string name="action_pick_image">Scegli immagine</string>
     <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Se TCGdex non ha l\'immagine (succede spesso con le carte giapponesi) l\'app la cerca su TCGplayer; altrimenti puoi sceglierne una dalla galleria, che resta salvata finché non scarichi quella ufficiale.</string>
     <string name="msg_card_price_updated">Prezzi scaricati (%1$d varianti).</string>
