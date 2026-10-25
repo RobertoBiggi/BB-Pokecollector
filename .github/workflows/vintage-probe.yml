@@ -45,52 +45,13 @@ jobs:
                   f"abbr={(s.get('abbreviation') or {}).get('official')}",
               ])
 
-          for lang in ("ja",):
-              sets = get(f"{T}/{lang}/sets")
-              print(f"===== TCGdex {lang}: {len(sets)} set in totale (tutti)")
-              with cf.ThreadPoolExecutor(6) as ex:
-                  rows = list(ex.map(lambda s: tcgdex_set(lang, s["id"]), sets))
-              key = lambda r: (r.split("\t") + ["", "", "", ""])[3]
-              for r in sorted(rows, key=key):
-                  print(r)
-
-          print("===== TCGdex en: varianti di alcune carte vintage")
-          for cid in ["base1-4", "base1-58", "base2-1", "neo1-9", "ecard1-1", "lc-1", "ex1-1", "basep-1"]:
-              c = get(f"{T}/en/cards/{cid}")
-              print(cid, c.get("name"), c.get("rarity"), json.dumps(c.get("variants")),
-                    json.dumps([(v.get("type"), v.get("subtype"), v.get("size"), v.get("stamp")) for v in (c.get("variants_detailed") or [])]))
-
-          C = "https://tcgcsv.com/tcgplayer"
-          for cat in (3, 85):
-              groups = get(f"{C}/{cat}/groups").get("results", [])
-              old = [g for g in groups if (g.get("publishedOn") or "9999")[:4] < "2012"]
-              print(f"===== TCGCSV categoria {cat}: {len(groups)} gruppi, {len(old)} pubblicati prima del 2012")
-              for g in sorted(old, key=lambda g: g.get("publishedOn") or ""):
-                  print(cat, g["groupId"], g.get("abbreviation"), g.get("name"), (g.get("publishedOn") or "")[:10])
-
-          print("===== TCGCSV: sottotipi e numeri nei set vintage")
-          g3 = get(f"{C}/3/groups").get("results", [])
-          g85 = get(f"{C}/85/groups").get("results", [])
-          def sample(cat, groups, pattern):
-              for g in groups:
-                  if g.get("name") == pattern:
-                      gid = g["groupId"]
-                      prods = get(f"{C}/{cat}/{gid}/products").get("results", [])
-                      prices = get(f"{C}/{cat}/{gid}/prices").get("results", [])
-                      cards = [p for p in prods if any(e.get("name") == "Number" for e in p.get("extendedData", []))]
-                      sub = {}
-                      for p in prices:
-                          sub[p.get("subTypeName")] = sub.get(p.get("subTypeName"), 0) + 1
-                      nums = [next(e.get("value") for e in p["extendedData"] if e.get("name") == "Number") for p in cards[:5]]
-                      print(f"{cat} '{pattern}': prodotti={len(prods)} con numero={len(cards)} immagini={sum(1 for p in prods if p.get('imageUrl'))} sottotipi={sub} esempi={nums}")
-                      return
-              print(f"{cat} '{pattern}': gruppo non trovato")
-          for name in ["Base Set", "Base Set (Shadowless)", "Base Set 2", "Jungle", "Neo Genesis", "Expedition Base Set", "Legendary Collection", "EX Ruby & Sapphire"]:
-              sample(3, g3, name)
-          names85 = [g.get("name") for g in g85]
-          print("primi gruppi JP per id:", sorted(((g["groupId"], g.get("name")) for g in g85))[:60])
-          for name in names85:
-              if any(k in name for k in ("Expansion Pack", "Jungle", "Fossil", "Rocket Gang", "Neo Genesis", "Gold, Silver", "Base Expansion")):
-                  sample(85, g85, name)
+          sets = get(f"{T}/ja/sets")
+          with cf.ThreadPoolExecutor(6) as ex:
+              rows = list(ex.map(lambda s: tcgdex_set("ja", s["id"]), sets))
+          rows = [r.split("\t") for r in rows]
+          rows = [r for r in rows if len(r) < 4 or r[3] < "2014"]
+          print(f"===== TCGdex ja: set prima del 2014: {len(rows)}")
+          for r in sorted(rows, key=lambda r: r[3] if len(r) > 3 else ""):
+              print(" ".join(r[:4] + r[5:9]) if len(r) > 8 else " ".join(r))
           EOF
           python3 probe.py
