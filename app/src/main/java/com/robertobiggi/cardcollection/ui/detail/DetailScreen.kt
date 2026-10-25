@@ -62,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -75,6 +76,7 @@ import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.VariantUi
+import com.robertobiggi.cardcollection.ui.CardActionReport
 import com.robertobiggi.cardcollection.ui.MainViewModel
 import com.robertobiggi.cardcollection.ui.common.CardImage
 import com.robertobiggi.cardcollection.ui.common.ConfidenceChip
@@ -99,6 +101,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     val library by vm.library.collectAsStateWithLifecycle()
     val card = library?.firstOrNull { it.card.id == cardId }
     val action by vm.cardAction.collectAsStateWithLifecycle()
+    val report by vm.cardReport.collectAsStateWithLifecycle()
     val cardTraderToken by vm.cardTraderToken.collectAsStateWithLifecycle()
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     var manualFor by remember { mutableStateOf<VariantUi?>(null) }
@@ -161,6 +164,8 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
         }
     }
 
+    report?.let { CardActionDialog(it, onDismiss = vm::dismissCardReport) }
+
     manualFor?.let { variant ->
         val owner = card ?: return@let
         ManualPriceDialog(
@@ -169,6 +174,42 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
             onSave = { text -> vm.addManualPrice(variant.id, text).also { saved -> if (saved) manualFor = null } },
         )
     }
+}
+
+/**
+ * Dialog di un'azione sulla carta: un indicatore mentre è in corso, poi l'esito con il pulsante per chiuderlo.
+ * @param report CardActionReport - azione ed eventuale esito.
+ * @param onDismiss () -> Unit - chiude il dialog (solo a esito disponibile).
+ * @return Unit
+ */
+@Composable
+private fun CardActionDialog(report: CardActionReport, onDismiss: () -> Unit) {
+    val message = report.message
+    AlertDialog(
+        onDismissRequest = { if (message != null) onDismiss() },
+        title = {
+            Text(
+                stringResource(
+                    when (report.action) {
+                        CardAction.PRICE -> R.string.card_dialog_price
+                        CardAction.DOWNLOAD_IMAGE -> R.string.card_dialog_download_image
+                        CardAction.PICK_IMAGE -> R.string.card_dialog_pick_image
+                    },
+                ),
+            )
+        },
+        text = {
+            if (message == null) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                    Text(stringResource(R.string.card_dialog_running))
+                }
+            } else {
+                Text(message.resolve(LocalContext.current))
+            }
+        },
+        confirmButton = { if (message != null) TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
+    )
 }
 
 /**

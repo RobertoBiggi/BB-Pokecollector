@@ -230,6 +230,11 @@
     <string name="lang_mixed">Mixed</string>
     <string name="action_update_price">Update price</string>
     <string name="action_download_image">Download image</string>
+    <string name="card_dialog_price">Updating price</string>
+    <string name="card_dialog_download_image">Downloading image</string>
+    <string name="card_dialog_pick_image">Choosing image</string>
+    <string name="card_dialog_running">Working…</string>
+    <string name="action_ok">OK</string>
     <string name="action_pick_image">Choose image</string>
     <string name="card_actions_hint">The price is updated for this card only. If TCGdex has no image (common for Japanese cards) the app looks for it on TCGplayer; otherwise you can pick one from your gallery, which stays until you download the official one.</string>
     <string name="msg_card_price_updated">Prices fetched (%1$d variants).</string>

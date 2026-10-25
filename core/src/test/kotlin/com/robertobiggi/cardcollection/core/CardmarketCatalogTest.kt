@@ -68,6 +68,14 @@ class CardmarketCatalogTest {
     }
 
     @Test
+    fun `le carte con codice per il gioco online non entrano nel catalogo`() {
+        val json = """{"products":[
+            {"idProduct":1,"name":"Live Code Card (Pikachu Tin)","idExpansion":5,"idMetacard":1},
+            {"idProduct":2,"name":"Pikachu","idExpansion":5,"idMetacard":2}]}"""
+        assertEquals(listOf(2), CardmarketCatalog.parse(json.reader())[5]!!.map { it.idProduct })
+    }
+
+    @Test
     fun `il catalogo si legge anche con virgole, virgolette e graffe nei nomi`() = runTest {
         val catalog = CardmarketCatalog(OkHttpClient(), File(dir, "c.json"), server.url("/c.json").toString())
         val set = catalog.productsOf(10)

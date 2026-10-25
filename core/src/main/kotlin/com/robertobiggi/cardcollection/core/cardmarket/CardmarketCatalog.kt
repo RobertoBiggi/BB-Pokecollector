@@ -135,6 +135,7 @@ class CardmarketCatalog(
         private const val MAX_BYTES = 60L * 1024 * 1024
         private const val BUFFER_SIZE = 64 * 1024
         private val LEVEL = Regex("""\s+Lv\.\s*\d+.*""")
+        private val ONLINE_CODE = Regex("""\bcode card\b""", RegexOption.IGNORE_CASE)
 
         /**
          * Nome con cui cercare la carta su Cardmarket: quello inglese del catalogo, senza il livello ("Omastar Lv.53" → "Omastar").
@@ -205,6 +206,8 @@ class CardmarketCatalog(
             val id = o["idProduct"]?.jsonPrimitive?.int ?: return
             val expansion = o["idExpansion"]?.jsonPrimitive?.int ?: return
             val name = o["name"]?.jsonPrimitive?.content ?: return
+            // Le carte con codice per il gioco online non sono carte fisiche da collezionare.
+            if (ONLINE_CODE.containsMatchIn(name)) return
             val metacard = o["idMetacard"]?.jsonPrimitive?.intOrNull ?: 0
             into.getOrPut(expansion) { ArrayList() } += CatalogProduct(id, nameKey(name), name.substringBefore(" [").trim(), metacard)
         }

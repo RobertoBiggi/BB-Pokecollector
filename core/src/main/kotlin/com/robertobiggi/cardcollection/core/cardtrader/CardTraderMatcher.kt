@@ -67,6 +67,35 @@ object CardTraderMatcher {
         return null
     }
 
+    /**
+     * Carte Cardmarket che su CardTrader stanno in un'espansione diversa da quella del loro set (id prodotto Cardmarket → sigla CardTrader).
+     * Verificato sul blueprint: Pikachu V-UNION [Oversized] è del set V-UNION Special Collection ma su CardTrader è in Celebrations;
+     * Pichu and Pikachu è sia in CoroCoro Promo sia in Unnumbered Promos, e solo il blueprint di quest'ultimo ha l'id Cardmarket.
+     */
+    private val CARDMARKET_ID_EXPANSIONS = mapOf(576911 to "c25", 571918 to "unpromo")
+
+    /**
+     * Espansione di CardTrader indicata per una carta Cardmarket da [CARDMARKET_ID_EXPANSIONS].
+     * @param expansions List<CtExpansionDto> - espansioni del gioco.
+     * @param cardmarketId Int - id prodotto Cardmarket.
+     * @return CtExpansionDto? - l'espansione, oppure null se la carta non ha un'eccezione.
+     */
+    fun expansionForCardmarketId(expansions: List<CtExpansionDto>, cardmarketId: Int): CtExpansionDto? =
+        CARDMARKET_ID_EXPANSIONS[cardmarketId]?.let { code -> expansions.firstOrNull { it.code?.lowercase() == code } }
+
+    /**
+     * Blueprint con l'immagine per le carte il cui blueprint con l'id Cardmarket ne è privo (id prodotto Cardmarket → sigla espansione e id blueprint).
+     * Pichu and Pikachu Jumbo Oversized: l'immagine c'è solo nel blueprint "Pikachu & Pichu" di CoroCoro Promo, che non ha l'id Cardmarket.
+     */
+    private val IMAGE_SIBLINGS = mapOf(571918 to ("corocoro" to 363633))
+
+    /**
+     * Blueprint da cui prendere l'immagine quando quello abbinato non ne ha.
+     * @param cardmarketId Int - id prodotto Cardmarket della carta.
+     * @return Pair<String, Int>? - sigla dell'espansione e id del blueprint, oppure null se non c'è un'alternativa.
+     */
+    fun imageSibling(cardmarketId: Int): Pair<String, Int>? = IMAGE_SIBLINGS[cardmarketId]
+
     private fun looseNumber(raw: String): String = normalizeNumber(raw).replace(Regex("""(?<=\D)0+(?=\d)"""), "")
 
     /**
@@ -93,7 +122,8 @@ object CardTraderMatcher {
         val hintIds = byHint.map { it.id }.toSet()
         val hintNames = byHint.map { pokemonKey(it.name.replace(LEVEL_SUFFIX, "")) }.toSet()
         val sameCard = byNumber.any { it.id in hintIds || pokemonKey(it.name.replace(LEVEL_SUFFIX, "")) in hintNames }
-        return if (sameCard) byNumber else byHint
+        // Il numero può essere condiviso da carte di kit diversi nello stesso set (Trainer Kit 6/10 e 6/30): restano quelle dell'id.
+        return if (sameCard) byNumber.filter { it.id in hintIds || pokemonKey(it.name.replace(LEVEL_SUFFIX, "")) in hintNames } else byHint
     }
 
     /**
@@ -208,6 +238,8 @@ object CardTraderMatcher {
         "2021swsh" to "mc21", "2022swsh" to "mc22", "2023sv" to "mc23", "2024sv" to "m24",
         // Altri set che CardTrader chiama in modo diverso da TCGdex (confrontati numero e nome delle carte: tutte o quasi coincidono).
         "cel25cc" to "c25", "30th-c" to "30c", "svp" to "svpromo", "swsh10.5" to "pkmgo", "fut2020" to "futsal", "exu" to "suf",
+        // CardTrader mette i Trainer Kit EX Latias/Latios (10 carte) sotto i set "XY Trainer Kit: Latias/Latios".
+        "tk-ex-latia" to "xytkas", "tk-ex-latio" to "xytkos",
         "tk-xy-su" to "suicune", "tk-xy-p" to "xytkp", "tk-sm-l" to "xytkl", "tk-sm-r" to "xytka",
         "pcg6" to "hrt", "pcg7" to "hof", "pcg8" to "mic", "pcg9" to "odffe",
         "s5i" to "s5l", "sm1p" to "sm1plus", "sm2p" to "sm2plus", "sm3p" to "sm3", "sm4p" to "sm4", "sm5p" to "sm5plus",

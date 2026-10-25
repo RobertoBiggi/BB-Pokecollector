@@ -90,7 +90,10 @@ class CardmarketCardSearchTest {
             {"idProduct":48,"name":"Ditto","idCategory":51,"idExpansion":400},
             {"idProduct":90,"name":"Charizard [Collect Fire]","idCategory":51,"idExpansion":900,"idMetacard":5},
             {"idProduct":91,"name":"Charizard [Collect Fire]","idCategory":51,"idExpansion":900,"idMetacard":5},
-            {"idProduct":92,"name":"Charizard Lv.76 [Solo Flame]","idCategory":51,"idExpansion":900,"idMetacard":6}]}""",
+            {"idProduct":92,"name":"Charizard Lv.76 [Solo Flame]","idCategory":51,"idExpansion":900,"idMetacard":6},
+            {"idProduct":110,"name":"Squirtle [Water Gun]","idCategory":51,"idExpansion":1000,"idMetacard":7},
+            {"idProduct":111,"name":"Squirtle [Water Gun]","idCategory":51,"idExpansion":1000,"idMetacard":7},
+            {"idProduct":112,"name":"Squirtle [Water Gun]","idCategory":51,"idExpansion":1000,"idMetacard":7}]}""",
     )
 
     private val expansions = CardmarketExpansions.parse(
@@ -117,6 +120,7 @@ class CardmarketCardSearchTest {
             "S\tja\tPt4\tPt4\tAdvent of Arceus\t600\t1", "C\tja\tPt4\t023\t60",
             "S\ten\tpr\t\tMiscellaneous Promos\t800\t0", "C\ten\tpr\t\t80",
             "S\ten\tdr\t\tEX Dragon\t900\t1", "C\ten\tdr\t100\t90",
+            "S\tja\tpxy\t\tXY Promos\t1000\t1", "C\tja\tpxy\t064/XY-Pdp\t110", "C\tja\tpxy\t064/XY-P\t111", "C\tja\tpxy\t064/XY-Pmc\t112",
         ),
     )
 
@@ -252,6 +256,16 @@ class CardmarketCardSearchTest {
         assertEquals(80, found.single().cardmarketId)
         // Il set inglese non compare nel catalogo giapponese.
         assertEquals(emptyList<String>(), search(extraSets).find(Language.JA, "Moltres").filter { it.setId == "pr" }.map { it.id })
+    }
+
+    @Test
+    fun `stampe diverse della stessa carta con lo stesso numero sono carte diverse`() = runTest {
+        val found = search(extraSets).find(Language.JA, "Squirtle").filter { it.setId == "pxy" }
+        // 111 ("064/XY-P") tiene il numero, le altre due aggiungono il prodotto Cardmarket.
+        assertEquals(listOf("pxy-064", "pxy-064-110", "pxy-064-112"), found.map { it.tcgdexId }.sorted())
+        // Ognuna si ricostruisce dal suo id.
+        assertEquals(110, search(extraSets).cardFor(Language.JA, "pxy", "064-110")?.cardmarketId)
+        assertEquals(111, search(extraSets).cardFor(Language.JA, "pxy", "064")?.cardmarketId)
     }
 
     @Test

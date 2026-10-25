@@ -82,6 +82,9 @@ data class CardSearchState(
 /** Azione in corso nel dettaglio di una carta. */
 enum class CardAction { PRICE, DOWNLOAD_IMAGE, PICK_IMAGE }
 
+/** Stato del dialog di un'azione sulla carta: `message` è l'esito, null finché l'azione è in corso. */
+data class CardActionReport(val action: CardAction, val message: UiText? = null)
+
 /**
  * ViewModel unico dell'app: elenco delle collezioni e stato della collezione aperta, letti dal
  * database locale; inoltra le azioni ai repository.
@@ -129,6 +132,23 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     /** Azione sulla carta aperta in corso (prezzo o immagine), null se nessuna. */
     val cardAction: StateFlow<CardAction?> = _cardAction.asStateFlow()
+
+    private val _cardReport = MutableStateFlow<CardActionReport?>(null)
+
+    /** Dialog dell'azione sulla carta: avanzamento mentre è in corso, poi l'esito fino a quando l'utente lo chiude. */
+    val cardReport: StateFlow<CardActionReport?> = _cardReport.asStateFlow()
+
+    /**
+     * Chiude il dialog dell'esito.
+     * @return Unit
+     */
+    fun dismissCardReport() {
+        if (_cardAction.value == null) _cardReport.value = null
+    }
+
+    private fun report(@StringRes id: Int, vararg args: Any) {
+        _cardReport.value = _cardReport.value?.copy(message = UiText(id, *args))
+    }
 
     private val _messages = MutableSharedFlow<UiText>(extraBufferCapacity = 4)
 
@@ -374,10 +394,10 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         val result = container.prices.checkCard(cardId, _selected.value)
         val found = result.ok + result.fallback
         when {
-            result.abort == AbortReason.SOURCE_PAUSED -> say(R.string.abort_source_paused)
-            found > 0 -> say(R.string.msg_card_price_updated, found)
-            result.abort == AbortReason.OFFLINE -> say(R.string.msg_network_error)
-            else -> say(R.string.msg_card_price_none)
+            result.abort == AbortReason.SOURCE_PAUSED -> report(R.string.abort_source_paused)
+            found > 0 -> report(R.string.msg_card_price_updated, found)
+            result.abort == AbortReason.OFFLINE -> report(R.string.msg_network_error)
+            else -> report(R.string.msg_card_price_none)
         }
     }
 
@@ -393,7 +413,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             // Senza token o senza abbinamento resta l'esito di TCGdex, che spiega meglio perché manca.
             if (fromCardTrader == ImageResult.DOWNLOADED) result = fromCardTrader
         }
-        say(result.messageRes())
+        report(result.messageRes())
     }
 
     /**
@@ -403,7 +423,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @return Unit
      */
     fun setCardImage(cardId: String, uri: Uri) = runCardAction(CardAction.PICK_IMAGE) {
-        say(container.catalog.setManualImage(cardId, uri).messageRes())
+        report(container.catalog.setManualImage(cardId, uri).messageRes())
     }
 
     /**
@@ -415,11 +435,14 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     private fun runCardAction(action: CardAction, block: suspend () -> Unit) {
         if (_cardAction.value != null) return
         _cardAction.value = action
+        _cardReport.value = CardActionReport(action)
         viewModelScope.launch {
             try {
                 block()
             } finally {
                 _cardAction.value = null
+                // Senza esito (azione interrotta) il dialog si chiude da solo.
+                if (_cardReport.value?.message == null) _cardReport.value = null
             }
         }
     }
