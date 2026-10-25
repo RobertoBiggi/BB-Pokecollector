@@ -62,7 +62,7 @@ class CardmarketCardSearch(
         for (set in sets(language)) {
             val products = productsOf(language, set, onDownload, onRead) ?: continue
             val total = totalOf(set)
-            val hits = products.withIndex().filter { key in it.value.nameKey }
+            val hits = products.withIndex().filter { CardmarketCatalog.splitKey(it.value.nameKey).first.contains(CardmarketCatalog.splitKey(key).first) }
             if (hits.isEmpty()) continue
             val detail = detail(language, set.id)
             val aligned = alignedWithNumbers(set, products)
@@ -117,7 +117,7 @@ class CardmarketCardSearch(
      */
     private suspend fun extraSetCards(language: Language, key: String, onDownload: suspend () -> Unit, onRead: suspend () -> Unit): List<CatalogCard> =
         extraSets.sets.filter { it.language == language }.flatMap { extra ->
-            setProducts(extra, catalog.productsOf(extra.cardmarketId, onDownload, onRead)).filter { key in it.nameKey }.mapNotNull { extraCard(extra, it) }
+            setProducts(extra, catalog.productsOf(extra.cardmarketId, onDownload, onRead)).filter { CardmarketCatalog.splitKey(it.nameKey).first.contains(CardmarketCatalog.splitKey(key).first) }.mapNotNull { extraCard(extra, it) }
         }
 
     /**
