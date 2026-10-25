@@ -1,0 +1,49 @@
+# Probe temporaneo: nomi delle carte speciali (★, δ, ◇, LV.X…) su Cardmarket e TCGdex. Da eliminare dopo l'analisi.
+name: Names probe
+
+on:
+  push:
+    paths: [".github/workflows/names-probe.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Nomi speciali
+        run: |
+          cat > probe.py <<'PY'
+          import json, re, urllib.request
+          def get(url):
+              req = urllib.request.Request(url, headers={"User-Agent": "CardCollection-probe"})
+              with urllib.request.urlopen(req, timeout=120) as r:
+                  return json.load(r)
+          cm = get("https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json")["products"]
+          guide = {g["idProduct"]: g for g in get("https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json")["priceGuides"]}
+          special = re.compile(r"Star|Prism|δ|Delta|◇|★|☆|LV|Lv|Shining|Crystal|BREAK|Radiant|Dark |Light |Rocket|\bG\b|\bC\b|\bGL\b|\bFB\b|\b4\b|e-Reader|Level", re.I)
+          sets = {1546: "EX Deoxys", 1548: "Unseen Forces", 1551: "Holon Phantoms", 1552: "Crystal Guardians", 1553: "Dragon Frontiers",
+                  1617: "POP 5", 1562: "Platinum", 2065: "Ultra Prism", 2075: "Forbidden Light", 1534: "Neo Destiny", 1533: "Neo Revelation"}
+          for exp, label in sets.items():
+              prods = [p for p in cm if p.get("idExpansion") == exp]
+              print(f"===== Cardmarket {label} ({exp}): {len(prods)} prodotti")
+              for p in prods:
+                  if special.search(p["name"]) or "Rayquaza" in p["name"]:
+                      g = guide.get(p["idProduct"], {})
+                      print(f'  {p["idProduct"]}\t{p["name"]}\tmeta={p.get("idMetacard")}\ttrend={g.get("trend")}\ttrend-holo={g.get("trend-holo")}')
+          T = "https://api.tcgdex.net/v2/en"
+          plain = re.compile(r"^[A-Za-z0-9 '.,:&()/-]+$")
+          for sid in ["ex8", "ex10", "ex13", "ex14", "ex15", "pop5", "pl1", "sm5", "sm6", "neo3", "neo4", "dp7", "swsh9"]:
+              s = get(f"{T}/sets/{sid}")
+              odd = [(c["id"], c["name"]) for c in s.get("cards", []) if not plain.match(c["name"]) or "Rayquaza" in c["name"]]
+              print(f"===== TCGdex {sid} {s.get('name')}: {len(odd)} nomi speciali")
+              for cid, name in odd:
+                  print(f"  {cid}\t{name}\t{[hex(ord(ch)) for ch in name if ord(ch) > 127]}")
+          for cid in ["ex8-107", "ex8-13", "ex8-97"]:
+              c = get(f"{T}/cards/{cid}")
+              cmk = (c.get("pricing") or {}).get("cardmarket") or {}
+              print("TCGdex", cid, c.get("name"), "idProduct=", cmk.get("idProduct"), "trend=", cmk.get("trend"))
+          PY
+          python3 probe.py
