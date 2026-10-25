@@ -5,6 +5,7 @@ import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.local.AppDatabase
@@ -268,6 +269,44 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
         if (!Validators.isValidQueryPattern(clean)) return InputError.QUERY_INVALID
         val id = catalogDao.insertQuery(TrackedQueryEntity(collectionId = collectionId, language = language.code, pattern = clean))
         return if (id == -1L) InputError.QUERY_DUPLICATE else null
+    }
+
+    /**
+     * Aggiunge alla collezione un set intero (set base o master set).
+     * @param collectionId Long - collezione.
+     * @param language Language - lingua del catalogo.
+     * @param setId String - id del set (es. "base1", "M3", "Pt4").
+     * @param kind QueryKind - [QueryKind.SET_BASE] o [QueryKind.SET_MASTER].
+     * @return InputError? - errore, oppure null se aggiunto.
+     */
+    suspend fun addSetQuery(collectionId: Long, language: Language, setId: String, kind: QueryKind): InputError? {
+        val clean = setId.trim()
+        if (!kind.isSet || !QueryKind.isValidPattern(kind, clean)) return InputError.QUERY_INVALID
+        val id = catalogDao.insertQuery(TrackedQueryEntity(collectionId = collectionId, language = language.code, pattern = clean, kind = kind.code))
+        return if (id == -1L) InputError.QUERY_DUPLICATE else null
+    }
+
+    /**
+     * Crea una collezione per set: un set intero, come set base o master set.
+     * @param rawName String - nome inserito; se vuoto si usa il nome del set.
+     * @param language Language - lingua del catalogo.
+     * @param setId String - id del set.
+     * @param setName String - nome del set, usato se il nome è vuoto.
+     * @param kind QueryKind - [QueryKind.SET_BASE] o [QueryKind.SET_MASTER].
+     * @return CreateResult - id della collezione creata, oppure l'errore da mostrare.
+     */
+    suspend fun createSetCollection(rawName: String, language: Language, setId: String, setName: String, kind: QueryKind): CreateResult {
+        val name = CollectionFiles.cleanName(rawName) ?: CollectionFiles.cleanName(setName) ?: return CreateResult.Invalid(InputError.NAME_EMPTY)
+        val clean = setId.trim()
+        if (!kind.isSet || !QueryKind.isValidPattern(kind, clean)) return CreateResult.Invalid(InputError.QUERY_INVALID)
+        val id = db.withTransaction {
+            val id = catalogDao.insertCollection(
+                CollectionEntity(name = uniqueName(name), createdAt = System.currentTimeMillis(), language = CollectionLanguage.codeOf(language)),
+            )
+            catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = language.code, pattern = clean, kind = kind.code))
+            id
+        }
+        return CreateResult.Created(id)
     }
 
     /**

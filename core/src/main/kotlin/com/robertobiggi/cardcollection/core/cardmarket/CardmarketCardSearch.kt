@@ -117,12 +117,41 @@ class CardmarketCardSearch(
      */
     private suspend fun extraSetCards(language: Language, key: String, onDownload: suspend () -> Unit, onRead: suspend () -> Unit): List<CatalogCard> =
         extraSets.sets.filter { it.language == language }.flatMap { extra ->
-            catalog.productsOf(extra.cardmarketId, onDownload, onRead).let { all ->
-                // Un prodotto senza numero che è un'altra stampa di una carta già numerata del set (stessa metacard) non è una carta a parte.
-                val numbered = all.filter { it.idProduct in extra.numbers }.map { it.metacard }.filter { it != 0 }.toSet()
-                all.filter { key in it.nameKey && (it.idProduct in extra.numbers || (extra.whole && it.metacard !in numbered)) }
-            }.mapNotNull { extraCard(extra, it) }
+            setProducts(extra, catalog.productsOf(extra.cardmarketId, onDownload, onRead)).filter { key in it.nameKey }.mapNotNull { extraCard(extra, it) }
         }
+
+    /**
+     * Set giapponesi che TCGdex non elenca, per sceglierne uno da collezionare intero.
+     * @param language Language - lingua del catalogo (solo il giapponese ha set mancanti da proporre).
+     * @return List<CardmarketExtraSets.ExtraSet> - set disponibili.
+     */
+    fun extraSetsFor(language: Language): List<CardmarketExtraSets.ExtraSet> =
+        if (language == Language.JA) extraSets.sets.filter { it.language == language } else emptyList()
+
+    /**
+     * Tutte le carte di un set che TCGdex non elenca, per le collezioni per set.
+     * @param language Language - lingua del catalogo.
+     * @param setId String - id del set (es. "Pt4").
+     * @param onDownload suspend () -> Unit - chiamata prima di scaricare il catalogo.
+     * @param onRead suspend () -> Unit - chiamata prima di leggere il catalogo.
+     * @return List<CatalogCard> - carte del set, senza immagine; vuota se il set non è tra quelli mancanti.
+     */
+    suspend fun extraSetAll(language: Language, setId: String, onDownload: suspend () -> Unit = {}, onRead: suspend () -> Unit = {}): List<CatalogCard> {
+        val extra = extraSetsFor(language).firstOrNull { it.setId == setId } ?: return emptyList()
+        return setProducts(extra, catalog.productsOf(extra.cardmarketId, onDownload, onRead)).mapNotNull { extraCard(extra, it) }
+    }
+
+    /**
+     * Prodotti Cardmarket che sono carte del set: quelli con numero e, se l'espansione è solo di questo set, anche quelli
+     * senza numero. Un prodotto senza numero che è un'altra stampa di una carta già numerata (stessa metacard) non è una carta a parte.
+     * @param extra CardmarketExtraSets.ExtraSet - set.
+     * @param all List<CatalogProduct> - prodotti dell'espansione Cardmarket.
+     * @return List<CatalogProduct> - carte del set.
+     */
+    private fun setProducts(extra: CardmarketExtraSets.ExtraSet, all: List<CatalogProduct>): List<CatalogProduct> {
+        val numbered = all.filter { it.idProduct in extra.numbers }.map { it.metacard }.filter { it != 0 }.toSet()
+        return all.filter { it.idProduct in extra.numbers || (extra.whole && it.metacard !in numbered) }
+    }
 
     private fun extraCard(extra: CardmarketExtraSets.ExtraSet, product: CatalogProduct): CatalogCard? {
         val printed = extra.numbers[product.idProduct].orEmpty()

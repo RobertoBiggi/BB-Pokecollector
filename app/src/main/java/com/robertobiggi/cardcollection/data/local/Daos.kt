@@ -361,6 +361,14 @@ interface CollectionDao {
      */
     @Upsert
     suspend fun upsertEntries(entries: List<CollectionEntryEntity>)
+
+    /**
+     * Inserisce le voci che non esistono ancora, lasciando invariate quelle già salvate (scelte dell'utente comprese).
+     * @param entries List<CollectionEntryEntity> - voci da aggiungere.
+     * @return Unit
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertEntriesIfAbsent(entries: List<CollectionEntryEntity>)
 }
 
 /** Accesso a prezzi e registro degli aggiornamenti. */

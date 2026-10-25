@@ -2,6 +2,13 @@
 
 package com.robertobiggi.cardcollection.ui.home
 
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilterChip
+import com.robertobiggi.cardcollection.ui.common.SetPickerDialog
+import com.robertobiggi.cardcollection.ui.common.SetLevelPicker
+import com.robertobiggi.cardcollection.ui.SetPickerState
+import com.robertobiggi.cardcollection.data.repo.SetChoice
+import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.ui.common.exportFileName
 import com.robertobiggi.cardcollection.ui.common.messageRes
 import com.robertobiggi.cardcollection.ui.common.LanguageMultiPicker
@@ -149,10 +156,21 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
     }
 
     if (creating) {
+        val setPicker by vm.setPicker.collectAsStateWithLifecycle()
         CreateCollectionDialog(
+            setPicker = setPicker,
+            onLoadSets = vm::loadSets,
             onDismiss = { creating = false },
             onCreate = { name, languages, pattern, setError ->
                 vm.createCollection(name, languages, pattern) { error, id ->
+                    if (error != null) setError(error.messageRes()) else {
+                        creating = false
+                        id?.let(onOpen)
+                    }
+                }
+            },
+            onCreateSet = { name, language, set, kind, setError ->
+                vm.createSetCollection(name, language, set, kind) { error, id ->
                     if (error != null) setError(error.messageRes()) else {
                         creating = false
                         id?.let(onOpen)
@@ -272,43 +290,85 @@ private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick:
 private const val CREATE_PATTERN_MAX = 400
 
 /**
- * Finestra di creazione di una collezione: nome, lingue (EN, JP o altre, anche insieme) e una prima ricerca facoltativa.
+ * Finestra di creazione di una collezione. Due modi:
+ * - per Pokémon: nome, lingue (EN, JP o altre, anche insieme) e una prima ricerca facoltativa;
+ * - per set: un set intero da scegliere nell'elenco, come set base o master set.
+ * @param setPicker SetPickerState - elenco dei set per il modo "per set".
+ * @param onLoadSets (Language, Boolean) -> Unit - chiede l'elenco dei set di una lingua.
  * @param onDismiss () -> Unit - chiude.
- * @param onCreate (String, List<Language>, String, (Int) -> Unit) -> Unit - crea; l'ultimo parametro mostra un errore (risorsa stringa).
+ * @param onCreate (String, List<Language>, String, (Int) -> Unit) -> Unit - crea per Pokémon; l'ultimo parametro mostra un errore (risorsa stringa).
+ * @param onCreateSet (String, Language, SetChoice, QueryKind, (Int) -> Unit) -> Unit - crea per set; l'ultimo parametro mostra un errore.
  * @return Unit
  */
 @Composable
-private fun CreateCollectionDialog(onDismiss: () -> Unit, onCreate: (String, List<Language>, String, (Int) -> Unit) -> Unit) {
+private fun CreateCollectionDialog(
+    setPicker: SetPickerState,
+    onLoadSets: (Language, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+    onCreate: (String, List<Language>, String, (Int) -> Unit) -> Unit,
+    onCreateSet: (String, Language, SetChoice, QueryKind, (Int) -> Unit) -> Unit,
+) {
     var name by rememberSaveable { mutableStateOf("") }
     var pattern by rememberSaveable { mutableStateOf("") }
     var languages by rememberSaveable { mutableStateOf(listOf(Language.EN)) }
+    var bySet by rememberSaveable { mutableStateOf(false) }
+    var level by rememberSaveable { mutableStateOf(QueryKind.SET_MASTER) }
+    var chosen by remember { mutableStateOf<Pair<Language, SetChoice>?>(null) }
+    var picking by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<Int?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.home_new)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = !bySet, onClick = { bySet = false; error = null }, label = { Text(stringResource(R.string.create_by_name)) })
+                    FilterChip(selected = bySet, onClick = { bySet = true; error = null }, label = { Text(stringResource(R.string.create_by_set)) })
+                }
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it.take(60); error = null },
-                    label = { Text(stringResource(R.string.create_name_label)) },
+                    label = { Text(stringResource(if (bySet) R.string.create_name_optional else R.string.create_name_label)) },
                     singleLine = true,
                 )
-                Text(stringResource(R.string.create_first_search), style = MaterialTheme.typography.bodySmall)
-                LanguageMultiPicker(languages) { languages = it }
-                OutlinedTextField(
-                    value = pattern,
-                    onValueChange = { pattern = it.take(CREATE_PATTERN_MAX); error = null },
-                    label = { Text(stringResource(R.string.create_pattern_label)) },
-                    singleLine = true,
-                    isError = error != null,
-                    supportingText = { error?.let { Text(stringResource(it)) } },
-                )
+                if (bySet) {
+                    OutlinedButton(onClick = { picking = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(chosen?.let { (lang, set) -> "${set.name} (${lang.shortLabel()})" } ?: stringResource(R.string.set_pick_button), maxLines = 2)
+                    }
+                    SetLevelPicker(level) { level = it }
+                    error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                } else {
+                    Text(stringResource(R.string.create_first_search), style = MaterialTheme.typography.bodySmall)
+                    LanguageMultiPicker(languages) { languages = it }
+                    OutlinedTextField(
+                        value = pattern,
+                        onValueChange = { pattern = it.take(CREATE_PATTERN_MAX); error = null },
+                        label = { Text(stringResource(R.string.create_pattern_label)) },
+                        singleLine = true,
+                        isError = error != null,
+                        supportingText = { error?.let { Text(stringResource(it)) } },
+                    )
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onCreate(name, languages, pattern) { error = it } }) { Text(stringResource(R.string.action_create)) }
+            TextButton(onClick = {
+                val target = chosen
+                when {
+                    !bySet -> onCreate(name, languages, pattern) { error = it }
+                    target == null -> error = R.string.set_pick_missing
+                    else -> onCreateSet(name, target.first, target.second, level) { error = it }
+                }
+            }) { Text(stringResource(R.string.action_create)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
+    if (picking) {
+        SetPickerDialog(
+            state = setPicker,
+            onLanguage = onLoadSets,
+            onPick = { lang, set -> chosen = lang to set; picking = false; error = null },
+            onDismiss = { picking = false },
+        )
+    }
 }
