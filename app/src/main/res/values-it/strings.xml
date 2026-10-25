@@ -232,4 +232,24 @@
     <string name="stats_value">Valore della collezione</string>
     <string name="stats_priced">%1$d / %2$d varianti possedute con un prezzo</string>
     <string name="stats_missing_hint">varianti che vuoi e non hai</string>
+    <string name="set_pick_title">Scegli un set</string>
+    <string name="set_pick_search">Nome o sigla del set</string>
+    <string name="set_pick_cards">%1$d carte</string>
+    <string name="set_pick_extra">non su TCGdex</string>
+    <string name="set_pick_none">Nessun set trovato.</string>
+    <string name="set_pick_button">Scegli set…</string>
+    <string name="set_pick_missing">Scegli prima un set.</string>
+    <string name="set_level_base">Set base</string>
+    <string name="set_level_master">Master set</string>
+    <string name="set_level_base_hint">Uno slot per carta (la versione principale). Le altre varianti restano nel catalogo ma non contano.</string>
+    <string name="set_level_master_hint">Conta ogni variante: normale, holo, reverse holo, Poké Ball e Master Ball. La 1st Edition non si distingue.</string>
+    <string name="query_set_label">Set %1$s · %2$s</string>
+    <string name="create_by_name">Per Pokémon</string>
+    <string name="create_by_set">Per set</string>
+    <string name="create_name_optional">Nome (vuoto = nome del set)</string>
+    <string name="add_set_title">Aggiungi un set intero</string>
+    <string name="add_set">Aggiungi set</string>
+    <string name="msg_set_added">Set %1$s aggiunto: scarico le carte.</string>
+    <string name="catalog_empty_sets">%1$d set non hanno ancora carte su TCGdex né nell\'elenco dei set mancanti.</string>
+    <string name="action_retry">Riprova</string>
 </resources>

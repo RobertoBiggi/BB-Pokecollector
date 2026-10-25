@@ -81,12 +81,12 @@ TCGdex usa `0` per "nessun dato": i valori nulli o pari a zero vengono scartati.
 
 La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`: aggiungerne una richiede solo l'implementazione e l'inserimento in `PriceRepository`. Quando non c'è un prezzo nuovo resta l'ultimo salvato, oppure il prezzo manuale.
 
-## Modello dati (Room, versione 4)
+## Modello dati (Room, versione 11)
 
 | Tabella | Contenuto |
 |---|---|
 | `collection` | collezioni create dall'utente (alla prima installazione non ce n'è nessuna), con la lingua: `en`, `ja` oppure `mixed` |
-| `tracked_query` | ricerche per nome e lingua **di una collezione** |
+| `tracked_query` | ricerche **di una collezione**, per lingua: per nome (`kind` = `name`) oppure set intero (`set_base` / `set_master`, `pattern` = id del set) |
 | `card` | catalogo condiviso: set, sigla, numero stampato, rarità, serie, data, illustratore, numero del Pokédex (`dexId`), URL e percorsi delle immagini (`queryId` è un campo storico della v1) |
 | `card_variant` | una riga per variante (slot) |
 | `collection_card` | appartenenza carta ↔ collezione: `queryId` (ricerca che l'ha aggiunta, null se a mano o importata) e `hidden` (tolta dall'utente, il sync non la riaggiunge) |
@@ -104,12 +104,28 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 - **1 → 2**: crea la collezione "Mawile" con id 1, sposta lì ricerche e quantità e collega le carte tramite il vecchio `queryId`.
 - **2 → 3**: aggiunge `card.dexId`, compilato al prossimo aggiornamento del catalogo o dall'import di un file che lo contiene.
 - **3 → 4**: aggiunge `collection.language`. Le collezioni con ricerche e carte tutte in inglese (o tutte in giapponese) prendono quella lingua; le altre diventano miste.
+- **4 → 10**: colonne per Cardmarket e CardTrader (condizione, id prodotto, blueprint, set e nome Cardmarket); 4 → 5 unisce le due versioni 4 nate in parallelo.
+- **10 → 11**: aggiunge `tracked_query.kind`; le ricerche esistenti restano per nome.
 
 `MigrationTest` esegue ogni passaggio e la catena 1 → 4 su SQLite (JVM) e confronta il risultato con gli schemi che Room esporta in `app/schemas/` durante la stessa build.
 
 **Lettura reattiva:** `CollectionRepository` combina le tabelle osservate in un'unica fotografia (`DbState`), calcolata fuori dal thread dell'interfaccia, accorpata durante le modifiche ravvicinate e condivisa da tutte le schermate (`shareIn` nello scope dell'app). Ricerca, filtri e ordinamento della griglia sono calcolati nel ViewModel, anch'essi fuori dal thread UI.
 
 **Ricerca per nome in ogni lingua:** `PokemonNames` (core) legge una tabella dei 1025 Pokémon in 7 lingue (da PokeAPI, BSD-3-Clause) inclusa nel modulo con percorso assoluto, sicuro con R8. I nomi sono normalizzati (NFKC, senza accenti né punteggiatura, hiragana → katakana); bastano 3 caratteri latini o 2 CJK. Viene precaricata all'avvio.
+
+## Collezioni per set (set base e master set)
+
+Oltre alle ricerche per nome, una collezione può contenere un **set intero**: si crea con "Nuova collezione → Per set" oppure da Gestione → "Aggiungi un set intero".
+
+- **Elenco dei set** (`CatalogRepository.setChoices`): i set di TCGdex della lingua (EN o JP, senza quelli di TCG Pocket) più, per il giapponese, i set che TCGdex non elenca presi da `cardmarket-extra-sets.tsv` (DP, Platino, BW, promo, mazzi).
+- **Sync** (`syncSet`): scarica il dettaglio del set da TCGdex e ogni sua carta (Allenatori ed Energie comprese) con lo stesso percorso delle ricerche per nome (varianti, Poké Ball/Master Ball, Cardmarket). Se TCGdex non ha carte per quel set usa l'elenco dei set mancanti (`CardmarketCardSearch.extraSetAll`). Se nessuna fonte ha le carte, il set viene contato come vuoto e segnalato nell'esito dell'aggiornamento.
+- **Livelli** (`SetCollectionPolicy`, core):
+  - *Set base*: uno slot per carta, la variante principale (normal, altrimenti holo, poi reverse…);
+  - *Master set*: tutte le varianti, senza distinguere la 1st Edition (che resta uno slot solo se è l'unica versione della carta).
+
+  Le varianti escluse diventano voci `collection_entry` con `wanted = false`, inserite solo se la voce non esiste: le scelte e le quantità dell'utente non vengono mai toccate. Prezzi, mancanti e statistiche usano già "desiderata o posseduta", quindi non servono altre modifiche.
+- **Fonti dei dati:** le checklist vengono da TCGdex (licenza MIT, modello varianti con finiture Poké Ball/Master Ball, timbri e sottotipi). I siti di master set valutati non si possono usare come fonte da includere: Pokellector e il database ufficiale giapponese lo vietano nei termini, Bulbapedia è CC BY-NC-SA (ShareAlike e non commerciale), Serebii e PriceCharting non hanno licenze di riuso. Per i set giapponesi senza carte su TCGdex (ADV, PCG10, LEGEND, molti XY e Spada e Scudo) la strada prevista è completare le checklist su TCGdex con pull request.
+- **Copertura verificata con un probe (ottobre 2026):** inglese completo da Base Set a Black & White con immagini; giapponese vintage (PMCG, neo, VS, web, e-Card, PCG1-9) con l'elenco completo ma senza immagini; ADV, PCG10, LEGEND, molti XY e Spada e Scudo senza carte.
 
 ## File JSON di una collezione (schema 2)
 

@@ -2,6 +2,12 @@
 
 package com.robertobiggi.cardcollection.ui.manage
 
+import com.robertobiggi.cardcollection.ui.common.shortLabel
+import com.robertobiggi.cardcollection.ui.common.queryLabel
+import com.robertobiggi.cardcollection.ui.common.SetPickerDialog
+import com.robertobiggi.cardcollection.ui.common.SetLevelPicker
+import com.robertobiggi.cardcollection.data.repo.SetChoice
+import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.ui.common.messageRes
 import com.robertobiggi.cardcollection.ui.common.labelRes
 import com.robertobiggi.cardcollection.ui.common.catalogResultText
@@ -76,6 +82,11 @@ fun ManageScreen(vm: MainViewModel) {
     var searchLanguage by rememberSaveable { mutableStateOf(Language.EN) }
     var searchText by rememberSaveable { mutableStateOf("") }
     var addedIds by remember { mutableStateOf(setOf<String>()) }
+    val setPicker by vm.setPicker.collectAsStateWithLifecycle()
+    var pickingSet by remember { mutableStateOf(false) }
+    var chosenSet by remember { mutableStateOf<Pair<Language, SetChoice>?>(null) }
+    var setLevel by rememberSaveable { mutableStateOf(QueryKind.SET_MASTER) }
+    var setError by remember { mutableStateOf<InputError?>(null) }
     var exportOpen by remember { mutableStateOf(false) }
     var pendingImages by rememberSaveable { mutableStateOf(ImageExport.NONE.name) }
 
@@ -94,7 +105,7 @@ fun ManageScreen(vm: MainViewModel) {
                     queries.forEach { q ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(q.pattern, fontWeight = FontWeight.Bold)
+                                Text(queryLabel(QueryKind.fromCode(q.kind) ?: QueryKind.NAME, q.pattern), fontWeight = FontWeight.Bold)
                                 val lang = Language.fromCode(q.language)
                                 Text(lang?.let { stringResource(it.labelRes()) } ?: q.language, style = MaterialTheme.typography.bodySmall)
                             }
@@ -127,6 +138,26 @@ fun ManageScreen(vm: MainViewModel) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+            item {
+                Section(stringResource(R.string.add_set_title)) {
+                    OutlinedButton(onClick = { pickingSet = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(chosenSet?.let { (lang, set) -> "${set.name} (${lang.shortLabel()})" } ?: stringResource(R.string.set_pick_button), maxLines = 2)
+                    }
+                    SetLevelPicker(setLevel) { setLevel = it }
+                    setError?.let { Text(stringResource(it.messageRes()), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                    Button(
+                        onClick = {
+                            chosenSet?.let { (lang, set) ->
+                                vm.addSetQuery(lang, set, setLevel) { err ->
+                                    setError = err
+                                    if (err == null) chosenSet = null
+                                }
+                            }
+                        },
+                        enabled = chosenSet != null,
+                    ) { Text(stringResource(R.string.add_set)) }
                 }
             }
             item {
@@ -188,6 +219,14 @@ fun ManageScreen(vm: MainViewModel) {
         }
     }
 
+    if (pickingSet) {
+        SetPickerDialog(
+            state = setPicker,
+            onLanguage = vm::loadSets,
+            onPick = { lang, set -> chosenSet = lang to set; pickingSet = false; setError = null },
+            onDismiss = { pickingSet = false },
+        )
+    }
     if (exportOpen) {
         ExportDialog(
             onDismiss = { exportOpen = false },
