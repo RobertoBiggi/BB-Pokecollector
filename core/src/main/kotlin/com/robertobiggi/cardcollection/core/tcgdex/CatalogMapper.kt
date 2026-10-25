@@ -46,6 +46,13 @@ object CatalogMapper {
     fun isDigitalOnly(brief: CardBriefDto): Boolean = brief.image?.contains("/$POCKET_SERIE_ID/") == true
 
     /**
+     * Indica se un set è di TCG Pocket (solo digitale), dal percorso del logo che contiene la serie.
+     * @param set SetBriefDto - set dell'elenco TCGdex.
+     * @return Boolean - true per i set da escludere dalle collezioni per set.
+     */
+    fun isDigitalOnlySet(set: SetBriefDto): Boolean = set.logo?.contains("/$POCKET_SERIE_ID/") == true
+
+    /**
      * Indica se la carta va tracciata: tutte le carte fisiche, Allenatori ed Energie compresi (esclude solo TCG Pocket).
      * @param card CardDto - dettaglio della carta.
      * @param set SetDto? - dettaglio del set, se disponibile.
