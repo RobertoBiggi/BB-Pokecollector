@@ -1,0 +1,97 @@
+# Probe temporaneo: copertura dei set vecchi (master set) su TCGdex e TCGCSV. Da eliminare dopo l'analisi.
+name: Vintage probe
+
+on:
+  push:
+    paths: [".github/workflows/vintage-probe.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Copertura set vecchi
+        run: |
+          cat > probe.py <<'EOF'
+          import json, time, urllib.request, concurrent.futures as cf
+
+          def get(url):
+              for attempt in range(3):
+                  try:
+                      req = urllib.request.Request(url, headers={"User-Agent": "CardCollection-probe"})
+                      with urllib.request.urlopen(req, timeout=60) as r:
+                          return json.load(r)
+                  except Exception as e:
+                      err = e
+                      time.sleep(2)
+              return {"_error": str(err)}
+
+          T = "https://api.tcgdex.net/v2"
+
+          def tcgdex_set(lang, sid):
+              s = get(f"{T}/{lang}/sets/{sid}")
+              if "_error" in s:
+                  return f"{lang}\t{sid}\tERRORE {s['_error']}"
+              cards = s.get("cards", [])
+              img = sum(1 for c in cards if c.get("image"))
+              cc = s.get("cardCount", {})
+              return "\t".join(str(x) for x in [
+                  lang, sid, s.get("name"), s.get("releaseDate"), (s.get("serie") or {}).get("id"),
+                  f"carte={len(cards)}", f"official={cc.get('official')}", f"total={cc.get('total')}",
+                  f"img={img}", f"1st={cc.get('firstEd')}", f"holo={cc.get('holo')}", f"rev={cc.get('reverse')}",
+                  f"abbr={(s.get('abbreviation') or {}).get('official')}",
+              ])
+
+          for lang, cutoff in (("en", "2012"), ("ja", "2012")):
+              sets = get(f"{T}/{lang}/sets")
+              print(f"===== TCGdex {lang}: {len(sets)} set in totale")
+              with cf.ThreadPoolExecutor(6) as ex:
+                  rows = list(ex.map(lambda s: tcgdex_set(lang, s["id"]), sets))
+              old = [r for r in rows if r.split("\t")[3][:4] < cutoff or "ERRORE" in r or r.split("\t")[3] == "None"]
+              print(f"set con data < {cutoff} o senza data: {len(old)}")
+              for r in sorted(old, key=lambda r: r.split("\t")[3]):
+                  print(r)
+
+          print("===== TCGdex en: varianti di alcune carte vintage")
+          for cid in ["base1-4", "base1-58", "base2-1", "neo1-9", "ecard1-1", "lc-1", "ex1-1", "basep-1"]:
+              c = get(f"{T}/en/cards/{cid}")
+              print(cid, c.get("name"), c.get("rarity"), json.dumps(c.get("variants")),
+                    json.dumps([(v.get("type"), v.get("subtype"), v.get("size"), v.get("stamp")) for v in (c.get("variants_detailed") or [])]))
+
+          C = "https://tcgcsv.com/tcgplayer"
+          for cat in (3, 85):
+              groups = get(f"{C}/{cat}/groups").get("results", [])
+              old = [g for g in groups if (g.get("publishedOn") or "9999")[:4] < "2012"]
+              print(f"===== TCGCSV categoria {cat}: {len(groups)} gruppi, {len(old)} pubblicati prima del 2012")
+              for g in sorted(old, key=lambda g: g.get("publishedOn") or ""):
+                  print(cat, g["groupId"], g.get("abbreviation"), g.get("name"), (g.get("publishedOn") or "")[:10])
+
+          print("===== TCGCSV: sottotipi e numeri nei set vintage")
+          g3 = get(f"{C}/3/groups").get("results", [])
+          g85 = get(f"{C}/85/groups").get("results", [])
+          def sample(cat, groups, pattern):
+              for g in groups:
+                  if g.get("name") == pattern:
+                      gid = g["groupId"]
+                      prods = get(f"{C}/{cat}/{gid}/products").get("results", [])
+                      prices = get(f"{C}/{cat}/{gid}/prices").get("results", [])
+                      cards = [p for p in prods if any(e.get("name") == "Number" for e in p.get("extendedData", []))]
+                      sub = {}
+                      for p in prices:
+                          sub[p.get("subTypeName")] = sub.get(p.get("subTypeName"), 0) + 1
+                      nums = [next(e.get("value") for e in p["extendedData"] if e.get("name") == "Number") for p in cards[:5]]
+                      print(f"{cat} '{pattern}': prodotti={len(prods)} con numero={len(cards)} immagini={sum(1 for p in prods if p.get('imageUrl'))} sottotipi={sub} esempi={nums}")
+                      return
+              print(f"{cat} '{pattern}': gruppo non trovato")
+          for name in ["Base Set", "Base Set (Shadowless)", "Base Set 2", "Jungle", "Neo Genesis", "Expedition Base Set", "Legendary Collection", "EX Ruby & Sapphire"]:
+              sample(3, g3, name)
+          names85 = [g.get("name") for g in g85]
+          print("primi gruppi JP per id:", sorted(((g["groupId"], g.get("name")) for g in g85))[:60])
+          for name in names85:
+              if any(k in name for k in ("Expansion Pack", "Jungle", "Fossil", "Rocket Gang", "Neo Genesis", "Gold, Silver", "Base Expansion")):
+                  sample(85, g85, name)
+          EOF
+          python3 probe.py
