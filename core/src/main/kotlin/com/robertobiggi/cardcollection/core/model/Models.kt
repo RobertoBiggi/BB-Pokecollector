@@ -76,11 +76,18 @@ enum class VariantType(val tcgdexKey: String) {
     REVERSE("reverse"),
     POKE_BALL("pokeBall"),
     MASTER_BALL("masterBall"),
+    SHADOWLESS("shadowless"),
+    RED_CHEEK("redCheek"),
     FIRST_EDITION("firstEdition"),
-    W_PROMO("wPromo");
+    W_PROMO("wPromo"),
+    POKETOUR_99("poketour99"),
+    JUMBO("jumbo");
 
     /** Reverse holo Poké Ball o Master Ball: prodotti Cardmarket a parte, che TCGdex non elenca. */
     val isBall: Boolean get() = this == POKE_BALL || this == MASTER_BALL
+
+    /** Stampa a parte della stessa carta (shadowless, guance rosse, Pokétour '99, jumbo): ha un suo prodotto Cardmarket, che TCGdex indica per ognuna. */
+    val isPrint: Boolean get() = this == SHADOWLESS || this == RED_CHEEK || this == POKETOUR_99 || this == JUMBO
 
     companion object {
         /**
@@ -117,9 +124,13 @@ enum class Confidence {
     MANUAL,
 }
 
-/** Variante disponibile per una carta del catalogo. */
+/**
+ * Variante disponibile per una carta del catalogo.
+ * @property cardmarketId prodotto Cardmarket della variante, solo per le stampe a parte ([VariantType.isPrint]); le altre usano quello della carta.
+ */
 data class CatalogVariant(
     val type: VariantType,
+    val cardmarketId: Int? = null,
 )
 
 /**

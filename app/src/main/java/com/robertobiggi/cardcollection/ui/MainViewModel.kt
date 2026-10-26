@@ -132,6 +132,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val tcgdexPausedUntil: StateFlow<Long> = container.settings.tcgdexPausedUntil.stateInVm(0L)
     val lastCatalogSync: StateFlow<Long> = container.settings.lastCatalogSync.stateInVm(0L)
     val cardTraderToken: StateFlow<String> = container.settings.cardTraderToken.stateInVm("")
+    val countFirstEdition: StateFlow<Boolean> = container.settings.countFirstEdition.stateInVm(true)
     val priceVisibility: StateFlow<PriceVisibility> = container.settings.priceVisibility.stateInVm(PriceVisibility())
 
     private val _filter = MutableStateFlow(CollectionFilter())
@@ -426,6 +427,15 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @return Unit
      */
     fun setWanted(variantId: String, wanted: Boolean) = withSelected { container.collection.setWanted(it, variantId, wanted) }
+
+    /**
+     * Fa contare o no le versioni 1st Edition tra le mancanti e nei totali.
+     * @param counted Boolean - true per contarle.
+     * @return Unit
+     */
+    fun setCountFirstEdition(counted: Boolean) {
+        viewModelScope.launch { container.settings.setCountFirstEdition(counted) }
+    }
 
     /**
      * Mostra o nasconde un tipo di prezzo in tutta l'app.

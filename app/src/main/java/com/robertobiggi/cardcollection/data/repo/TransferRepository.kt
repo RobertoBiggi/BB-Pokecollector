@@ -159,7 +159,7 @@ class TransferRepository(
             } else {
                 // Carta già nel catalogo: non si sovrascrive, ma si aggiungono le varianti mancanti
                 // (altrimenti le quantità importate non sarebbero visibili) e il numero del Pokédex.
-                catalogDao.insertVariants(c.card.variants.map { CardVariantEntity(Ids.variantId(c.card.id, it.type), c.card.id, it.type.name) })
+                catalogDao.insertVariants(c.card.variants.map { CardVariantEntity(Ids.variantId(c.card.id, it.type), c.card.id, it.type.name, it.cardmarketId) })
                 c.card.dexId?.let { catalogDao.fillDexId(c.card.id, it) }
             }
             catalogDao.insertMembership(CollectionCardEntity(id, c.card.id, null, c.hidden))

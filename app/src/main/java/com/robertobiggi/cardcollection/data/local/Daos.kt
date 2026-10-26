@@ -223,6 +223,14 @@ interface CatalogDao {
     suspend fun insertVariants(variants: List<CardVariantEntity>)
 
     /**
+     * Salva il prodotto Cardmarket di una stampa a parte (anche su una variante già presente, per esempio importata da un file).
+     * @param variantId String - variante.
+     * @param cardmarketId Int - prodotto Cardmarket.
+     */
+    @Query("UPDATE card_variant SET cardmarketId = :cardmarketId WHERE id = :variantId")
+    suspend fun setVariantProduct(variantId: String, cardmarketId: Int)
+
+    /**
      * Toglie le varianti che il catalogo non elenca più (es. una reverse holo dedotta male), tranne quelle di cui l'utente
      * possiede delle copie o ha scritto delle note.
      * @param cardId String - carta.

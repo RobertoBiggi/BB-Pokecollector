@@ -90,6 +90,8 @@ data class CardVariantEntity(
     @PrimaryKey val id: String,
     val cardId: String,
     val type: String,
+    /** Prodotto Cardmarket della variante, solo per le stampe a parte (shadowless, jumbo…); le altre usano quello della carta. */
+    val cardmarketId: Int? = null,
 )
 
 /**

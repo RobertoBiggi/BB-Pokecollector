@@ -16,6 +16,11 @@ object CatalogMapper {
     /** Sigle stampate che TCGdex scrive con un altro id (il World Champions Pack giapponese è "WCP", per TCGdex "PCG10"). */
     private val PRINTED_CODES = mapOf("PCG10" to "WCP")
     private const val FIRST_REVERSE_HOLO_DATE = "2002-05-24"
+    private const val FIRST_EDITION_STAMP = "1st-edition"
+    private const val POKETOUR_STAMP = "poketour-99"
+    private const val UNLIMITED = "unlimited"
+    private const val SHADOWLESS_SUBTYPE = "shadowless"
+    private const val RED_CHEEK_SUBTYPE = "shadowless-red-cheek"
     private const val SCARLET_VIOLET_DATE = "2023-03-31"
 
     /**
@@ -121,7 +126,33 @@ object CatalogMapper {
         val extra = if (asian) VariantType.NORMAL else VariantType.REVERSE
         val distinct = types.toSet().ifEmpty { setOf(VariantType.NORMAL) }.let { if (hasReverseHoloPrice(card, it, releaseDate, asian)) it + extra else it }
             .let { if (balls.isEmpty()) it else it - VariantType.REVERSE + balls }
-        return VariantType.entries.filter { it in distinct }.map { CatalogVariant(it) }
+            // Con il dettaglio, la 1st Edition è un timbro delle stampe, non più un tipo a parte.
+            .let { if (standard.any { v -> FIRST_EDITION_STAMP in v.stamp.orEmpty() }) it + VariantType.FIRST_EDITION else it }
+        return (VariantType.entries.filter { it in distinct }.map { CatalogVariant(it) } + printsOf(card)).sortedBy { it.type.ordinal }
+    }
+
+    /**
+     * Stampe della stessa carta che Cardmarket vende come prodotti a parte (shadowless, guance rosse, Pokétour '99, jumbo):
+     * quelle che TCGdex abbina a un prodotto diverso da quello della carta. Un timbro che condivide il prodotto di una stampa
+     * (la 1st Edition shadowless) non è una stampa a parte.
+     * @param card CardDto - dettaglio della carta.
+     * @return List<CatalogVariant> - una variante per tipo di stampa, col suo prodotto Cardmarket.
+     */
+    private fun printsOf(card: CardDto): List<CatalogVariant> {
+        val detailed = card.variantsDetailed.orEmpty()
+        val main = detailed.firstOrNull { (it.size == null || it.size == "standard") && it.stamp.isNullOrEmpty() && (it.subtype == null || it.subtype == UNLIMITED) }?.cardmarketId
+            ?: card.pricing?.cardmarket?.idProduct ?: return emptyList()
+        return detailed.mapNotNull { v ->
+            val product = v.cardmarketId?.takeIf { it != main } ?: return@mapNotNull null
+            val type = when {
+                v.size == "jumbo" -> VariantType.JUMBO
+                POKETOUR_STAMP in v.stamp.orEmpty() -> VariantType.POKETOUR_99
+                v.subtype == RED_CHEEK_SUBTYPE -> VariantType.RED_CHEEK
+                v.subtype == SHADOWLESS_SUBTYPE -> VariantType.SHADOWLESS
+                else -> return@mapNotNull null
+            }
+            CatalogVariant(type, product)
+        }.distinctBy { it.type }
     }
 
     /**

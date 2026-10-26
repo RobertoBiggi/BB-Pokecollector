@@ -111,7 +111,7 @@ object VariantMapper {
             VariantType.REVERSE -> tp.reverseHolofoil
             VariantType.FIRST_EDITION -> tp.firstEditionHolofoil ?: tp.firstEditionNormal
             VariantType.W_PROMO -> tp.holofoil ?: tp.normal
-            VariantType.POKE_BALL, VariantType.MASTER_BALL -> null
+            VariantType.POKE_BALL, VariantType.MASTER_BALL, VariantType.SHADOWLESS, VariantType.RED_CHEEK, VariantType.POKETOUR_99, VariantType.JUMBO -> null
         }
         return row?.takeIf { positive(it.marketPrice) != null || positive(it.midPrice) != null }
     }

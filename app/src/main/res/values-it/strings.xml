@@ -40,6 +40,10 @@
     <string name="variant_master_ball">Reverse Master Ball</string>
     <string name="variant_first_edition">1st Edition</string>
     <string name="variant_w_promo">Promo W</string>
+    <string name="variant_shadowless">Shadowless</string>
+    <string name="variant_red_cheek">Guance rosse</string>
+    <string name="variant_poketour_99">Pokétour \'99</string>
+    <string name="variant_jumbo">Jumbo</string>
     <string name="home_title">Le mie collezioni</string>
     <string name="home_import">Importa collezione da JSON</string>
     <string name="home_settings">Impostazioni</string>
@@ -172,6 +176,8 @@
     <string name="settings_title">Impostazioni</string>
     <string name="settings_app_language">Lingua dell\'app</string>
     <string name="app_lang_system">Lingua di sistema</string>
+    <string name="settings_first_edition">Conta le 1st Edition</string>
+    <string name="settings_first_edition_text">Se è spenta, le versioni 1st Edition non contano tra le mancanti né nei totali. Restano sulla carta e puoi sempre segnarle come volute; le copie che possiedi si contano comunque.</string>
     <string name="settings_sources">Fonti prezzi</string>
     <string name="settings_sources_text">Scegli quali prezzi mostrare nell\'app. Quelli nascosti non compaiono nelle schede, nelle griglie né nei totali, ma vengono comunque scaricati: riattivandoli li ritrovi. L\'app non contatta mai cardmarket.com: niente blocchi anti-bot.</string>
     <string name="settings_paused">TCGdex in pausa fino al %1$s dopo troppi blocchi.</string>

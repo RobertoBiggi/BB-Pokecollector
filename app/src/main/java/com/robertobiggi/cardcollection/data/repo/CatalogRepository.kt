@@ -605,7 +605,8 @@ class CatalogRepository(
                     cardmarketProductHint = card.cardmarketProductHint ?: existing?.cardmarketProductHint,
                 ),
             )
-            dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name) })
+            dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name, it.cardmarketId) })
+            card.variants.forEach { v -> v.cardmarketId?.let { dao.setVariantProduct(Ids.variantId(card.id, v.type), it) } }
             moveStaleVariants(card.id, card.variants.map { it.type })
             dao.deleteStaleVariants(card.id, card.variants.map { it.type.name })
         }
