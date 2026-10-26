@@ -127,12 +127,13 @@ data class SetDto(
     val cards: List<CardBriefDto> = emptyList(),
 )
 
-/** Elemento sintetico della lista /sets (senza sigla né carte). */
+/** Elemento sintetico della lista /sets (senza sigla né carte). [logo] contiene la serie nel percorso (es. ".../tcgp/A1/logo"). */
 @Serializable
 data class SetBriefDto(
     val id: String,
     val name: String,
     val cardCount: CardCountDto? = null,
+    val logo: String? = null,
 )
 
 /** Riferimento alla serie (era) di un set. */

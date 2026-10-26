@@ -96,7 +96,7 @@ class TransferRepository(
             exportedAt = Instant.now().toString(),
             info = CollectionInfo(
                 name = collection.name,
-                queries = catalogDao.queriesOf(collectionId).map { BackupQuery(it.language, it.pattern, it.enabled) },
+                queries = catalogDao.queriesOf(collectionId).map { BackupQuery(it.language, it.pattern, it.enabled, it.kind) },
                 language = collection.language,
             ),
             cards = records,
@@ -151,7 +151,7 @@ class TransferRepository(
         val name = collections.uniqueName(desiredName)
         val id = catalogDao.insertCollection(CollectionEntity(name = name, createdAt = System.currentTimeMillis(), language = imported.language))
         imported.queries.forEach {
-            catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = it.language, pattern = it.pattern, enabled = it.enabled))
+            catalogDao.insertQuery(TrackedQueryEntity(collectionId = id, language = it.language, pattern = it.pattern, enabled = it.enabled, kind = it.kind))
         }
         imported.cards.forEach { c ->
             if (catalogDao.getCard(c.card.id) == null) {

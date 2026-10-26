@@ -200,6 +200,18 @@ class MigrationTest {
     }
 
     @Test
+    fun `la migrazione 10-11 aggiunge il tipo delle ricerche, per nome quelle esistenti`() {
+        val migrated = db(fromRoomSchema(10))
+        listOf(
+            "INSERT INTO collection (id, name, createdAt, language) VALUES (1, 'Mawile', 0, 'mixed')",
+            "INSERT INTO tracked_query (id, collectionId, language, pattern, enabled) VALUES (1, 1, 'en', 'Mawile', 1)",
+        ).forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
+        Migrations.SQL_10_11.forEach { sql -> migrated.createStatement().use { it.execute(sql) } }
+        assertEquals(schema(db(fromRoomSchema(11))), schema(migrated))
+        assertEquals(listOf(listOf("Mawile", "name")), rows(migrated, "SELECT pattern, kind FROM tracked_query"))
+    }
+
+    @Test
     fun `la catena 1-2-3-4 produce lo schema attuale`() {
         val migrated = db(v1)
         (Migrations.SQL_1_2 + Migrations.SQL_2_3 + Migrations.SQL_3_4).forEach { sql -> migrated.createStatement().use { it.execute(sql) } }

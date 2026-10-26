@@ -185,7 +185,9 @@ fun catalogResultText(state: JobState?): String? {
     val cards = state.output[WorkKeys.CARDS] as? Int ?: 0
     val images = state.output[WorkKeys.IMAGES] as? Int ?: 0
     val errors = state.output[WorkKeys.ERRORS] as? Int ?: 0
-    return if (errors > 0) stringResource(R.string.catalog_done_errors, cards, images, errors) else stringResource(R.string.catalog_done, cards, images)
+    val emptySets = state.output[WorkKeys.EMPTY_SETS] as? Int ?: 0
+    val done = if (errors > 0) stringResource(R.string.catalog_done_errors, cards, images, errors) else stringResource(R.string.catalog_done, cards, images)
+    return if (emptySets > 0) done + " " + stringResource(R.string.catalog_empty_sets, emptySets) else done
 }
 
 /**
