@@ -42,7 +42,7 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 val SET_LANGUAGES = listOf(Language.EN, Language.JA)
 
 /**
- * Finestra di scelta di un set: lingua (EN/JP), ricerca per nome o sigla ed elenco dei set.
+ * Finestra di scelta di un set: lingua (EN/JP), ricerca per nome, id TCGdex o sigla Cardmarket (es. "ex8" o "dx") ed elenco dei set.
  * @param state SetPickerState - elenco dei set e stato del caricamento.
  * @param onLanguage (Language, Boolean) -> Unit - chiede l'elenco di una lingua; il secondo parametro forza il nuovo download.
  * @param onPick (Language, SetChoice) -> Unit - set scelto.
@@ -60,7 +60,10 @@ fun SetPickerDialog(
     LaunchedEffect(Unit) { onLanguage(state.language, false) }
     val needle = PokemonNames.normalize(query)
     val shown = remember(state.sets, needle) {
-        if (needle.isEmpty()) state.sets else state.sets.filter { PokemonNames.normalize(it.name).contains(needle) || PokemonNames.normalize(it.id).contains(needle) }
+        if (needle.isEmpty()) state.sets
+        else state.sets.filter { set ->
+            listOfNotNull(set.name, set.id, set.code).any { PokemonNames.normalize(it).contains(needle) }
+        }
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -97,6 +100,7 @@ fun SetPickerDialog(
                                 Text(set.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 val details = buildList {
                                     add(set.id)
+                                    set.code?.let { add(it.uppercase()) }
                                     set.cards?.let { add(stringResource(R.string.set_pick_cards, it)) }
                                     if (set.fromCardmarket) add(stringResource(R.string.set_pick_extra))
                                 }

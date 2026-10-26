@@ -179,7 +179,7 @@
     <string name="updating">Updating…</string>
     <string name="manage_searches_hint">A search takes every Pokémon card whose name contains that text; TCG Pocket and Trainer cards are excluded. Turning it off hides its cards without deleting the quantities.</string>
     <string name="add_single_title">Add a single card</string>
-    <string name="search_tcgdex">Name or code, e.g. M3 117/080</string>
+    <string name="search_tcgdex">Name or code, e.g. M3 117/080 or DX 107</string>
     <string name="add_card_cd">Add %1$s</string>
     <string name="card_added_cd">Added: %1$s</string>
     <string name="add_single_hint">Useful for cards that no search finds (e.g. promos or cards with a different name). You can type the code printed at the bottom left: set and number (M3 117/080), just the number (117/080) or the TCGdex id (M3-117). Extra words such as the rarity are ignored. Needs a connection.</string>
@@ -260,7 +260,7 @@
     <string name="stats_priced">%1$d / %2$d owned variants with a price</string>
     <string name="stats_missing_hint">variants you want but don\'t own</string>
     <string name="set_pick_title">Choose a set</string>
-    <string name="set_pick_search">Set name or code</string>
+    <string name="set_pick_search">Set name or code (e.g. ex8 or DX)</string>
     <string name="set_pick_cards">%1$d cards</string>
     <string name="set_pick_extra">not on TCGdex</string>
     <string name="set_pick_none">No sets found.</string>

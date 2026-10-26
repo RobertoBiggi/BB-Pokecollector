@@ -3,6 +3,7 @@ package com.robertobiggi.cardcollection.data.repo
 import android.net.Uri
 import androidx.room.withTransaction
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCardSearch
+import com.robertobiggi.cardcollection.core.cardmarket.SetCodeAliases
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.cardmarket.CardNumberResolver
@@ -11,7 +12,9 @@ import com.robertobiggi.cardcollection.core.model.CatalogVariant
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.price.PriceRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.QueryKind
@@ -62,8 +65,9 @@ data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int
  * @property name nome del set.
  * @property cards carte dichiarate, se note.
  * @property fromCardmarket true per i set che TCGdex non elenca, presi dall'elenco Cardmarket/CardTrader.
+ * @property code sigla Cardmarket o stampata, se diversa dall'id (es. "dx" per "ex8"), per cercare il set anche così.
  */
-data class SetChoice(val id: String, val name: String, val cards: Int?, val fromCardmarket: Boolean)
+data class SetChoice(val id: String, val name: String, val cards: Int?, val fromCardmarket: Boolean, val code: String? = null)
 
 /** Esito della lettura dell'elenco dei set. */
 sealed interface SetListResult {
@@ -400,10 +404,18 @@ class CatalogRepository(
             return SetListResult.NetworkError
         }
         val known = sets.map { it.id }.toSet()
-        val fromTcgdex = sets.filter { Validators.isValidRemoteId(it.id) && !CatalogMapper.isDigitalOnlySet(it) }
-            .map { SetChoice(it.id, it.name, it.cardCount?.total ?: it.cardCount?.official, fromCardmarket = false) }
+        // Le sigle si abbinano confrontando i nomi con tutto l'elenco Cardmarket: fuori dal thread principale.
+        val fromTcgdex = withContext(Dispatchers.Default) {
+            sets.filter { Validators.isValidRemoteId(it.id) && !CatalogMapper.isDigitalOnlySet(it) }.map {
+                val code = SetCodeAliases.bundled.codeOf(language, it.id, it.name)?.takeUnless { c -> c.equals(it.id, ignoreCase = true) }
+                SetChoice(it.id, it.name, it.cardCount?.total ?: it.cardCount?.official, fromCardmarket = false, code = code)
+            }
+        }
         val missing = cardmarket.extraSetsFor(language).filter { it.setId !in known && Validators.isValidRemoteId(it.setId) }
-            .map { SetChoice(it.setId, it.name, it.numbers.size.takeIf { n -> n > 0 }, fromCardmarket = true) }
+            .map {
+                val code = it.setCode?.takeUnless { c -> c.isBlank() || c.equals(it.setId, ignoreCase = true) }
+                SetChoice(it.setId, it.name, it.numbers.size.takeIf { n -> n > 0 }, fromCardmarket = true, code = code)
+            }
         return SetListResult.Found((fromTcgdex + missing).distinctBy { it.id })
     }
 
