@@ -78,7 +78,17 @@ fun VariantType.labelRes(): Int = when (this) {
     VariantType.RED_CHEEK -> R.string.variant_red_cheek
     VariantType.POKETOUR_99 -> R.string.variant_poketour_99
     VariantType.JUMBO -> R.string.variant_jumbo
+    VariantType.STAMPED -> R.string.variant_stamped
+    VariantType.CARDMARKET_PRINT -> R.string.variant_cardmarket_print
 }
+
+/**
+ * Nome di un timbro di TCGdex, con le parole in maiuscolo ("chris-fulop" → "Chris Fulop", "staff+pre-release" → "Staff + Pre Release").
+ * @param print String - timbro come salvato.
+ * @return String - nome da mostrare.
+ */
+fun stampName(print: String): String =
+    print.split('+').joinToString(" + ") { part -> part.split('-').joinToString(" ") { w -> w.replaceFirstChar(Char::uppercase) } }
 
 /**
  * Nome della variante di una carta: nelle carte solo holo è la rarità (es. "Double Rare").
@@ -87,7 +97,11 @@ fun VariantType.labelRes(): Int = when (this) {
  * @return String - nome da mostrare.
  */
 @Composable
-fun variantLabel(card: CardUi, variant: VariantUi): String = card.rarityLabelFor(variant) ?: stringResource(variant.type.labelRes())
+fun variantLabel(card: CardUi, variant: VariantUi): String = when (variant.type) {
+    VariantType.STAMPED -> stampName(variant.print)
+    VariantType.CARDMARKET_PRINT -> stringResource(R.string.variant_cardmarket_print, variant.print)
+    else -> card.rarityLabelFor(variant) ?: stringResource(variant.type.labelRes())
+}
 
 /**
  * Messaggio per l'esito di un'azione sull'immagine di una carta.

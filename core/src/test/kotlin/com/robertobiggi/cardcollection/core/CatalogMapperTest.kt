@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.core
 
+import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.tcgdex.CardBriefDto
@@ -112,5 +113,26 @@ class CatalogMapperTest {
     fun `senza prodotti diversi non ci sono stampe a parte`() {
         val mapped = CatalogMapper.toCatalogCard(Language.EN, card("en_card_me03-032.json"), set("en_set_me03.json"))
         assertTrue(mapped.variants.none { it.type.isPrint })
+    }
+
+    @Test
+    fun `i timbri con un prodotto Cardmarket proprio sono varianti, una per timbro`() {
+        val variants = CatalogMapper.toCatalogCard(Language.EN, card("en_card_ex5-85.json"), null).variants
+        val stamped = variants.filter { it.type == VariantType.STAMPED }
+        assertTrue(stamped.isNotEmpty())
+        assertEquals(stamped.size, stamped.map { it.print }.distinct().size)
+        assertEquals(stamped.size, stamped.map { it.cardmarketId }.distinct().size)
+        assertTrue(stamped.all { it.cardmarketId != null && Ids.parseVariantKey(it.key) == (VariantType.STAMPED to it.print) })
+    }
+
+    @Test
+    fun `la chiave di una variante con timbro si legge e si valida`() {
+        val id = Ids.variantId("en:ex5-85", VariantType.STAMPED, "chris-fulop")
+        assertEquals("en:ex5-85|STAMPED|chris-fulop", id)
+        assertTrue(Ids.isValidVariantId(id))
+        assertTrue(Ids.isValidVariantId(Ids.variantId("en:base1-58", VariantType.POKETOUR_99)))
+        assertFalse(Ids.isValidVariantId("en:ex5-85|STAMPED|Bad Stamp"))
+        assertNull(Ids.parseVariantKey("STAMPED|../x"))
+        assertEquals("staff+pre-release", Ids.stampPrint(listOf("staff", "pre-release")))
     }
 }

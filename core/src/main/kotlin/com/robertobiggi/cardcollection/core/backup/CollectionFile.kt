@@ -261,7 +261,7 @@ object CollectionFiles {
             toImportedCard(record, typesInEntries[record.id].orEmpty()).also { if (it == null) skipped++ }
         }.distinctBy { it.card.id }
         val cardIds = cards.map { it.card.id }.toSet()
-        val variantIds = cards.flatMap { c -> c.card.variants.map { Ids.variantId(c.card.id, it.type) } }.toSet()
+        val variantIds = cards.flatMap { c -> c.card.variants.map { Ids.variantId(c.card.id, it.type, it.print) } }.toSet()
         val entries = validEntries(env.entries) { it in variantIds }.also { skipped += env.entries.size - it.size }
         // I prezzi senza data prendono quella dell'export (o la più vecchia possibile): così non passano
         // davanti ai prezzi più recenti e reimportare lo stesso file non crea doppioni.
@@ -376,7 +376,7 @@ object CollectionFiles {
         if (!Validators.isValidRemoteId(r.tcgdexId) || !Validators.isValidRemoteId(r.setId)) return null
         if (r.id != "${language.code}:${r.tcgdexId}") return null
         val variants = (r.variants ?: typesInEntries.ifEmpty { listOf(VariantType.NORMAL.name) })
-            .mapNotNull { VariantType.fromName(it) }.distinct()
+            .mapNotNull { Ids.parseVariantKey(it) }.distinct()
         val name = r.name?.replace(CONTROL_CHARS, "")?.trim().orEmpty()
         if (variants.isEmpty() || name.isEmpty()) return null
         val localId = r.localId?.takeIf { it.isNotBlank() } ?: r.tcgdexId.substringAfterLast('-')
@@ -396,7 +396,8 @@ object CollectionFiles {
             releaseDate = r.releaseDate?.take(10),
             illustrator = r.illustrator?.take(80),
             imageBaseUrl = r.imageUrl?.takeIf { Validators.isAllowedImageUrl(it) },
-            variants = variants.map { CatalogVariant(it) },
+            // Il prodotto di una stampa a parte torna col prossimo aggiornamento del catalogo; quello delle altre stampe Cardmarket è il loro timbro.
+            variants = variants.map { (type, print) -> CatalogVariant(type, print.toIntOrNull()?.takeIf { type == VariantType.CARDMARKET_PRINT }, print) },
             dexId = r.dexId?.takeIf { it in 1..MAX_DEX_ID },
         )
         return ImportedCard(card, r.hidden, decodeImage(r.imageLow), decodeImage(r.imageHigh))

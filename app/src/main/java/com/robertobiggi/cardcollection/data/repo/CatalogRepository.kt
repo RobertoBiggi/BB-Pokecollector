@@ -7,6 +7,7 @@ import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.cardmarket.CardNumberResolver
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
+import com.robertobiggi.cardcollection.core.model.CatalogVariant
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.price.PriceRequest
@@ -24,6 +25,7 @@ import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.tcgdex.CardBriefDto
 import com.robertobiggi.cardcollection.core.tcgdex.CardCodeSearch
 import com.robertobiggi.cardcollection.core.tcgdex.CatalogMapper
+import com.robertobiggi.cardcollection.core.tcgdex.CardDto
 import com.robertobiggi.cardcollection.core.tcgdex.SetDto
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import com.robertobiggi.cardcollection.core.validation.Validators
@@ -380,7 +382,9 @@ class CatalogRepository(
     private suspend fun applySetPolicy(collectionId: Long, card: CatalogCard, kind: QueryKind) {
         val unwanted = SetCollectionPolicy.unwantedVariants(card.variants.map { it.type }, kind)
         if (unwanted.isEmpty()) return
-        db.collectionDao().insertEntriesIfAbsent(unwanted.map { CollectionEntryEntity(collectionId, Ids.variantId(card.id, it), wanted = false) })
+        db.collectionDao().insertEntriesIfAbsent(
+            card.variants.filter { it.type in unwanted }.map { CollectionEntryEntity(collectionId, Ids.variantId(card.id, it.type, it.print), wanted = false) },
+        )
     }
 
     /**
@@ -562,7 +566,31 @@ class CatalogRepository(
         } catch (e: IOException) {
             null
         }
-        return catalogCard.copy(cardmarketExpansionId = located?.first, cardmarketName = located?.second)
+        val located2 = catalogCard.copy(cardmarketExpansionId = located?.first, cardmarketName = located?.second)
+        if (located == null) return located2
+        val others = otherCardmarketPrints(card, set, located2.variants, cardmarketProducts)
+        cardmarketProducts?.addAll(others)
+        return located2.copy(variants = located2.variants + others.map { CatalogVariant(VariantType.CARDMARKET_PRINT, it, it.toString()) })
+    }
+
+    /**
+     * Altre stampe della carta che Cardmarket elenca e TCGdex no (stesso set e stessa metacard). Si cercano solo se la carta
+     * è la sola con quel nome nel set: altrimenti un prodotto potrebbe essere di una carta sorella (le Energie base, le promo).
+     * @param card CardDto - carta TCGdex.
+     * @param set SetDto? - set della carta, con l'elenco delle sue carte.
+     * @param variants List<CatalogVariant> - varianti già note, coi loro prodotti.
+     * @param claimed Set<Int>? - prodotti già assegnati ad altre carte durante questo aggiornamento.
+     * @return List<Int> - prodotti Cardmarket da aggiungere come stampe a parte.
+     */
+    private suspend fun otherCardmarketPrints(card: CardDto, set: SetDto?, variants: List<CatalogVariant>, claimed: Set<Int>?): List<Int> {
+        val main = card.pricing?.cardmarket?.idProduct ?: return emptyList()
+        if (set == null || set.cards.count { it.name.equals(card.name, ignoreCase = true) } != 1) return emptyList()
+        val known = variants.mapNotNull { it.cardmarketId }.toSet() + card.variantsDetailed.orEmpty().mapNotNull { it.cardmarketId } + main + claimed.orEmpty()
+        return try {
+            cardmarket.otherPrintsOf(main).filter { it !in known }
+        } catch (e: IOException) {
+            emptyList()
+        }
     }
 
     /**
@@ -605,10 +633,13 @@ class CatalogRepository(
                     cardmarketProductHint = card.cardmarketProductHint ?: existing?.cardmarketProductHint,
                 ),
             )
-            dao.insertVariants(card.variants.map { CardVariantEntity(Ids.variantId(card.id, it.type), card.id, it.type.name, it.cardmarketId) })
-            card.variants.forEach { v -> v.cardmarketId?.let { dao.setVariantProduct(Ids.variantId(card.id, v.type), it) } }
+            // Senza la ricerca su Cardmarket (offline, aggiunta singola) le altre stampe Cardmarket già salvate restano.
+            val keptExtras = if (card.cardmarketExpansionId != null) emptyList() else dao.variantsOf(listOf(card.id)).filter { it.type == VariantType.CARDMARKET_PRINT.name }.map { it.id }
+            val ids = card.variants.map { Ids.variantId(card.id, it.type, it.print) }
+            dao.insertVariants(card.variants.zip(ids).map { (v, id) -> CardVariantEntity(id, card.id, v.type.name, v.cardmarketId, v.print) })
+            card.variants.zip(ids).forEach { (v, id) -> v.cardmarketId?.let { dao.setVariantProduct(id, it) } }
             moveStaleVariants(card.id, card.variants.map { it.type })
-            dao.deleteStaleVariants(card.id, card.variants.map { it.type.name })
+            dao.deleteStaleVariants(card.id, ids + keptExtras)
         }
     }
 

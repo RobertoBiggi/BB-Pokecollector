@@ -44,6 +44,8 @@
     <string name="variant_red_cheek">Guance rosse</string>
     <string name="variant_poketour_99">Pokétour \'99</string>
     <string name="variant_jumbo">Jumbo</string>
+    <string name="variant_stamped">Con timbro</string>
+    <string name="variant_cardmarket_print">Stampa Cardmarket %1$s</string>
     <string name="home_title">Le mie collezioni</string>
     <string name="home_import">Importa collezione da JSON</string>
     <string name="home_settings">Impostazioni</string>
