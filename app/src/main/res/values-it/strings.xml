@@ -255,7 +255,7 @@
     <string name="set_level_base">Set base</string>
     <string name="set_level_master">Master set</string>
     <string name="set_level_base_hint">Uno slot per carta (la versione principale). Le altre varianti restano nel catalogo ma non contano.</string>
-    <string name="set_level_master_hint">Conta ogni variante: normale, holo, reverse holo, Poké Ball e Master Ball. La 1st Edition non si distingue.</string>
+    <string name="set_level_master_hint">Conta ogni variante: normale, holo, reverse holo, Poké Ball e Master Ball. 1st Edition e stampe a parte (Shadowless, Jumbo, timbri…) non contano, ma puoi segnarle a mano.</string>
     <string name="query_set_label">Set %1$s · %2$s</string>
     <string name="create_by_name">Per Pokémon</string>
     <string name="create_by_set">Per set</string>
