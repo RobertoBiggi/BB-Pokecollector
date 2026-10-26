@@ -100,14 +100,7 @@ Uno slot è una variante desiderata (`wanted`) oppure posseduta: una variante co
 
 Una carta è visibile in una collezione se non è nascosta e se è stata aggiunta a mano oppure da una ricerca attiva. Il sync del catalogo aggiorna solo `card`, `card_variant` e i collegamenti: non tocca mai i dati dell'utente.
 
-**Migrazioni** (`Migrations`):
-- **1 → 2**: crea la collezione "Mawile" con id 1, sposta lì ricerche e quantità e collega le carte tramite il vecchio `queryId`.
-- **2 → 3**: aggiunge `card.dexId`, compilato al prossimo aggiornamento del catalogo o dall'import di un file che lo contiene.
-- **3 → 4**: aggiunge `collection.language`. Le collezioni con ricerche e carte tutte in inglese (o tutte in giapponese) prendono quella lingua; le altre diventano miste.
-- **4 → 10**: colonne per Cardmarket e CardTrader (condizione, id prodotto, blueprint, set e nome Cardmarket); 4 → 5 unisce le due versioni 4 nate in parallelo.
-- **10 → 11**: aggiunge `tracked_query.kind`; le ricerche esistenti restano per nome.
-
-`MigrationTest` esegue ogni passaggio e la catena 1 → 4 su SQLite (JVM) e confronta il risultato con gli schemi che Room esporta in `app/schemas/` durante la stessa build.
+**Schema:** il database è alla versione 11 e non ha migrazioni: le versioni precedenti non sono più supportate (Room rifiuta un file più vecchio). Lo schema esportato da Room è in `app/schemas/`; una modifica allo schema richiede di alzare la versione e di scrivere la migrazione da 11.
 
 **Lettura reattiva:** `CollectionRepository` combina le tabelle osservate in un'unica fotografia (`DbState`), calcolata fuori dal thread dell'interfaccia, accorpata durante le modifiche ravvicinate e condivisa da tutte le schermate (`shareIn` nello scope dell'app). Ricerca, filtri e ordinamento della griglia sono calcolati nel ViewModel, anch'essi fuori dal thread UI.
 
