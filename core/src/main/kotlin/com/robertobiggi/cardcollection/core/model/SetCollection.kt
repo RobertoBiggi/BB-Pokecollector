@@ -54,6 +54,12 @@ object SetCollectionPolicy {
         VariantType.MASTER_BALL,
         VariantType.W_PROMO,
         VariantType.FIRST_EDITION,
+        VariantType.SHADOWLESS,
+        VariantType.RED_CHEEK,
+        VariantType.POKETOUR_99,
+        VariantType.JUMBO,
+        VariantType.STAMPED,
+        VariantType.CARDMARKET_PRINT,
     )
 
     /**
@@ -65,16 +71,20 @@ object SetCollectionPolicy {
 
     /**
      * Varianti da segnare come "non la voglio" in una collezione per set.
-     * Nel master set si esclude solo la 1st Edition (se la carta ha anche altre varianti); nel set base
-     * tutto tranne la variante principale. Per le ricerche per nome non si esclude nulla.
+     * Nel master set si escludono la 1st Edition e le stampe a parte (Shadowless, Guance rosse, Pokétour '99, Jumbo,
+     * timbri e altre stampe Cardmarket, vedi [VariantType.isPrint]), purché la carta abbia anche un'altra variante:
+     * il master set conta le finiture (normale, holo, reverse, Poké Ball, Master Ball), non le edizioni.
+     * Nel set base si esclude tutto tranne la variante principale. Per le ricerche per nome non si esclude nulla.
      * @param types Collection<VariantType> - varianti della carta.
      * @param kind QueryKind - tipo di ricerca che ha aggiunto la carta.
      * @return Set<VariantType> - varianti escluse.
      */
     fun unwantedVariants(types: Collection<VariantType>, kind: QueryKind): Set<VariantType> = when (kind) {
         QueryKind.NAME -> emptySet()
-        QueryKind.SET_MASTER ->
-            if (VariantType.FIRST_EDITION in types && types.any { it != VariantType.FIRST_EDITION }) setOf(VariantType.FIRST_EDITION) else emptySet()
+        QueryKind.SET_MASTER -> {
+            val editions = types.filter { it == VariantType.FIRST_EDITION || it.isPrint }.toSet()
+            if (types.any { it !in editions }) editions else emptySet()
+        }
         QueryKind.SET_BASE -> {
             val main = mainVariant(types)
             types.filter { it != main }.toSet()
