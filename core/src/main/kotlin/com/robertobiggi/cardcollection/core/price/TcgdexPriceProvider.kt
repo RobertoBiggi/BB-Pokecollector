@@ -3,7 +3,6 @@ package com.robertobiggi.cardcollection.core.price
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.tcgdex.CardDto
-import com.robertobiggi.cardcollection.core.tcgdex.CatalogMapper
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -31,7 +30,7 @@ class TcgdexPriceProvider(private val client: TcgdexClient) : PriceProvider {
         val card = cardFor(request.language, request.tcgdexId)
         if (request.variant.isPrint) {
             // Una stampa a parte ha il suo prodotto: senza i suoi prezzi non si ripiega su quelli della carta, che sono di un'altra stampa.
-            val pricing = card.variantsDetailed.orEmpty().firstOrNull { CatalogMapper.cardmarketIdOf(card, it) == request.printProductId }?.pricing ?: return null
+            val pricing = card.variantsDetailed.orEmpty().firstOrNull { it.cardmarketId == request.printProductId }?.pricing ?: return null
             return VariantMapper.quote(request.printFinish, pricing, false, displayName)
         }
         val detailed = card.variantsDetailed.orEmpty().firstOrNull {

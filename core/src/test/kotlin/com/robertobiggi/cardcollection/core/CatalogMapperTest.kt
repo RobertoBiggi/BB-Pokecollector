@@ -97,7 +97,7 @@ class CatalogMapperTest {
             variants.map { it.type },
         )
         assertEquals(
-            mapOf(VariantType.SHADOWLESS to 660169, VariantType.RED_CHEEK to 660170, VariantType.POKETOUR_99 to 275568, VariantType.JUMBO to 362859),
+            mapOf(VariantType.SHADOWLESS to 660169, VariantType.RED_CHEEK to 660170, VariantType.POKETOUR_99 to 275586, VariantType.JUMBO to 362859),
             variants.filter { it.type.isPrint }.associate { it.type to it.cardmarketId },
         )
         assertNull(variants.first { it.type == VariantType.NORMAL }.cardmarketId)
