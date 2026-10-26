@@ -17,11 +17,6 @@ object CatalogMapper {
     /** Sigle stampate che TCGdex scrive con un altro id (il World Champions Pack giapponese è "WCP", per TCGdex "PCG10"). */
     private val PRINTED_CODES = mapOf("PCG10" to "WCP")
     private const val FIRST_REVERSE_HOLO_DATE = "2002-05-24"
-    /** Prodotti Cardmarket che TCGdex abbina alla carta sbagliata: carta TCGdex → (prodotto di TCGdex → prodotto giusto). */
-    private val PRODUCT_CORRECTIONS = mapOf(
-        // Pikachu del Set Base col timbro Pokétour: TCGdex ha 275586, che è un'altra stampa; il timbro è 275568.
-        "base1-58" to mapOf(275586 to 275568),
-    )
     private const val FIRST_EDITION_STAMP = "1st-edition"
     private const val POKETOUR_STAMP = "poketour-99"
     private const val UNLIMITED = "unlimited"
@@ -138,15 +133,6 @@ object CatalogMapper {
     }
 
     /**
-     * Prodotto Cardmarket di una variante TCGdex, con le correzioni degli abbinamenti sbagliati.
-     * @param card CardDto - carta.
-     * @param variant VariantDetailDto - variante della carta.
-     * @return Int? - prodotto, oppure null se TCGdex non ne indica uno.
-     */
-    fun cardmarketIdOf(card: CardDto, variant: VariantDetailDto): Int? =
-        variant.cardmarketId?.let { PRODUCT_CORRECTIONS[card.id]?.get(it) ?: it }
-
-    /**
      * Stampe della stessa carta che Cardmarket vende come prodotti a parte (shadowless, guance rosse, Pokétour '99, jumbo):
      * quelle che TCGdex abbina a un prodotto diverso da quello della carta. Un timbro che condivide il prodotto di una stampa
      * (la 1st Edition shadowless) non è una stampa a parte.
@@ -155,10 +141,10 @@ object CatalogMapper {
      */
     private fun printsOf(card: CardDto): List<CatalogVariant> {
         val detailed = card.variantsDetailed.orEmpty()
-        val main = detailed.firstOrNull { (it.size == null || it.size == "standard") && it.stamp.isNullOrEmpty() && (it.subtype == null || it.subtype == UNLIMITED) }?.let { cardmarketIdOf(card, it) }
+        val main = detailed.firstOrNull { (it.size == null || it.size == "standard") && it.stamp.isNullOrEmpty() && (it.subtype == null || it.subtype == UNLIMITED) }?.cardmarketId
             ?: card.pricing?.cardmarket?.idProduct ?: return emptyList()
         val prints = detailed.mapNotNull { v ->
-            val product = cardmarketIdOf(card, v)?.takeIf { it != main } ?: return@mapNotNull null
+            val product = v.cardmarketId?.takeIf { it != main } ?: return@mapNotNull null
             val stamps = v.stamp.orEmpty().filter { it != FIRST_EDITION_STAMP }
             when {
                 v.size == "jumbo" -> CatalogVariant(VariantType.JUMBO, product)
