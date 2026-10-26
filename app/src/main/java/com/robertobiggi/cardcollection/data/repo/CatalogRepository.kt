@@ -261,8 +261,8 @@ class CatalogRepository(
 
     /**
      * Salva le carte senza numero del catalogo Cardmarket, tranne quelle che sono un'altra scheda (stessa metacard) di una carta
-     * con numero che la collezione ha o ha appena trovato, in qualunque lingua: Cardmarket tiene nello stesso set stampe
-     * giapponesi (es. "Retail Exclusive Promos" ha MCharizard EX dello Starter Pack 20th) e doppioni (Lance's Charizard V in S-P e V-UNION).
+     * con numero che la collezione ha o ha appena trovato nello stesso set Cardmarket, in qualunque lingua: Cardmarket tiene nello stesso set
+     * stampe giapponesi (es. "Retail Exclusive Promos" ha MCharizard EX dello Starter Pack 20th). La stessa carta in un altro set è una ristampa e si tiene.
      * @param collectionId Long - collezione.
      * @param cards List<Pair<CatalogCard, Long>> - carte senza numero e id della ricerca che le ha trovate.
      * @param foundProducts Set<Int> - prodotti Cardmarket delle carte con numero trovate in questo sync.
@@ -273,10 +273,10 @@ class CatalogRepository(
         if (cards.isEmpty()) return 0
         val owned = dao.membershipsOf(collectionId).map { it.cardId }.filterNot { Ids.isUnnumberedCardmarket(it) }
             .mapNotNull { dao.getCard(it) }.flatMap { listOfNotNull(it.cardmarketId, it.cardmarketProductHint) }
-        val numbered = HashSet<Int>().apply { for (product in foundProducts + owned) metacardOrNull(product)?.let(::add) }
+        val numbered = HashSet<Pair<Int, Int>>().apply { for (product in foundProducts + owned) printKeyOrNull(product)?.let(::add) }
         var saved = 0
         for ((card, queryId) in cards) {
-            if (metacardOrNull(card.cardmarketId ?: continue) in numbered) continue
+            if (printKeyOrNull(card.cardmarketId ?: continue) in numbered) continue
             saveCard(card, legacyQueryId = queryId)
             refreshed += card.id
             dao.insertMembership(CollectionCardEntity(collectionId, card.id, queryId))
@@ -285,8 +285,8 @@ class CatalogRepository(
         return saved
     }
 
-    private suspend fun metacardOrNull(product: Int): Int? = try {
-        cardmarket.metacardOf(product)
+    private suspend fun printKeyOrNull(product: Int): Pair<Int, Int>? = try {
+        cardmarket.printKeyOf(product)
     } catch (e: IOException) {
         null
     }
