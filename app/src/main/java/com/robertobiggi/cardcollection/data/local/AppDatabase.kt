@@ -43,14 +43,13 @@ abstract class AppDatabase : RoomDatabase() {
         private const val NAME = "card-collection.db"
 
         /**
-         * Crea il database. Alla prima installazione è vuoto, senza collezioni né ricerche;
-         * chi aveva la versione 1 viene migrato con [Migrations.MIGRATION_1_2].
+         * Crea il database. Alla prima installazione è vuoto, senza collezioni né ricerche.
+         * Non ci sono migrazioni: una versione precedente alla 11 non è supportata.
          * @param context Context - contesto dell'applicazione.
          * @return AppDatabase - istanza del database.
          */
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
-                .addMigrations(Migrations.MIGRATION_1_2, Migrations.MIGRATION_2_3, Migrations.MIGRATION_3_4, Migrations.MIGRATION_4_5, Migrations.MIGRATION_5_6, Migrations.MIGRATION_6_7, Migrations.MIGRATION_7_8, Migrations.MIGRATION_8_9, Migrations.MIGRATION_9_10, Migrations.MIGRATION_10_11)
                 .build()
     }
 }
