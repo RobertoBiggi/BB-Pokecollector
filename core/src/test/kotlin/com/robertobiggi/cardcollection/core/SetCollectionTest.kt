@@ -2,12 +2,18 @@ package com.robertobiggi.cardcollection.core
 
 import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.core.model.SetCollectionPolicy
+import com.robertobiggi.cardcollection.core.model.VariantType.CARDMARKET_PRINT
 import com.robertobiggi.cardcollection.core.model.VariantType.FIRST_EDITION
 import com.robertobiggi.cardcollection.core.model.VariantType.HOLO
+import com.robertobiggi.cardcollection.core.model.VariantType.JUMBO
 import com.robertobiggi.cardcollection.core.model.VariantType.MASTER_BALL
 import com.robertobiggi.cardcollection.core.model.VariantType.NORMAL
+import com.robertobiggi.cardcollection.core.model.VariantType.POKETOUR_99
 import com.robertobiggi.cardcollection.core.model.VariantType.POKE_BALL
+import com.robertobiggi.cardcollection.core.model.VariantType.RED_CHEEK
 import com.robertobiggi.cardcollection.core.model.VariantType.REVERSE
+import com.robertobiggi.cardcollection.core.model.VariantType.SHADOWLESS
+import com.robertobiggi.cardcollection.core.model.VariantType.STAMPED
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -34,6 +40,17 @@ class SetCollectionTest {
         assertEquals(setOf(FIRST_EDITION), SetCollectionPolicy.unwantedVariants(listOf(FIRST_EDITION, HOLO), QueryKind.SET_BASE))
         assertEquals(emptySet<Any>(), SetCollectionPolicy.unwantedVariants(listOf(REVERSE), QueryKind.SET_BASE))
         assertEquals(HOLO, SetCollectionPolicy.mainVariant(listOf(REVERSE, HOLO)))
+    }
+
+    @Test
+    fun `master set esclude le stampe a parte come la prima edizione`() {
+        // Pikachu del Set Base: normale, 1st Edition, Shadowless, Guance rosse, Pokétour '99, Jumbo e un timbro.
+        val pikachu = listOf(NORMAL, FIRST_EDITION, SHADOWLESS, RED_CHEEK, POKETOUR_99, JUMBO, STAMPED, CARDMARKET_PRINT)
+        assertEquals(setOf(FIRST_EDITION, SHADOWLESS, RED_CHEEK, POKETOUR_99, JUMBO, STAMPED, CARDMARKET_PRINT), SetCollectionPolicy.unwantedVariants(pikachu, QueryKind.SET_MASTER))
+        assertEquals(pikachu.toSet() - NORMAL, SetCollectionPolicy.unwantedVariants(pikachu, QueryKind.SET_BASE))
+        // Carta che esiste solo come stampa a parte: resta uno slot.
+        assertEquals(emptySet<Any>(), SetCollectionPolicy.unwantedVariants(listOf(JUMBO), QueryKind.SET_MASTER))
+        assertEquals(emptySet<Any>(), SetCollectionPolicy.unwantedVariants(listOf(JUMBO), QueryKind.SET_BASE))
     }
 
     @Test
