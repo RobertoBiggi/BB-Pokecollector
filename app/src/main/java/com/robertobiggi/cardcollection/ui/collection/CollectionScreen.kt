@@ -1,10 +1,13 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 
 package com.robertobiggi.cardcollection.ui.collection
 
 import com.robertobiggi.cardcollection.ui.common.shortLabel
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,10 +24,15 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -111,19 +119,53 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
     val name by vm.collectionName.collectAsStateWithLifecycle()
     val cards = library
     val visible by vm.visibleCards.collectAsStateWithLifecycle()
+    // Selezione multipla: si apre con il tocco lungo su una carta e si chiude con la X o il tasto indietro.
+    var selected by remember { mutableStateOf(emptySet<String>()) }
+    var confirmRemove by remember { mutableStateOf(false) }
+    val selecting = selected.isNotEmpty()
+    BackHandler(enabled = selecting) { selected = emptySet() }
+
+    if (confirmRemove) {
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = { Text(stringResource(R.string.remove_selected_title, selected.size)) },
+            text = { Text(stringResource(R.string.remove_selected_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.hideCards(selected)
+                    selected = emptySet()
+                    confirmRemove = false
+                }) { Text(stringResource(R.string.remove_selected_confirm), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
             title = {
-                Column {
+                if (selecting) {
+                    Text(stringResource(R.string.selected_count, selected.size))
+                } else Column {
                     Text(name ?: stringResource(R.string.collection_default_title), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(lastUpdateText(runs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             navigationIcon = {
-                IconButton(onClick = onHome) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.all_collections)) }
+                if (selecting) {
+                    IconButton(onClick = { selected = emptySet() }) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_cancel)) }
+                } else IconButton(onClick = onHome) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.all_collections)) }
             },
             actions = {
+                if (selecting) {
+                    IconButton(onClick = { selected = visible.map { it.card.id }.toSet() }) {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = stringResource(R.string.select_all))
+                    }
+                    IconButton(onClick = { confirmRemove = true }) {
+                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.remove_from_collection), tint = MaterialTheme.colorScheme.error)
+                    }
+                    return@TopAppBar
+                }
                 IconButton(onClick = vm::startCatalogSync, enabled = catalogJob?.running != true) {
                     Icon(Icons.Filled.CloudDownload, contentDescription = stringResource(R.string.update_catalog))
                 }
@@ -156,7 +198,15 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Filters(filter, visible.size, cards.map { it.language }.distinct().sortedBy { it.ordinal }, vm::updateFilter)
                     }
-                    items(visible, key = { it.card.id }) { card -> CardTile(card, onClick = { onOpen(card.card.id) }) }
+                    items(visible, key = { it.card.id }) { card ->
+                        val id = card.card.id
+                        CardTile(
+                            card,
+                            selected = id in selected,
+                            onClick = { if (selecting) selected = if (id in selected) selected - id else selected + id else onOpen(id) },
+                            onLongClick = { selected = if (id in selected) selected - id else selected + id },
+                        )
+                    }
                 }
             }
         }
@@ -278,12 +328,17 @@ private fun Filters(filter: CollectionFilter, count: Int, languages: List<Langua
 /**
  * Riquadro di una carta nella griglia.
  * @param card CardUi - carta.
- * @param onClick () -> Unit - apre il dettaglio.
+ * @param selected Boolean - true se la carta è nella selezione multipla.
+ * @param onClick () -> Unit - apre il dettaglio, o in selezione la aggiunge o toglie.
+ * @param onLongClick () -> Unit - avvia la selezione o aggiunge o toglie la carta.
  * @return Unit
  */
 @Composable
-private fun CardTile(card: CardUi, onClick: () -> Unit) {
-    Card(onClick = onClick) {
+private fun CardTile(card: CardUi, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+    Card(
+        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        colors = if (selected) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors(),
+    ) {
         Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             CardImage(card, card.thumbnailPath, Modifier.fillMaxWidth())
             Text(card.card.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
