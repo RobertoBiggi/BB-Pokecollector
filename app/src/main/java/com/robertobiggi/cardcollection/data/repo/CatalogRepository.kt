@@ -138,6 +138,7 @@ class CatalogRepository(
         val queries = dao.enabledQueriesOf(collectionId)
         val resolver = cardTraderResolver()
         var emptySets = 0
+        var cardmarketFailed = false
         for ((qIndex, query) in queries.withIndex()) {
             val language = Language.fromCode(query.language) ?: continue
             val kind = QueryKind.fromCode(query.kind) ?: continue
@@ -175,7 +176,7 @@ class CatalogRepository(
             }
             progress(SyncProgress(SyncPhase.CARDMARKET, query.pattern, qIndex, queries.size))
             val known = LinkedHashSet<String>()
-            val fromCardmarket = cardmarketCards(language, query.pattern, progress, qIndex, queries.size, resolver, known)
+            val fromCardmarket = cardmarketCards(language, query.pattern, progress, qIndex, queries.size, resolver, known) { cardmarketFailed = true }
             // Carte che TCGdex ha ma la sua ricerca per nome non ha trovato (nome scritto in modo diverso): Cardmarket le indica per posizione.
             for (id in known) {
                 if (candidates.any { it.id == id } || !Validators.isValidRemoteId(id)) continue
@@ -208,10 +209,12 @@ class CatalogRepository(
             }
         }
         saved += saveUnnumbered(collectionId, unnumbered, tcgdexProducts + numberedProducts, refreshed)
-        // Le carte senza numero trovate da una ricerca e non più indicate dal catalogo (doppioni, set tolti) escono dalla collezione.
-        // Solo se la ricerca non ha avuto errori, altrimenti una rete assente le farebbe sembrare sparite.
-        if (errors == 0) {
-            val stale = dao.membershipsOf(collectionId).map { it.cardId }.filter { Ids.isUnnumberedCardmarket(it) && it !in refreshed }
+        // Le carte trovate da una ricerca attiva e non più indicate dai cataloghi (doppioni, set tolti, lingua corretta) escono dalla collezione.
+        // Solo se il sync non ha avuto errori, altrimenti una rete assente le farebbe sembrare sparite; restano quelle nascoste,
+        // aggiunte a mano o di ricerche disattivate.
+        if (errors == 0 && !cardmarketFailed) {
+            val active = queries.map { it.id }.toSet()
+            val stale = dao.membershipsOf(collectionId).filter { it.queryId in active && !it.hidden && it.cardId !in refreshed }.map { it.cardId }
             if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
         }
         errors += refreshOtherCards(collectionId, refreshed, limiter, setCache, progress)
@@ -265,8 +268,8 @@ class CatalogRepository(
 
     /**
      * Salva le carte senza numero del catalogo Cardmarket, tranne quelle che sono un'altra scheda (stessa metacard) di una carta
-     * con numero che la collezione ha o ha appena trovato, in qualunque lingua: Cardmarket tiene nello stesso set stampe
-     * giapponesi (es. "Retail Exclusive Promos" ha MCharizard EX dello Starter Pack 20th) e doppioni (Lance's Charizard V in S-P e V-UNION).
+     * con numero che la collezione ha o ha appena trovato nello stesso set Cardmarket, in qualunque lingua: Cardmarket tiene nello stesso set
+     * stampe giapponesi (es. "Retail Exclusive Promos" ha MCharizard EX dello Starter Pack 20th). La stessa carta in un altro set è una ristampa e si tiene.
      * @param collectionId Long - collezione.
      * @param cards List<Pair<CatalogCard, Long>> - carte senza numero e id della ricerca che le ha trovate.
      * @param foundProducts Set<Int> - prodotti Cardmarket delle carte con numero trovate in questo sync.
@@ -277,10 +280,10 @@ class CatalogRepository(
         if (cards.isEmpty()) return 0
         val owned = dao.membershipsOf(collectionId).map { it.cardId }.filterNot { Ids.isUnnumberedCardmarket(it) }
             .mapNotNull { dao.getCard(it) }.flatMap { listOfNotNull(it.cardmarketId, it.cardmarketProductHint) }
-        val numbered = HashSet<Int>().apply { for (product in foundProducts + owned) metacardOrNull(product)?.let(::add) }
+        val numbered = HashSet<Pair<Int, Int>>().apply { for (product in foundProducts + owned) printKeyOrNull(product)?.let(::add) }
         var saved = 0
         for ((card, queryId) in cards) {
-            if (metacardOrNull(card.cardmarketId ?: continue) in numbered) continue
+            if (printKeyOrNull(card.cardmarketId ?: continue) in numbered) continue
             saveCard(card, legacyQueryId = queryId)
             refreshed += card.id
             dao.insertMembership(CollectionCardEntity(collectionId, card.id, queryId))
@@ -289,8 +292,8 @@ class CatalogRepository(
         return saved
     }
 
-    private suspend fun metacardOrNull(product: Int): Int? = try {
-        cardmarket.metacardOf(product)
+    private suspend fun printKeyOrNull(product: Int): Pair<Int, Int>? = try {
+        cardmarket.printKeyOf(product)
     } catch (e: IOException) {
         null
     }
@@ -724,9 +727,10 @@ class CatalogRepository(
      * @param index Int - posizione della ricerca.
      * @param total Int - numero di ricerche.
      * @param known MutableCollection<String> - riceve gli id TCGdex delle carte già note a TCGdex.
+     * @param onFailure () -> Unit - chiamata se la ricerca fallisce, per non togliere dalla collezione carte che il catalogo non ha potuto confermare.
      * @return List<CatalogCard> - carte trovate, vuoto in caso di errore.
      */
-    private suspend fun cardmarketCards(language: Language, pattern: String, progress: suspend (SyncProgress) -> Unit, index: Int, total: Int, resolver: CardNumberResolver?, known: MutableCollection<String>): List<CatalogCard> =
+    private suspend fun cardmarketCards(language: Language, pattern: String, progress: suspend (SyncProgress) -> Unit, index: Int, total: Int, resolver: CardNumberResolver?, known: MutableCollection<String>, onFailure: () -> Unit): List<CatalogCard> =
         try {
             cardmarketTerms(pattern).flatMap { term ->
                 cardmarket.find(
@@ -740,6 +744,7 @@ class CatalogRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            onFailure()
             emptyList()
         }
 
