@@ -585,7 +585,7 @@ class CatalogRepository(
     private suspend fun otherCardmarketPrints(card: CardDto, set: SetDto?, variants: List<CatalogVariant>, claimed: Set<Int>?): List<Int> {
         val main = card.pricing?.cardmarket?.idProduct ?: return emptyList()
         if (set == null || set.cards.count { it.name.equals(card.name, ignoreCase = true) } != 1) return emptyList()
-        val known = variants.mapNotNull { it.cardmarketId }.toSet() + card.variantsDetailed.orEmpty().mapNotNull { CatalogMapper.cardmarketIdOf(card, it) } + main + claimed.orEmpty()
+        val known = variants.mapNotNull { it.cardmarketId }.toSet() + card.variantsDetailed.orEmpty().mapNotNull { it.cardmarketId } + main + claimed.orEmpty()
         return try {
             cardmarket.otherPrintsOf(main).filter { it !in known }
         } catch (e: IOException) {
