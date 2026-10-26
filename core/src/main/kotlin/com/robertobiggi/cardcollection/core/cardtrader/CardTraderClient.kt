@@ -2,6 +2,7 @@ package com.robertobiggi.cardcollection.core.cardtrader
 
 import com.robertobiggi.cardcollection.core.net.BlockedException
 import com.robertobiggi.cardcollection.core.net.InvalidResponseException
+import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,11 +22,13 @@ import okhttp3.Request
  * @param http client OkHttp condiviso.
  * @param token token API dell'utente.
  * @param baseUrl radice dell'API; modificabile solo per i test con MockWebServer.
+ * @param limiter limita la frequenza delle richieste; di default è condiviso da tutti i client, così più sync insieme restano sotto la soglia di CardTrader.
  */
 class CardTraderClient(
     private val http: OkHttpClient,
     private val token: String,
     baseUrl: String = DEFAULT_BASE_URL,
+    private val limiter: RateLimiter = SHARED_LIMITER,
 ) {
     private val base: HttpUrl = baseUrl.toHttpUrl()
 
@@ -71,6 +74,7 @@ class CardTraderClient(
 
     private suspend fun <T> get(url: HttpUrl, deserializer: DeserializationStrategy<T>, maxBytes: Long = TcgdexClient.MAX_BODY_BYTES): T =
         withContext(Dispatchers.IO) {
+            limiter.acquire()
             val request = Request.Builder()
                 .url(url)
                 .header("Accept", "application/json")
@@ -90,6 +94,12 @@ class CardTraderClient(
 
     companion object {
         const val DEFAULT_BASE_URL = "https://api.cardtrader.com/api/v2/"
+
+        /** Pausa minima tra due richieste a CardTrader, in ms: sotto la soglia oltre la quale l'IP viene bloccato. */
+        const val MIN_INTERVAL_MS = 500L
+
+        /** Limitatore unico per tutto il processo, perché i client si creano in più punti e possono lavorare in parallelo. */
+        val SHARED_LIMITER = RateLimiter(MIN_INTERVAL_MS)
 
         /** Dimensione massima per le liste di espansioni e blueprint (8 MB). */
         const val MAX_LIST_BYTES = 8L * 1024 * 1024
