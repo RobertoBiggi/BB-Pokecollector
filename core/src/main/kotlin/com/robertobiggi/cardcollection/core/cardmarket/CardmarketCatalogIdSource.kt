@@ -32,13 +32,20 @@ class CardmarketCatalogIdSource(
             preferCode = request.language == Language.JA,
         ) ?: return null
         val products = catalog.productsOf(expansions.cardmarketId(expansion.id) ?: return null)
+        // I nomi del Pokémon nelle varie lingue prendono i marcatori della carta (☆, δ, ◇): "Rayquaza ☆" non deve
+        // abbinarsi al Rayquaza normale dello stesso set, né il Rayquaza normale a "Rayquaza Gold Star".
+        val marks = CardmarketCatalog.markers(request.name)
         val keys = buildSet {
-            request.dexId?.let { dex -> PokemonNames.namesOf(dex).forEach { add(CardmarketCatalog.nameKey(it)) } }
+            request.dexId?.let { dex -> PokemonNames.namesOf(dex).forEach { add(CardmarketCatalog.nameKey(it, marks)) } }
             if (request.name.isNotBlank()) add(CardmarketCatalog.nameKey(request.name))
         }
-        val exact = products.filter { it.nameKey in keys }
-        // Carte il cui nome Cardmarket aggiunge qualcosa ("Brock's Omastar", "Omastar δ Delta Species"): vale se nel set ce n'è una sola.
-        val candidates = exact.ifEmpty { products.filter { p -> keys.any { it.length >= MIN_CONTAINED_KEY && it in p.nameKey } } }
+        // Il nome completo della carta vale più dei nomi del Pokémon: "Rayquaza ex" non è il Rayquaza normale dello stesso set.
+        val fullName = request.name.takeIf { it.isNotBlank() }?.let { CardmarketCatalog.nameKey(it) }
+        val exact = products.filter { it.nameKey == fullName }.ifEmpty { products.filter { it.nameKey in keys } }
+        // Carte il cui nome Cardmarket aggiunge qualcosa ("Brock's Omastar"): vale se nel set ce n'è una sola, con gli stessi marcatori.
+        val candidates = exact.ifEmpty {
+            products.filter { p -> keys.any { CardmarketCatalog.splitKey(it).first.length >= MIN_CONTAINED_KEY && CardmarketCatalog.containsKey(p.nameKey, it) } }
+        }
         // Allenatori ed Energie giapponesi (es. "なにかの化石"): il nome non coincide con quello inglese di Cardmarket, si cerca la posizione tra due Pokémon.
         if (candidates.isEmpty() && request.dexId == null) {
             val ordinal = request.ordinal?.invoke() ?: return null

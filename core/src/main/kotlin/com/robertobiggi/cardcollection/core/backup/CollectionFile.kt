@@ -7,6 +7,7 @@ import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.validation.Validators
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -23,9 +24,12 @@ import java.time.Instant
 import java.time.format.DateTimeParseException
 import java.util.Base64
 
-/** Ricerca per nome salvata nel file. */
+/**
+ * Ricerca salvata nel file. [kind] è il valore di [QueryKind] ("name", "set_base", "set_master"):
+ * assente nei file precedenti, che contengono solo ricerche per nome.
+ */
 @Serializable
-data class BackupQuery(val language: String, val pattern: String, val enabled: Boolean = true)
+data class BackupQuery(val language: String, val pattern: String, val enabled: Boolean = true, val kind: String = QueryKind.NAME.code)
 
 /** Stato di una variante nella collezione. */
 @Serializable
@@ -320,7 +324,10 @@ object CollectionFiles {
      * @return List<BackupQuery> - ricerche valide.
      */
     private fun validQueries(queries: List<BackupQuery>): List<BackupQuery> = queries
-        .filter { Language.fromCode(it.language) != null && Validators.isValidQueryPattern(it.pattern) }
+        .filter { q ->
+            val kind = QueryKind.fromCode(q.kind)
+            Language.fromCode(q.language) != null && kind != null && QueryKind.isValidPattern(kind, q.pattern)
+        }
         .map { it.copy(pattern = it.pattern.trim()) }
         .distinctBy { it.language to it.pattern.lowercase() }
 
