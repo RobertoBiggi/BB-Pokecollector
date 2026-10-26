@@ -41,6 +41,10 @@
     <string name="variant_master_ball">Master Ball reverse holo</string>
     <string name="variant_first_edition">1st Edition</string>
     <string name="variant_w_promo">W Promo</string>
+    <string name="variant_shadowless">Shadowless</string>
+    <string name="variant_red_cheek">Red cheeks</string>
+    <string name="variant_poketour_99">Pokétour \'99</string>
+    <string name="variant_jumbo">Jumbo</string>
     <string name="home_title">My collections</string>
     <string name="home_import">Import collection from JSON</string>
     <string name="home_settings">Settings</string>
@@ -185,6 +189,8 @@
     <string name="app_lang_system">System default</string>
     <string name="app_lang_it" translatable="false">Italiano</string>
     <string name="app_lang_en" translatable="false">English</string>
+    <string name="settings_first_edition">Count 1st Editions</string>
+    <string name="settings_first_edition_text">When off, 1st Edition versions do not count towards what you are missing or your totals. They stay on the card and you can still mark them as wanted; copies you own are always counted.</string>
     <string name="settings_sources">Price sources</string>
     <string name="settings_sources_text">Choose which prices to show in the app. Hidden prices do not appear on cards, in grids or in totals, but are still downloaded, so turning them back on brings them back. The app never contacts cardmarket.com, so there are no anti-bot blocks.</string>
     <string name="settings_paused">TCGdex paused until %1$s after too many blocks.</string>

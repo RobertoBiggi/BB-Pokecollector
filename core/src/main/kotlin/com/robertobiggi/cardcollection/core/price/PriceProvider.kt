@@ -24,6 +24,8 @@ import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
  * @property cardTraderCondition condizione peggiore accettata per CardTrader (quella della variante), null = Near Mint.
  * @property cardmarketId id prodotto Cardmarket, se la carta viene dal catalogo Cardmarket: CardTrader la trova da questo, senza il numero.
  * @property cardmarketHint id prodotto Cardmarket indicato da TCGdex: serve solo ad abbinare la carta su CardTrader quando il numero non basta.
+ * @property printProductId prodotto Cardmarket della stampa richiesta, se [variant] è una stampa a parte ([VariantType.isPrint]).
+ * @property printFinish finitura (normale o holo) della stampa richiesta: serve a leggere il prezzo giusto del suo prodotto.
  */
 data class PriceRequest(
     val language: Language,
@@ -41,6 +43,8 @@ data class PriceRequest(
     val cardTraderCondition: CtCondition? = null,
     val cardmarketId: Int? = null,
     val cardmarketHint: Int? = null,
+    val printProductId: Int? = null,
+    val printFinish: VariantType = VariantType.NORMAL,
 )
 
 /** Fonte di prezzi. Le implementazioni lanciano le eccezioni di [com.robertobiggi.cardcollection.core.net]. */

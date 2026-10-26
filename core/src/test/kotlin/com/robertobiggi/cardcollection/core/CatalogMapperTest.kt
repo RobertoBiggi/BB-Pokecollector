@@ -87,4 +87,30 @@ class CatalogMapperTest {
         assertEquals("swsh12tg", CatalogMapper.setIdFromCardId("swsh12tg-TG17"))
         assertNull(CatalogMapper.setIdFromCardId("senzatrattino"))
     }
+
+    @Test
+    fun `Pikachu del Set Base ha le stampe a parte con il loro prodotto Cardmarket`() {
+        val variants = CatalogMapper.toCatalogCard(Language.EN, card("en_card_base1-58.json"), null).variants
+        assertEquals(
+            listOf(VariantType.NORMAL, VariantType.SHADOWLESS, VariantType.RED_CHEEK, VariantType.FIRST_EDITION, VariantType.POKETOUR_99, VariantType.JUMBO),
+            variants.map { it.type },
+        )
+        assertEquals(
+            mapOf(VariantType.SHADOWLESS to 660169, VariantType.RED_CHEEK to 660170, VariantType.POKETOUR_99 to 275586, VariantType.JUMBO to 362859),
+            variants.filter { it.type.isPrint }.associate { it.type to it.cardmarketId },
+        )
+        assertNull(variants.first { it.type == VariantType.NORMAL }.cardmarketId)
+    }
+
+    @Test
+    fun `la shadowless olografica non duplica il prodotto e la 1st Edition resta una sola variante`() {
+        val types = CatalogMapper.toCatalogCard(Language.EN, card("en_card_base1-1.json"), null).variants.map { it.type }
+        assertEquals(listOf(VariantType.HOLO, VariantType.SHADOWLESS, VariantType.FIRST_EDITION), types)
+    }
+
+    @Test
+    fun `senza prodotti diversi non ci sono stampe a parte`() {
+        val mapped = CatalogMapper.toCatalogCard(Language.EN, card("en_card_me03-032.json"), set("en_set_me03.json"))
+        assertTrue(mapped.variants.none { it.type.isPrint })
+    }
 }

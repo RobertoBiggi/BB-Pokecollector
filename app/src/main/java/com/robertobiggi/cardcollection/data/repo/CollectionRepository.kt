@@ -91,7 +91,9 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
      * @return Flow<T> - risultato aggiornato.
      */
     private fun <T> derive(transform: (DbState) -> T): Flow<T> =
-        combine(state, settings.priceVisibility) { s, visibility -> transform(s.withVisiblePrices(visibility)) }
+        combine(state, settings.priceVisibility, settings.countFirstEdition) { s, visibility, countFirstEdition ->
+            transform(s.withVisiblePrices(visibility).copy(countFirstEdition = countFirstEdition))
+        }
             .distinctUntilChanged().flowOn(Dispatchers.Default)
 
     /**

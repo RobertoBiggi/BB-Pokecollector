@@ -238,6 +238,8 @@ class PriceRepository(
             cardTraderCondition = CtCondition.fromCondition(condition),
             cardmarketId = card.cardmarketId,
             cardmarketHint = card.cardmarketProductHint,
+            printProductId = variant.cardmarketId,
+            printFinish = if (VariantType.HOLO.name in types && VariantType.NORMAL.name !in types) VariantType.HOLO else VariantType.NORMAL,
         ).let { if (hintMatches(sources.catalog, it.cardmarketHint, card.name)) it else it.copy(cardmarketHint = null) }
         // Se il prodotto indicato da TCGdex è un'altra carta, anche il prezzo Cardmarket di TCGdex lo è: resta solo TCGplayer.
         val tcgdexHintWrong = card.cardmarketProductHint != null && request.cardmarketHint == null
@@ -249,7 +251,8 @@ class PriceRepository(
         val tcgdexQuote = outcome.quote
             ?.let { if (tcgdexHintWrong) it.copy(eur = null, eurLow = null, eurAvg30 = null) else it }
             ?.takeIf { it.hasAnyPrice() }
-        val cardTraderOutcome = sources.cardTrader?.fetch(request)
+        // CardTrader non distingue le stampe a parte (shadowless, jumbo…).
+        val cardTraderOutcome = if (type.isPrint) null else sources.cardTrader?.fetch(request)
         val cardTraderSaved = cardTraderOutcome?.quote?.let { saveQuote(variant.id, it) } == true
         // Normal e holo condividono il blueprint: se CardTrader ha una sola stampa, l'altra non ha prezzo e quello salvato prima era dell'altra.
         if (cardTraderOutcome != null && cardTraderOutcome.quote == null && request.cardHasNormalAndHolo &&
@@ -278,7 +281,7 @@ class PriceRepository(
      * @return Unit
      */
     private suspend fun saveCardTraderBlueprint(cardTrader: CardTraderPriceProvider?, card: CardEntity, request: PriceRequest) {
-        if (cardTrader == null || request.variant.isBall || !blueprintLookedUp.add(card.id)) return
+        if (cardTrader == null || request.variant.isBall || request.variant.isPrint || !blueprintLookedUp.add(card.id)) return
         try {
             val id = cardTrader.blueprintId(request) ?: return
             if (id == card.cardTraderBlueprintId) return

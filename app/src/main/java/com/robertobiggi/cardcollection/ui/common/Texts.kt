@@ -74,6 +74,10 @@ fun VariantType.labelRes(): Int = when (this) {
     VariantType.MASTER_BALL -> R.string.variant_master_ball
     VariantType.FIRST_EDITION -> R.string.variant_first_edition
     VariantType.W_PROMO -> R.string.variant_w_promo
+    VariantType.SHADOWLESS -> R.string.variant_shadowless
+    VariantType.RED_CHEEK -> R.string.variant_red_cheek
+    VariantType.POKETOUR_99 -> R.string.variant_poketour_99
+    VariantType.JUMBO -> R.string.variant_jumbo
 }
 
 /**
