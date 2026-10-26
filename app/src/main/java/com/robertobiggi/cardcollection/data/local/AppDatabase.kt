@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         PriceSnapshotEntity::class,
         PriceRunEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -44,12 +44,13 @@ abstract class AppDatabase : RoomDatabase() {
 
         /**
          * Crea il database. Alla prima installazione è vuoto, senza collezioni né ricerche.
-         * Non ci sono migrazioni: una versione precedente alla 11 non è supportata.
+         * Si migra solo dalla versione 11: le precedenti non sono più supportate.
          * @param context Context - contesto dell'applicazione.
          * @return AppDatabase - istanza del database.
          */
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
+                .addMigrations(Migrations.MIGRATION_11_12)
                 .build()
     }
 }

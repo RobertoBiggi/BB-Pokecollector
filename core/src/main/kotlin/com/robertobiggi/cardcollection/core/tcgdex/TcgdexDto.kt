@@ -58,13 +58,26 @@ data class VariantFlagsDto(
     val wPromo: Boolean = false,
 )
 
-/** Variante dettagliata con i prezzi specifici. [size] distingue le carte standard dalle jumbo. */
+/**
+ * Variante dettagliata con i prezzi specifici. [size] distingue le carte standard dalle jumbo, [subtype] la stampa
+ * (unlimited, shadowless…), [stamp] i timbri (1st-edition, poketour-99…).
+ */
 @Serializable
 data class VariantDetailDto(
     val type: String,
     val size: String? = null,
+    val subtype: String? = null,
+    val stamp: List<String>? = null,
+    val thirdParty: ThirdPartyDto? = null,
     val pricing: PricingDto? = null,
-)
+) {
+    /** Id prodotto Cardmarket della variante, se TCGdex lo indica. */
+    val cardmarketId: Int? get() = thirdParty?.cardmarket ?: pricing?.cardmarket?.idProduct
+}
+
+/** Id dei prodotti della variante presso altri siti. */
+@Serializable
+data class ThirdPartyDto(val cardmarket: Int? = null)
 
 /** Prezzi aggregati da TCGdex. */
 @Serializable

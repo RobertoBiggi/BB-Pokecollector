@@ -100,7 +100,9 @@ Uno slot è una variante desiderata (`wanted`) oppure posseduta: una variante co
 
 Una carta è visibile in una collezione se non è nascosta e se è stata aggiunta a mano oppure da una ricerca attiva. Il sync del catalogo aggiorna solo `card`, `card_variant` e i collegamenti: non tocca mai i dati dell'utente.
 
-**Schema:** il database è alla versione 11 e non ha migrazioni: le versioni precedenti non sono più supportate (Room rifiuta un file più vecchio). Lo schema esportato da Room è in `app/schemas/`; una modifica allo schema richiede di alzare la versione e di scrivere la migrazione da 11.
+**Schema:** il database è alla versione 12; le versioni precedenti alla 11 non sono più supportate. L'unica migrazione è 11 → 12: `card_variant.cardmarketId`, il prodotto Cardmarket delle stampe a parte. Lo schema esportato da Room è in `app/schemas/`; una modifica allo schema richiede di alzare la versione e di scrivere la migrazione.
+
+**Stampe a parte e 1st Edition:** oltre a normal, holo e reverse, una carta ha una variante per ogni stampa che Cardmarket vende come prodotto a parte e che TCGdex abbina a un prodotto diverso da quello della carta: Shadowless, Guance rosse, Pokétour '99 e Jumbo (`VariantType.isPrint`). Il prezzo viene dal loro prodotto (listino Cardmarket, poi TCGdex); CardTrader non le distingue e le salta. Su Cardmarket la 1st Edition è un'etichetta degli annunci, non un prodotto: resta una sola variante `FIRST_EDITION` per carta, ricavata dal timbro `1st-edition` di TCGdex. L'interruttore "Conta le 1st Edition" delle impostazioni, se spento, rende "non volute" le 1st Edition su cui l'utente non ha fatto scelte: non contano tra le mancanti né nei totali, le copie possedute sì.
 
 **Lettura reattiva:** `CollectionRepository` combina le tabelle osservate in un'unica fotografia (`DbState`), calcolata fuori dal thread dell'interfaccia, accorpata durante le modifiche ravvicinate e condivisa da tutte le schermate (`shareIn` nello scope dell'app). Ricerca, filtri e ordinamento della griglia sono calcolati nel ViewModel, anch'essi fuori dal thread UI.
 

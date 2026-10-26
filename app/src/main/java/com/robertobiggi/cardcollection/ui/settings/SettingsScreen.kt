@@ -62,6 +62,7 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val lastSync by vm.lastCatalogSync.collectAsStateWithLifecycle()
     val savedToken by vm.cardTraderToken.collectAsStateWithLifecycle()
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
+    val countFirstEdition by vm.countFirstEdition.collectAsStateWithLifecycle()
     var tokenInput by remember(savedToken) { mutableStateOf(savedToken) }
     val currentTag = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore('-')
     val current = AppLanguage.entries.firstOrNull { it.tag == currentTag } ?: AppLanguage.SYSTEM
@@ -88,6 +89,13 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                             RadioButton(selected = lang == current, onClick = null)
                             Text(stringResource(lang.labelRes))
                         }
+                    }
+                }
+            }
+            item {
+                Section(stringResource(R.string.settings_first_edition)) {
+                    PriceSwitch(stringResource(R.string.settings_first_edition), stringResource(R.string.settings_first_edition_text), countFirstEdition) {
+                        vm.setCountFirstEdition(it)
                     }
                 }
             }

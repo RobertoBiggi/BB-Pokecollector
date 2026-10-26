@@ -110,6 +110,8 @@ data class DbState(
     val entries: List<CollectionEntryEntity>,
     val snapshots: List<PriceSnapshotEntity>,
     val runs: List<PriceRunEntity>,
+    /** False se le versioni 1st Edition non contano: senza una scelta dell'utente non sono volute. */
+    val countFirstEdition: Boolean = true,
 )
 
 /** Costruzione dei modelli UI a partire dalle tabelle del database. */
@@ -158,6 +160,7 @@ object LibraryAssembler {
             variantsByCard = variantsByCard,
             entryById = state.entries.filter { it.collectionId == collectionId }.associateBy { it.variantId },
             snapsByVariant = snapsByVariant,
+            countFirstEdition = state.countFirstEdition,
         )
     }
 
@@ -225,6 +228,7 @@ object LibraryAssembler {
      * @param variantsByCard Map<String, List<CardVariantEntity>> - varianti per carta.
      * @param entryById Map<String, CollectionEntryEntity> - dati dell'utente per variante.
      * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prezzi per variante, dal più vecchio.
+     * @param countFirstEdition Boolean - se false, una 1st Edition senza scelta dell'utente non è voluta (non conta tra le mancanti).
      * @return List<CardUi> - carte con varianti ordinate secondo [VariantType].
      */
     private fun assembleGrouped(
@@ -232,6 +236,7 @@ object LibraryAssembler {
         variantsByCard: Map<String, List<CardVariantEntity>>,
         entryById: Map<String, CollectionEntryEntity>,
         snapsByVariant: Map<String, List<PriceSnapshotEntity>>,
+        countFirstEdition: Boolean = true,
     ): List<CardUi> {
         return cards.map { card ->
             val list = variantsByCard[card.id].orEmpty().mapNotNull { v ->
@@ -241,7 +246,7 @@ object LibraryAssembler {
                 VariantUi(
                     id = v.id,
                     type = type,
-                    wanted = entry?.wanted ?: true,
+                    wanted = entry?.wanted ?: (countFirstEdition || type != VariantType.FIRST_EDITION),
                     quantity = entry?.quantity ?: 0,
                     condition = Condition.entries.firstOrNull { it.name == entry?.condition } ?: Condition.NM,
                     latestEur = snaps.lastOrNull { it.eur != null && !it.isCardTrader() },

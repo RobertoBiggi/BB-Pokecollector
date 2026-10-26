@@ -28,6 +28,11 @@ class TcgdexPriceProvider(private val client: TcgdexClient) : PriceProvider {
      */
     override suspend fun fetch(request: PriceRequest): PriceQuote? {
         val card = cardFor(request.language, request.tcgdexId)
+        if (request.variant.isPrint) {
+            // Una stampa a parte ha il suo prodotto: senza i suoi prezzi non si ripiega su quelli della carta, che sono di un'altra stampa.
+            val pricing = card.variantsDetailed.orEmpty().firstOrNull { it.cardmarketId == request.printProductId }?.pricing ?: return null
+            return VariantMapper.quote(request.printFinish, pricing, false, displayName)
+        }
         val detailed = card.variantsDetailed.orEmpty().firstOrNull {
             it.type == request.variant.tcgdexKey && (it.size == null || it.size == "standard")
         }
