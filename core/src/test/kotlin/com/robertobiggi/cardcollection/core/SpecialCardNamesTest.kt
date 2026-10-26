@@ -3,6 +3,7 @@ package com.robertobiggi.cardcollection.core
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalog
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalogIdSource
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketExpansions
+import com.robertobiggi.cardcollection.core.cardtrader.CardTraderMatcher
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.price.PriceRequest
@@ -119,6 +120,19 @@ class SpecialCardNamesTest {
         assertEquals(277262, source.cardmarketProductId(request("Dragon Frontiers", "ex15", "57", "Nidoran♂ δ", 32)))
         assertEquals(277498, source.cardmarketProductId(request("POP Series 5", "pop5", "16", "Espeon ★", 196)))
         assertEquals(315124, source.cardmarketProductId(request("Ultra Prism", "sm5", "62", "Lunala ◇", 792)))
+    }
+
+    @Test
+    fun `i set EX inglesi prendono il set Cardmarket inglese anche con l'elenco completo`() {
+        // Con l'elenco incluso nell'app "Holon Phantoms" è anche un set giapponese e "Deoxys" il nome di diversi mazzi.
+        val bundled = CardmarketExpansions.bundled
+        fun cardmarketIdOf(name: String, id: String) =
+            CardTraderMatcher.expansionFor(bundled.expansions, name, id, null)?.let { bundled.cardmarketId(it.id) }
+        assertEquals(1546, cardmarketIdOf("Deoxys", "ex8"))
+        assertEquals(1551, cardmarketIdOf("Holon Phantoms", "ex13"))
+        assertEquals(1553, cardmarketIdOf("Dragon Frontiers", "ex15"))
+        assertEquals(1541, cardmarketIdOf("Dragon", "ex3"))
+        assertEquals(1539, cardmarketIdOf("Ruby & Sapphire", "ex1"))
     }
 
     @Test

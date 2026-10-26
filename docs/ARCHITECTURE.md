@@ -112,6 +112,10 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 
 TCGdex scrive le Gold Star con ☆ (U+2606) nei set EX e con ★ (U+2605) in POP 5, le Delta Species con δ (in giapponese "デルタ種") e le Prism Star con ◇. Cardmarket usa le parole: "Rayquaza Gold Star", "Omastar δ Delta Species", "Rainbow Energy Delta", "Lunala ◇". `CardmarketCatalog.nameKey` trasforma simboli e parole in marcatori in fondo alla chiave (`gyarados~delta~goldstar`), così la carta speciale e quella normale non coincidono mai, e i nomi del Pokémon usati per l'abbinamento prendono i marcatori della carta. Il nome completo esatto ("Rayquaza ex") ha la precedenza sui nomi del Pokémon.
 
+### Sigle dei set
+
+Lo stesso set ha sigle diverse sulla carta o su Cardmarket/CardTrader e su TCGdex (EX Deoxys: `DX` e `ex8`; Base Set: `BS` e `base1`). `SetCodeAliases` (core) ricava la sigla Cardmarket di un set TCGdex dall'elenco incluso nell'app (`cardmarket-expansions.tsv`), con le stesse regole di abbinamento dei prezzi (`CardTraderMatcher.expansionFor`), e la tiene in cache. La usano la ricerca per codice (`CardCodeSearch`, `CardmarketCardSearch.findByCode`, che accetta anche la sigla dei set solo Cardmarket), la scelta del set per le collezioni per set (la sigla compare accanto all'id) e il filtro della griglia (`dx 107` trova la carta 107/107 di ex8). I set EX inglesi (`ex1`…`ex16`) si abbinano prima per "EX " + nome: senza, "Holon Phantoms" prendeva il set giapponese omonimo e "Deoxys" restava ambiguo tra diversi mazzi.
+
 TCGdex a volte collega la carta speciale al prodotto Cardmarket della versione normale (es. ex8-107 "Rayquaza ☆" → prodotto 276425, il Rayquaza normale). Se i marcatori del prodotto indicato non coincidono con quelli della carta, `PriceRepository` scarta quell'id per l'abbinamento CardTrader e il prezzo Cardmarket che ne deriva, e tiene solo quello TCGplayer. Test di regressione: `SpecialCardNamesTest`.
 
 ## Collezioni per set (set base e master set)
@@ -169,7 +173,7 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
    - *Scarica immagine*: riscarica il dettaglio da TCGdex (l'immagine può essere arrivata dopo) e salva low/high; sostituisce l'eventuale immagine manuale.
    - *Scegli immagine*: selettore di sistema (Photo Picker), lettura fino a 20 MB, decodifica con sottocampionamento, lato lungo massimo 1200 px, ricodifica WebP (scarta metadati e contenuti non immagine). Il file ha nome `<id>-manual-<timestamp>.webp` dentro `filesDir/cards` e viene usato sia come low sia come high, quindi il sync non lo sovrascrive; finisce anche negli export con immagini.
 3. **Aggiungi carta singola:** cerca su TCGdex per nome oppure, se il testo contiene un numero, per codice stampato (`CardCodeSearch`).
-   - Se una parola coincide con l'id di un set (nei cataloghi asiatici è la sigla stampata, es. `M3`) cerca solo in quel set.
+   - Se una parola coincide con l'id di un set (nei cataloghi asiatici è la sigla stampata, es. `M3`) o con la sua sigla Cardmarket (`SetCodeAliases`, es. `dx` per EX Deoxys, che su TCGdex è `ex8`) cerca solo in quel set; le altre parole restringono per nome (`dx Rayquaza 102`). Le parole dei nomi delle carte (`ex`, `GX`, `V`…) non valgono come sigla: "Rayquaza ex 102" non cerca in Expedition (`EX` su Cardmarket).
    - Altrimenti scarica le carte con quel numero (`/cards?localId=`, confronto esatto lato app) e restringe per totale ufficiale del set, nome e, per i cataloghi europei con pochi set candidati, sigla ufficiale (es. `MEG`).
    - Un filtro che svuoterebbe i risultati viene saltato, così le parole in più (es. la rarità `MUR`) non bloccano la ricerca.
 4. **Aggiorna prezzi:** riguarda le varianti desiderate o possedute delle carte tracciate. Ogni carta viene scaricata una sola volta per run.
