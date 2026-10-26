@@ -144,14 +144,70 @@ class CardmarketCatalog(
          */
         fun searchName(name: String): String = name.replace(LEVEL, "").trim()
 
+        /** Separatore tra il nome e i marcatori nella chiave (non è una lettera, quindi non compare nei nomi). */
+        const val MARK_SEPARATOR = '~'
+
         /**
-         * Normalizza il nome di una carta per il confronto: toglie gli attacchi tra parentesi quadre e il livello,
-         * poi tiene solo lettere e cifre in minuscolo ("Omastar Lv.53 [Primal Swirl | Send Back]" → "omastar").
+         * Segni speciali che distinguono carte con lo stesso nome, come li scrivono TCGdex (simbolo) e Cardmarket (parole):
+         * Gold Star (☆ o ★ / "Gold Star"), Delta Species (δ, "デルタ種" / "Delta Species", "Delta") e Prism Star (◇ / "Prism Star").
+         */
+        private val MARKERS = listOf(
+            "goldstar" to Regex("""[☆★]|\bgold\s+star\b""", RegexOption.IGNORE_CASE),
+            "delta" to Regex("""δ|デルタ種|\bdelta(\s+species)?\b""", RegexOption.IGNORE_CASE),
+            "prismstar" to Regex("""◇|\bprism\s+star\b""", RegexOption.IGNORE_CASE),
+        )
+
+        /** Genere scritto tra parentesi quadre su Cardmarket ("Nidoran [F] δ Delta Species"). */
+        private val GENDER = Regex("""\s+\[([FM])]""")
+
+        /**
+         * Marcatori speciali presenti nel nome di una carta (vedi [MARKERS]).
+         * @param name String - nome della carta (TCGdex o Cardmarket).
+         * @return List<String> - marcatori trovati, in ordine alfabetico (es. ["delta", "goldstar"]).
+         */
+        fun markers(name: String): List<String> {
+            val bare = name.replace(GENDER, "").substringBefore(" [")
+            return MARKERS.filter { (_, regex) -> regex.containsMatchIn(bare) }.map { it.first }.sorted()
+        }
+
+        /**
+         * Normalizza il nome di una carta per il confronto: toglie gli attacchi tra parentesi quadre e il livello, tiene
+         * solo lettere e cifre in minuscolo e mette in fondo i marcatori speciali, così "Rayquaza ☆" e
+         * "Rayquaza Gold Star" coincidono ma non valgono come il Rayquaza normale.
+         * Es.: "Omastar Lv.53 [Primal Swirl | Send Back]" → "omastar", "Gyarados Gold Star δ Delta Species [...]" → "gyarados~delta~goldstar".
          * @param name String - nome della carta.
+         * @param extraMarkers Collection<String> - marcatori da aggiungere (es. quelli della carta, per un nome di Pokémon senza simboli).
          * @return String - chiave di confronto.
          */
-        fun nameKey(name: String): String =
-            name.substringBefore(" [").replace(LEVEL, "").lowercase().replace('♀', 'f').replace('♂', 'm').filter { it.isLetterOrDigit() }
+        fun nameKey(name: String, extraMarkers: Collection<String> = emptyList()): String {
+            val withGender = name.replace(GENDER) { if (it.groupValues[1] == "F") "♀" else "♂" }
+            var base = withGender.substringBefore(" [").replace(LEVEL, "")
+            MARKERS.forEach { (_, regex) -> base = regex.replace(base, " ") }
+            val key = base.lowercase().replace('♀', 'f').replace('♂', 'm').filter { it.isLetterOrDigit() }
+            val marks = (markers(withGender) + extraMarkers).distinct().sorted()
+            return if (marks.isEmpty()) key else key + marks.joinToString("") { "$MARK_SEPARATOR$it" }
+        }
+
+        /**
+         * Indica se la chiave di un prodotto contiene quella cercata: il nome deve comparire per intero e i marcatori
+         * devono essere gli stessi ("rayquaza" non vale per "rayquaza~goldstar").
+         * @param productKey String - chiave del prodotto.
+         * @param key String - chiave cercata.
+         * @return Boolean - true se il nome è contenuto e i marcatori coincidono.
+         */
+        fun containsKey(productKey: String, key: String): Boolean {
+            val (productBase, productMarks) = splitKey(productKey)
+            val (base, marks) = splitKey(key)
+            return base.isNotEmpty() && base in productBase && marks == productMarks
+        }
+
+        /**
+         * Separa una chiave nel nome e nei marcatori.
+         * @param key String - chiave prodotta da [nameKey].
+         * @return Pair<String, String> - nome e marcatori (stringa vuota se non ce ne sono).
+         */
+        fun splitKey(key: String): Pair<String, String> =
+            key.substringBefore(MARK_SEPARATOR) to key.substringAfter(MARK_SEPARATOR, "")
 
         /**
          * Legge il catalogo a flusso. I nomi possono contenere virgole, parentesi graffe e virgolette, quindi

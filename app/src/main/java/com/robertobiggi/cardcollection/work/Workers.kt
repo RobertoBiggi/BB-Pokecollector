@@ -19,6 +19,7 @@ object WorkKeys {
     const val CARDS = "cards"
     const val IMAGES = "images"
     const val ERRORS = "errors"
+    const val EMPTY_SETS = "emptySets"
     const val OK = "ok"
     const val FALLBACK = "fallback"
     const val FAILED = "failed"
@@ -60,7 +61,7 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
         val cardTraderImages = container.prices.fillImagesFromCardTrader { p ->
             setProgress(workDataOf(WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
         }
-        val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + cardTraderImages, WorkKeys.ERRORS to result.errors)
+        val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + cardTraderImages, WorkKeys.ERRORS to result.errors, WorkKeys.EMPTY_SETS to result.emptySets)
         return if (result.cardsSaved == 0 && result.errors > 0) Result.failure(data) else Result.success(data)
     }
 

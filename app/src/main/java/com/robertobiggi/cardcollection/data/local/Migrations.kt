@@ -86,6 +86,21 @@ object Migrations {
     /** Versione 9 → 10: id prodotto Cardmarket indicato da TCGdex, per abbinare le carte su CardTrader. */
     val SQL_9_10: List<String> = listOf("ALTER TABLE `card` ADD COLUMN `cardmarketProductHint` INTEGER")
 
+    /** Versione 10 → 11: tipo delle ricerche (per nome o set intero); quelle esistenti restano per nome. */
+    val SQL_10_11: List<String> = listOf("ALTER TABLE `tracked_query` ADD COLUMN `kind` TEXT NOT NULL DEFAULT 'name'")
+
+    /** Migrazione Room 10 → 11. */
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        /**
+         * Esegue le istruzioni di [SQL_10_11].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_10_11.forEach { db.execSQL(it) }
+        }
+    }
+
     /** Migrazione Room 9 → 10. */
     val MIGRATION_9_10 = object : Migration(9, 10) {
         /**

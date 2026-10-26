@@ -13,6 +13,8 @@ import com.robertobiggi.cardcollection.core.price.PriceRequest
 import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.core.model.QueryKind
+import com.robertobiggi.cardcollection.core.model.SetCollectionPolicy
 import com.robertobiggi.cardcollection.core.model.PokemonNames
 import com.robertobiggi.cardcollection.core.net.ApiException
 import com.robertobiggi.cardcollection.core.net.InvalidResponseException
@@ -30,6 +32,8 @@ import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.CardVariantEntity
 import com.robertobiggi.cardcollection.data.local.CollectionCardEntity
+import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
+import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -45,7 +49,28 @@ enum class SyncPhase { SEARCH, CARD, IMAGES, IMAGES_CARDTRADER, CARDMARKET, CARD
 data class SyncProgress(val phase: SyncPhase, val label: String, val done: Int, val total: Int)
 
 /** Esito del sync del catalogo: carte e immagini salvate, numero di problemi incontrati. */
-data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int)
+/**
+ * Esito del sync del catalogo. [emptySets] conta i set (collezioni per set) di cui nessuna fonte ha ancora le carte.
+ */
+data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int, val emptySets: Int = 0)
+
+/**
+ * Set proponibile per una collezione per set.
+ * @property id id del set (TCGdex oppure dell'elenco dei set mancanti, es. "base1", "Pt4").
+ * @property name nome del set.
+ * @property cards carte dichiarate, se note.
+ * @property fromCardmarket true per i set che TCGdex non elenca, presi dall'elenco Cardmarket/CardTrader.
+ */
+data class SetChoice(val id: String, val name: String, val cards: Int?, val fromCardmarket: Boolean)
+
+/** Esito della lettura dell'elenco dei set. */
+sealed interface SetListResult {
+    /** Set disponibili, nell'ordine di TCGdex seguiti da quelli che TCGdex non elenca. */
+    data class Found(val sets: List<SetChoice>) : SetListResult
+
+    /** TCGdex non raggiungibile. */
+    data object NetworkError : SetListResult
+}
 
 /** Esito delle azioni sull'immagine di una carta. */
 enum class ImageResult { DOWNLOADED, SAVED, NOT_AVAILABLE, NETWORK_ERROR, INVALID_IMAGE }
@@ -106,9 +131,18 @@ class CatalogRepository(
         val numberedProducts = HashSet<Int>()
         val queries = dao.enabledQueriesOf(collectionId)
         val resolver = cardTraderResolver()
+        var emptySets = 0
         for ((qIndex, query) in queries.withIndex()) {
             val language = Language.fromCode(query.language) ?: continue
+            val kind = QueryKind.fromCode(query.kind) ?: continue
             progress(SyncProgress(SyncPhase.SEARCH, query.pattern, qIndex, queries.size))
+            if (kind.isSet) {
+                val outcome = syncSet(collectionId, query, kind, language, limiter, setCache, tcgdexProducts, refreshed, progress)
+                saved += outcome.saved
+                errors += outcome.errors
+                if (outcome.saved == 0 && outcome.errors == 0) emptySets++
+                continue
+            }
             val briefs = ArrayList<CardBriefDto>()
             for (term in PokemonNames.searchTerms(query.pattern, language)) {
                 try {
@@ -177,7 +211,7 @@ class CatalogRepository(
         errors += refreshOtherCards(collectionId, refreshed, limiter, setCache, progress)
         val imagesSaved = downloadMissingImages(progress)
         if (errors == 0 || saved > 0) settings.setLastCatalogSync(System.currentTimeMillis())
-        return SyncResult(saved, imagesSaved, errors)
+        return SyncResult(saved, imagesSaved, errors, emptySets)
     }
 
     /**
@@ -253,6 +287,120 @@ class CatalogRepository(
         cardmarket.metacardOf(product)
     } catch (e: IOException) {
         null
+    }
+
+    /** Carte salvate ed errori del sync di un set. */
+    private data class SetSyncOutcome(val saved: Int, val errors: Int)
+
+    /**
+     * Scarica tutte le carte di un set per una collezione per set: da TCGdex se il set ha le carte, altrimenti
+     * dall'elenco dei set mancanti (Cardmarket/CardTrader). Per ogni carta segna come "non la voglio" le varianti
+     * escluse dal livello scelto (vedi [SetCollectionPolicy]), senza toccare le voci già presenti.
+     * @param collectionId Long - collezione.
+     * @param query TrackedQueryEntity - ricerca di tipo set (pattern = id del set).
+     * @param kind QueryKind - set base o master set.
+     * @param language Language - lingua del catalogo.
+     * @param limiter RateLimiter - limitatore delle richieste TCGdex.
+     * @param setCache HashMap<String, SetDto?> - cache dei dettagli dei set.
+     * @param tcgdexProducts MutableSet<Int> - riceve i prodotti Cardmarket delle carte TCGdex.
+     * @param refreshed MutableSet<String> - riceve gli id delle carte aggiornate.
+     * @param progress suspend (SyncProgress) -> Unit - callback di avanzamento.
+     * @return SetSyncOutcome - carte salvate ed errori.
+     */
+    private suspend fun syncSet(
+        collectionId: Long,
+        query: TrackedQueryEntity,
+        kind: QueryKind,
+        language: Language,
+        limiter: RateLimiter,
+        setCache: HashMap<String, SetDto?>,
+        tcgdexProducts: MutableSet<Int>,
+        refreshed: MutableSet<String>,
+        progress: suspend (SyncProgress) -> Unit,
+    ): SetSyncOutcome {
+        val setId = query.pattern.trim()
+        if (!Validators.isValidRemoteId(setId)) return SetSyncOutcome(0, 1)
+        var saved = 0
+        var errors = 0
+        val keep: suspend (CatalogCard) -> Unit = { card ->
+            saveCard(card, legacyQueryId = query.id)
+            refreshed += card.id
+            dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
+            applySetPolicy(collectionId, card, kind)
+            saved++
+        }
+        val briefs = try {
+            limiter.acquire()
+            withRetry { client.getSet(language, setId) }.cards
+        } catch (e: NotFoundException) {
+            emptyList()
+        } catch (e: Exception) {
+            if (!isRecoverable(e)) throw e
+            return SetSyncOutcome(0, 1)
+        }
+        val valid = briefs.filterNot { CatalogMapper.isDigitalOnly(it) }.filter { Validators.isValidRemoteId(it.id) }
+        if (valid.isNotEmpty()) {
+            for ((index, brief) in valid.withIndex()) {
+                progress(SyncProgress(SyncPhase.CARD, brief.name, index, valid.size))
+                try {
+                    val card = fetchCatalogCard(language, brief.id, limiter, setCache, cardmarketProducts = tcgdexProducts, lookupExpansion = true) ?: continue
+                    keep(card)
+                } catch (e: Exception) {
+                    if (!isRecoverable(e)) throw e
+                    errors++
+                }
+            }
+            return SetSyncOutcome(saved, errors)
+        }
+        // Set che TCGdex non elenca (o elenca senza carte): elenco dei set mancanti, se lo contiene.
+        val extra = try {
+            cardmarket.extraSetAll(
+                language, setId,
+                onDownload = { progress(SyncProgress(SyncPhase.CARDMARKET_DOWNLOAD, CARDMARKET_LABEL, 0, 1)) },
+                onRead = { progress(SyncProgress(SyncPhase.CARDMARKET_READ, CARDMARKET_LABEL, 0, 1)) },
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (!isRecoverable(e)) throw e
+            return SetSyncOutcome(0, 1)
+        }
+        extra.forEach { keep(it) }
+        return SetSyncOutcome(saved, errors)
+    }
+
+    /**
+     * Segna come "non la voglio" le varianti che il livello della collezione per set esclude. Le voci già presenti
+     * (quantità o scelte dell'utente) restano invariate.
+     * @param collectionId Long - collezione.
+     * @param card CatalogCard - carta appena salvata.
+     * @param kind QueryKind - set base o master set.
+     * @return Unit
+     */
+    private suspend fun applySetPolicy(collectionId: Long, card: CatalogCard, kind: QueryKind) {
+        val unwanted = SetCollectionPolicy.unwantedVariants(card.variants.map { it.type }, kind)
+        if (unwanted.isEmpty()) return
+        db.collectionDao().insertEntriesIfAbsent(unwanted.map { CollectionEntryEntity(collectionId, Ids.variantId(card.id, it), wanted = false) })
+    }
+
+    /**
+     * Elenco dei set di una lingua da cui creare una collezione per set: quelli di TCGdex più quelli che TCGdex non elenca.
+     * @param language Language - lingua del catalogo.
+     * @return SetListResult - set trovati, oppure errore di rete.
+     */
+    suspend fun setChoices(language: Language): SetListResult {
+        val sets = try {
+            withRetry { client.listSets(language) }
+        } catch (e: Exception) {
+            if (!isRecoverable(e)) throw e
+            return SetListResult.NetworkError
+        }
+        val known = sets.map { it.id }.toSet()
+        val fromTcgdex = sets.filter { Validators.isValidRemoteId(it.id) && !CatalogMapper.isDigitalOnlySet(it) }
+            .map { SetChoice(it.id, it.name, it.cardCount?.total ?: it.cardCount?.official, fromCardmarket = false) }
+        val missing = cardmarket.extraSetsFor(language).filter { it.setId !in known && Validators.isValidRemoteId(it.setId) }
+            .map { SetChoice(it.setId, it.name, it.numbers.size.takeIf { n -> n > 0 }, fromCardmarket = true) }
+        return SetListResult.Found((fromTcgdex + missing).distinctBy { it.id })
     }
 
     /**

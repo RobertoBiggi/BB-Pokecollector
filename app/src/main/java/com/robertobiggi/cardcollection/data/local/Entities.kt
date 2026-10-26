@@ -6,6 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.robertobiggi.cardcollection.core.model.CollectionLanguage
+import com.robertobiggi.cardcollection.core.model.QueryKind
 
 /**
  * Collezione creata dall'utente (es. "Mawile"). Ogni collezione ha ricerche, carte e quantità proprie.
@@ -19,7 +20,10 @@ data class CollectionEntity(
     @ColumnInfo(defaultValue = CollectionLanguage.MIXED) val language: String = CollectionLanguage.MIXED,
 )
 
-/** Ricerca per nome di una collezione (es. "Mawile" in inglese). */
+/**
+ * Ricerca di una collezione: per nome (es. "Mawile" in inglese) oppure set intero (es. "base1"), secondo [kind]
+ * (valore di [QueryKind]: "name", "set_base", "set_master").
+ */
 @Entity(
     tableName = "tracked_query",
     foreignKeys = [ForeignKey(entity = CollectionEntity::class, parentColumns = ["id"], childColumns = ["collectionId"], onDelete = ForeignKey.CASCADE)],
@@ -31,6 +35,7 @@ data class TrackedQueryEntity(
     val language: String,
     val pattern: String,
     val enabled: Boolean = true,
+    @ColumnInfo(defaultValue = "name") val kind: String = QueryKind.NAME.code,
 )
 
 /**

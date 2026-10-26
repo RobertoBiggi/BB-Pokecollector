@@ -14,6 +14,9 @@ import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.core.backup.ImageExport
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.data.repo.SetListResult
+import com.robertobiggi.cardcollection.data.repo.SetChoice
+import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.core.tcgdex.CardBriefDto
 import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -72,6 +75,20 @@ data class CollectionFilter(
 )
 
 /** Stato della ricerca di carte da aggiungere a mano; [messageRes] è un avviso da mostrare, se c'è. */
+/**
+ * Stato del selettore dei set per le collezioni per set.
+ * @property language lingua dei set mostrati.
+ * @property loading true mentre l'elenco si scarica.
+ * @property sets set disponibili.
+ * @property networkError true se TCGdex non è raggiungibile.
+ */
+data class SetPickerState(
+    val language: Language = Language.EN,
+    val loading: Boolean = false,
+    val sets: List<SetChoice> = emptyList(),
+    val networkError: Boolean = false,
+)
+
 data class CardSearchState(
     val loading: Boolean = false,
     val results: List<CardBriefDto> = emptyList(),
@@ -124,6 +141,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val visibleCards: StateFlow<List<CardUi>> = combine(library, _filter) { cards, f -> applyFilter(cards.orEmpty(), f) }
         .flowOn(Dispatchers.Default)
         .stateInVm(emptyList())
+
+    private val _setPicker = MutableStateFlow(SetPickerState())
+    val setPicker: StateFlow<SetPickerState> = _setPicker.asStateFlow()
 
     private val _search = MutableStateFlow(CardSearchState())
     val search: StateFlow<CardSearchState> = _search.asStateFlow()
@@ -255,6 +275,62 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 }
                 is CreateResult.Invalid -> onResult(result.error, null)
             }
+        }
+    }
+
+    /**
+     * Scarica l'elenco dei set di una lingua per il selettore (se non è già caricato).
+     * @param language Language - lingua dei set.
+     * @param force Boolean - true per riscaricarlo anche se presente (es. dopo un errore).
+     * @return Unit
+     */
+    fun loadSets(language: Language, force: Boolean = false) {
+        val current = _setPicker.value
+        if (!force && current.language == language && (current.loading || current.sets.isNotEmpty())) return
+        _setPicker.value = SetPickerState(language = language, loading = true)
+        viewModelScope.launch {
+            _setPicker.value = when (val result = container.catalog.setChoices(language)) {
+                is SetListResult.Found -> SetPickerState(language = language, sets = result.sets)
+                SetListResult.NetworkError -> SetPickerState(language = language, networkError = true)
+            }
+        }
+    }
+
+    /**
+     * Crea una collezione per set e ne scarica subito le carte.
+     * @param name String - nome (vuoto = nome del set).
+     * @param language Language - lingua del catalogo.
+     * @param set SetChoice - set scelto.
+     * @param kind QueryKind - set base o master set.
+     * @param onResult (InputError?, Long?) -> Unit - riceve l'errore oppure l'id creato.
+     * @return Unit
+     */
+    fun createSetCollection(name: String, language: Language, set: SetChoice, kind: QueryKind, onResult: (InputError?, Long?) -> Unit) {
+        viewModelScope.launch {
+            when (val result = container.collection.createSetCollection(name, language, set.id, set.name, kind)) {
+                is CreateResult.Created -> {
+                    container.work.startCatalogSync(result.id)
+                    onResult(null, result.id)
+                }
+                is CreateResult.Invalid -> onResult(result.error, null)
+            }
+        }
+    }
+
+    /**
+     * Aggiunge un set intero alla collezione aperta e ne avvia il download.
+     * @param language Language - lingua del catalogo.
+     * @param set SetChoice - set scelto.
+     * @param kind QueryKind - set base o master set.
+     * @param onResult (InputError?) -> Unit - riceve l'errore, oppure null se aggiunto.
+     * @return Unit
+     */
+    fun addSetQuery(language: Language, set: SetChoice, kind: QueryKind, onResult: (InputError?) -> Unit) = withSelected { id ->
+        val error = container.collection.addSetQuery(id, language, set.id, kind)
+        onResult(error)
+        if (error == null) {
+            say(R.string.msg_set_added, set.name)
+            container.work.startCatalogSync(id)
         }
     }
 
