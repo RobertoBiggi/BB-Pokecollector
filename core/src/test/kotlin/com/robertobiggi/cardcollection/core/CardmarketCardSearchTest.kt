@@ -191,6 +191,12 @@ class CardmarketCardSearchTest {
     }
 
     @Test
+    fun `il codice stampato trova la carta anche con la sigla dei set solo Cardmarket`() = runTest {
+        val query = CardCodeSearch.parse("pt4 023")!!
+        assertEquals(listOf("Pt4-023"), search(extraSets).findByCode(Language.JA, query).map { it.tcgdexId })
+    }
+
+    @Test
     fun `il Pokedex si ricava dal nome della carta`() {
         assertEquals(139, PokemonNames.dexIdOfName("Omastar BREAK"))
         assertEquals(139, PokemonNames.dexIdOfName("Dark Omastar Lv.33"))

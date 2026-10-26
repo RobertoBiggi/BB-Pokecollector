@@ -25,12 +25,14 @@ import com.robertobiggi.cardcollection.core.validation.Validators
  * @param tcgdex client TCGdex, per l'elenco e il dettaglio dei set.
  * @param expansions set con il loro id Cardmarket.
  * @param extraSets set giapponesi che TCGdex non elenca, cercati a parte.
+ * @param aliases sigle Cardmarket dei set TCGdex, per cercare per codice con l'una o l'altra sigla.
  */
 class CardmarketCardSearch(
     private val catalog: CardmarketCatalog,
     private val tcgdex: TcgdexClient,
     private val expansions: CardmarketExpansions = CardmarketExpansions.bundled,
     private val extraSets: CardmarketExtraSets = CardmarketExtraSets.bundled,
+    private val aliases: SetCodeAliases = SetCodeAliases.bundled,
 ) {
     private val setLists = HashMap<Language, List<SetBriefDto>>()
     private val setDetails = HashMap<Pair<Language, String>, SetDto>()
@@ -210,15 +212,21 @@ class CardmarketCardSearch(
     }
 
     /**
-     * Cerca per codice stampato (es. "XY10 017") nei set di cui una parola è l'id.
+     * Cerca per codice stampato (es. "XY10 017", "dx 107") nei set di cui una parola è l'id, la sigla Cardmarket
+     * o, per i set che TCGdex non elenca, la sigla stampata.
      * @param language Language - lingua del catalogo.
      * @param query CardCodeQuery - codice già scomposto.
      * @return List<CatalogCard> - carte trovate, senza immagine.
      */
     suspend fun findByCode(language: Language, query: CardCodeQuery): List<CatalogCard> {
         if (!supports(language)) return emptyList()
-        return sets(language).filter { set -> query.tokens.any { it.equals(set.id, ignoreCase = true) } }
-            .take(MAX_CODE_SETS).mapNotNull { cardFor(language, it.id, query.number.toString()) }
+        val tcgdexSets = sets(language)
+        val listed = query.tokens.flatMap { aliases.setsFor(it, language, tcgdexSets) }.map { it.id }
+        val extra = extraSets.sets.filter { set ->
+            set.language == language &&
+                query.tokens.any { it.equals(set.setId, ignoreCase = true) || it.equals(set.setCode, ignoreCase = true) }
+        }.map { it.setId }
+        return (listed + extra).distinct().take(MAX_CODE_SETS).mapNotNull { cardFor(language, it, query.number.toString()) }
     }
 
     /**
