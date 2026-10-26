@@ -6,8 +6,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /** Migrazioni del database. Le istruzioni SQL stanno in liste semplici per poterle testare sul JVM. */
 object Migrations {
 
-    /** Versione 11 → 12: prodotto Cardmarket delle stampe a parte (shadowless, jumbo…), vuoto per le varianti esistenti. */
-    val SQL_11_12: List<String> = listOf("ALTER TABLE `card_variant` ADD COLUMN `cardmarketId` INTEGER")
+    /** Versione 11 → 12: prodotto Cardmarket e timbro delle stampe a parte (shadowless, jumbo, timbri…), vuoti per le varianti esistenti. */
+    val SQL_11_12: List<String> = listOf(
+        "ALTER TABLE `card_variant` ADD COLUMN `cardmarketId` INTEGER",
+        "ALTER TABLE `card_variant` ADD COLUMN `print` TEXT NOT NULL DEFAULT ''",
+    )
 
     /** Migrazione Room 11 → 12. */
     val MIGRATION_11_12 = object : Migration(11, 12) {

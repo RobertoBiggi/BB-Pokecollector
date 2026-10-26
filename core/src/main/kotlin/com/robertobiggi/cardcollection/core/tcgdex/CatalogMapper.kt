@@ -3,6 +3,7 @@ package com.robertobiggi.cardcollection.core.tcgdex
 import com.robertobiggi.cardcollection.core.cardmarket.BallVariants
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.CatalogVariant
+import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.validation.Validators
@@ -128,7 +129,7 @@ object CatalogMapper {
             .let { if (balls.isEmpty()) it else it - VariantType.REVERSE + balls }
             // Con il dettaglio, la 1st Edition è un timbro delle stampe, non più un tipo a parte.
             .let { if (standard.any { v -> FIRST_EDITION_STAMP in v.stamp.orEmpty() }) it + VariantType.FIRST_EDITION else it }
-        return (VariantType.entries.filter { it in distinct }.map { CatalogVariant(it) } + printsOf(card)).sortedBy { it.type.ordinal }
+        return (VariantType.entries.filter { it in distinct }.map { CatalogVariant(it) } + printsOf(card)).sortedWith(compareBy({ it.type.ordinal }, { it.print }))
     }
 
     /**
@@ -142,17 +143,20 @@ object CatalogMapper {
         val detailed = card.variantsDetailed.orEmpty()
         val main = detailed.firstOrNull { (it.size == null || it.size == "standard") && it.stamp.isNullOrEmpty() && (it.subtype == null || it.subtype == UNLIMITED) }?.cardmarketId
             ?: card.pricing?.cardmarket?.idProduct ?: return emptyList()
-        return detailed.mapNotNull { v ->
+        val prints = detailed.mapNotNull { v ->
             val product = v.cardmarketId?.takeIf { it != main } ?: return@mapNotNull null
-            val type = when {
-                v.size == "jumbo" -> VariantType.JUMBO
-                POKETOUR_STAMP in v.stamp.orEmpty() -> VariantType.POKETOUR_99
-                v.subtype == RED_CHEEK_SUBTYPE -> VariantType.RED_CHEEK
-                v.subtype == SHADOWLESS_SUBTYPE -> VariantType.SHADOWLESS
-                else -> return@mapNotNull null
+            val stamps = v.stamp.orEmpty().filter { it != FIRST_EDITION_STAMP }
+            when {
+                v.size == "jumbo" -> CatalogVariant(VariantType.JUMBO, product)
+                POKETOUR_STAMP in stamps -> CatalogVariant(VariantType.POKETOUR_99, product)
+                v.subtype == RED_CHEEK_SUBTYPE -> CatalogVariant(VariantType.RED_CHEEK, product)
+                v.subtype == SHADOWLESS_SUBTYPE -> CatalogVariant(VariantType.SHADOWLESS, product)
+                stamps.isNotEmpty() -> Ids.stampPrint(stamps).takeIf { it.isNotEmpty() }?.let { CatalogVariant(VariantType.STAMPED, product, it) }
+                else -> null
             }
-            CatalogVariant(type, product)
-        }.distinctBy { it.type }
+        }
+        // Una variante per timbro e un solo prodotto per variante: lo stesso prodotto dato a più stampe vale una volta.
+        return prints.distinctBy { it.key }.distinctBy { it.cardmarketId }
     }
 
     /**

@@ -101,6 +101,18 @@ class CardmarketCardSearch(
     suspend fun metacardOf(idProduct: Int): Int? = catalog.locate(idProduct)?.second?.metacard?.takeIf { it != 0 }
 
     /**
+     * Altre stampe della stessa carta nello stesso set Cardmarket: i prodotti con la stessa metacard.
+     * @param idProduct Int - prodotto Cardmarket della carta.
+     * @return List<Int> - id degli altri prodotti, in ordine; vuota se la carta non ha metacard o non è nel catalogo.
+     * @throws java.io.IOException se il catalogo non è in cache e non si riesce a scaricarlo.
+     */
+    suspend fun otherPrintsOf(idProduct: Int): List<Int> {
+        val (expansion, product) = catalog.locate(idProduct) ?: return emptyList()
+        if (product.metacard == 0) return emptyList()
+        return catalog.productsOf(expansion).filter { it.metacard == product.metacard && it.idProduct != idProduct }.map { it.idProduct }.sorted()
+    }
+
+    /**
      * Set e nome inglese di una carta su Cardmarket, dal suo id prodotto.
      * @param idProduct Int - id prodotto Cardmarket.
      * @return Pair<Int, String>? - `idExpansion` e nome da cercare, oppure null se il prodotto non è nel catalogo.

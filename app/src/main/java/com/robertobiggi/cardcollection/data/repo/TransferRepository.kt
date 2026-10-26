@@ -15,6 +15,7 @@ import com.robertobiggi.cardcollection.core.backup.ImportError
 import com.robertobiggi.cardcollection.core.backup.ImportedCollection
 import com.robertobiggi.cardcollection.core.backup.PriceRecord
 import com.robertobiggi.cardcollection.core.model.Ids
+import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -80,7 +81,7 @@ class TransferRepository(
         val cardIds = cards.map { it.first.id }
         val variants = cardIds.chunked(SQL_CHUNK).flatMap { catalogDao.variantsOf(it) }
         val snapshots = variants.map { it.id }.chunked(SQL_CHUNK).flatMap { db.priceDao().snapshotsOf(it) }
-        val typesByCard = variants.groupBy({ it.cardId }, { it.type })
+        val typesByCard = variants.groupBy({ it.cardId }, { Ids.variantKey(VariantType.fromName(it.type) ?: VariantType.NORMAL, it.print) })
 
         val records = cards.map { (card, hidden) ->
             val low = if (imageExport != ImageExport.NONE) images.read(card.imageLowPath)?.let(CollectionFiles::encodeImage) else null
@@ -159,7 +160,7 @@ class TransferRepository(
             } else {
                 // Carta già nel catalogo: non si sovrascrive, ma si aggiungono le varianti mancanti
                 // (altrimenti le quantità importate non sarebbero visibili) e il numero del Pokédex.
-                catalogDao.insertVariants(c.card.variants.map { CardVariantEntity(Ids.variantId(c.card.id, it.type), c.card.id, it.type.name, it.cardmarketId) })
+                catalogDao.insertVariants(c.card.variants.map { CardVariantEntity(Ids.variantId(c.card.id, it.type, it.print), c.card.id, it.type.name, it.cardmarketId, it.print) })
                 c.card.dexId?.let { catalogDao.fillDexId(c.card.id, it) }
             }
             catalogDao.insertMembership(CollectionCardEntity(id, c.card.id, null, c.hidden))

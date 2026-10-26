@@ -29,6 +29,7 @@ import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
 data class VariantUi(
     val id: String,
     val type: VariantType,
+    val print: String = "",
     val wanted: Boolean,
     val quantity: Int,
     val condition: Condition,
@@ -246,7 +247,13 @@ object LibraryAssembler {
                 VariantUi(
                     id = v.id,
                     type = type,
-                    wanted = entry?.wanted ?: (countFirstEdition || type != VariantType.FIRST_EDITION),
+                    print = v.print,
+                    wanted = entry?.wanted ?: when (type) {
+                        VariantType.FIRST_EDITION -> countFirstEdition
+                        // I timbri (tornei, prerelease…) sono tanti: si contano solo se l'utente li segna come voluti.
+                        VariantType.STAMPED -> false
+                        else -> true
+                    },
                     quantity = entry?.quantity ?: 0,
                     condition = Condition.entries.firstOrNull { it.name == entry?.condition } ?: Condition.NM,
                     latestEur = snaps.lastOrNull { it.eur != null && !it.isCardTrader() },
@@ -257,7 +264,7 @@ object LibraryAssembler {
                     usdHistory = snaps.mapNotNull { it.usd },
                     cardTraderHistory = snaps.filter { it.isCardTrader() }.mapNotNull { it.eur },
                 )
-            }.sortedBy { it.type.ordinal }
+            }.sortedWith(compareBy({ it.type.ordinal }, { it.print }))
             CardUi(card, list)
         }
     }

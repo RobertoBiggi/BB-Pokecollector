@@ -92,6 +92,8 @@ data class CardVariantEntity(
     val type: String,
     /** Prodotto Cardmarket della variante, solo per le stampe a parte (shadowless, jumbo…); le altre usano quello della carta. */
     val cardmarketId: Int? = null,
+    /** Timbro o prodotto che distingue più varianti dello stesso tipo (vedi [com.robertobiggi.cardcollection.core.model.CatalogVariant.print]). */
+    @ColumnInfo(defaultValue = "") val print: String = "",
 )
 
 /**

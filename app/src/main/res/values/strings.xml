@@ -45,6 +45,8 @@
     <string name="variant_red_cheek">Red cheeks</string>
     <string name="variant_poketour_99">Pokétour \'99</string>
     <string name="variant_jumbo">Jumbo</string>
+    <string name="variant_stamped">Stamped</string>
+    <string name="variant_cardmarket_print">Cardmarket print %1$s</string>
     <string name="home_title">My collections</string>
     <string name="home_import">Import collection from JSON</string>
     <string name="home_settings">Settings</string>
