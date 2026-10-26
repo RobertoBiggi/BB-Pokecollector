@@ -236,8 +236,8 @@ interface CatalogDao {
      * @param cardId String - carta.
      * @param types List<String> - tipi di variante da tenere.
      */
-    @Query("DELETE FROM card_variant WHERE cardId = :cardId AND type NOT IN (:types) AND id NOT IN (SELECT variantId FROM collection_entry WHERE quantity > 0 OR notes IS NOT NULL)")
-    suspend fun deleteStaleVariants(cardId: String, types: List<String>)
+    @Query("DELETE FROM card_variant WHERE cardId = :cardId AND id NOT IN (:keepIds) AND id NOT IN (SELECT variantId FROM collection_entry WHERE quantity > 0 OR notes IS NOT NULL)")
+    suspend fun deleteStaleVariants(cardId: String, keepIds: List<String>)
 
     /**
      * Osserva tutte le varianti del catalogo.

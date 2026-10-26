@@ -81,13 +81,19 @@ enum class VariantType(val tcgdexKey: String) {
     FIRST_EDITION("firstEdition"),
     W_PROMO("wPromo"),
     POKETOUR_99("poketour99"),
-    JUMBO("jumbo");
+    JUMBO("jumbo"),
+
+    /** Stampa con un timbro (torneo, prerelease, staff…): ogni timbro è una variante, indicata da `print`. */
+    STAMPED("stamped"),
+
+    /** Altra stampa della carta che Cardmarket elenca e TCGdex no: `print` è il suo prodotto Cardmarket. */
+    CARDMARKET_PRINT("cardmarketPrint");
 
     /** Reverse holo Poké Ball o Master Ball: prodotti Cardmarket a parte, che TCGdex non elenca. */
     val isBall: Boolean get() = this == POKE_BALL || this == MASTER_BALL
 
     /** Stampa a parte della stessa carta (shadowless, guance rosse, Pokétour '99, jumbo): ha un suo prodotto Cardmarket, che TCGdex indica per ognuna. */
-    val isPrint: Boolean get() = this == SHADOWLESS || this == RED_CHEEK || this == POKETOUR_99 || this == JUMBO
+    val isPrint: Boolean get() = this == SHADOWLESS || this == RED_CHEEK || this == POKETOUR_99 || this == JUMBO || this == STAMPED || this == CARDMARKET_PRINT
 
     companion object {
         /**
@@ -127,11 +133,16 @@ enum class Confidence {
 /**
  * Variante disponibile per una carta del catalogo.
  * @property cardmarketId prodotto Cardmarket della variante, solo per le stampe a parte ([VariantType.isPrint]); le altre usano quello della carta.
+ * @property print distingue più varianti dello stesso tipo: il timbro di [VariantType.STAMPED] o il prodotto di [VariantType.CARDMARKET_PRINT]; vuoto per gli altri.
  */
 data class CatalogVariant(
     val type: VariantType,
     val cardmarketId: Int? = null,
-)
+    val print: String = "",
+) {
+    /** Chiave della variante nella carta, come in [Ids.variantKey]. */
+    val key: String get() = Ids.variantKey(type, print)
+}
 
 /**
  * Carta del catalogo già normalizzata, pronta per essere salvata nel database locale.
@@ -227,8 +238,9 @@ data class PriceQuote(
 /** Identificativi locali di carte e varianti. */
 object Ids {
     private val VARIANT_ID = Regex(
-        "^(" + Language.entries.joinToString("|") { Regex.escape(it.code) } + "):[A-Za-z0-9][A-Za-z0-9._\\-]{0,39}\\|([A-Z_]+)$",
+        "^(" + Language.entries.joinToString("|") { Regex.escape(it.code) } + "):[A-Za-z0-9][A-Za-z0-9._\\-]{0,39}\\|([A-Z_0-9]+)(?:\\|([a-z0-9][a-z0-9+\\-]{0,79}))?$",
     )
+    private val PRINT = Regex("^[a-z0-9][a-z0-9+\\-]{0,79}$")
 
     /**
      * Costruisce l'id di una variante (chiave della tabella card_variant).
@@ -236,7 +248,36 @@ object Ids {
      * @param type VariantType - variante.
      * @return String - id nel formato "en:me01-094|HOLO".
      */
-    fun variantId(cardId: String, type: VariantType): String = "$cardId|${type.name}"
+    fun variantId(cardId: String, type: VariantType, print: String = ""): String = "$cardId|${variantKey(type, print)}"
+
+    /**
+     * Chiave di una variante dentro la carta: il tipo, seguito dal timbro o dal prodotto se ce n'è uno.
+     * @param type VariantType - variante.
+     * @param print String - timbro o prodotto, vuoto se non serve.
+     * @return String - es. "HOLO" oppure "STAMPED|chris-fulop".
+     */
+    fun variantKey(type: VariantType, print: String = ""): String = if (print.isEmpty()) type.name else "${type.name}|$print"
+
+    /**
+     * Legge una chiave di variante (vedi [variantKey]).
+     * @param key String - chiave, anche con il solo nome del tipo.
+     * @return Pair<VariantType, String>? - tipo e timbro/prodotto, oppure null se il tipo o il timbro non sono validi.
+     */
+    fun parseVariantKey(key: String): Pair<VariantType, String>? {
+        val type = VariantType.fromName(key.substringBefore('|')) ?: return null
+        val print = key.substringAfter('|', "")
+        if (print.isNotEmpty() && !PRINT.matches(print)) return null
+        return type to print
+    }
+
+    /**
+     * Trasforma un timbro di TCGdex in un testo adatto a un id di variante.
+     * @param stamps List<String> - timbri della variante (es. ["staff", "pre-release"]).
+     * @return String - es. "staff+pre-release", vuoto se non resta nulla di valido.
+     */
+    fun stampPrint(stamps: List<String>): String =
+        stamps.map { it.lowercase().filter { c -> c in 'a'..'z' || c in '0'..'9' || c == '-' }.trim('-') }
+            .filter { it.isNotEmpty() }.joinToString("+").take(80).takeIf { PRINT.matches(it) }.orEmpty()
 
     /**
      * Dice se una carta viene dal catalogo Cardmarket senza numero (id "en:s-p-Cardmarket786632").
