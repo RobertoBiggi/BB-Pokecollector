@@ -97,7 +97,7 @@ class CardTraderPriceProvider(
      * @return String? - URL completo, oppure null se la carta non si abbina, i blueprint sono più d'uno (non si sa quale sia) o non hanno immagine.
      */
     suspend fun imageUrl(request: PriceRequest): String? = mutex.withLock {
-        blueprintFor(request)?.let { imageOrSibling(it) }
+        blueprintFor(request)?.takeIf { request.cardmarketId != null || CardTraderMatcher.nameAgrees(it, request.name, request.dexId) }?.let { imageOrSibling(it) }
     }
 
     /**

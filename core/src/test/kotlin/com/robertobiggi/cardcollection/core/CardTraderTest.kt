@@ -397,6 +397,16 @@ class CardTraderTest {
     }
 
     @Test
+    fun `il blueprint trovato dal numero deve essere dello stesso Pokemon`() {
+        val moltres = CtBlueprintDto(id = 1, name = "Moltres ex 014/135 Holo Promo")
+        assertEquals(true, CardTraderMatcher.nameAgrees(moltres, "Moltres ex", null))
+        assertEquals(false, CardTraderMatcher.nameAgrees(moltres, "Zapdos ex", null))
+        assertEquals(true, CardTraderMatcher.nameAgrees(moltres, "ファイヤー", 146))
+        assertEquals(false, CardTraderMatcher.nameAgrees(moltres, "サンダー", 145))
+        assertEquals(true, CardTraderMatcher.nameAgrees(CtBlueprintDto(id = 2, name = "Colress 118/135"), "Moltres", null))
+    }
+
+    @Test
     fun `l'immagine della carta e la versione media del blueprint`() = runTest {
         val s = server()
         try {
