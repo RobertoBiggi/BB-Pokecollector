@@ -47,10 +47,10 @@ JP_ALIASES = {
 
 
 # Set che CardTrader dichiara inglesi ma Cardmarket tiene tra i giapponesi (stesso id espansione di "CoroCoro Promo").
-LANGUAGE = {"unpromo": "ja"}
+LANGUAGE = {"unpromo": "ja", "s-p": "ja"}
 # Set cinesi (semplificato): "CS6b: Azure Shadow ...", "CSM2b: ...", "CSV9.5: ...".
 CHINESE = re.compile(r"^CS[A-Za-z0-9.]*\s*:")
-FOREIGN = re.compile(r"\b(french|german|italian|spanish|korean|chinese)\b", re.I)
+FOREIGN = re.compile(r"\b(french|german|italian|spanish|korean|chinese|thailand|indonesia)\b", re.I)
 
 
 def get(url, auth=False):

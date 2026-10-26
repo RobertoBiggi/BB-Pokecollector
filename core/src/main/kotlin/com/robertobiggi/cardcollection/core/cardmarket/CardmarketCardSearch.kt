@@ -103,6 +103,16 @@ class CardmarketCardSearch(
     suspend fun metacardOf(idProduct: Int): Int? = catalog.locate(idProduct)?.second?.metacard?.takeIf { it != 0 }
 
     /**
+     * Espansione e metacard di un prodotto: due prodotti con la stessa coppia sono stampe della stessa carta nello stesso set.
+     * La stessa metacard in un altro set è una ristampa, cioè un'altra carta.
+     * @param idProduct Int - id prodotto Cardmarket.
+     * @return Pair<Int, Int>? - `idExpansion` e metacard, oppure null se il prodotto non è nel catalogo o non ha metacard.
+     * @throws java.io.IOException se il catalogo non è in cache e non si riesce a scaricarlo.
+     */
+    suspend fun printKeyOf(idProduct: Int): Pair<Int, Int>? =
+        catalog.locate(idProduct)?.let { (expansion, product) -> product.metacard.takeIf { it != 0 }?.let { expansion to it } }
+
+    /**
      * Altre stampe della stessa carta nello stesso set Cardmarket: i prodotti con la stessa metacard.
      * @param idProduct Int - prodotto Cardmarket della carta.
      * @return List<Int> - id degli altri prodotti, in ordine; vuota se la carta non ha metacard o non è nel catalogo.

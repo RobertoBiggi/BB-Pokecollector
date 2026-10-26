@@ -168,6 +168,15 @@ class CardmarketCardSearchTest {
     }
 
     @Test
+    fun `la chiave di stampa è espansione e metacard, quindi la stessa carta in un altro set è un altro prodotto`() = runTest {
+        val s = search()
+        assertEquals(900 to 5, s.printKeyOf(90))
+        assertEquals(s.printKeyOf(90), s.printKeyOf(91))
+        assertEquals(900 to 6, s.printKeyOf(92))
+        assertNull(s.printKeyOf(999999))
+    }
+
+    @Test
     fun `un testo troppo corto o una lingua non supportata non cercano niente`() = runTest {
         assertEquals(emptyList<String>(), search().find(Language.JA, "Om").map { it.id })
         assertEquals(emptyList<String>(), search().find(Language.FR, "Omastar").map { it.id })
