@@ -269,7 +269,7 @@
     <string name="set_level_base">Base set</string>
     <string name="set_level_master">Master set</string>
     <string name="set_level_base_hint">One slot per card (the main version). The other variants stay in the catalogue but don\'t count.</string>
-    <string name="set_level_master_hint">Every variant counts: normal, holo, reverse holo, Poké Ball and Master Ball. 1st Edition is not tracked separately.</string>
+    <string name="set_level_master_hint">Every variant counts: normal, holo, reverse holo, Poké Ball and Master Ball. 1st Edition and separate prints (Shadowless, Jumbo, stamps…) don\'t count, but you can mark them yourself.</string>
     <string name="query_set_label">Set %1$s · %2$s</string>
     <string name="create_by_name">By Pokémon</string>
     <string name="create_by_set">By set</string>
