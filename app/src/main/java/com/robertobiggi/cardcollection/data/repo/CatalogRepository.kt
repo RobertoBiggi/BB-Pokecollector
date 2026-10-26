@@ -134,6 +134,7 @@ class CatalogRepository(
         val queries = dao.enabledQueriesOf(collectionId)
         val resolver = cardTraderResolver()
         var emptySets = 0
+        var cardmarketFailed = false
         for ((qIndex, query) in queries.withIndex()) {
             val language = Language.fromCode(query.language) ?: continue
             val kind = QueryKind.fromCode(query.kind) ?: continue
@@ -171,7 +172,7 @@ class CatalogRepository(
             }
             progress(SyncProgress(SyncPhase.CARDMARKET, query.pattern, qIndex, queries.size))
             val known = LinkedHashSet<String>()
-            val fromCardmarket = cardmarketCards(language, query.pattern, progress, qIndex, queries.size, resolver, known)
+            val fromCardmarket = cardmarketCards(language, query.pattern, progress, qIndex, queries.size, resolver, known) { cardmarketFailed = true }
             // Carte che TCGdex ha ma la sua ricerca per nome non ha trovato (nome scritto in modo diverso): Cardmarket le indica per posizione.
             for (id in known) {
                 if (candidates.any { it.id == id } || !Validators.isValidRemoteId(id)) continue
@@ -204,10 +205,12 @@ class CatalogRepository(
             }
         }
         saved += saveUnnumbered(collectionId, unnumbered, tcgdexProducts + numberedProducts, refreshed)
-        // Le carte senza numero trovate da una ricerca e non più indicate dal catalogo (doppioni, set tolti) escono dalla collezione.
-        // Solo se la ricerca non ha avuto errori, altrimenti una rete assente le farebbe sembrare sparite.
-        if (errors == 0) {
-            val stale = dao.membershipsOf(collectionId).map { it.cardId }.filter { Ids.isUnnumberedCardmarket(it) && it !in refreshed }
+        // Le carte trovate da una ricerca attiva e non più indicate dai cataloghi (doppioni, set tolti, lingua corretta) escono dalla collezione.
+        // Solo se il sync non ha avuto errori, altrimenti una rete assente le farebbe sembrare sparite; restano quelle nascoste,
+        // aggiunte a mano o di ricerche disattivate.
+        if (errors == 0 && !cardmarketFailed) {
+            val active = queries.map { it.id }.toSet()
+            val stale = dao.membershipsOf(collectionId).filter { it.queryId in active && !it.hidden && it.cardId !in refreshed }.map { it.cardId }
             if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
         }
         errors += refreshOtherCards(collectionId, refreshed, limiter, setCache, progress)
@@ -712,9 +715,10 @@ class CatalogRepository(
      * @param index Int - posizione della ricerca.
      * @param total Int - numero di ricerche.
      * @param known MutableCollection<String> - riceve gli id TCGdex delle carte già note a TCGdex.
+     * @param onFailure () -> Unit - chiamata se la ricerca fallisce, per non togliere dalla collezione carte che il catalogo non ha potuto confermare.
      * @return List<CatalogCard> - carte trovate, vuoto in caso di errore.
      */
-    private suspend fun cardmarketCards(language: Language, pattern: String, progress: suspend (SyncProgress) -> Unit, index: Int, total: Int, resolver: CardNumberResolver?, known: MutableCollection<String>): List<CatalogCard> =
+    private suspend fun cardmarketCards(language: Language, pattern: String, progress: suspend (SyncProgress) -> Unit, index: Int, total: Int, resolver: CardNumberResolver?, known: MutableCollection<String>, onFailure: () -> Unit): List<CatalogCard> =
         try {
             cardmarketTerms(pattern).flatMap { term ->
                 cardmarket.find(
@@ -728,6 +732,7 @@ class CatalogRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            onFailure()
             emptyList()
         }
 
