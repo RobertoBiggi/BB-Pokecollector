@@ -67,6 +67,47 @@ class SetCodeAliasesTest {
     }
 
     @Test
+    fun `la sigla stampata vale anche quando Cardmarket ne usa un'altra`() {
+        // Sigle di TCGdex (abbreviation.official) diverse da quelle dell'elenco Cardmarket/CardTrader.
+        val sets = listOf(
+            SetBriefDto("swsh10", "Astral Radiance"), SetBriefDto("swsh10tg", "Astral Radiance Trainer Gallery"),
+            SetBriefDto("swsh11", "Lost Origin"), SetBriefDto("sm4", "Crimson Invasion"), SetBriefDto("hgss1", "HeartGold SoulSilver"),
+            SetBriefDto("pl4", "Arceus"), SetBriefDto("pop5", "POP Series 5"), SetBriefDto("base5", "Team Rocket"),
+            SetBriefDto("ex7", "Team Rocket Returns"), SetBriefDto("ecard1", "Expedition Base Set"),
+        )
+        fun ids(token: String) = aliases.setsFor(token, Language.EN, sets).map { it.id }
+        assertEquals(listOf("swsh10", "swsh10tg"), ids("ASR"))
+        assertEquals(listOf("swsh10", "swsh10tg"), ids("astr"))
+        assertEquals(listOf("swsh11"), ids("LOR"))
+        assertEquals(listOf("swsh11"), ids("lorg"))
+        assertEquals(listOf("sm4"), ids("CIN"))
+        assertEquals(listOf("hgss1"), ids("HS"))
+        assertEquals(listOf("pl4"), ids("AR"))
+        assertEquals(listOf("pop5"), ids("P5"))
+        assertEquals(listOf("pop5"), ids("pop5"))
+        // "TR" è Team Rocket Returns sulla carta e Team Rocket su Cardmarket: si cerca in entrambi.
+        assertEquals(listOf("base5", "ex7"), ids("TR"))
+        assertEquals(listOf("base5"), ids("RO"))
+        // "EX" è stampato su Expedition, ma è una parola dei nomi delle carte.
+        assertEquals(emptyList<String>(), ids("EX"))
+        assertEquals(listOf("asr", "astr"), aliases.codesOf(Language.EN, "swsh10", "Astral Radiance"))
+        assertEquals(listOf("dx"), aliases.codesOf(Language.EN, "ex8", "Deoxys"))
+    }
+
+    @Test
+    fun `la sigla stampata dei set europei non vale per i cataloghi asiatici`() {
+        assertNull(aliases.printedCodeOf(Language.JA, "swsh10"))
+        assertEquals("asr", aliases.printedCodeOf(Language.EN, "swsh10"))
+        assertEquals("asr", aliases.printedCodeOf(Language.IT, "swsh10"))
+    }
+
+    @Test
+    fun `la tabella delle sigle stampate scarta le righe malformate`() {
+        val parsed = SetCodeAliases.parsePrintedCodes(listOf("swsh10\tASR", "solo-id", "\tASR", "x\t", "y\t" + "A".repeat(40)))
+        assertEquals(mapOf("swsh10" to "ASR"), parsed)
+    }
+
+    @Test
     fun `un set che l'elenco non conosce non ha sigla`() {
         assertNull(aliases.codeOf(Language.EN, "zz1", "Set Inventato"))
     }

@@ -65,17 +65,16 @@ import com.robertobiggi.cardcollection.ui.common.SlotBadge
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 
 /**
- * Confronta la ricerca con il codice della carta scritto con l'id TCGdex o con la sigla Cardmarket del set,
+ * Confronta la ricerca con il codice della carta scritto con l'id TCGdex, la sigla stampata o la sigla Cardmarket del set,
  * es. "ex8 107" o "dx 107" per Rayquaza ☆ di EX Deoxys (codice stampato "107/107").
  * @param c CardUi - carta.
  * @param q String - ricerca già in minuscolo.
- * @return Boolean - true se la ricerca è contenuta in uno dei due codici.
+ * @return Boolean - true se la ricerca è contenuta in uno dei codici.
  */
 private fun matchesSetAlias(c: CardUi, q: String): Boolean {
     val number = c.card.printedNumber.ifEmpty { c.card.localId }
     if ("${c.card.setId} $number".lowercase().contains(q)) return true
-    val code = SetCodeAliases.bundled.codeOf(c.language, c.card.setId, c.card.setName) ?: return false
-    return "$code $number".contains(q)
+    return SetCodeAliases.bundled.codesOf(c.language, c.card.setId, c.card.setName).any { "$it $number".contains(q) }
 }
 
 /**
