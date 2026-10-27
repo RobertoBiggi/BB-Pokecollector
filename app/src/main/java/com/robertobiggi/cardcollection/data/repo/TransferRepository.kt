@@ -201,8 +201,11 @@ class TransferRepository(
         for (c in imported.cards) {
             if (c.imageLow == null && c.imageHigh == null) continue
             val current = catalogDao.getCard(c.card.id) ?: continue
-            val low = current.imageLowPath ?: c.imageLow?.let { images.write(c.card.id, ImageStore.Quality.LOW, it) }
-            val high = current.imageHighPath ?: c.imageHigh?.let { images.write(c.card.id, ImageStore.Quality.HIGH, it) }
+            // Un percorso senza file (database ripristinato dal backup Android, che non salva le immagini) vale come immagine mancante.
+            val currentLow = current.imageLowPath?.takeIf { withContext(Dispatchers.IO) { images.isSaved(it) } }
+            val currentHigh = current.imageHighPath?.takeIf { withContext(Dispatchers.IO) { images.isSaved(it) } }
+            val low = currentLow ?: c.imageLow?.let { images.write(c.card.id, ImageStore.Quality.LOW, it) }
+            val high = currentHigh ?: c.imageHigh?.let { images.write(c.card.id, ImageStore.Quality.HIGH, it) }
             if (low != current.imageLowPath || high != current.imageHighPath) {
                 catalogDao.setImagePaths(c.card.id, low, high)
                 count++

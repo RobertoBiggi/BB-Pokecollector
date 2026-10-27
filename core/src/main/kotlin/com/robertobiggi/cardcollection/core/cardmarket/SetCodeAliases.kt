@@ -81,16 +81,18 @@ class SetCodeAliases(private val expansions: List<CtExpansionDto>, private val p
     }
 
     /**
-     * Set indicati da una parola: prima quelli con quell'id TCGdex, altrimenti quelli con quella sigla stampata o Cardmarket
-     * (possono essere più d'uno: "TR" è Team Rocket Returns sulla carta e Team Rocket su Cardmarket).
+     * Set indicati da una parola: prima quello con quell'id TCGdex, poi quelli con quella sigla stampata o Cardmarket.
+     * Possono essere più d'uno, e decidono numero e nome della carta: "TR" è Team Rocket Returns sulla carta e Team Rocket
+     * su Cardmarket; "G1" è stampato su Gym Heroes ed è l'id TCGdex di Generations.
      * @param token String - parola cercata.
      * @param language Language - lingua del catalogo.
      * @param sets List<SetBriefDto> - set del catalogo TCGdex.
      * @return List<SetBriefDto> - set indicati, vuota se la parola non è l'id o una sigla di nessun set.
      */
-    fun setsFor(token: String, language: Language, sets: List<SetBriefDto>): List<SetBriefDto> =
-        sets.filter { token.equals(it.id, ignoreCase = true) }
-            .ifEmpty { sets.filter { matches(token, language, it.id, it.name) } }
+    fun setsFor(token: String, language: Language, sets: List<SetBriefDto>): List<SetBriefDto> {
+        val byId = sets.filter { token.equals(it.id, ignoreCase = true) }
+        return byId + sets.filter { it !in byId && matches(token, language, it.id, it.name) }
+    }
 
     companion object {
         /** Sigle degli elenchi inclusi nell'app, con la cache condivisa da ricerca, scelta dei set e filtro della collezione. */
