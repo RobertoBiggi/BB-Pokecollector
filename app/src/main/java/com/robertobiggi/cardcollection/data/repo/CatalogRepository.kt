@@ -32,6 +32,7 @@ import com.robertobiggi.cardcollection.core.tcgdex.CardDto
 import com.robertobiggi.cardcollection.core.tcgdex.SetDto
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import com.robertobiggi.cardcollection.core.validation.Validators
+import com.robertobiggi.cardcollection.data.image.ImagePaths
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -218,6 +219,7 @@ class CatalogRepository(
             if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
         }
         errors += refreshOtherCards(collectionId, refreshed, limiter, setCache, progress)
+        forgetMissingImageFiles()
         val imagesSaved = downloadMissingImages(progress)
         if (errors == 0 || saved > 0) settings.setLastCatalogSync(System.currentTimeMillis())
         return SyncResult(saved, imagesSaved, errors, emptySets)
@@ -693,11 +695,27 @@ class CatalogRepository(
             val low = card.imageLowPath ?: images.ensure(card.id, url, ImageStore.Quality.LOW)
             val high = card.imageHighPath ?: images.ensure(card.id, url, ImageStore.Quality.HIGH)
             if (low != card.imageLowPath || high != card.imageHighPath) {
-                dao.setImagePaths(card.id, low, high)
+                // Solo i percorsi mancanti: un altro lavoro (immagine scelta a mano, CardTrader) può averne salvato uno nel frattempo.
+                dao.fillImagePaths(card.id, low, high)
                 count++
             }
         }
         return count
+    }
+
+    /**
+     * Dimentica i percorsi d'immagine il cui file non c'è più, così [downloadMissingImages] (e le immagini CardTrader) le
+     * riscaricano. Succede dopo una reinstallazione: il backup Android ripristina il database ma non le immagini.
+     * @return Int - numero di carte con almeno un percorso dimenticato.
+     */
+    private suspend fun forgetMissingImageFiles(): Int = withContext(Dispatchers.IO) {
+        var forgotten = 0
+        for (card in dao.cardsWithImagePaths()) {
+            val missing = ImagePaths.missing(card.imageLowPath, card.imageHighPath, images::isSaved)
+            missing.forEach { dao.forgetImagePath(card.id, it) }
+            if (missing.isNotEmpty()) forgotten++
+        }
+        forgotten
     }
 
     /**

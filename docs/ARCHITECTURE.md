@@ -172,9 +172,11 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
    2. dettaglio di ogni carta e del suo set (con cache);
    3. filtro delle carte da escludere;
    4. salvataggio di carta e varianti in una transazione;
-   5. download delle immagini mancanti.
+   5. download delle immagini mancanti. Prima si dimenticano i percorsi il cui file non c'è più (`ImagePaths.missing`, `ImageStore.isSaved`): il backup Android ripristina il database ma non le immagini, e dopo una reinstallazione la griglia mostrava il segnaposto per immagini che il sync credeva già scaricate. I percorsi nuovi si scrivono solo dove mancano (`fillImagePaths`).
 
    Tra due richieste passano almeno 250 ms; sul 429 l'app aspetta e riprova una volta.
+
+   **Lavori in parallelo:** sync, aggiornamento prezzi e collegamento a CardTrader (che parte da solo all'apertura) possono girare insieme. Chi completa un dato di una carta aggiorna solo quella colonna (`fillDexId`, `fillIllustrator`, `fillDetails`, `clearCardTraderImage` con le condizioni lette dal database), mai la riga intera da una copia letta prima: riscriverla cancellava i percorsi delle immagini salvati nel frattempo dal sync, lasciando il file sul disco.
 2. **Azioni sulla carta (dettaglio):**
    - *Aggiorna prezzo*: `PriceRepository.checkCard` interroga la stessa catena (rate limiter e circuit breaker compresi) per tutte le varianti della carta, senza registrare un run.
    - *Scarica immagine*: riscarica il dettaglio da TCGdex (l'immagine può essere arrivata dopo) e salva low/high; sostituisce l'eventuale immagine manuale.
