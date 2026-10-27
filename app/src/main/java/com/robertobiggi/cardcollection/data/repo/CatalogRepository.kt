@@ -65,9 +65,9 @@ data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int
  * @property name nome del set.
  * @property cards carte dichiarate, se note.
  * @property fromCardmarket true per i set che TCGdex non elenca, presi dall'elenco Cardmarket/CardTrader.
- * @property code sigla Cardmarket o stampata, se diversa dall'id (es. "dx" per "ex8"), per cercare il set anche così.
+ * @property codes sigle stampate o Cardmarket diverse dall'id (es. "dx" per "ex8", "asr" e "astr" per "swsh10"), per cercare il set anche così.
  */
-data class SetChoice(val id: String, val name: String, val cards: Int?, val fromCardmarket: Boolean, val code: String? = null)
+data class SetChoice(val id: String, val name: String, val cards: Int?, val fromCardmarket: Boolean, val codes: List<String> = emptyList())
 
 /** Esito della lettura dell'elenco dei set. */
 sealed interface SetListResult {
@@ -410,14 +410,14 @@ class CatalogRepository(
         // Le sigle si abbinano confrontando i nomi con tutto l'elenco Cardmarket: fuori dal thread principale.
         val fromTcgdex = withContext(Dispatchers.Default) {
             sets.filter { Validators.isValidRemoteId(it.id) && !CatalogMapper.isDigitalOnlySet(it) }.map {
-                val code = SetCodeAliases.bundled.codeOf(language, it.id, it.name)?.takeUnless { c -> c.equals(it.id, ignoreCase = true) }
-                SetChoice(it.id, it.name, it.cardCount?.total ?: it.cardCount?.official, fromCardmarket = false, code = code)
+                val codes = SetCodeAliases.bundled.codesOf(language, it.id, it.name)
+                SetChoice(it.id, it.name, it.cardCount?.total ?: it.cardCount?.official, fromCardmarket = false, codes = codes)
             }
         }
         val missing = cardmarket.extraSetsFor(language).filter { it.setId !in known && Validators.isValidRemoteId(it.setId) }
             .map {
-                val code = it.setCode?.takeUnless { c -> c.isBlank() || c.equals(it.setId, ignoreCase = true) }
-                SetChoice(it.setId, it.name, it.numbers.size.takeIf { n -> n > 0 }, fromCardmarket = true, code = code)
+                val codes = listOfNotNull(it.setCode?.takeUnless { c -> c.isBlank() || c.equals(it.setId, ignoreCase = true) })
+                SetChoice(it.setId, it.name, it.numbers.size.takeIf { n -> n > 0 }, fromCardmarket = true, codes = codes)
             }
         return SetListResult.Found((fromTcgdex + missing).distinctBy { it.id })
     }

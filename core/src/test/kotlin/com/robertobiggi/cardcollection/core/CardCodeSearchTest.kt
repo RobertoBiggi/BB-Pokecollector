@@ -36,7 +36,10 @@ class CardCodeSearchTest {
             {"id":"me02","name":"Phantasmal Flames","cardCount":{"official":94,"total":130}},
             {"id":"sv01","name":"Scarlet & Violet","cardCount":{"official":198,"total":258}},
             {"id":"ex8","name":"Deoxys","cardCount":{"official":107,"total":108}},
-            {"id":"ecard1","name":"Expedition Base Set","cardCount":{"official":165,"total":165}}]""",
+            {"id":"ecard1","name":"Expedition Base Set","cardCount":{"official":165,"total":165}},
+            {"id":"swsh10","name":"Astral Radiance","cardCount":{"official":189,"total":216}}]""",
+        "/v2/en/sets/swsh10" to """{"id":"swsh10","name":"Astral Radiance","cardCount":{"official":189,"total":216},
+            "cards":[{"id":"swsh10-107","localId":"107","name":"Origin Forme Dialga"}]}""",
         "/v2/en/sets/ex8" to """{"id":"ex8","name":"Deoxys","cardCount":{"official":107,"total":108},
             "cards":[{"id":"ex8-102","localId":"102","name":"Rayquaza ex"},{"id":"ex8-107","localId":"107","name":"Rayquaza ☆"}]}""",
         "/v2/en/cards?localId=102" to """[{"id":"ex8-102","localId":"102","name":"Rayquaza ex"},
@@ -112,6 +115,13 @@ class CardCodeSearchTest {
         assertEquals(listOf("ex8-107"), CardCodeSearch.find(client, Language.EN, CardCodeSearch.parse("DX 107/107")!!).map { it.id })
         assertEquals(listOf("ex8-107"), CardCodeSearch.find(client, Language.EN, CardCodeSearch.parse("ex8 107")!!).map { it.id })
         assertEquals(listOf("ex8-107"), CardCodeSearch.find(client, Language.EN, CardCodeSearch.parse("dx-107")!!).map { it.id })
+    }
+
+    @Test
+    fun `il set si indica anche con la sigla stampata quando Cardmarket ne usa un'altra`() = runTest {
+        // Astral Radiance: "ASR" sulla carta, "astr" su CardTrader, "swsh10" su TCGdex.
+        assertEquals(listOf("swsh10-107"), CardCodeSearch.find(client, Language.EN, CardCodeSearch.parse("ASR 107/189")!!).map { it.id })
+        assertEquals(listOf("swsh10-107"), CardCodeSearch.find(client, Language.EN, CardCodeSearch.parse("astr 107")!!).map { it.id })
     }
 
     @Test

@@ -25,7 +25,7 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - name: Risposta API
         if: github.event_name == 'workflow_dispatch'
@@ -49,10 +49,9 @@ jobs:
         if: github.event_name == 'push'
         run: |
           set -uo pipefail
-          # Elenco dei set inglesi con sigla stampata e numero di carte, per confrontarli con le sigle Cardmarket.
-          curl -sS --max-time 60 https://api.tcgdex.net/v2/en/sets | jq -r '.[].id' > en.txt
-          wc -l en.txt
-          xargs -P 8 -I{} sh -c 'curl -sS --max-time 60 "https://api.tcgdex.net/v2/en/sets/{}" | jq -r "[\"EN\", .id, .name, (.abbreviation.official // \"\"), (.abbreviation.localized // \"\"), (.cardCount.official // \"\" | tostring), (.serie.id // \"\"), (.logo // \"\")] | @tsv"' < en.txt | sort > en-details.tsv
-          wc -l en-details.tsv
-          cat en-details.tsv
-          curl -sS --max-time 60 https://api.tcgdex.net/v2/ja/sets | jq -r '.[] | ["JA", .id, .name, (.cardCount.official // "" | tostring)] | @tsv'
+          for url in "https://api.tcgdex.net/v2/en/cards/me01-046"; do
+            echo "===== $url"
+            curl -sS --max-time 60 -o body.json -w "HTTP %{http_code} %{time_total}s\n" "$url" || echo "errore curl"
+            jq -c . body.json 2>/dev/null | head -c 3000
+            echo
+          done
