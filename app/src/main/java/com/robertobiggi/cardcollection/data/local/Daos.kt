@@ -197,6 +197,63 @@ interface CatalogDao {
     suspend fun setImagePaths(id: String, low: String?, high: String?)
 
     /**
+     * Completa i percorsi delle immagini mancanti senza toccare quelli già salvati (anche da un altro lavoro nel frattempo).
+     * @param id String - id della riga.
+     * @param low String? - percorso dell'immagine piccola appena scaricata.
+     * @param high String? - percorso dell'immagine grande appena scaricata.
+     * @return Unit
+     */
+    @Query("UPDATE card SET imageLowPath = COALESCE(imageLowPath, :low), imageHighPath = COALESCE(imageHighPath, :high) WHERE id = :id")
+    suspend fun fillImagePaths(id: String, low: String?, high: String?)
+
+    /**
+     * Dimentica un percorso d'immagine il cui file non esiste più, solo se è ancora quello salvato.
+     * @param id String - id della riga.
+     * @param path String - percorso da togliere.
+     * @return Unit
+     */
+    @Query(
+        "UPDATE card SET imageLowPath = CASE WHEN imageLowPath = :path THEN NULL ELSE imageLowPath END, " +
+            "imageHighPath = CASE WHEN imageHighPath = :path THEN NULL ELSE imageHighPath END WHERE id = :id",
+    )
+    suspend fun forgetImagePath(id: String, path: String)
+
+    /**
+     * Elenca le carte con almeno un percorso d'immagine salvato.
+     * @return List<CardEntity> - carte da controllare.
+     */
+    @Query("SELECT * FROM card WHERE imageLowPath IS NOT NULL OR imageHighPath IS NOT NULL")
+    suspend fun cardsWithImagePaths(): List<CardEntity>
+
+    /**
+     * Toglie l'immagine presa da CardTrader quando il blueprint cambia, solo se la carta non ha un'immagine TCGdex
+     * né una scelta a mano (letto al momento, non da una copia della carta che potrebbe essere vecchia).
+     * @param id String - id della riga.
+     * @return Unit
+     */
+    @Query("UPDATE card SET imageLowPath = NULL, imageHighPath = NULL WHERE id = :id AND imageUrl IS NULL AND (imageHighPath IS NULL OR imageHighPath NOT LIKE '%-manual-%')")
+    suspend fun clearCardTraderImage(id: String)
+
+    /**
+     * Imposta l'illustratore di una carta solo se non è ancora noto.
+     * @param id String - id della riga.
+     * @param illustrator String - illustratore.
+     * @return Unit
+     */
+    @Query("UPDATE card SET illustrator = :illustrator WHERE id = :id AND illustrator IS NULL")
+    suspend fun fillIllustrator(id: String, illustrator: String)
+
+    /**
+     * Completa rarità e numero stampato di una carta solo dove mancano.
+     * @param id String - id della riga.
+     * @param rarity String? - rarità trovata.
+     * @param printedNumber String - numero stampato trovato (vuoto se non c'è).
+     * @return Unit
+     */
+    @Query("UPDATE card SET rarity = COALESCE(rarity, :rarity), printedNumber = CASE WHEN printedNumber = '' THEN :printedNumber ELSE printedNumber END WHERE id = :id")
+    suspend fun fillDetails(id: String, rarity: String?, printedNumber: String)
+
+    /**
      * Imposta il numero del Pokédex di una carta solo se non è ancora noto.
      * @param id String - id della riga.
      * @param dexId Int - numero del Pokédex.

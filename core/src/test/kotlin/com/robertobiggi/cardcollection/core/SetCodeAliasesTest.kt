@@ -102,6 +102,22 @@ class SetCodeAliasesTest {
     }
 
     @Test
+    fun `ogni sigla della tabella stampata trova il suo set`() {
+        // Tutta la tabella inclusa nell'app (sigle TCGdex del 27/10/2026): ogni sigla deve portare al suo set,
+        // tranne "EX" (Expedition) che è una parola dei nomi delle carte.
+        val stream = SetCodeAliases::class.java.getResourceAsStream("tcgdex-printed-codes.tsv")!!
+        val table = SetCodeAliases.parsePrintedCodes(stream.bufferedReader(Charsets.UTF_8).readLines())
+        assertTrue(table.size >= 180, "tabella troppo corta: ${table.size}")
+        val sets = table.keys.map { SetBriefDto(it, "") }
+        val notFound = table.filter { (id, code) -> code != "EX" && id !in aliases.setsFor(code, Language.EN, sets).map { it.id } }
+        assertEquals(emptyMap<String, String>(), notFound)
+        assertEquals(listOf("ex8"), aliases.setsFor("DX", Language.EN, sets).map { it.id })
+        assertEquals(listOf("sv03.5"), aliases.setsFor("MEW", Language.EN, sets).map { it.id })
+        // "G1": id TCGdex di Generations e sigla stampata di Gym Heroes, si cerca in entrambi.
+        assertEquals(listOf("g1", "gym1"), aliases.setsFor("G1", Language.EN, sets).map { it.id })
+    }
+
+    @Test
     fun `la tabella delle sigle stampate scarta le righe malformate`() {
         val parsed = SetCodeAliases.parsePrintedCodes(listOf("swsh10\tASR", "solo-id", "\tASR", "x\t", "y\t" + "A".repeat(40)))
         assertEquals(mapOf("swsh10" to "ASR"), parsed)
