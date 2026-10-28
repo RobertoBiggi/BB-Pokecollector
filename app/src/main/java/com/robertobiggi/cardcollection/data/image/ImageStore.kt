@@ -214,6 +214,22 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     fun isManual(path: String?): Boolean = path != null && File(path).name.contains(MANUAL_MARKER)
 
     /**
+     * Controlla che un percorso salvato nel database corrisponda davvero a un'immagine sul disco.
+     * Da chiamare fuori dal thread principale (accede al disco).
+     * @param path String? - percorso assoluto salvato nel database.
+     * @return Boolean - true se il file esiste, non è vuoto e sta nella cartella delle immagini dell'app.
+     */
+    fun isSaved(path: String?): Boolean {
+        if (path == null) return false
+        val file = File(path)
+        return try {
+            file.canonicalPath.startsWith(rootPath) && file.isFile && file.length() > 0
+        } catch (e: IOException) {
+            false
+        }
+    }
+
+    /**
      * Legge un'immagine salvata, solo se si trova nella cartella delle immagini dell'app.
      * @param path String? - percorso assoluto salvato nel database.
      * @return ByteArray? - contenuto del file, oppure null se assente, fuori cartella o troppo grande.
