@@ -169,9 +169,6 @@ fun jobProgressText(state: JobState, prices: Boolean): String {
         when (PriceStep.entries.firstOrNull { it.name == state.phase }) {
             PriceStep.DOWNLOAD_GUIDE -> return stringResource(R.string.job_download_guide)
             PriceStep.READ_GUIDE -> return stringResource(R.string.job_read_guide)
-            PriceStep.DOWNLOAD_CATALOG -> return stringResource(R.string.job_download_catalog)
-            PriceStep.READ_CATALOG -> return stringResource(R.string.job_read_catalog)
-            PriceStep.LOAD_CARDTRADER -> return stringResource(R.string.job_load_cardtrader)
             null -> Unit
         }
     }
@@ -185,9 +182,6 @@ fun jobProgressText(state: JobState, prices: Boolean): String {
         SyncPhase.SEARCH -> stringResource(R.string.job_search, label)
         SyncPhase.IMAGES -> stringResource(R.string.job_images, state.done + 1, state.total, label)
         SyncPhase.IMAGES_CARDTRADER -> stringResource(R.string.job_images_cardtrader, state.done + 1, state.total, label)
-        SyncPhase.CARDMARKET -> stringResource(R.string.job_search_cardmarket, label)
-        SyncPhase.CARDMARKET_DOWNLOAD -> stringResource(R.string.job_download_catalog)
-        SyncPhase.CARDMARKET_READ -> stringResource(R.string.job_read_catalog)
         else -> stringResource(R.string.job_item, label, state.done + 1, state.total)
     }
 }
@@ -203,6 +197,7 @@ fun catalogResultText(state: JobState?): String? {
     val cards = state.output[WorkKeys.CARDS] as? Int ?: 0
     val images = state.output[WorkKeys.IMAGES] as? Int ?: 0
     val errors = state.output[WorkKeys.ERRORS] as? Int ?: 0
+    if (state.output[WorkKeys.NO_CATALOG] == true) return stringResource(R.string.msg_no_catalog)
     val emptySets = state.output[WorkKeys.EMPTY_SETS] as? Int ?: 0
     val done = if (errors > 0) stringResource(R.string.catalog_done_errors, cards, images, errors) else stringResource(R.string.catalog_done, cards, images)
     return if (emptySets > 0) done + " " + stringResource(R.string.catalog_empty_sets, emptySets) else done

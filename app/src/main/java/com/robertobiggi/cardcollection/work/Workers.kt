@@ -20,6 +20,7 @@ object WorkKeys {
     const val IMAGES = "images"
     const val ERRORS = "errors"
     const val EMPTY_SETS = "emptySets"
+    const val NO_CATALOG = "noCatalog"
     const val OK = "ok"
     const val FALLBACK = "fallback"
     const val FAILED = "failed"
@@ -56,13 +57,12 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
         val result = container.catalog.sync(collectionId) { p ->
             setProgress(workDataOf(WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
         }
-        // Prima i blueprint (che correggono gli abbinamenti sbagliati e tolgono l'immagine presa per errore), poi le immagini mancanti.
-        container.prices.fillCardTraderBlueprints()
+        // Le immagini che TCGdex non ha si prendono da CardTrader (se c'è il token).
         val cardTraderImages = container.prices.fillImagesFromCardTrader { p ->
             setProgress(workDataOf(WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
         }
-        val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + cardTraderImages, WorkKeys.ERRORS to result.errors, WorkKeys.EMPTY_SETS to result.emptySets)
-        return if (result.cardsSaved == 0 && result.errors > 0) Result.failure(data) else Result.success(data)
+        val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + cardTraderImages, WorkKeys.ERRORS to result.errors, WorkKeys.EMPTY_SETS to result.emptySets, WorkKeys.NO_CATALOG to result.noCatalog)
+        return if (result.noCatalog || (result.cardsSaved == 0 && result.errors > 0)) Result.failure(data) else Result.success(data)
     }
 
     /**
@@ -77,19 +77,6 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
 
     private companion object {
         const val NOTIFICATION_ID = 1001
-    }
-}
-
-/** Completa in silenzio le collezioni già esistenti con il link diretto a CardTrader. Parte da solo all'apertura dell'app. */
-class CardTraderLinksWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-
-    /**
-     * Cerca il blueprint CardTrader delle carte che non ce l'hanno.
-     * @return Result - sempre successo: se qualcosa non va, riprova alla prossima apertura.
-     */
-    override suspend fun doWork(): Result {
-        (applicationContext as CardCollectionApp).container.prices.fillCardTraderBlueprints()
-        return Result.success()
     }
 }
 

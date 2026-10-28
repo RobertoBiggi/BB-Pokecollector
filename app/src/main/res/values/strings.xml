@@ -30,7 +30,7 @@
     <string name="lang_zh_tw">Chinese (Traditional)</string>
     <string name="lang_th">Thai</string>
     <string name="lang_id">Indonesian</string>
-    <string name="lang_limited_hint">%1$s: limited data on TCGdex (few cards, almost no images or prices).</string>
+    <string name="lang_limited_hint">%1$s: limited data (few cards, almost no images or prices).</string>
     <string name="label_card_language">Card language</string>
     <string name="label_card_languages">Card languages</string>
     <string name="filter_all_languages">All languages</string>
@@ -94,20 +94,16 @@
     <string name="job_waiting">waiting for a connection…</string>
     <string name="job_starting">starting…</string>
     <string name="job_search">searching \"%1$s\"</string>
-    <string name="job_search_cardmarket">Cardmarket: searching \"%1$s\"</string>
     <string name="job_item" translatable="false">%1$s (%2$d/%3$d)</string>
     <string name="job_images">downloading image %1$d/%2$d · %3$s</string>
     <string name="job_images_cardtrader">CardTrader: downloading image %1$d/%2$d · %3$s</string>
     <string name="job_download_guide">downloading Cardmarket price list…</string>
-    <string name="job_download_catalog">downloading Cardmarket card catalog…</string>
     <string name="job_read_guide">reading Cardmarket price list…</string>
-    <string name="job_read_catalog">reading Cardmarket card catalog…</string>
-    <string name="job_load_cardtrader">loading CardTrader sets…</string>
     <string name="job_price_item" translatable="false">%1$s · %2$s</string>
     <string name="catalog_done">%1$d cards updated, %2$d images downloaded</string>
     <string name="catalog_done_errors">%1$d cards updated, %2$d images downloaded · %3$d problems</string>
     <string name="prices_done">%1$d prices fetched, %2$d after a retry, %3$d not found</string>
-    <string name="abort_source_paused">TCGdex blocked too many requests: try again later.</string>
+    <string name="abort_source_paused">Cardmarket blocked too many requests: try again later.</string>
     <string name="abort_offline">No connection: the prices already saved are still valid.</string>
     <string name="run_in_progress">In progress…</string>
     <string name="card_default_title">Card</string>
@@ -182,7 +178,7 @@
     <string name="search_tcgdex">Name or code, e.g. M3 117/080 or DX 107</string>
     <string name="add_card_cd">Add %1$s</string>
     <string name="card_added_cd">Added: %1$s</string>
-    <string name="add_single_hint">Useful for cards that no search finds (e.g. promos or cards with a different name). You can type the code printed at the bottom left: set and number (M3 117/080), just the number (117/080) or the TCGdex id (M3-117). Extra words such as the rarity are ignored. Needs a connection.</string>
+    <string name="add_single_hint">Useful for cards that no search finds (e.g. promos or cards with a different name). You can type the code printed at the bottom left: set and number (M3 117/080), just the number (117/080) or the card id (M3-117). Extra words such as the rarity are ignored.</string>
     <string name="removed_cards">Removed cards (%1$d)</string>
     <string name="export_section">Export</string>
     <string name="export_section_text">Save this collection to a JSON file with cards, quantities and prices, with or without images. Import it from the collections list, even on another phone and offline.</string>
@@ -195,8 +191,6 @@
     <string name="settings_first_edition_text">When off, 1st Edition versions do not count towards what you are missing or your totals. They stay on the card and you can still mark them as wanted; copies you own are always counted.</string>
     <string name="settings_sources">Price sources</string>
     <string name="settings_sources_text">Choose which prices to show in the app. Hidden prices do not appear on cards, in grids or in totals, but are still downloaded, so turning them back on brings them back. The app never contacts cardmarket.com, so there are no anti-bot blocks.</string>
-    <string name="settings_paused">TCGdex paused until %1$s after too many blocks.</string>
-    <string name="settings_available">TCGdex available. If it blocks 3 times in a row, the app pauses it for 6 hours.</string>
     <string name="settings_last_catalog">Last catalog download: %1$s</string>
     <string name="settings_never_catalog">Catalog never downloaded</string>
     <string name="settings_cardtrader">CardTrader</string>
@@ -220,7 +214,7 @@
     <string name="msg_adding_card">Adding %1$s…</string>
     <string name="msg_card_added">%1$s added to the collection.</string>
     <string name="msg_card_not_allowed">This card can\'t be added.</string>
-    <string name="msg_network_error">Can\'t reach TCGdex: check the connection.</string>
+    <string name="msg_network_error">Can\'t reach the server: check the connection.</string>
     <string name="msg_card_removed">Card removed from the collection. You can restore it from Manage.</string>
     <string name="err_name_empty">Enter a name for the collection.</string>
     <string name="err_query_invalid">Use 2 to 40 characters: letters, digits, spaces, apostrophe, dot, hyphen or &amp;.</string>
@@ -244,12 +238,12 @@
     <string name="card_dialog_running">Working…</string>
     <string name="action_ok">OK</string>
     <string name="action_pick_image">Choose image</string>
-    <string name="card_actions_hint">The price is updated for this card only. If TCGdex has no image (common for Japanese cards) the app looks for it on TCGplayer; otherwise you can pick one from your gallery, which stays until you download the official one.</string>
+    <string name="card_actions_hint">The price is updated for this card only. If the card has no official image (common for Japanese cards) the app looks for it on CardTrader; otherwise you can pick one from your gallery, which stays until you download the official one.</string>
     <string name="msg_card_price_updated">Prices fetched (%1$d variants).</string>
     <string name="msg_card_price_none">No price found for this card.</string>
     <string name="msg_image_downloaded">Image downloaded.</string>
     <string name="msg_image_saved">Image saved.</string>
-    <string name="msg_image_not_available">Neither TCGdex nor TCGplayer has an image for this card: you can choose one yourself.</string>
+    <string name="msg_image_not_available">No source has an image for this card: you can choose one yourself.</string>
     <string name="msg_image_invalid">Couldn\'t read the chosen image.</string>
     <string name="copies_short" translatable="false">×%1$d</string>
     <string name="source_imported">Imported</string>
@@ -262,7 +256,6 @@
     <string name="set_pick_title">Choose a set</string>
     <string name="set_pick_search">Set name or code (e.g. ex8 or DX)</string>
     <string name="set_pick_cards">%1$d cards</string>
-    <string name="set_pick_extra">not on TCGdex</string>
     <string name="set_pick_none">No sets found.</string>
     <string name="set_pick_button">Choose set…</string>
     <string name="set_pick_missing">Choose a set first.</string>
@@ -277,7 +270,7 @@
     <string name="add_set_title">Add a whole set</string>
     <string name="add_set">Add set</string>
     <string name="msg_set_added">Set %1$s added: downloading its cards.</string>
-    <string name="catalog_empty_sets">%1$d sets have no cards yet on TCGdex or in the missing sets list.</string>
+    <string name="catalog_empty_sets">%1$d sets have no cards in the card database.</string>
     <string name="action_retry">Retry</string>
     <string name="selected_count">%1$d selected</string>
     <string name="select_all">Select all</string>
@@ -285,4 +278,15 @@
     <string name="remove_selected_text">They leave the collection, and the sync will not add them back. You can restore them from Manage.</string>
     <string name="remove_selected_confirm">Remove</string>
     <string name="msg_cards_removed">%1$d cards removed from the collection. You can restore them from Manage.</string>
+    <string name="settings_catalog">Card database</string>
+    <string name="settings_catalog_text">All cards come from a database file (SQLite) downloaded once and kept on this phone: searches and collections work offline. Prices and images are still downloaded when you ask.</string>
+    <string name="settings_catalog_installed">Installed: generated on %1$s · languages: %2$s</string>
+    <string name="settings_catalog_missing">Not installed: download it to search and add cards.</string>
+    <string name="settings_catalog_url">Download address (HTTPS)</string>
+    <string name="settings_catalog_download">Download</string>
+    <string name="settings_catalog_update">Update</string>
+    <string name="msg_no_catalog">The card database is not installed: download it in Settings.</string>
+    <string name="msg_catalog_installed">Card database installed.</string>
+    <string name="msg_catalog_invalid_url">The address must start with https://</string>
+    <string name="msg_catalog_invalid_file">That file is not a card database this version of the app can read.</string>
 </resources>

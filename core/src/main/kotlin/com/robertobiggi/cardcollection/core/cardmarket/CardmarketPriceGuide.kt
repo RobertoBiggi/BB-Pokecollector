@@ -1,6 +1,6 @@
 package com.robertobiggi.cardcollection.core.cardmarket
 
-import com.robertobiggi.cardcollection.core.tcgdex.CardmarketPricingDto
+import com.robertobiggi.cardcollection.core.price.CardmarketPricingDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

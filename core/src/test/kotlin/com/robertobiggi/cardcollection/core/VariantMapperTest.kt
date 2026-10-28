@@ -4,7 +4,7 @@ import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.price.VariantMapper
 import com.robertobiggi.cardcollection.core.tcgdex.CardDto
-import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient.Companion.JSON
+import com.robertobiggi.cardcollection.core.net.Http.JSON
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test

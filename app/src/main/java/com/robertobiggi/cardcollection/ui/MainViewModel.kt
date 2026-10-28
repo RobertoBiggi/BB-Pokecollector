@@ -17,7 +17,10 @@ import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.SetListResult
 import com.robertobiggi.cardcollection.data.repo.SetChoice
 import com.robertobiggi.cardcollection.core.model.QueryKind
-import com.robertobiggi.cardcollection.core.tcgdex.CardBriefDto
+import com.robertobiggi.cardcollection.data.catalog.CardBrief
+import com.robertobiggi.cardcollection.data.settings.SettingsStore
+import com.robertobiggi.cardcollection.data.catalog.CatalogDownloadResult
+import com.robertobiggi.cardcollection.data.catalog.CatalogInfo
 import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
@@ -80,18 +83,21 @@ data class CollectionFilter(
  * @property language lingua dei set mostrati.
  * @property loading true mentre l'elenco si scarica.
  * @property sets set disponibili.
- * @property networkError true se TCGdex non è raggiungibile.
+ * @property noCatalog true se il database delle carte non è installato.
  */
 data class SetPickerState(
     val language: Language = Language.EN,
     val loading: Boolean = false,
     val sets: List<SetChoice> = emptyList(),
-    val networkError: Boolean = false,
+    val noCatalog: Boolean = false,
 )
+
+/** Scaricamento del database delle carte: byte letti e totali (null se il server non li dichiara). */
+data class CatalogDownload(val done: Long, val total: Long?)
 
 data class CardSearchState(
     val loading: Boolean = false,
-    val results: List<CardBriefDto> = emptyList(),
+    val results: List<CardBrief> = emptyList(),
     val language: Language = Language.EN,
     @StringRes val messageRes: Int? = null,
 )
@@ -129,7 +135,15 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val catalogJob: StateFlow<JobState?> = perCollection { container.work.catalogState(it) }.stateInVm(null)
     val priceJob: StateFlow<JobState?> = perCollection { container.work.priceState(it) }.stateInVm(null)
 
-    val tcgdexPausedUntil: StateFlow<Long> = container.settings.tcgdexPausedUntil.stateInVm(0L)
+    /** Database delle carte installato, null se manca. */
+    val catalogInfo: StateFlow<CatalogInfo?> = container.catalogStore.info
+
+    val catalogUrl: StateFlow<String> = container.settings.catalogUrl.stateInVm(SettingsStore.DEFAULT_CATALOG_URL)
+
+    private val _catalogDownload = MutableStateFlow<CatalogDownload?>(null)
+
+    /** Scaricamento del database delle carte in corso, null se non c'è. */
+    val catalogDownload: StateFlow<CatalogDownload?> = _catalogDownload.asStateFlow()
     val lastCatalogSync: StateFlow<Long> = container.settings.lastCatalogSync.stateInVm(0L)
     val cardTraderToken: StateFlow<String> = container.settings.cardTraderToken.stateInVm("")
     val countFirstEdition: StateFlow<Boolean> = container.settings.countFirstEdition.stateInVm(true)
@@ -252,6 +266,30 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
+     * Scarica (o aggiorna) il database delle carte dall'indirizzo indicato nelle impostazioni.
+     * @param url String - indirizzo HTTPS; se è diverso da quello salvato lo ricorda per i prossimi aggiornamenti.
+     * @return Unit
+     */
+    fun downloadCatalog(url: String) {
+        if (_catalogDownload.value != null) return
+        viewModelScope.launch {
+            val clean = url.trim()
+            _catalogDownload.value = CatalogDownload(0, null)
+            val result = container.catalogStore.download(clean) { done, total -> _catalogDownload.value = CatalogDownload(done, total) }
+            _catalogDownload.value = null
+            when (result) {
+                is CatalogDownloadResult.Installed -> {
+                    container.settings.setCatalogUrl(clean)
+                    say(R.string.msg_catalog_installed)
+                }
+                CatalogDownloadResult.InvalidUrl -> say(R.string.msg_catalog_invalid_url)
+                CatalogDownloadResult.NetworkError -> say(R.string.msg_network_error)
+                CatalogDownloadResult.InvalidFile -> say(R.string.msg_catalog_invalid_file)
+            }
+        }
+    }
+
+    /**
      * Avvia l'aggiornamento prezzi della collezione aperta.
      * @return Unit
      */
@@ -292,7 +330,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             _setPicker.value = when (val result = container.catalog.setChoices(language)) {
                 is SetListResult.Found -> SetPickerState(language = language, sets = result.sets)
-                SetListResult.NetworkError -> SetPickerState(language = language, networkError = true)
+                SetListResult.NoCatalog -> SetPickerState(language = language, noCatalog = true)
             }
         }
     }
@@ -566,7 +604,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Cerca su TCGdex le carte da aggiungere a mano.
+     * Cerca nel database delle carte quelle da aggiungere a mano.
      * @param language Language - lingua.
      * @param text String - testo da cercare.
      * @return Unit
@@ -581,17 +619,17 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                     messageRes = if (result.cards.isEmpty()) R.string.search_no_results else null,
                 )
                 SearchResult.InvalidQuery -> CardSearchState(language = language, messageRes = R.string.err_query_invalid)
-                SearchResult.NetworkError -> CardSearchState(language = language, messageRes = R.string.msg_network_error)
+                SearchResult.NoCatalog -> CardSearchState(language = language, messageRes = R.string.msg_no_catalog)
             }
         }
     }
 
     /**
      * Aggiunge alla collezione aperta una carta trovata con la ricerca.
-     * @param card CardBriefDto - carta scelta.
+     * @param card CardBrief - carta scelta.
      * @return Unit
      */
-    fun addSingleCard(card: CardBriefDto, onAdded: () -> Unit = {}) = withSelected { id ->
+    fun addSingleCard(card: CardBrief, onAdded: () -> Unit = {}) = withSelected { id ->
         say(R.string.msg_adding_card, card.name)
         when (val result = container.catalog.addSingleCard(id, _search.value.language, card.id)) {
             is AddCardResult.Added -> {
@@ -599,7 +637,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 say(R.string.msg_card_added, result.name)
             }
             AddCardResult.NotAllowed -> say(R.string.msg_card_not_allowed)
-            AddCardResult.NetworkError -> say(R.string.msg_network_error)
+            AddCardResult.NoCatalog -> say(R.string.msg_no_catalog)
         }
     }
 

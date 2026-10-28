@@ -4,7 +4,6 @@ import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
-import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
 
 /**
  * Richiesta di prezzo per una singola variante.
@@ -20,7 +19,6 @@ import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
  * @property setCode sigla stampata del set, se c'è.
  * @property localId numero della carta nel set (es. "075").
  * @property dexId numero del Pokédex nazionale, null per Allenatori ed Energie.
- * @property ordinal calcola, solo se serve, la posizione della carta senza Pokédex tra le carte Pokémon del set (vedi [SetOrdinal]).
  * @property cardTraderCondition condizione peggiore accettata per CardTrader (quella della variante), null = Near Mint.
  * @property cardmarketId id prodotto Cardmarket, se la carta viene dal catalogo Cardmarket: CardTrader la trova da questo, senza il numero.
  * @property cardmarketHint id prodotto Cardmarket indicato da TCGdex: serve solo ad abbinare la carta su CardTrader quando il numero non basta.
@@ -39,12 +37,12 @@ data class PriceRequest(
     val localId: String = "",
     val name: String = "",
     val dexId: Int? = null,
-    val ordinal: (suspend () -> SetOrdinal?)? = null,
     val cardTraderCondition: CtCondition? = null,
     val cardmarketId: Int? = null,
     val cardmarketHint: Int? = null,
     val printProductId: Int? = null,
     val printFinish: VariantType = VariantType.NORMAL,
+    val cardTraderBlueprintId: Int? = null,
 )
 
 /** Fonte di prezzi. Le implementazioni lanciano le eccezioni di [com.robertobiggi.cardcollection.core.net]. */
