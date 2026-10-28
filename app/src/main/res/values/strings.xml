@@ -257,6 +257,14 @@
     <string name="set_pick_search">Set name or code (e.g. ex8 or DX)</string>
     <string name="set_pick_cards">%1$d cards</string>
     <string name="set_pick_none">No sets found.</string>
+    <string name="collection_settings_title">Collection settings</string>
+    <string name="collection_settings_languages">Languages</string>
+    <string name="collection_settings_hint">A new language copies this collection\'s name searches into it and downloads those cards. Removing one takes its cards out of the collection; the copies you own are kept and come back if you add it again.</string>
+    <string name="collection_settings_no_names">This collection has no name searches to copy, so you can only remove languages. Sets belong to one language: add a set from Manage.</string>
+    <string name="collection_settings_added">After saving, the cards in %1$s are downloaded.</string>
+    <string name="collection_settings_remove_title">Remove languages?</string>
+    <string name="collection_settings_remove_text">The cards found in %1$s leave the collection. The copies you own are kept and come back if you add the language again.</string>
+    <string name="collection_settings_remove_confirm">Remove</string>
     <string name="set_sort_newest">Newest</string>
     <string name="set_sort_oldest">Oldest</string>
     <string name="set_sort_name">A–Z</string>

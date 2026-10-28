@@ -69,8 +69,10 @@ import coil3.compose.AsyncImage
 import com.robertobiggi.cardcollection.core.backup.ImageExport
 import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.data.repo.CollectionSettings
 import com.robertobiggi.cardcollection.data.repo.CollectionSummary
 import com.robertobiggi.cardcollection.ui.MainViewModel
+import com.robertobiggi.cardcollection.ui.common.CollectionSettingsDialog
 import com.robertobiggi.cardcollection.ui.common.ConfirmDialog
 import com.robertobiggi.cardcollection.ui.common.ExportDialog
 import com.robertobiggi.cardcollection.ui.common.Format
@@ -95,6 +97,8 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
     var renaming by remember { mutableStateOf<CollectionSummary?>(null) }
     var renameError by remember { mutableStateOf<InputError?>(null) }
     var deleting by remember { mutableStateOf<CollectionSummary?>(null) }
+    var settingsOf by remember { mutableStateOf<Pair<Long, CollectionSettings>?>(null) }
+    var settingsError by remember { mutableStateOf<InputError?>(null) }
     var exporting by remember { mutableStateOf<CollectionSummary?>(null) }
     var pendingExport by rememberSaveable { mutableStateOf<Pair<Long, String>?>(null) }
 
@@ -147,6 +151,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
                         showEur = visibility.cardmarket,
                         onClick = { onOpen(summary.collection.id) },
                         onRename = { renameError = null; renaming = summary },
+                        onSettings = { settingsError = null; vm.loadCollectionSettings(summary.collection.id) { loaded -> settingsOf = loaded?.let { summary.collection.id to it } } },
                         onExport = { exporting = summary },
                         onDelete = { deleting = summary },
                     )
@@ -189,6 +194,14 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
             onConfirm = { name -> vm.renameCollection(target.collection.id, name) { err -> if (err == null) renaming = null else renameError = err } },
         )
     }
+    settingsOf?.let { (id, current) ->
+        CollectionSettingsDialog(
+            settings = current,
+            error = settingsError?.let { stringResource(it.messageRes()) },
+            onDismiss = { settingsOf = null },
+            onSave = { name, languages -> vm.saveCollectionSettings(id, name, languages) { err -> if (err == null) settingsOf = null else settingsError = err } },
+        )
+    }
     deleting?.let { target ->
         ConfirmDialog(
             title = stringResource(R.string.delete_title, target.collection.name),
@@ -219,12 +232,13 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
  * @param showEur Boolean - false se i prezzi Cardmarket sono nascosti: il valore non viene mostrato.
  * @param onClick () -> Unit - apre la collezione.
  * @param onRename () -> Unit - avvia la rinomina.
+ * @param onSettings () -> Unit - apre le impostazioni (nome e lingue).
  * @param onExport () -> Unit - avvia l'export.
  * @param onDelete () -> Unit - avvia l'eliminazione.
  * @return Unit
  */
 @Composable
-private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick: () -> Unit, onRename: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
+private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick: () -> Unit, onRename: () -> Unit, onSettings: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val s = summary.stats
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
@@ -277,6 +291,7 @@ private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick:
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more_actions)) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.collection_settings_title)) }, onClick = { menu = false; onSettings() })
                     DropdownMenuItem(text = { Text(stringResource(R.string.action_rename)) }, onClick = { menu = false; onRename() })
                     DropdownMenuItem(text = { Text(stringResource(R.string.home_export_json)) }, onClick = { menu = false; onExport() })
                     DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { menu = false; onDelete() })
