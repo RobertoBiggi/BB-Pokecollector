@@ -42,7 +42,7 @@ WorkManager: CatalogSyncWorker, PriceCheckWorker (unici, espressi, avviati a man
 
 ## Fonte dati: database delle carte
 
-Le carte non si scaricano più da un'API: l'app legge un file SQLite (`cards.sqlite`) generato da `tools/gen_card_db.py` (vedi più sotto), che contiene già carte, set, varianti, i Pokémon di ogni carta e gli abbinamenti a Cardmarket e CardTrader.
+Le carte non si scaricano più da un'API: l'app legge un file SQLite (`cards.sqlite`) generato dal repository privato [Card-collector-db-gen](https://github.com/TheGaBr0/Card-collector-db-gen) (vedi più sotto), che contiene già carte, set, varianti, i Pokémon di ogni carta e gli abbinamenti a Cardmarket e CardTrader.
 
 - **Installazione:** da Impostazioni → Database delle carte si scarica da un indirizzo HTTPS (predefinito: l'ultima release del repository; modificabile). `CatalogStore` scarica in un file temporaneo, controlla `meta.schemaVersion` (deve coincidere con `CatalogDb.SCHEMA_VERSION` e `SCHEMA_VERSION` del generatore) e lo sostituisce solo se valido. Il file sta in `filesDir/catalog/`. Senza database l'app mostra un avviso e le ricerche non trovano nulla.
 - **Lettura:** `CatalogDb` apre il file in sola lettura con `android.database.sqlite`. Ricerca per nome = Pokémon (`PokemonNames.dexIdsMatching`, in ogni lingua) → `card_pokemon`; se il testo non è un Pokémon, per sottostringa del nome. Ricerca per codice (`CardCodeSearch.parse`): numero, totale e sigla/id del set. Collezione per set: tutte le carte del set.
@@ -122,15 +122,13 @@ I set EX inglesi (`ex1`…`ex16`) si abbinano a Cardmarket prima per "EX " + nom
 
 TCGdex a volte collega la carta speciale al prodotto Cardmarket della versione normale (es. ex8-107 "Rayquaza ☆" → prodotto 276425, il Rayquaza normale). Se i marcatori del prodotto indicato non coincidono con quelli della carta, `PriceRepository` scarta quell'id per l'abbinamento CardTrader e il prezzo Cardmarket che ne deriva, e tiene solo quello TCGplayer. Test di regressione: `SpecialCardNamesTest`.
 
-## Database di tutte le carte (`tools/gen_card_db.py`)
+## Database di tutte le carte (repository Card-collector-db-gen)
 
-Script Python (solo libreria standard) che per ogni Pokémon genera `tools/out/cards.sqlite` e il dump `d1-*.sql` per Cloudflare D1, senza immagini né prezzi. Ripete le regole dell'app: ricerca TCGdex per numero del Pokédex (più il nome, per le carte senza), esclusione di TCG Pocket, varianti (`CatalogMapper`), Poké Ball/Master Ball, stampe a parte, carte che TCGdex non ha prese dal catalogo Cardmarket e dai set extra, abbinamento CardTrader (`CardTraderMatcher`).
+Il generatore (`gen_card_db.py`, Python con sola libreria standard) non sta più in questo repository: vive in [Card-collector-db-gen](https://github.com/TheGaBr0/Card-collector-db-gen) (privato). Per ogni Pokémon produce `cards.sqlite` (e il dump `d1-*.sql` per Cloudflare D1), senza immagini né prezzi, ripetendo le regole dell'app (varianti, Poké Ball/Master Ball, stampe a parte, abbinamento Cardmarket e CardTrader).
 
-- Pensato per D1 (500 MB, letture a pagamento): circa 300 byte a carta, chiavi intere (`card.n`) nelle tabelle figlie, `WITHOUT ROWID`, indici parziali e solo quelli usati dalle letture (Pokémon → carte, set → carte, prodotto Cardmarket o blueprint CardTrader → carta, id testuale → carta). Nessuna lettura richiede una scansione.
-- `card`: i dati di Room senza immagini; set, serie, data e lingua stanno in `card_set` (via `s`), e l'id TCGdex è la parte di `id` dopo i due punti. `card_variant`: tipo come codice (vedi `enum_code`); l'id della variante di Room è `id carta|TIPO[|print]`. `card_pokemon` (anche più Pokémon per carta) e `pokemon`.
-- Corrispondenza tra fonti, in colonne di `card`: id TCGdex (nell'`id`), `cmProduct` + `cmHow` (prodotto Cardmarket e come è stato trovato), `cardTraderBlueprintId`; per le varianti, `card_variant.cardmarketId` e `cardTraderBlueprintId` (Poké Ball, Master Ball, shadowless, jumbo, timbri). Set ↔ espansioni in `card_set`.
-- `CARDTRADER_TOKEN` è facoltativo: senza, mancano i blueprint. Le risposte sono in cache (`tools/.cache`), quindi si può riprendere.
-- Esempi: `tools/gen_card_db.py --pokemon 303 --languages en,ja` (prova), `tools/gen_card_db.py --languages all --d1 NOME_DB` (tutto, con caricamento via `wrangler d1 execute --remote`, che sostituisce le tabelle).
+- **Pubblicazione:** il file si carica come asset della release con tag fisso `catalog` di questo repository (`gh release upload catalog cards.sqlite --clobber`); `--latest=false` alla creazione la tiene separata dalle release dell'APK. L'app lo scarica da `SettingsStore.DEFAULT_CATALOG_URL` (modificabile in Impostazioni).
+- **Formato:** l'app legge `meta.schemaVersion` e rifiuta i file con una versione diversa da `CatalogDb.SCHEMA_VERSION`, che deve restare uguale a `SCHEMA_VERSION` del generatore. Tabelle e colonne (`card`, `card_set`, `card_variant`, `card_pokemon`, `pokemon`, `meta`) sono descritte nel generatore.
+- **Dati condivisi:** `pokemon-names.tsv`, `cardmarket-expansions.tsv` e `cardmarket-ball-variants.tsv` esistono in due copie (qui in `core`, là in `data/`): se cambiano, vanno aggiornate in entrambi.
 
 ## Collezioni per set (set base e master set)
 

@@ -26,7 +26,7 @@ data class CatalogSet(val id: String, val name: String, val cards: Int, val decl
 data class CardBrief(val id: String, val localId: String, val name: String, val setName: String, val imageUrl: String?)
 
 /**
- * Lettura del database delle carte (`cards.sqlite`, generato da `tools/gen_card_db.py`), in sola lettura.
+ * Lettura del database delle carte (`cards.sqlite`, generato dal repository Card-collector-db-gen), in sola lettura.
  * Il file contiene le carte di tutti i Pokémon, già abbinate a Cardmarket e CardTrader: l'app non interroga più nessun catalogo remoto.
  * Un'istanza va chiusa con [close]; le query sono sincrone, quindi vanno chiamate fuori dal thread dell'interfaccia.
  */
@@ -183,7 +183,7 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
     override fun close() = db.close()
 
     companion object {
-        /** Versione del formato che l'app sa leggere (`meta.schemaVersion`, vedi `SCHEMA_VERSION` in `tools/gen_card_db.py`). */
+        /** Versione del formato che l'app sa leggere (`meta.schemaVersion`, vedi `SCHEMA_VERSION` in `gen_card_db.py` di Card-collector-db-gen). */
         const val SCHEMA_VERSION = 2
         private const val ORIGIN_TCGDEX = 0
         private const val SQL_CHUNK = 500
