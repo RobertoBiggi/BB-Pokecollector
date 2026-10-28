@@ -279,4 +279,10 @@
     <string name="msg_set_added">Set %1$s added: downloading its cards.</string>
     <string name="catalog_empty_sets">%1$d sets have no cards yet on TCGdex or in the missing sets list.</string>
     <string name="action_retry">Retry</string>
+    <string name="selected_count">%1$d selected</string>
+    <string name="select_all">Select all</string>
+    <string name="remove_selected_title">Remove %1$d cards?</string>
+    <string name="remove_selected_text">They leave the collection, and the sync will not add them back. You can restore them from Manage.</string>
+    <string name="remove_selected_confirm">Remove</string>
+    <string name="msg_cards_removed">%1$d cards removed from the collection. You can restore them from Manage.</string>
 </resources>

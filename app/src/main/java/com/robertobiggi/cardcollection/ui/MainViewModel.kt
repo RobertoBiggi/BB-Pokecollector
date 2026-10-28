@@ -614,6 +614,16 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
+     * Toglie più carte dalla collezione aperta.
+     * @param cardIds Set<String> - carte.
+     * @return Unit
+     */
+    fun hideCards(cardIds: Set<String>) = withSelected { id ->
+        cardIds.forEach { container.collection.hideCard(id, it) }
+        say(R.string.msg_cards_removed, cardIds.size)
+    }
+
+    /**
      * Rimette una carta nella collezione aperta.
      * @param cardId String - carta.
      * @return Unit
