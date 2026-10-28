@@ -23,3 +23,6 @@ captures/
 # Eccezione: keystore di debug con password pubbliche, serve solo a mantenere la stessa firma tra le build CI
 !app/signing/debug.keystore
 secrets.properties
+tools/out/
+tools/.cache/
+.env

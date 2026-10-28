@@ -125,6 +125,16 @@ I set EX inglesi (`ex1`…`ex16`) si abbinano a Cardmarket prima per "EX " + nom
 
 TCGdex a volte collega la carta speciale al prodotto Cardmarket della versione normale (es. ex8-107 "Rayquaza ☆" → prodotto 276425, il Rayquaza normale). Se i marcatori del prodotto indicato non coincidono con quelli della carta, `PriceRepository` scarta quell'id per l'abbinamento CardTrader e il prezzo Cardmarket che ne deriva, e tiene solo quello TCGplayer. Test di regressione: `SpecialCardNamesTest`.
 
+## Database di tutte le carte (`tools/gen_card_db.py`)
+
+Script Python (solo libreria standard) che per ogni Pokémon genera `tools/out/cards.sqlite` e il dump `d1-*.sql` per Cloudflare D1, senza immagini né prezzi. Ripete le regole dell'app: ricerca TCGdex per numero del Pokédex (più il nome, per le carte senza), esclusione di TCG Pocket, varianti (`CatalogMapper`), Poké Ball/Master Ball, stampe a parte, carte che TCGdex non ha prese dal catalogo Cardmarket e dai set extra, abbinamento CardTrader (`CardTraderMatcher`).
+
+- Pensato per D1 (500 MB, letture a pagamento): circa 300 byte a carta, chiavi intere (`card.n`) nelle tabelle figlie, `WITHOUT ROWID`, indici parziali e solo quelli usati dalle letture (Pokémon → carte, set → carte, prodotto Cardmarket o blueprint CardTrader → carta, id testuale → carta). Nessuna lettura richiede una scansione.
+- `card`: i dati di Room senza immagini; set, serie, data e lingua stanno in `card_set` (via `s`), e l'id TCGdex è la parte di `id` dopo i due punti. `card_variant`: tipo come codice (vedi `enum_code`); l'id della variante di Room è `id carta|TIPO[|print]`. `card_pokemon` (anche più Pokémon per carta) e `pokemon`.
+- Corrispondenza tra fonti, in colonne di `card`: id TCGdex (nell'`id`), `cmProduct` + `cmHow` (prodotto Cardmarket e come è stato trovato), `cardTraderBlueprintId`; per le varianti, `card_variant.cardmarketId` e `cardTraderBlueprintId` (Poké Ball, Master Ball, shadowless, jumbo, timbri). Set ↔ espansioni in `card_set`.
+- `CARDTRADER_TOKEN` è facoltativo: senza, mancano i blueprint. Le risposte sono in cache (`tools/.cache`), quindi si può riprendere.
+- Esempi: `tools/gen_card_db.py --pokemon 303 --languages en,ja` (prova), `tools/gen_card_db.py --languages all --d1 NOME_DB` (tutto, con caricamento via `wrangler d1 execute --remote`, che sostituisce le tabelle).
+
 ## Collezioni per set (set base e master set)
 
 Oltre alle ricerche per nome, una collezione può contenere un **set intero**: si crea con "Nuova collezione → Per set" oppure da Gestione → "Aggiungi un set intero".
