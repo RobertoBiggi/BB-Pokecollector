@@ -343,9 +343,9 @@ class PriceRepository(
      */
     private suspend fun storeBlueprint(card: CardEntity, id: Int) {
         db.catalogDao().setCardTraderBlueprint(card.id, id)
-        if (card.cardTraderBlueprintId != null && card.imageUrl == null && !images.isManual(card.imageHighPath)) {
-            db.catalogDao().setImagePaths(card.id, null, null)
-        }
+        // Le condizioni sull'immagine si leggono dal database al momento: la copia della carta può essere vecchia
+        // (il sync può aver salvato nel frattempo l'immagine TCGdex).
+        if (card.cardTraderBlueprintId != null) db.catalogDao().clearCardTraderImage(card.id)
     }
 
     /**
@@ -426,7 +426,7 @@ class PriceRepository(
                 val rarity = card.rarity ?: found.rarity
                 val number = card.printedNumber.ifEmpty { found.printedNumber.orEmpty() }
                 if (rarity == card.rarity && number == card.printedNumber) continue
-                db.catalogDao().upsertCard(card.copy(rarity = rarity, printedNumber = number))
+                db.catalogDao().fillDetails(card.id, rarity, number)
                 saved++
             } catch (e: CancellationException) {
                 throw e
@@ -465,9 +465,9 @@ class PriceRepository(
         } catch (e: Exception) {
             null
         } ?: return card
-        val updated = card.copy(dexId = dexId)
-        db.catalogDao().upsertCard(updated)
-        return updated
+        // Solo la colonna: riscrivere la carta intera da una copia letta prima cancellerebbe i dati salvati nel frattempo (es. le immagini).
+        db.catalogDao().fillDexId(card.id, dexId)
+        return card.copy(dexId = dexId)
     }
 
     /**
@@ -504,9 +504,8 @@ class PriceRepository(
         } catch (e: Exception) {
             null
         } ?: return card
-        val updated = card.copy(illustrator = illustrator)
-        db.catalogDao().upsertCard(updated)
-        return updated
+        db.catalogDao().fillIllustrator(card.id, illustrator)
+        return card.copy(illustrator = illustrator)
     }
 
     /**

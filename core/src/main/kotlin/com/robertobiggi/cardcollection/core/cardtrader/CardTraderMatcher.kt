@@ -53,8 +53,11 @@ object CardTraderMatcher {
         // Va prima del codice: la sigla del set a parte può coincidere con quella di un altro set (Hidden Fates Shiny Vault "sma" è lo Starter Set Sole e Luna).
         val base = GALLERY_SUFFIXES.firstNotNullOfOrNull { wanted.removeSuffix(it).takeIf { b -> b != wanted && b.isNotEmpty() } }
         val ofBase = { base?.let { b -> expansions.firstOrNull { normalizeName(it.name) == b } } }
+        // Set EX inglesi (ex1…ex16): TCGdex li chiama senza "EX" ("Deoxys"), Cardmarket e CardTrader con ("EX Deoxys").
+        // Va prima del nome: "Holon Phantoms" è anche un set giapponese, "Deoxys" il nome di diversi mazzi.
+        val exSeries = { if (EX_SERIES_ID.matches(setId)) expansions.firstOrNull { normalizeName(it.name) == "ex$wanted" } else null }
         val exact = if (preferCode) byCode() ?: byName().takeIf { wanted.isNotEmpty() } ?: ofBase()
-        else byName().takeIf { wanted.isNotEmpty() } ?: ofBase() ?: byCode()
+        else exSeries().takeIf { wanted.isNotEmpty() } ?: byName().takeIf { wanted.isNotEmpty() } ?: ofBase() ?: byCode()
         if (exact != null) return exact
         // Nomi con prefissi diversi ("SV02: Paldea Evolved"): vale solo se uno contiene l'altro per intero.
         if (wanted.length >= MIN_CONTAINED_LENGTH) {
@@ -240,6 +243,9 @@ object CardTraderMatcher {
             ?: (bp.fixedProperties?.get("collector_number") as? JsonPrimitive)?.content
 
     private const val MIN_CONTAINED_LENGTH = 6
+
+    /** Id TCGdex dei set della serie EX inglese (es. "ex8" = EX Deoxys). */
+    private val EX_SERIES_ID = Regex("^ex\\d{1,2}$")
 
     private val GALLERY_SUFFIXES = listOf("trainergallery", "galariangallery", "shinyvault")
 

@@ -3,6 +3,7 @@ package com.robertobiggi.cardcollection.data.repo
 import android.net.Uri
 import androidx.room.withTransaction
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCardSearch
+import com.robertobiggi.cardcollection.core.cardmarket.SetCodeAliases
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.cardmarket.CardNumberResolver
@@ -11,7 +12,9 @@ import com.robertobiggi.cardcollection.core.model.CatalogVariant
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.price.PriceRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.QueryKind
@@ -29,6 +32,7 @@ import com.robertobiggi.cardcollection.core.tcgdex.CardDto
 import com.robertobiggi.cardcollection.core.tcgdex.SetDto
 import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import com.robertobiggi.cardcollection.core.validation.Validators
+import com.robertobiggi.cardcollection.data.image.ImagePaths
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -62,8 +66,9 @@ data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int
  * @property name nome del set.
  * @property cards carte dichiarate, se note.
  * @property fromCardmarket true per i set che TCGdex non elenca, presi dall'elenco Cardmarket/CardTrader.
+ * @property codes sigle stampate o Cardmarket diverse dall'id (es. "dx" per "ex8", "asr" e "astr" per "swsh10"), per cercare il set anche così.
  */
-data class SetChoice(val id: String, val name: String, val cards: Int?, val fromCardmarket: Boolean)
+data class SetChoice(val id: String, val name: String, val cards: Int?, val fromCardmarket: Boolean, val codes: List<String> = emptyList())
 
 /** Esito della lettura dell'elenco dei set. */
 sealed interface SetListResult {
@@ -214,6 +219,7 @@ class CatalogRepository(
             if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
         }
         errors += refreshOtherCards(collectionId, refreshed, limiter, setCache, progress)
+        forgetMissingImageFiles()
         val imagesSaved = downloadMissingImages(progress)
         if (errors == 0 || saved > 0) settings.setLastCatalogSync(System.currentTimeMillis())
         return SyncResult(saved, imagesSaved, errors, emptySets)
@@ -403,10 +409,18 @@ class CatalogRepository(
             return SetListResult.NetworkError
         }
         val known = sets.map { it.id }.toSet()
-        val fromTcgdex = sets.filter { Validators.isValidRemoteId(it.id) && !CatalogMapper.isDigitalOnlySet(it) }
-            .map { SetChoice(it.id, it.name, it.cardCount?.total ?: it.cardCount?.official, fromCardmarket = false) }
+        // Le sigle si abbinano confrontando i nomi con tutto l'elenco Cardmarket: fuori dal thread principale.
+        val fromTcgdex = withContext(Dispatchers.Default) {
+            sets.filter { Validators.isValidRemoteId(it.id) && !CatalogMapper.isDigitalOnlySet(it) }.map {
+                val codes = SetCodeAliases.bundled.codesOf(language, it.id, it.name)
+                SetChoice(it.id, it.name, it.cardCount?.total ?: it.cardCount?.official, fromCardmarket = false, codes = codes)
+            }
+        }
         val missing = cardmarket.extraSetsFor(language).filter { it.setId !in known && Validators.isValidRemoteId(it.setId) }
-            .map { SetChoice(it.setId, it.name, it.numbers.size.takeIf { n -> n > 0 }, fromCardmarket = true) }
+            .map {
+                val codes = listOfNotNull(it.setCode?.takeUnless { c -> c.isBlank() || c.equals(it.setId, ignoreCase = true) })
+                SetChoice(it.setId, it.name, it.numbers.size.takeIf { n -> n > 0 }, fromCardmarket = true, codes = codes)
+            }
         return SetListResult.Found((fromTcgdex + missing).distinctBy { it.id })
     }
 
@@ -681,11 +695,27 @@ class CatalogRepository(
             val low = card.imageLowPath ?: images.ensure(card.id, url, ImageStore.Quality.LOW)
             val high = card.imageHighPath ?: images.ensure(card.id, url, ImageStore.Quality.HIGH)
             if (low != card.imageLowPath || high != card.imageHighPath) {
-                dao.setImagePaths(card.id, low, high)
+                // Solo i percorsi mancanti: un altro lavoro (immagine scelta a mano, CardTrader) può averne salvato uno nel frattempo.
+                dao.fillImagePaths(card.id, low, high)
                 count++
             }
         }
         return count
+    }
+
+    /**
+     * Dimentica i percorsi d'immagine il cui file non c'è più, così [downloadMissingImages] (e le immagini CardTrader) le
+     * riscaricano. Succede dopo una reinstallazione: il backup Android ripristina il database ma non le immagini.
+     * @return Int - numero di carte con almeno un percorso dimenticato.
+     */
+    private suspend fun forgetMissingImageFiles(): Int = withContext(Dispatchers.IO) {
+        var forgotten = 0
+        for (card in dao.cardsWithImagePaths()) {
+            val missing = ImagePaths.missing(card.imageLowPath, card.imageHighPath, images::isSaved)
+            missing.forEach { dao.forgetImagePath(card.id, it) }
+            if (missing.isNotEmpty()) forgotten++
+        }
+        forgotten
     }
 
     /**
