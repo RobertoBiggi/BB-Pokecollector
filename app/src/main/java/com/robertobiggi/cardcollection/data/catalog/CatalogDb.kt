@@ -20,7 +20,7 @@ class InvalidCatalogException(message: String, cause: Throwable? = null) : Excep
  * @property cards carte del set nel catalogo.
  * @property declared carte dichiarate dal set (numero ufficiale o totale), se note.
  */
-data class CatalogSet(val id: String, val name: String, val cards: Int, val declared: Int?)
+data class CatalogSet(val id: String, val name: String, val cards: Int, val declared: Int?, val releaseDate: String?)
 
 /** Carta trovata da una ricerca, con quel che serve a mostrarla nell'elenco. */
 data class CardBrief(val id: String, val localId: String, val name: String, val setName: String, val imageUrl: String?)
@@ -46,11 +46,11 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
      */
     fun sets(language: Language): List<CatalogSet> =
         db.rawQuery(
-            """SELECT s.setId, s.name, COUNT(c.n), COALESCE(s.cardCountTotal, s.cardCountOfficial)
+            """SELECT s.setId, s.name, COUNT(c.n), COALESCE(s.cardCountTotal, s.cardCountOfficial), s.releaseDate
                FROM card_set s JOIN card c ON c.s = s.s WHERE s.language = ?
                GROUP BY s.s ORDER BY s.releaseDate IS NULL, s.releaseDate DESC, s.name""",
             arrayOf(language.code),
-        ).use { c -> buildList { while (c.moveToNext()) add(CatalogSet(c.getString(0), c.getString(1), c.getInt(2), if (c.isNull(3)) null else c.getInt(3))) } }
+        ).use { c -> buildList { while (c.moveToNext()) add(CatalogSet(c.getString(0), c.getString(1), c.getInt(2), if (c.isNull(3)) null else c.getInt(3), c.getString(4))) } }
 
     /**
      * Tutte le carte di un set.

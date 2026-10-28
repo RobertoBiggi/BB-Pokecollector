@@ -38,8 +38,33 @@ import com.robertobiggi.cardcollection.data.repo.SetChoice
 import com.robertobiggi.cardcollection.ui.SetPickerState
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 
+/** Cifre dell'anno in una data ISO ("2003-07-18"). */
+private const val YEAR_LENGTH = 4
+
 /** Lingue proposte per le collezioni per set: le uniche con set completi su TCGdex o nell'elenco dei set mancanti. */
 val SET_LANGUAGES = listOf(Language.EN, Language.JA)
+
+/** Ordine dell'elenco dei set nella finestra di scelta. */
+private enum class SetSort(val label: Int) {
+    NEWEST(R.string.set_sort_newest),
+    OLDEST(R.string.set_sort_oldest),
+    NAME(R.string.set_sort_name),
+}
+
+/**
+ * Ordina i set: per data di uscita (i set senza data in fondo, a parità per nome) o per nome.
+ * @param sets List<SetChoice> - set da ordinare.
+ * @param sort SetSort - ordine voluto.
+ * @return List<SetChoice> - set ordinati.
+ */
+private fun sortSets(sets: List<SetChoice>, sort: SetSort): List<SetChoice> {
+    val byName = compareBy<SetChoice, String>(String.CASE_INSENSITIVE_ORDER) { it.name }
+    return when (sort) {
+        SetSort.NAME -> sets.sortedWith(byName)
+        SetSort.NEWEST -> sets.sortedWith(compareBy<SetChoice> { it.releaseDate == null }.thenByDescending { it.releaseDate }.then(byName))
+        SetSort.OLDEST -> sets.sortedWith(compareBy<SetChoice> { it.releaseDate == null }.thenBy { it.releaseDate }.then(byName))
+    }
+}
 
 /**
  * Finestra di scelta di un set: lingua (EN/JP), ricerca per nome o sigla ed elenco dei set.
@@ -57,11 +82,14 @@ fun SetPickerDialog(
     onDismiss: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    var sortIndex by rememberSaveable { mutableStateOf(SetSort.NEWEST.ordinal) }
+    val sort = SetSort.entries[sortIndex]
     LaunchedEffect(Unit) { onLanguage(state.language, false) }
     val needle = PokemonNames.normalize(query)
-    val shown = remember(state.sets, needle) {
-        if (needle.isEmpty()) state.sets
+    val shown = remember(state.sets, needle, sort) {
+        val found = if (needle.isEmpty()) state.sets
         else state.sets.filter { PokemonNames.normalize(it.name).contains(needle) || PokemonNames.normalize(it.id).contains(needle) }
+        sortSets(found, sort)
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -71,6 +99,11 @@ fun SetPickerDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SET_LANGUAGES.forEach { lang ->
                         FilterChip(selected = state.language == lang, onClick = { onLanguage(lang, false) }, label = { Text(lang.shortLabel()) })
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SetSort.entries.forEach { option ->
+                        FilterChip(selected = sort == option, onClick = { sortIndex = option.ordinal }, label = { Text(stringResource(option.label)) })
                     }
                 }
                 OutlinedTextField(
@@ -95,6 +128,7 @@ fun SetPickerDialog(
                                 Text(set.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 val details = buildList {
                                     add(set.id)
+                                    set.releaseDate?.take(YEAR_LENGTH)?.let { add(it) }
                                     set.cards?.let { add(stringResource(R.string.set_pick_cards, it)) }
                                 }
                                 Text(details.joinToString(" · "), style = MonoStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
