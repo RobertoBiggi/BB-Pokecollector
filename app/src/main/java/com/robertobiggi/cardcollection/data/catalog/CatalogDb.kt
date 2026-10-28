@@ -34,6 +34,13 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
 
     private val variantTypes: Map<Int, VariantType> = readEnum("variantType").mapNotNull { (code, name) -> VariantType.fromName(name)?.let { code to it } }.toMap()
 
+    /** True se il database ha la colonna `card.nameEn` (i file generati prima non ce l'hanno: restano validi e mostrano i nomi originali). */
+    private val hasNameEn: Boolean = db.rawQuery("PRAGMA table_info(card)", null).use { c ->
+        var found = false
+        while (c.moveToNext()) if (c.getString(1) == "nameEn") found = true
+        found
+    }
+
     private fun readEnum(kind: String): Map<Int, String> =
         db.rawQuery("SELECT code, name FROM enum_code WHERE kind = ?", arrayOf(kind)).use { c ->
             buildMap { while (c.moveToNext()) put(c.getInt(0), c.getString(1)) }
@@ -121,7 +128,7 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
         val rows = db.rawQuery(
             """SELECT c.n, c.id, s.language, c.name, s.setId, s.name, s.setCode, s.serieId, s.serieName, c.localId, c.printedNumber, c.rarity,
                       s.releaseDate, c.illustrator, c.dexId, c.cardmarketId, c.cardmarketExpansionId, c.cardmarketName, c.cardmarketProductHint,
-                      c.cmProduct, c.cardTraderBlueprintId, s.cardTraderExpansionId, c.origin
+                      c.cmProduct, c.cardTraderBlueprintId, s.cardTraderExpansionId, c.origin, ${if (hasNameEn) "c.nameEn" else "NULL"}
                FROM card c JOIN card_set s ON s.s = c.s $where ORDER BY s.setId, c.localId""",
             args,
         ).use { c -> buildList { while (c.moveToNext()) add(Row(c)) } }
@@ -144,7 +151,8 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
         val n = c.getLong(0)
         val id = c.getString(1)
         val language = c.getString(2)
-        val name = c.getString(3)
+        /** Nome inglese se il database lo conosce, altrimenti quello della lingua della carta. */
+        val name: String = c.getString(23) ?: c.getString(3)
         val setId = c.getString(4)
         val setName = c.getString(5)
         val setCode: String? = c.getString(6)
