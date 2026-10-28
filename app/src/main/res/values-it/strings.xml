@@ -243,6 +243,9 @@
     <string name="set_pick_search">Nome o sigla del set (es. ex8 o DX)</string>
     <string name="set_pick_cards">%1$d carte</string>
     <string name="set_pick_none">Nessun set trovato.</string>
+    <string name="set_sort_newest">Più recenti</string>
+    <string name="set_sort_oldest">Più vecchi</string>
+    <string name="set_sort_name">A–Z</string>
     <string name="set_pick_button">Scegli set…</string>
     <string name="set_pick_missing">Scegli prima un set.</string>
     <string name="set_level_base">Set base</string>
