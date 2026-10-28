@@ -243,6 +243,14 @@
     <string name="set_pick_search">Nome o sigla del set (es. ex8 o DX)</string>
     <string name="set_pick_cards">%1$d carte</string>
     <string name="set_pick_none">Nessun set trovato.</string>
+    <string name="collection_settings_title">Impostazioni collezione</string>
+    <string name="collection_settings_languages">Lingue</string>
+    <string name="collection_settings_hint">Una lingua nuova copia le ricerche per nome della collezione e ne scarica le carte. Toglierne una porta fuori dalla collezione le sue carte; le copie che possiedi restano salvate e tornano se la rimetti.</string>
+    <string name="collection_settings_no_names">Questa collezione non ha ricerche per nome da copiare, quindi puoi solo togliere lingue. I set valgono per una lingua sola: aggiungi un set da Gestione.</string>
+    <string name="collection_settings_added">Dopo il salvataggio si scaricano le carte in %1$s.</string>
+    <string name="collection_settings_remove_title">Togliere le lingue?</string>
+    <string name="collection_settings_remove_text">Le carte trovate in %1$s escono dalla collezione. Le copie che possiedi restano salvate e tornano se rimetti la lingua.</string>
+    <string name="collection_settings_remove_confirm">Togli</string>
     <string name="set_sort_newest">Più recenti</string>
     <string name="set_sort_oldest">Più vecchi</string>
     <string name="set_sort_name">A–Z</string>

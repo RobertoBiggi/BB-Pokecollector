@@ -3,8 +3,10 @@ package com.robertobiggi.cardcollection.data.repo
 import androidx.room.withTransaction
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.core.model.CollectionLanguage
+import com.robertobiggi.cardcollection.core.model.CollectionLanguages
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.core.model.LanguageQuery
 import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.validation.Validators
@@ -32,6 +34,23 @@ import kotlinx.coroutines.flow.shareIn
 
 /** Errore di un dato inserito dall'utente; la UI lo traduce in un messaggio. */
 enum class InputError { NAME_EMPTY, QUERY_INVALID, QUERY_DUPLICATE }
+
+/**
+ * Impostazioni modificabili di una collezione.
+ * @property name nome.
+ * @property languages lingue delle ricerche.
+ * @property canAddLanguage true se c'è almeno una ricerca per nome da copiare in una lingua nuova.
+ */
+data class CollectionSettings(val name: String, val languages: Set<Language>, val canAddLanguage: Boolean)
+
+/** Esito del salvataggio delle impostazioni di una collezione. */
+sealed interface SettingsResult {
+    /** Salvate; [needsSync] è true se ci sono ricerche nuove da cercare nel catalogo. */
+    data class Saved(val needsSync: Boolean) : SettingsResult
+
+    /** Valori non validi. */
+    data class Invalid(val error: InputError) : SettingsResult
+}
 
 /** Esito della creazione di una collezione. */
 sealed interface CreateResult {
@@ -195,6 +214,52 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
      */
     suspend fun setLanguage(collectionId: Long, language: Language?) =
         catalogDao.setCollectionLanguage(collectionId, CollectionLanguage.codeOf(language))
+
+    /**
+     * Legge le impostazioni modificabili di una collezione.
+     * @param collectionId Long - collezione.
+     * @return CollectionSettings? - nome e lingue, oppure null se la collezione non esiste.
+     */
+    suspend fun settings(collectionId: Long): CollectionSettings? {
+        val name = catalogDao.collectionName(collectionId) ?: return null
+        val queries = languageQueries(collectionId)
+        return CollectionSettings(name, CollectionLanguages.languagesOf(queries), CollectionLanguages.canAddLanguage(queries))
+    }
+
+    /**
+     * Salva le impostazioni di una collezione: il nome e le lingue. Le lingue nuove copiano le ricerche per nome,
+     * quelle tolte eliminano le loro ricerche (e le carte che solo quelle ricerche avevano trovato); le quantità restano
+     * salvate e riappaiono se la lingua viene rimessa.
+     * @param collectionId Long - collezione.
+     * @param rawName String - nome voluto.
+     * @param languages Set<Language> - lingue volute, almeno una.
+     * @return SettingsResult - esito: errore sul nome, oppure se le lingue sono cambiate e servono nuove carte.
+     */
+    suspend fun saveSettings(collectionId: Long, rawName: String, languages: Set<Language>): SettingsResult {
+        val name = CollectionFiles.cleanName(rawName) ?: return SettingsResult.Invalid(InputError.NAME_EMPTY)
+        if (languages.isEmpty()) return SettingsResult.Invalid(InputError.QUERY_INVALID)
+        return db.withTransaction {
+            if (name != catalogDao.collectionName(collectionId)) catalogDao.renameCollection(collectionId, name)
+            val plan = CollectionLanguages.plan(languageQueries(collectionId), languages)
+            plan.add.forEach { (language, pattern) ->
+                catalogDao.insertQuery(TrackedQueryEntity(collectionId = collectionId, language = language.code, pattern = pattern))
+            }
+            plan.removeIds.forEach { catalogDao.deleteQuery(it) }
+            if (plan.add.isNotEmpty() || plan.removeIds.isNotEmpty()) {
+                catalogDao.setCollectionLanguage(collectionId, CollectionLanguage.infer(catalogDao.queriesOf(collectionId).map { it.language }))
+            }
+            SettingsResult.Saved(needsSync = plan.add.isNotEmpty())
+        }
+    }
+
+    /**
+     * Ricerche di una collezione nella forma che serve per cambiarne le lingue.
+     * @param collectionId Long - collezione.
+     * @return List<LanguageQuery> - ricerche.
+     */
+    private suspend fun languageQueries(collectionId: Long): List<LanguageQuery> = catalogDao.queriesOf(collectionId).map {
+        LanguageQuery(it.id, Language.fromCode(it.language), it.pattern, QueryKind.fromCode(it.kind) ?: QueryKind.NAME)
+    }
 
     /**
      * Rende unico un nome di collezione aggiungendo " (2)", " (3)"… se serve.

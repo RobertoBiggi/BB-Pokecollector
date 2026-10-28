@@ -35,7 +35,9 @@ import com.robertobiggi.cardcollection.data.repo.CreateResult
 import com.robertobiggi.cardcollection.data.repo.ExportResult
 import com.robertobiggi.cardcollection.data.repo.ImageResult
 import com.robertobiggi.cardcollection.data.repo.ImportOutcome
+import com.robertobiggi.cardcollection.data.repo.CollectionSettings
 import com.robertobiggi.cardcollection.data.repo.InputError
+import com.robertobiggi.cardcollection.data.repo.SettingsResult
 import com.robertobiggi.cardcollection.data.repo.SearchResult
 import com.robertobiggi.cardcollection.ui.common.UiText
 import com.robertobiggi.cardcollection.ui.common.messageRes
@@ -390,6 +392,36 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @return Unit
      */
     fun setCollectionLanguage(language: Language?) = withSelected { id -> container.collection.setLanguage(id, language) }
+
+    /**
+     * Legge le impostazioni di una collezione per mostrarle nel dialogo.
+     * @param collectionId Long - collezione.
+     * @param onResult (CollectionSettings?) -> Unit - impostazioni, oppure null se la collezione non esiste più.
+     * @return Unit
+     */
+    fun loadCollectionSettings(collectionId: Long, onResult: (CollectionSettings?) -> Unit) {
+        viewModelScope.launch { onResult(container.collection.settings(collectionId)) }
+    }
+
+    /**
+     * Salva nome e lingue di una collezione; se servono carte nuove avvia il sync del catalogo.
+     * @param collectionId Long - collezione.
+     * @param name String - nome.
+     * @param languages Set<Language> - lingue volute.
+     * @param onResult (InputError?) -> Unit - errore da mostrare, oppure null se salvate.
+     * @return Unit
+     */
+    fun saveCollectionSettings(collectionId: Long, name: String, languages: Set<Language>, onResult: (InputError?) -> Unit) {
+        viewModelScope.launch {
+            when (val result = container.collection.saveSettings(collectionId, name, languages)) {
+                is SettingsResult.Invalid -> onResult(result.error)
+                is SettingsResult.Saved -> {
+                    if (result.needsSync) container.work.startCatalogSync(collectionId)
+                    onResult(null)
+                }
+            }
+        }
+    }
 
     /**
      * Elimina una collezione.

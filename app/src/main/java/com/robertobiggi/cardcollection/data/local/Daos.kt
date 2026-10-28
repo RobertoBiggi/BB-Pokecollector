@@ -35,6 +35,14 @@ interface CatalogDao {
     suspend fun collectionNames(): List<String>
 
     /**
+     * Legge il nome di una collezione.
+     * @param id Long - collezione.
+     * @return String? - nome, oppure null se non esiste.
+     */
+    @Query("SELECT name FROM collection WHERE id = :id")
+    suspend fun collectionName(id: Long): String?
+
+    /**
      * Crea una collezione.
      * @param collection CollectionEntity - collezione da creare.
      * @return Long - id assegnato.
