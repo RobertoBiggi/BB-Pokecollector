@@ -197,6 +197,26 @@ object CardTraderMatcher {
         return if (between.size == ordinal.count) between.getOrNull(ordinal.rank) else null
     }
 
+    /**
+     * Controlla che il blueprint trovato dal numero sia davvero la carta cercata. Il numero da solo può portare a un'altra carta
+     * (set con la stessa sigla, numerazione diversa), e l'immagine sbagliata si nota solo a occhio. Rifiuta il blueprint solo se
+     * il suo nome è quello di un Pokémon e non coincide con quello della carta, né in inglese né per numero del Pokédex.
+     * @param bp CtBlueprintDto - blueprint scelto.
+     * @param name String - nome della carta (può essere in giapponese o vuoto).
+     * @param dexId Int? - numero del Pokédex della carta, se noto.
+     * @return Boolean - false se il blueprint è di un altro Pokémon.
+     */
+    fun nameAgrees(bp: CtBlueprintDto, name: String, dexId: Int?): Boolean {
+        val blueprint = bp.name.replace(PRINTED_SUFFIX, "").replace(LEVEL_SUFFIX, "")
+        if (!PokemonNames.mentionsPokemon(blueprint)) return true
+        val blueprintKey = pokemonKey(blueprint)
+        val cardKey = pokemonKey(name.substringBefore('[').replace(LEVEL_SUFFIX, ""))
+        if (cardKey.isNotEmpty() && (blueprintKey.contains(cardKey) || cardKey.contains(blueprintKey))) return true
+        if (dexId != null && PokemonNames.namesOf(dexId).map { pokemonKey(it) }.any { it.isNotEmpty() && blueprintKey.contains(it) }) return true
+        // Senza un nome latino né un Pokédex non c'è niente con cui confrontare.
+        return cardKey.none { it in 'a'..'z' } && dexId == null
+    }
+
     private fun isPokemonOf(bp: CtBlueprintDto, dex: Int, names: Set<String>): Boolean {
         val listed = bp.version?.let { DEX_VERSION.find(it)?.groupValues?.get(1)?.toIntOrNull() }
         return if (listed != null) listed == dex else pokemonKey(bp.name.replace(LEVEL_SUFFIX, "")) in names
