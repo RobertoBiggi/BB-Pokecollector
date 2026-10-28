@@ -32,6 +32,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Il database delle carte entra nell'APK come asset: si prende dalla release "catalog" (se manca, l'APK si scarica il database da Impostazioni).
+      - name: Database delle carte
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p catalog-db
+          gh release download catalog -p cards.sqlite -D catalog-db || echo "::warning::release catalog assente: l'APK non include il database"
+          echo "CATALOG_DB=$PWD/catalog-db/cards.sqlite" >> "$GITHUB_ENV"
+
       - name: Numero di build
         run: echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
 
@@ -117,6 +126,16 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         if: env.HAS_KEY == 'true'
+
+      # Il database delle carte entra nell'APK come asset: si prende dalla release "catalog" (se manca, l'APK si scarica il database da Impostazioni).
+      - name: Database delle carte
+        if: env.HAS_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p catalog-db
+          gh release download catalog -p cards.sqlite -D catalog-db || echo "::warning::release catalog assente: l'APK non include il database"
+          echo "CATALOG_DB=$PWD/catalog-db/cards.sqlite" >> "$GITHUB_ENV"
 
       - name: Build release firmata
         if: env.HAS_KEY == 'true'

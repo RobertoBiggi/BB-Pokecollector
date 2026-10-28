@@ -76,6 +76,40 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+}
+
+// Il database delle carte (cards.sqlite) entra nell'APK come asset, così l'app funziona subito senza scaricarlo. Non sta nel repo:
+// si prende da -PcatalogDb=<file>, da CATALOG_DB (in CI lo scarica la release "catalog") o dal repository del generatore accanto a questo.
+// Senza il file l'APK si compila lo stesso e il database si scarica da Impostazioni.
+abstract class PrepareCatalogAsset : DefaultTask() {
+    @get:Input
+    abstract val source: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val from = File(source.get())
+        val dir = outputDir.get().asFile
+        dir.deleteRecursively()
+        dir.mkdirs()
+        if (from.isFile) from.copyTo(File(dir, "cards.sqlite")) else logger.warn("Database delle carte non trovato ($from): l'APK non lo include.")
+    }
+}
+
+val prepareCatalogAsset = tasks.register<PrepareCatalogAsset>("prepareCatalogAsset") {
+    source.set(
+        providers.gradleProperty("catalogDb").orElse(providers.environmentVariable("CATALOG_DB"))
+            .orElse(rootDir.resolve("../Card-collector-db-gen/out/cards.sqlite").path),
+    )
+    // Il contenuto del file può cambiare senza che cambi il percorso: si ricopia a ogni build (23 MB).
+    outputs.upToDateWhen { false }
+}
+
+androidComponents {
+    onVariants { variant -> variant.sources.assets?.addGeneratedSourceDirectory(prepareCatalogAsset, PrepareCatalogAsset::outputDir) }
 }
 
 kotlin {
