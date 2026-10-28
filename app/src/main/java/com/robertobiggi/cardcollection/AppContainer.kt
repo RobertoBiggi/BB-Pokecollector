@@ -3,7 +3,7 @@ package com.robertobiggi.cardcollection
 import android.content.Context
 import com.robertobiggi.cardcollection.core.model.PokemonNames
 import com.robertobiggi.cardcollection.core.validation.Validators
-import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
+import com.robertobiggi.cardcollection.data.catalog.CatalogStore
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.repo.CatalogRepository
@@ -12,8 +12,6 @@ import com.robertobiggi.cardcollection.data.repo.PriceRepository
 import com.robertobiggi.cardcollection.data.repo.TransferRepository
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import com.robertobiggi.cardcollection.work.WorkScheduler
-import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCardSearch
-import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,7 +36,7 @@ class AppContainer(context: Context) {
         .addInterceptor { chain ->
             chain.proceed(chain.request().newBuilder().header("User-Agent", USER_AGENT).build())
         }
-        // Controlla ogni richiesta, redirect compresi: l'app parla solo con TCGdex, Cardmarket e CardTrader.
+        // Controlla ogni richiesta, redirect compresi: l'app parla solo con le immagini di TCGdex, Cardmarket (listino prezzi) e CardTrader.
         .addNetworkInterceptor { chain ->
             val host = chain.request().url.host
             if (host !in ALLOWED_HOSTS) throw IOException("Host non consentito: $host")
@@ -51,25 +49,27 @@ class AppContainer(context: Context) {
 
     val database: AppDatabase = AppDatabase.create(appContext)
     val settings = SettingsStore(appContext)
-    val tcgdex = TcgdexClient(http)
+    /** Client per scaricare il database delle carte: l'indirizzo lo sceglie l'utente (HTTPS), quindi non ha l'elenco degli host consentiti. */
+    private val downloadHttp = http.newBuilder().apply { networkInterceptors().clear() }.readTimeout(120, TimeUnit.SECONDS).callTimeout(0, TimeUnit.SECONDS).build()
+    val catalogStore = CatalogStore(appContext, downloadHttp)
     val images = ImageStore(appContext, http)
 
     val collection = CollectionRepository(database, appScope, settings)
-    private val cardmarketCatalog = CardmarketCatalog(http, File(appContext.cacheDir, "cardmarket-products.json"))
-    val catalog = CatalogRepository(database, tcgdex, images, settings, CardmarketCardSearch(cardmarketCatalog, tcgdex), http)
-    val prices = PriceRepository(database, tcgdex, http, settings, appContext.cacheDir, images)
+    val catalog = CatalogRepository(database, catalogStore, images, settings)
+    val prices = PriceRepository(database, http, settings, appContext.cacheDir, images)
     val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
     val work = WorkScheduler(appContext)
 
     init {
         // Legge subito i nomi dei Pokémon, così la prima ricerca non blocca l'interfaccia.
         appScope.launch { PokemonNames.preload() }
+        appScope.launch { catalogStore.load() }
     }
 
     private companion object {
         const val USER_AGENT = "CardCollection-Android (uso personale)"
 
-        /** Host raggiungibili dall'app: API e immagini di TCGdex, file prezzi e prodotti di Cardmarket, API e immagini di CardTrader. */
-        val ALLOWED_HOSTS = setOf("api.tcgdex.net", "downloads.s3.cardmarket.com", "api.cardtrader.com") + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS
+        /** Host raggiungibili dall'app: immagini di TCGdex, listino prezzi di Cardmarket, API e immagini di CardTrader. */
+        val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com") + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS
     }
 }

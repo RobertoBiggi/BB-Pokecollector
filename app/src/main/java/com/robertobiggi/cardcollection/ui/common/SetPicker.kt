@@ -84,13 +84,10 @@ fun SetPickerDialog(
                 )
                 when {
                     state.loading -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-                    state.networkError -> {
-                        Text(stringResource(R.string.msg_network_error), style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = { onLanguage(state.language, true) }) { Text(stringResource(R.string.action_retry)) }
-                    }
+                    state.noCatalog -> Text(stringResource(R.string.msg_no_catalog), style = MaterialTheme.typography.bodySmall)
                     shown.isEmpty() -> Text(stringResource(R.string.set_pick_none), style = MaterialTheme.typography.bodySmall)
                     else -> LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                        items(shown, key = { "${it.fromCardmarket}/${it.id}" }) { set ->
+                        items(shown, key = { it.id }) { set ->
                             Column(
                                 Modifier
                                     .fillMaxWidth()
@@ -102,7 +99,6 @@ fun SetPickerDialog(
                                     add(set.id)
                                     if (set.codes.isNotEmpty()) add(set.codes.joinToString("/") { it.uppercase() })
                                     set.cards?.let { add(stringResource(R.string.set_pick_cards, it)) }
-                                    if (set.fromCardmarket) add(stringResource(R.string.set_pick_extra))
                                 }
                                 Text(details.joinToString(" · "), style = MonoStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

@@ -39,7 +39,7 @@ data class TrackedQueryEntity(
 )
 
 /**
- * Carta del catalogo TCGdex, condivisa tra tutte le collezioni. Il sync del catalogo aggiorna solo
+ * Carta del database delle carte, condivisa tra tutte le collezioni. Il sync del catalogo aggiorna solo
  * questa tabella e card_variant: i dati dell'utente stanno in collection_entry.
  * [queryId] è un campo storico della versione 1 (prima ricerca che ha trovato la carta): l'appartenenza
  * alle collezioni è in collection_card.
@@ -78,6 +78,10 @@ data class CardEntity(
     val cardmarketName: String? = null,
     /** Id prodotto Cardmarket indicato da TCGdex, per abbinare la carta su CardTrader quando il numero non basta. */
     val cardmarketProductHint: Int? = null,
+    /** Prodotto Cardmarket della carta, comunque trovato dal generatore del database delle carte: il prezzo si legge da lì. */
+    val cardmarketProduct: Int? = null,
+    /** Espansione CardTrader del set della carta: serve a trovare l'immagine del suo blueprint. */
+    val cardTraderExpansionId: Int? = null,
 )
 
 /** Variante di stampa di una carta: ogni riga è uno slot. */

@@ -1,11 +1,11 @@
 package com.robertobiggi.cardcollection.core.tcgdex
 
 import kotlinx.serialization.SerialName
+import com.robertobiggi.cardcollection.core.price.PricingDto
 import kotlinx.serialization.Serializable
 
-// DTO dell'API TCGdex v2. Sono dichiarati solo i campi usati dall'app: gli altri vengono ignorati
-// dal parser (ignoreUnknownKeys), così un cambiamento nei campi non usati non rompe l'app.
-// Schema verificato sulle risposte reali (workflow .github/workflows/tcgdex-probe.yml).
+// DTO dell'API TCGdex v2, usati solo dai test per leggere le risposte salvate in resources/fixtures
+// (l'app non interroga più TCGdex per le carte).
 
 /** Elemento della lista restituita da /cards?name=... */
 @Serializable
@@ -78,55 +78,6 @@ data class VariantDetailDto(
 /** Id dei prodotti della variante presso altri siti. */
 @Serializable
 data class ThirdPartyDto(val cardmarket: Int? = null)
-
-/** Prezzi aggregati da TCGdex. */
-@Serializable
-data class PricingDto(
-    val cardmarket: CardmarketPricingDto? = null,
-    val tcgplayer: TcgplayerPricingDto? = null,
-)
-
-/**
- * Prezzi Cardmarket in euro. I campi "-holo" si riferiscono alla versione reverse holo del prodotto,
- * quelli senza suffisso alla versione base (normal per le comuni, holo per le rare holo).
- */
-@Serializable
-data class CardmarketPricingDto(
-    val idProduct: Int? = null,
-    val updated: String? = null,
-    val unit: String? = null,
-    val avg: Double? = null,
-    val low: Double? = null,
-    val trend: Double? = null,
-    val avg7: Double? = null,
-    val avg30: Double? = null,
-    @SerialName("avg-holo") val avgHolo: Double? = null,
-    @SerialName("low-holo") val lowHolo: Double? = null,
-    @SerialName("trend-holo") val trendHolo: Double? = null,
-    @SerialName("avg30-holo") val avg30Holo: Double? = null,
-)
-
-/** Prezzi TCGplayer in dollari, separati per variante di stampa. */
-@Serializable
-data class TcgplayerPricingDto(
-    val updated: String? = null,
-    val unit: String? = null,
-    val normal: TcgplayerPriceDto? = null,
-    val holofoil: TcgplayerPriceDto? = null,
-    @SerialName("reverse-holofoil") val reverseHolofoil: TcgplayerPriceDto? = null,
-    @SerialName("1stEditionHolofoil") val firstEditionHolofoil: TcgplayerPriceDto? = null,
-    @SerialName("1stEditionNormal") val firstEditionNormal: TcgplayerPriceDto? = null,
-    @SerialName("unlimitedHolofoil") val unlimitedHolofoil: TcgplayerPriceDto? = null,
-)
-
-/** Singola riga di prezzi TCGplayer. */
-@Serializable
-data class TcgplayerPriceDto(
-    val lowPrice: Double? = null,
-    val midPrice: Double? = null,
-    val highPrice: Double? = null,
-    val marketPrice: Double? = null,
-)
 
 /** Dettaglio di un set da /sets/{id}. */
 @Serializable

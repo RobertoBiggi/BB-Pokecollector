@@ -156,6 +156,9 @@ data class CatalogVariant(
  * @property cardmarketExpansionId set della carta su Cardmarket (`idExpansion`), per il link diretto; null se non si è potuto ricavare.
  * @property cardmarketProductHint id prodotto Cardmarket che TCGdex indica per la carta: aiuta CardTrader a trovarla quando il numero non basta (es. Celebrations Classic Collection).
  * @property cardmarketName nome inglese della carta su Cardmarket, da cercare nel suo set (il nome della carta può essere in un'altra lingua).
+ * @property cardmarketProduct prodotto Cardmarket della carta, comunque trovato dal generatore del database (il prezzo si legge da lì).
+ * @property cardTraderBlueprintId blueprint CardTrader della carta, se il generatore l'ha abbinata.
+ * @property cardTraderExpansionId espansione CardTrader del set della carta (serve a trovare il blueprint per l'immagine).
  */
 data class CatalogCard(
     val id: String,
@@ -179,6 +182,9 @@ data class CatalogCard(
     val cardmarketExpansionId: Int? = null,
     val cardmarketName: String? = null,
     val cardmarketProductHint: Int? = null,
+    val cardmarketProduct: Int? = null,
+    val cardTraderBlueprintId: Int? = null,
+    val cardTraderExpansionId: Int? = null,
 )
 
 /**

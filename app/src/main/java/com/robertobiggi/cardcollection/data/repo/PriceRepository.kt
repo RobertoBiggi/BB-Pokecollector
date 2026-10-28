@@ -1,18 +1,14 @@
 package com.robertobiggi.cardcollection.data.repo
 
-import java.io.IOException
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
+import com.robertobiggi.cardcollection.core.cardmarket.CardmarketPriceGuide
+import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
+import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
-import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
-import com.robertobiggi.cardcollection.core.cardtrader.CtCondition
-import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalog
-import com.robertobiggi.cardcollection.core.cardmarket.CardmarketCatalogIdSource
-import com.robertobiggi.cardcollection.core.cardmarket.CardmarketPriceGuide
-import com.robertobiggi.cardcollection.core.cardmarket.orElse
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.price.CardmarketGuidePriceProvider
 import com.robertobiggi.cardcollection.core.price.CircuitBreaker
@@ -21,11 +17,6 @@ import com.robertobiggi.cardcollection.core.price.PriceRequest
 import com.robertobiggi.cardcollection.core.price.ProviderSlot
 import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.price.StepOutcome
-import com.robertobiggi.cardcollection.core.price.TcgdexPriceProvider
-import com.robertobiggi.cardcollection.core.tcgdex.CardRepair
-import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinal
-import com.robertobiggi.cardcollection.core.tcgdex.SetOrdinalFinder
-import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -35,17 +26,17 @@ import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.io.File
 
 /** Lavoro preparatorio dell'aggiornamento prezzi che richiede tempo e che viene mostrato all'utente. */
-enum class PriceStep { DOWNLOAD_GUIDE, READ_GUIDE, DOWNLOAD_CATALOG, READ_CATALOG, LOAD_CARDTRADER }
+enum class PriceStep { DOWNLOAD_GUIDE, READ_GUIDE }
 
 /**
  * Avanzamento dell'aggiornamento prezzi: carta e variante in lavorazione, oppure (con [step]) un lavoro
- * preparatorio (scaricare o leggere un file Cardmarket, caricare i set di CardTrader); in quel caso [variant] è null.
+ * preparatorio (scaricare o leggere il listino Cardmarket); in quel caso [variant] è null.
  */
 data class PriceProgress(val cardName: String, val variant: VariantType?, val done: Int, val total: Int, val step: PriceStep? = null)
 
@@ -57,35 +48,19 @@ data class PriceRunResult(val ok: Int, val fallback: Int, val failed: Int, val a
 
 /**
  * Aggiorna i prezzi delle varianti desiderate o possedute e salva l'ultimo risultato in locale.
- * Se una variante non ha dati nuovi resta valido il prezzo salvato in precedenza.
- * Se l'utente ha inserito il token CardTrader, ogni variante ha anche il prezzo CardTrader, in una catena
+ * Il prodotto Cardmarket e il blueprint CardTrader di ogni carta arrivano dal database delle carte: il prezzo in euro viene dal listino
+ * pubblico di Cardmarket. Se l'utente ha inserito il token CardTrader, ogni variante ha anche il prezzo CardTrader, in una catena
  * separata: non sostituisce Cardmarket e i suoi errori non contano come errori dell'aggiornamento.
+ * Se una variante non ha dati nuovi resta valido il prezzo salvato in precedenza.
  */
 class PriceRepository(
     private val db: AppDatabase,
-    private val client: TcgdexClient,
     private val http: OkHttpClient,
     private val settings: SettingsStore,
     private val cacheDir: File,
     private val images: ImageStore,
 ) {
     private val priceDao = db.priceDao()
-
-    /** Carte per cui si è già cercato il Pokédex in questa sessione, per non rifare la richiesta a ogni aggiornamento. */
-    private val dexLookedUp = HashSet<String>()
-
-    /** Carte per cui si è già cercato il blueprint CardTrader in questa sessione. */
-    private val blueprintLookedUp = HashSet<String>()
-
-    /** Carte scheletro per cui si è già cercato l'illustratore in questa sessione. */
-    private val illustratorLookedUp = HashSet<String>()
-
-    /** Posizioni già calcolate per le carte senza Pokédex (il valore può essere null: non trovata). */
-    private val ordinals = HashMap<String, Optional>()
-
-    private class Optional(val value: SetOrdinal?)
-
-    private val ordinalFinder = SetOrdinalFinder(client)
 
     /**
      * Esegue l'aggiornamento prezzi delle carte visibili di una collezione.
@@ -106,13 +81,10 @@ class PriceRepository(
             (entry?.wanted ?: true) || (entry?.quantity ?: 0) > 0
         }
 
-        val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
-        val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
         var position = 0
         val sources = priceSources { step -> progress(PriceProgress(STEP_LABEL, null, position, targets.size, step)) }
 
         var ok = 0
-        var fallback = 0
         var failed = 0
         var consecutiveNetworkErrors = 0
         var abortReason: AbortReason? = null
@@ -121,15 +93,14 @@ class PriceRepository(
             for ((index, variant) in targets.withIndex()) {
                 val card = cards[variant.cardId] ?: continue
                 val type = VariantType.fromName(variant.type) ?: continue
-                if (chain.allCircuitsOpen()) {
+                if (sources.cardmarketGuide.allCircuitsOpen()) {
                     abortReason = AbortReason.SOURCE_PAUSED
                     break
                 }
                 position = index
                 progress(PriceProgress(card.name, type, index, targets.size))
-                when (checkVariant(chain, sources, card, variant, typesByCard[card.id].orEmpty(), conditionOf(entries[variant.id]?.condition))) {
+                when (checkVariant(sources, card, variant, typesByCard[card.id].orEmpty(), conditionOf(entries[variant.id]?.condition))) {
                     VariantCheck.OK -> { ok++; consecutiveNetworkErrors = 0 }
-                    VariantCheck.FALLBACK -> { fallback++; consecutiveNetworkErrors = 0 }
                     VariantCheck.FAILED -> { failed++; consecutiveNetworkErrors = 0 }
                     VariantCheck.NETWORK_ERROR -> {
                         failed++
@@ -146,7 +117,6 @@ class PriceRepository(
         } finally {
             // Anche se il lavoro viene interrotto, il run non resta "in corso" per sempre.
             withContext(NonCancellable) {
-                settings.setTcgdexPausedUntil(breaker.openUntil)
                 priceDao.updateRun(
                     PriceRunEntity(
                         id = runId,
@@ -154,7 +124,7 @@ class PriceRepository(
                         finishedAt = System.currentTimeMillis(),
                         status = if (completed && abortReason == null) STATUS_DONE else STATUS_ABORTED,
                         okCount = ok,
-                        fallbackCount = fallback,
+                        fallbackCount = 0,
                         failCount = failed,
                         summary = abortReason?.name,
                         collectionId = collectionId,
@@ -163,13 +133,13 @@ class PriceRepository(
                 priceDao.pruneRuns(collectionId, KEEP_RUNS)
             }
         }
-        return PriceRunResult(ok, fallback, failed, abortReason)
+        return PriceRunResult(ok, 0, failed, abortReason)
     }
 
     /**
      * Aggiorna subito i prezzi di tutte le varianti di una sola carta, senza registrare un run.
      * @param cardId String - id locale della carta.
-     * @return PriceRunResult - conteggi; [PriceRunResult.abort] vale SOURCE_PAUSED se TCGdex è in
+     * @return PriceRunResult - conteggi; [PriceRunResult.abort] vale SOURCE_PAUSED se il listino è in
      *         pausa e OFFLINE se tutte le richieste sono fallite per la rete.
      */
     suspend fun checkCard(cardId: String, collectionId: Long?): PriceRunResult {
@@ -177,49 +147,42 @@ class PriceRepository(
         val card = db.catalogDao().getCard(cardId) ?: return PriceRunResult(0, 0, 0, null)
         val variants = db.catalogDao().variantsOf(listOf(cardId))
         val types = variants.map { it.type }
-        val breaker = CircuitBreaker(initialOpenUntil = settings.tcgdexPausedUntilNow())
-        val chain = PriceChain(listOf(ProviderSlot(TcgdexPriceProvider(client), RateLimiter(REQUEST_INTERVAL_MS), breaker)))
         val sources = priceSources {}
         var ok = 0
-        var fallback = 0
         var failed = 0
         var networkErrors = 0
         var abortReason: AbortReason? = null
         for (variant in variants) {
-            if (chain.allCircuitsOpen()) {
+            if (sources.cardmarketGuide.allCircuitsOpen()) {
                 abortReason = AbortReason.SOURCE_PAUSED
                 break
             }
-            when (checkVariant(chain, sources, card, variant, types, conditionOf(entries[variant.id]?.condition))) {
+            when (checkVariant(sources, card, variant, types, conditionOf(entries[variant.id]?.condition))) {
                 VariantCheck.OK -> ok++
-                VariantCheck.FALLBACK -> fallback++
                 VariantCheck.FAILED -> failed++
                 VariantCheck.NETWORK_ERROR -> { failed++; networkErrors++ }
                 VariantCheck.SKIPPED -> Unit
             }
         }
-        settings.setTcgdexPausedUntil(breaker.openUntil)
-        if (abortReason == null && networkErrors > 0 && ok + fallback == 0) abortReason = AbortReason.OFFLINE
-        return PriceRunResult(ok, fallback, failed, abortReason)
+        if (abortReason == null && networkErrors > 0 && ok == 0) abortReason = AbortReason.OFFLINE
+        return PriceRunResult(ok, 0, failed, abortReason)
     }
 
     private fun conditionOf(name: String?): Condition = Condition.entries.firstOrNull { it.name == name } ?: Condition.NM
 
     /** Esito del controllo di una singola variante. */
-    private enum class VariantCheck { OK, FALLBACK, FAILED, NETWORK_ERROR, SKIPPED }
+    private enum class VariantCheck { OK, FAILED, NETWORK_ERROR, SKIPPED }
 
     /**
-     * Chiede il prezzo di una variante alla catena di fonti e, se lo trova, lo salva.
-     * @param chain PriceChain - catena di fonti con limitatore e circuit breaker.
-     * @param sources PriceSources - CardTrader (se c'è il token) e listino Cardmarket.
+     * Chiede il prezzo di una variante al listino Cardmarket (e a CardTrader, se c'è il token) e, se lo trova, lo salva.
+     * @param sources PriceSources - fonti dell'aggiornamento.
      * @param card CardEntity - carta della variante.
      * @param variant CardVariantEntity - variante da controllare.
-     * @param condition Condition - condizione della copia nella collezione: CardTrader mostra il prezzo più basso di quella condizione o migliore.
      * @param types List<String> - tipi di tutte le varianti della carta (per l'affidabilità del prezzo Cardmarket).
+     * @param condition Condition - condizione della copia nella collezione: CardTrader mostra il prezzo più basso di quella condizione o migliore.
      * @return VariantCheck - esito; SKIPPED se lingua o tipo non sono riconosciuti.
      */
-    private suspend fun checkVariant(chain: PriceChain, sources: PriceSources, storedCard: CardEntity, variant: CardVariantEntity, types: List<String>, condition: Condition): VariantCheck {
-        val card = withIllustrator(withDexId(storedCard))
+    private suspend fun checkVariant(sources: PriceSources, card: CardEntity, variant: CardVariantEntity, types: List<String>, condition: Condition): VariantCheck {
         val type = VariantType.fromName(variant.type) ?: return VariantCheck.SKIPPED
         val language = Language.fromCode(card.language) ?: return VariantCheck.SKIPPED
         val request = PriceRequest(
@@ -234,23 +197,13 @@ class PriceRepository(
             localId = card.localId,
             name = card.name,
             dexId = card.dexId,
-            ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
             cardTraderCondition = CtCondition.fromCondition(condition),
-            cardmarketId = card.cardmarketId,
-            cardmarketHint = card.cardmarketProductHint,
+            cardmarketId = card.cardmarketProduct ?: card.cardmarketId,
             printProductId = variant.cardmarketId,
             printFinish = if (VariantType.HOLO.name in types && VariantType.NORMAL.name !in types) VariantType.HOLO else VariantType.NORMAL,
-        ).let { if (hintMatches(sources.catalog, it.cardmarketHint, card.name)) it else it.copy(cardmarketHint = null) }
-        // Se il prodotto indicato da TCGdex è un'altra carta, anche il prezzo Cardmarket di TCGdex lo è: resta solo TCGplayer.
-        val tcgdexHintWrong = card.cardmarketProductHint != null && request.cardmarketHint == null
-        // Il listino Cardmarket (aggiornato ogni notte) è la fonte principale dei prezzi in euro; TCGdex serve
-        // per i dollari di TCGplayer e come ripiego per le carte che il listino non abbina.
-        saveCardTraderBlueprint(sources.cardTraderProvider, card, request)
-        val guideQuote = sources.cardmarketGuide.fetch(request).quote
-        val outcome = chain.fetch(request)
-        val tcgdexQuote = outcome.quote
-            ?.let { if (tcgdexHintWrong) it.copy(eur = null, eurLow = null, eurAvg30 = null) else it }
-            ?.takeIf { it.hasAnyPrice() }
+            cardTraderBlueprintId = card.cardTraderBlueprintId,
+        )
+        val outcome = sources.cardmarketGuide.fetch(request)
         // CardTrader non distingue le stampe a parte (shadowless, jumbo…).
         val cardTraderOutcome = if (type.isPrint) null else sources.cardTrader?.fetch(request)
         val cardTraderSaved = cardTraderOutcome?.quote?.let { saveQuote(variant.id, it) } == true
@@ -260,104 +213,25 @@ class PriceRepository(
         ) {
             priceDao.deleteSnapshotsOf(variant.id, CardTraderPriceProvider.DISPLAY_NAME)
         }
-        if (guideQuote != null) {
-            saveQuote(variant.id, guideQuote.copy(usd = tcgdexQuote?.usd, usdLow = tcgdexQuote?.usdLow))
+        val quote = outcome.quote
+        if (quote != null) {
+            saveQuote(variant.id, quote)
             return VariantCheck.OK
         }
-        if (tcgdexQuote == null) {
-            if (cardTraderSaved) return VariantCheck.OK
-            return if (outcome.steps.any { it.outcome == StepOutcome.NETWORK_ERROR }) VariantCheck.NETWORK_ERROR else VariantCheck.FAILED
-        }
-        saveQuote(variant.id, tcgdexQuote)
-        return if (outcome.usedFallback) VariantCheck.FALLBACK else VariantCheck.OK
+        if (cardTraderSaved) return VariantCheck.OK
+        return if (outcome.steps.any { it.outcome == StepOutcome.NETWORK_ERROR }) VariantCheck.NETWORK_ERROR else VariantCheck.FAILED
     }
 
     /**
-     * Salva l'id del blueprint CardTrader della carta (una verifica per carta a ogni avvio), se si abbina con certezza; se l'abbinamento era sbagliato lo corregge.
-     * Le Poké Ball e le Master Ball hanno un blueprint a parte, quindi non servono per la carta.
-     * @param cardTrader CardTraderPriceProvider? - fonte CardTrader, null senza token.
-     * @param card CardEntity - carta.
-     * @param request PriceRequest - richiesta della variante.
-     * @return Unit
-     */
-    private suspend fun saveCardTraderBlueprint(cardTrader: CardTraderPriceProvider?, card: CardEntity, request: PriceRequest) {
-        if (cardTrader == null || request.variant.isBall || request.variant.isPrint || !blueprintLookedUp.add(card.id)) return
-        try {
-            val id = cardTrader.blueprintId(request) ?: return
-            if (id == card.cardTraderBlueprintId) return
-            storeBlueprint(card, id)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Rete assente o risposta non valida: il link resta la ricerca per nome e il prossimo aggiornamento riprova.
-            blueprintLookedUp.remove(card.id)
-        }
-    }
-
-    /**
-     * Trova il blueprint CardTrader delle carte che non ce l'hanno ancora (collezioni già esistenti), per il link diretto.
-     * Serve il token CardTrader; senza, o con la rete assente, non fa nulla. Una carta che non si abbina con certezza resta com'è.
-     * @return Int - numero di carte a cui è stato aggiunto il blueprint.
-     */
-    suspend fun fillCardTraderBlueprints(): Int {
-        val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return 0
-        // Dopo un cambio delle regole di abbinamento si ricontrollano una volta anche i blueprint già salvati.
-        val recheck = settings.cardTraderChecked.first() < BLUEPRINT_RULES_VERSION
-        val missing = db.catalogDao().cardsWithoutCardTraderBlueprint() + if (recheck) db.catalogDao().cardsWithCardTraderBlueprintToCheck() else emptyList()
-        if (missing.isEmpty()) {
-            if (recheck) settings.setCardTraderChecked(BLUEPRINT_RULES_VERSION)
-            return 0
-        }
-        val provider = CardTraderPriceProvider(CardTraderClient(http, token))
-        var saved = 0
-        var consecutiveErrors = 0
-        for (stored in missing) {
-            if (consecutiveErrors >= MAX_NETWORK_ERRORS) break
-            try {
-                val card = withDexId(stored)
-                val language = Language.fromCode(card.language) ?: continue
-                val id = provider.blueprintId(requestOf(card, language))
-                consecutiveErrors = 0
-                if (id != null && id != card.cardTraderBlueprintId) {
-                    storeBlueprint(card, id)
-                    saved++
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // Rete assente o risposta non valida: le altre carte possono andare a buon fine, e la prossima apertura riprova.
-                consecutiveErrors++
-            }
-        }
-        // Il controllo dei blueprint già salvati è fatto solo se la rete ha risposto fino in fondo.
-        if (recheck && consecutiveErrors < MAX_NETWORK_ERRORS) settings.setCardTraderChecked(BLUEPRINT_RULES_VERSION)
-        return saved
-    }
-
-    /**
-     * Salva il blueprint CardTrader di una carta. Se ne aveva già uno diverso (abbinamento sbagliato), l'immagine presa da CardTrader
-     * per quello sbagliato va ripresa; le immagini di TCGdex o scelte a mano restano.
-     * @param card CardEntity - carta prima della correzione.
-     * @param id Int - blueprint giusto.
-     * @return Unit
-     */
-    private suspend fun storeBlueprint(card: CardEntity, id: Int) {
-        db.catalogDao().setCardTraderBlueprint(card.id, id)
-        // Le condizioni sull'immagine si leggono dal database al momento: la copia della carta può essere vecchia
-        // (il sync può aver salvato nel frattempo l'immagine TCGdex).
-        if (card.cardTraderBlueprintId != null) db.catalogDao().clearCardTraderImage(card.id)
-    }
-
-    /**
-     * Scarica da CardTrader l'immagine delle carte inglesi e giapponesi che TCGdex non ha (es. i set giapponesi senza
-     * carte) e completa rarità e numero stampato delle carte del catalogo Cardmarket. Serve il token CardTrader; senza,
-     * o con la rete assente, non fa nulla. Una carta che non si abbina con certezza resta com'è.
+     * Scarica da CardTrader l'immagine delle carte che il catalogo non ha (es. i set giapponesi senza immagini su TCGdex).
+     * Serve il token CardTrader e il blueprint della carta, che arriva dal database delle carte; senza, o con la rete assente,
+     * non fa nulla.
      * @param progress suspend (SyncProgress) -> Unit - avanzamento, una volta per carta.
      * @return Int - numero di carte a cui è stata aggiunta l'immagine.
      */
     suspend fun fillImagesFromCardTrader(progress: suspend (SyncProgress) -> Unit = {}): Int {
         val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return 0
-        val missing = db.catalogDao().cardsWithoutImage()
+        val missing = db.catalogDao().cardsWithoutImage().filter { it.cardTraderBlueprintId != null && it.cardTraderExpansionId != null }
         val provider = CardTraderPriceProvider(CardTraderClient(http, token))
         val limiter = RateLimiter(REQUEST_INTERVAL_MS)
         var saved = 0
@@ -372,7 +246,6 @@ class PriceRepository(
                 // Rete assente o risposta non valida: le altre carte possono andare a buon fine, e il prossimo aggiornamento riprova.
             }
         }
-        fillDetailsFromCardTrader(provider, limiter)
         return saved
     }
 
@@ -380,12 +253,11 @@ class PriceRepository(
      * Scarica da CardTrader l'immagine di una singola carta, anche se ne ha già una (quella scelta a mano viene sostituita).
      * Serve il token CardTrader.
      * @param cardId String - id locale della carta.
-     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE se manca il token o la carta non si abbina con certezza, NETWORK_ERROR.
+     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE se manca il token o la carta non ha un blueprint, NETWORK_ERROR.
      */
     suspend fun downloadImageFromCardTrader(cardId: String): ImageResult {
         val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return ImageResult.NOT_AVAILABLE
         val stored = db.catalogDao().getCard(cardId) ?: return ImageResult.NOT_AVAILABLE
-        if (Language.fromCode(stored.language) == null) return ImageResult.NOT_AVAILABLE
         return try {
             if (saveCardTraderImage(CardTraderPriceProvider(CardTraderClient(http, token)), stored)) ImageResult.DOWNLOADED else ImageResult.NOT_AVAILABLE
         } catch (e: CancellationException) {
@@ -395,117 +267,17 @@ class PriceRepository(
         }
     }
 
-    private fun requestOf(card: CardEntity, language: Language) = PriceRequest(
-        language = language,
-        tcgdexId = card.tcgdexId,
-        variant = VariantType.NORMAL,
-        cardHasNormalAndHolo = false,
-        setId = card.setId,
-        setName = card.setName,
-        setCode = card.setCode,
-        localId = card.localId,
-        name = card.name,
-        dexId = card.dexId,
-        ordinal = if (card.dexId == null) ({ ordinalOf(card, language) }) else null,
-        cardmarketId = card.cardmarketId,
-        cardmarketHint = card.cardmarketProductHint,
-    )
-
-    /**
-     * Completa rarità e numero stampato delle carte del catalogo Cardmarket con quelli di CardTrader. Non tocca i dati già presenti.
-     * @return Int - numero di carte aggiornate.
-     */
-    private suspend fun fillDetailsFromCardTrader(provider: CardTraderPriceProvider, limiter: RateLimiter): Int {
-        var saved = 0
-        for (stored in db.catalogDao().cardsMissingDetails()) {
-            try {
-                val card = withDexId(stored)
-                val language = Language.fromCode(card.language) ?: continue
-                limiter.acquire()
-                val found = provider.details(requestOf(card, language)) ?: continue
-                val rarity = card.rarity ?: found.rarity
-                val number = card.printedNumber.ifEmpty { found.printedNumber.orEmpty() }
-                if (rarity == card.rarity && number == card.printedNumber) continue
-                db.catalogDao().fillDetails(card.id, rarity, number)
-                saved++
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // Come per le immagini: le altre carte possono andare a buon fine, e il prossimo aggiornamento riprova.
-            }
-        }
-        return saved
-    }
-
-    /** Cerca la carta su CardTrader e ne salva l'immagine. @return Boolean - true se è stata salvata. */
-    private suspend fun saveCardTraderImage(provider: CardTraderPriceProvider, stored: CardEntity): Boolean {
-        val card = withDexId(stored)
-        val language = Language.fromCode(card.language) ?: return false
-        val url = provider.imageUrl(requestOf(card, language)) ?: return false
+    /** Cerca il blueprint della carta su CardTrader e ne salva l'immagine. @return Boolean - true se è stata salvata. */
+    private suspend fun saveCardTraderImage(provider: CardTraderPriceProvider, card: CardEntity): Boolean {
+        val expansion = card.cardTraderExpansionId ?: return false
+        val blueprint = card.cardTraderBlueprintId ?: return false
+        val url = provider.imageUrl(expansion, blueprint) ?: return false
         val (low, high) = images.saveFromCardTrader(card.id, url) ?: return false
         val current = db.catalogDao().getCard(card.id)
         if (images.isManual(current?.imageHighPath)) images.deleteManual(current?.imageHighPath)
         if (images.isManual(current?.imageLowPath) && current?.imageLowPath != current?.imageHighPath) images.deleteManual(current?.imageLowPath)
         db.catalogDao().setImagePaths(card.id, low, high)
         return true
-    }
-
-    /**
-     * Completa il numero del Pokédex di una carta giapponese salvata prima che esistesse la colonna:
-     * senza, CardTrader non riesce ad abbinare le carte delle espansioni del 1996-1999.
-     * @param card CardEntity - carta salvata.
-     * @return CardEntity - la carta con il Pokédex, oppure quella di partenza se non si trova (Allenatori, Energie, rete assente).
-     */
-    private suspend fun withDexId(card: CardEntity): CardEntity {
-        if (card.dexId != null || card.language != Language.JA.code || !dexLookedUp.add(card.id)) return card
-        val dexId = try {
-            client.getCard(Language.JA, card.tcgdexId).dexId?.firstOrNull()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            null
-        } ?: return card
-        // Solo la colonna: riscrivere la carta intera da una copia letta prima cancellerebbe i dati salvati nel frattempo (es. le immagini).
-        db.catalogDao().fillDexId(card.id, dexId)
-        return card.copy(dexId = dexId)
-    }
-
-    /**
-     * Posizione di una carta senza Pokédex tra le carte Pokémon del suo set, per abbinarla a CardTrader
-     * quando l'espansione non ha numeri di collezione. Calcolata una sola volta per carta e sessione.
-     * @param card CardEntity - carta senza Pokédex (Allenatore o Energia).
-     * @param language Language - lingua del catalogo.
-     * @return SetOrdinal? - posizione, oppure null se non si trova o TCGdex non risponde.
-     */
-    private suspend fun ordinalOf(card: CardEntity, language: Language): SetOrdinal? {
-        ordinals[card.id]?.let { return it.value }
-        val ordinal = try {
-            ordinalFinder.of(language, card.setId, card.localId)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return null
-        }
-        ordinals[card.id] = Optional(ordinal)
-        return ordinal
-    }
-
-    /**
-     * Completa l'illustratore di una carta "scheletro" (senza dettaglio TCGdex) dalla stessa carta nel catalogo inglese.
-     * @param card CardEntity - carta salvata.
-     * @return CardEntity - la carta con l'illustratore, oppure quella di partenza se non è uno scheletro o la ricerca non è univoca.
-     */
-    private suspend fun withIllustrator(card: CardEntity): CardEntity {
-        if (!CardRepair.isStub(card.rarity, card.illustrator, card.releaseDate, card.imageUrl != null) || !illustratorLookedUp.add(card.id)) return card
-        val illustrator = try {
-            CardRepair.illustratorFromEnglish(client, card.name, card.dexId)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            null
-        } ?: return card
-        db.catalogDao().fillIllustrator(card.id, illustrator)
-        return card.copy(illustrator = illustrator)
     }
 
     /**
@@ -533,56 +305,23 @@ class PriceRepository(
         return true
     }
 
-    /**
-     * Fonti oltre a TCGdex: CardTrader (solo con il token) e il listino Cardmarket, più il catalogo Cardmarket
-     * per controllare il prodotto che TCGdex indica per una carta.
-     */
-    private class PriceSources(
-        val cardTrader: PriceChain?,
-        val cardmarketGuide: PriceChain,
-        val cardTraderProvider: CardTraderPriceProvider? = null,
-        val catalog: CardmarketCatalog? = null,
-    )
+    /** Fonti dell'aggiornamento: il listino Cardmarket (sempre) e CardTrader (solo con il token). */
+    private class PriceSources(val cardTrader: PriceChain?, val cardmarketGuide: PriceChain)
 
     /**
-     * Controlla che il prodotto Cardmarket indicato da TCGdex sia davvero la carta: TCGdex a volte collega le carte
-     * Gold Star (☆), Delta Species (δ) o Prism Star (◇) al prodotto della versione normale (es. ex8-107 "Rayquaza ☆"
-     * al Rayquaza normale del set). I marcatori del nome del prodotto devono coincidere con quelli della carta.
-     * @param catalog CardmarketCatalog? - catalogo Cardmarket, null se non disponibile.
-     * @param hint Int? - id prodotto indicato da TCGdex.
-     * @param cardName String - nome della carta su TCGdex.
-     * @return Boolean - false solo se il prodotto è nel catalogo e i marcatori sono diversi.
-     */
-    private suspend fun hintMatches(catalog: CardmarketCatalog?, hint: Int?, cardName: String): Boolean {
-        if (catalog == null || hint == null) return true
-        val product = try {
-            catalog.locate(hint)?.second
-        } catch (e: IOException) {
-            null
-        } ?: return true
-        return CardmarketCatalog.markers(product.name) == CardmarketCatalog.markers(cardName)
-    }
-
-    /**
-     * Crea le fonti di un aggiornamento prezzi. Il listino Cardmarket c'è sempre: l'id prodotto della carta
-     * viene da CardTrader se c'è il token e la carta si abbina, altrimenti dal catalogo Cardmarket.
-     * @param onDownload suspend (PriceStep) -> Unit - chiamata quando sta per iniziare un lavoro preparatorio lungo.
+     * Crea le fonti di un aggiornamento prezzi.
+     * @param onStep suspend (PriceStep) -> Unit - chiamata quando sta per iniziare un lavoro preparatorio lungo.
      * @return PriceSources - fonti pronte.
      */
     private suspend fun priceSources(onStep: suspend (PriceStep) -> Unit): PriceSources {
         val token = settings.cardTraderToken.first()
-        val cardTrader = token.takeIf { it.isNotEmpty() }?.let { CardTraderPriceProvider(CardTraderClient(http, it), onLoadingExpansions = { onStep(PriceStep.LOAD_CARDTRADER) }) }
-        val catalog = CardmarketCatalog(http, File(cacheDir, CATALOG_FILE), onDownload = { onStep(PriceStep.DOWNLOAD_CATALOG) }, onRead = { onStep(PriceStep.READ_CATALOG) })
-        val catalogIds = CardmarketCatalogIdSource(catalog)
+        val cardTrader = token.takeIf { it.isNotEmpty() }?.let { CardTraderPriceProvider(CardTraderClient(http, it)) }
         val guide = CardmarketGuidePriceProvider(
-            cardTrader?.orElse(catalogIds) ?: catalogIds,
             CardmarketPriceGuide(http, File(cacheDir, GUIDE_FILE), onDownload = { onStep(PriceStep.DOWNLOAD_GUIDE) }, onRead = { onStep(PriceStep.READ_GUIDE) }),
         )
         return PriceSources(
             cardTrader = cardTrader?.let { PriceChain(listOf(ProviderSlot(it, RateLimiter(REQUEST_INTERVAL_MS), CircuitBreaker()))) },
             cardmarketGuide = PriceChain(listOf(ProviderSlot(guide, RateLimiter(0), CircuitBreaker()))),
-            cardTraderProvider = cardTrader,
-            catalog = catalog,
         )
     }
 
@@ -611,9 +350,6 @@ class PriceRepository(
     }
 
     companion object {
-        /** Cambia quando cambiano le regole di abbinamento a CardTrader: i blueprint già salvati si ricontrollano una volta. */
-        const val BLUEPRINT_RULES_VERSION = 1
-
         /** Snapshot conservati per variante. */
         const val KEEP_SNAPSHOTS = 20
 
@@ -625,9 +361,7 @@ class PriceRepository(
         private const val REQUEST_INTERVAL_MS = 300L
         private const val STEP_LABEL = "…"
         private const val GUIDE_FILE = "cardmarket-price-guide.json"
-        private const val CATALOG_FILE = "cardmarket-products.json"
         private const val MAX_NETWORK_ERRORS = 5
         private const val SQL_CHUNK = 500
     }
 }
-

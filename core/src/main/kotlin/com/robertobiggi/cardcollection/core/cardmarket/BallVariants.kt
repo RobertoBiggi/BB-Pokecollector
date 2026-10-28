@@ -1,6 +1,5 @@
 package com.robertobiggi.cardcollection.core.cardmarket
 
-import com.robertobiggi.cardcollection.core.cardtrader.CardTraderMatcher
 import com.robertobiggi.cardcollection.core.model.VariantType
 
 /**
@@ -53,7 +52,13 @@ class BallVariants(private val products: Map<String, Map<VariantType, Product>>)
         }
 
         /** Le varianti di una carta si cercano per set (senza maiuscole) e numero (senza zeri iniziali). */
-        private fun key(setId: String, localId: String) = "${setId.lowercase()}|${CardTraderMatcher.normalizeNumber(localId)}"
+        private fun normalizeNumber(raw: String): String {
+            val head = raw.substringBefore('/').trim().uppercase()
+            val stripped = head.trimStart('0')
+            return if (stripped.isEmpty() && head.isNotEmpty()) "0" else stripped
+        }
+
+        private fun key(setId: String, localId: String) = "${setId.lowercase()}|${normalizeNumber(localId)}"
 
         /**
          * Legge le righe "set TAB numero TAB variante TAB idProdotto TAB idBlueprint" (variante: POKE_BALL o MASTER_BALL; l'ultimo campo è facoltativo).

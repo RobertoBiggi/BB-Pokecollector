@@ -27,32 +27,29 @@ Decisioni prese con l'utente:
 ```
 UI Compose ──► MainViewModel ──► Repository ──► Room (unica fonte della UI → offline)
                                     │
-                                    ├─ CatalogRepository ──► TcgdexClient (10 lingue) ──► ImageStore (filesDir/cards)
-                                    └─ PriceRepository  ──► PriceChain
-                                                              └─ TcgdexPriceProvider (Cardmarket EUR + TCGplayer USD)
+                                    ├─ CatalogRepository ──► CatalogStore ──► cards.sqlite (scaricato, sola lettura)
+                                    │                       └─► ImageStore (filesDir/cards, immagini da assets.tcgdex.net)
+                                    └─ PriceRepository  ──► listino prezzi Cardmarket (+ CardTrader col token)
 WorkManager: CatalogSyncWorker, PriceCheckWorker (unici, espressi, avviati a mano)
 ```
 
 | Modulo | Ruolo |
 |---|---|
-| `core` (Kotlin/JVM) | DTO TCGdex, `TcgdexClient`, `CatalogMapper`, `VariantMapper`, `PriceChain` + `RateLimiter` + `CircuitBreaker`, `Validators`, `CollectionFiles` (JSON), `CollectionStats`. Si compila e si testa senza Android SDK e non contiene testi per l'utente. |
+| `core` (Kotlin/JVM) | modelli, `VariantMapper`, `PriceChain` + `RateLimiter` + `CircuitBreaker`, listino Cardmarket e client CardTrader, `Validators`, `CollectionFiles` (JSON), `CollectionStats`. Si compila e si testa senza Android SDK e non contiene testi per l'utente. |
 | `app` (Android) | Room, DataStore, `ImageStore`, repository, worker, UI. Dipendenze iniettate a mano in `AppContainer`. |
 
 **Testi e lingue:** repository, worker e core restituiscono solo dati ed esiti tipizzati (enum e sealed class, es. `InputError`, `ImportError`, `AbortReason`). È la UI a trasformarli in testo con `stringResource`. Le risorse sono in `res/values` (inglese, lingua di base) e `res/values-it` (italiano). La lingua si sceglie in Impostazioni (Sistema / Italiano / English) con `AppCompatDelegate.setApplicationLocales`, che la ricorda anche su Android 12 e precedenti. Date e valute seguono la lingua corrente.
 
-## Fonte dati: TCGdex
+## Fonte dati: database delle carte
 
-Lo schema è stato verificato sulle risposte reali (workflow `tcgdex-probe.yml`).
+Le carte non si scaricano più da un'API: l'app legge un file SQLite (`cards.sqlite`) generato da `tools/gen_card_db.py` (vedi più sotto), che contiene già carte, set, varianti, i Pokémon di ogni carta e gli abbinamenti a Cardmarket e CardTrader.
 
-- **Ricerca:** `/v2/{lingua}/cards?name=…` cerca per sottostringa del nome. `Mawile` trova anche `Mawile GX`, `M Mawile EX` e `Mega Mawile ex`; `クチート` trova anche `メガクチートex`.
-- **Esclusioni:** le carte di **TCG Pocket** (serie `tcgp`, solo digitali) e le carte non Pokémon (es. "Mawile Spirit Link"). Sono escluse anche le varianti jumbo.
-- **Dettaglio:** `/cards/{id}` contiene `variants_detailed`, con i prezzi **per variante**: `pricing.cardmarket` (EUR) e `pricing.tcgplayer` (USD, `null` per le carte JP).
-- **Codice stampato:**
-  - lingue europee: `set.abbreviation.localized` se presente (es. `PXY` in francese), altrimenti `official` (es. `POR`); assente nelle ere più vecchie;
-  - cataloghi asiatici (JA, ZH-TW, TH, ID): l'id del set coincide con la sigla stampata (es. `SM10a`, `M1L`);
-  - numero: `localId/cardCount.official`, con il totale allungato alle stesse cifre (`032/088`). Le promo restano invariate (`XY103`).
-- **Immagini:** `{image}/low.webp` per la griglia e `{image}/high.webp` per il dettaglio. Molte carte asiatiche non hanno immagine: l'app mostra un segnaposto con nome e codice.
-- **Varianti tradotte:** nei cataloghi europei `variants_detailed` può avere nomi tradotti (es. "Olografica"). In quel caso le varianti si ricavano dai flag `variants`, che hanno chiavi standard.
+- **Installazione:** da Impostazioni → Database delle carte si scarica da un indirizzo HTTPS (predefinito: l'ultima release del repository; modificabile). `CatalogStore` scarica in un file temporaneo, controlla `meta.schemaVersion` (deve coincidere con `CatalogDb.SCHEMA_VERSION` e `SCHEMA_VERSION` del generatore) e lo sostituisce solo se valido. Il file sta in `filesDir/catalog/`. Senza database l'app mostra un avviso e le ricerche non trovano nulla.
+- **Lettura:** `CatalogDb` apre il file in sola lettura con `android.database.sqlite`. Ricerca per nome = Pokémon (`PokemonNames.dexIdsMatching`, in ogni lingua) → `card_pokemon`; se il testo non è un Pokémon, per sottostringa del nome. Ricerca per codice (`CardCodeSearch.parse`): numero, totale e sigla/id del set. Collezione per set: tutte le carte del set.
+- **Sync:** `CatalogRepository.sync` legge dal database le carte delle ricerche attive e le salva in Room (`card`, `card_variant`); non serve rete. Poi scarica le immagini mancanti.
+- **Immagini:** solo le carte di origine TCGdex (`card.origin = 0`) hanno un indirizzo, ricavato dall'id: `https://assets.tcgdex.net/{lingua}/{serie}/{set}/{numero}`. Per le altre, con il token CardTrader, si usa l'immagine del blueprint indicato dal database (`cardTraderBlueprintId` + `cardTraderExpansionId`). Si può sempre sceglierne una a mano.
+- **Prezzi:** il prodotto Cardmarket (`cmProduct`, o quello della variante per Poké Ball e stampe a parte) dà il prezzo in euro dal listino pubblico; il blueprint CardTrader dà il prezzo più basso col token. I prezzi in dollari di TCGplayer non ci sono più (venivano dall'API TCGdex).
+- **Host raggiungibili:** `assets.tcgdex.net` (immagini), `downloads.s3.cardmarket.com`, `api.cardtrader.com`. Il download del database usa un client a parte, perché l'indirizzo lo sceglie l'utente (solo HTTPS).
 
 ### Lingue verificate (probe)
 
@@ -81,7 +78,7 @@ TCGdex usa `0` per "nessun dato": i valori nulli o pari a zero vengono scartati.
 
 La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`: aggiungerne una richiede solo l'implementazione e l'inserimento in `PriceRepository`. Quando non c'è un prezzo nuovo resta l'ultimo salvato, oppure il prezzo manuale.
 
-## Modello dati (Room, versione 11)
+## Modello dati (Room, versione 14)
 
 | Tabella | Contenuto |
 |---|---|
@@ -100,7 +97,7 @@ Uno slot è una variante desiderata (`wanted`) oppure posseduta: una variante co
 
 Una carta è visibile in una collezione se non è nascosta e se è stata aggiunta a mano oppure da una ricerca attiva. Il sync del catalogo aggiorna solo `card`, `card_variant` e i collegamenti: non tocca mai i dati dell'utente.
 
-**Schema:** il database è alla versione 13; le versioni precedenti alla 11 non sono più supportate. Le migrazioni sono 11 → 12 (`card_variant.cardmarketId`, il prodotto Cardmarket delle stampe a parte) e 12 → 13 (`card_variant.print`, il timbro o il prodotto che distingue più varianti dello stesso tipo). Lo schema esportato da Room è in `app/schemas/`; una modifica allo schema richiede di alzare la versione e di scrivere la migrazione.
+**Schema:** il database è alla versione 14; le versioni precedenti alla 11 non sono più supportate. Le migrazioni sono 11 → 12 (`card_variant.cardmarketId`, il prodotto Cardmarket delle stampe a parte), 12 → 13 (`card_variant.print`, il timbro o il prodotto che distingue più varianti dello stesso tipo) e 13 → 14 (`card.cardmarketProduct` e `card.cardTraderExpansionId`, letti dal database delle carte al primo sync). Gli id delle carte (`lingua:idTcgdex`) sono gli stessi del database, quindi quantità e note delle collezioni esistenti restano agganciate. Lo schema esportato da Room è in `app/schemas/`; una modifica allo schema richiede di alzare la versione e di scrivere la migrazione.
 
 **Stampe a parte e 1st Edition:** oltre a normal, holo e reverse, una carta ha una variante per ogni stampa che Cardmarket vende come prodotto a parte e che TCGdex abbina a un prodotto diverso da quello della carta: Shadowless, Guance rosse, Pokétour '99 e Jumbo (`VariantType.isPrint`). Ogni timbro di TCGdex (tornei, prerelease, staff…) con un prodotto proprio è una variante `STAMPED` (il timbro sta in `print`, id `en:ex5-85|STAMPED|reed-weichler`); i timbri non contano finché l'utente non li segna come voluti. I prodotti Cardmarket della stessa carta (stessa metacard, stesso set) che TCGdex non elenca diventano varianti `CARDMARKET_PRINT`, solo se la carta è la sola con quel nome nel set. Il prezzo viene dal loro prodotto (listino Cardmarket, poi TCGdex); CardTrader non le distingue e le salta. Su Cardmarket la 1st Edition è un'etichetta degli annunci, non un prodotto: resta una sola variante `FIRST_EDITION` per carta, ricavata dal timbro `1st-edition` di TCGdex. L'interruttore "Conta le 1st Edition" delle impostazioni, se spento, rende "non volute" le 1st Edition su cui l'utente non ha fatto scelte: non contano tra le mancanti né nei totali, le copie possedute sì.
 
@@ -205,7 +202,7 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
 
 ## Sicurezza
 
-- **Rete:** solo HTTPS (`network_security_config` senza traffico in chiaro). Un interceptor di rete blocca ogni host fuori da `api.tcgdex.net`, `assets.tcgdex.net`, `downloads.s3.cardmarket.com` e `api.cardtrader.com`, anche dopo un redirect. Le immagini si scaricano con controllo di tipo e dimensione (massimo 3 MB).
+- **Rete:** solo HTTPS (`network_security_config` senza traffico in chiaro). Un interceptor di rete blocca ogni host fuori da `assets.tcgdex.net`, `downloads.s3.cardmarket.com` e `api.cardtrader.com`, anche dopo un redirect (il download del database delle carte usa un client a parte, solo HTTPS). Le immagini si scaricano con controllo di tipo e dimensione (massimo 3 MB).
 - **Segreti:** nessuno nel repository. Le fonti usate non richiedono chiavi.
 - **Validazione:** gli id remoti passano da una whitelist (niente `..` né `/`) prima di finire in URL o nomi file. I percorsi delle immagini sono verificati in forma canonica sotto `filesDir/cards`.
 - **Risposte API:** limite di 2 MB; JSON tollerante ai campi sconosciuti ma con i tipi controllati.

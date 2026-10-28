@@ -12,6 +12,12 @@ object Migrations {
     /** Versione 12 → 13: timbro o prodotto che distingue più varianti dello stesso tipo, vuoto per le varianti esistenti. */
     val SQL_12_13: List<String> = listOf("ALTER TABLE `card_variant` ADD COLUMN `print` TEXT NOT NULL DEFAULT ''")
 
+    /** Versione 13 → 14: prodotto Cardmarket ed espansione CardTrader delle carte, vuoti finché il sync non li legge dal database delle carte. */
+    val SQL_13_14: List<String> = listOf(
+        "ALTER TABLE `card` ADD COLUMN `cardmarketProduct` INTEGER",
+        "ALTER TABLE `card` ADD COLUMN `cardTraderExpansionId` INTEGER",
+    )
+
     /** Migrazione Room 11 → 12. */
     val MIGRATION_11_12 = object : Migration(11, 12) {
         /**
@@ -33,6 +39,18 @@ object Migrations {
          */
         override fun migrate(db: SupportSQLiteDatabase) {
             SQL_12_13.forEach { db.execSQL(it) }
+        }
+    }
+
+    /** Migrazione Room 13 → 14. */
+    val MIGRATION_13_14 = object : Migration(13, 14) {
+        /**
+         * Esegue le istruzioni di [SQL_13_14].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_13_14.forEach { db.execSQL(it) }
         }
     }
 }

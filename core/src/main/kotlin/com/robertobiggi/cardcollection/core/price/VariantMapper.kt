@@ -3,10 +3,10 @@ package com.robertobiggi.cardcollection.core.price
 import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
-import com.robertobiggi.cardcollection.core.tcgdex.CardmarketPricingDto
-import com.robertobiggi.cardcollection.core.tcgdex.PricingDto
-import com.robertobiggi.cardcollection.core.tcgdex.TcgplayerPriceDto
-import com.robertobiggi.cardcollection.core.tcgdex.TcgplayerPricingDto
+import com.robertobiggi.cardcollection.core.price.CardmarketPricingDto
+import com.robertobiggi.cardcollection.core.price.PricingDto
+import com.robertobiggi.cardcollection.core.price.TcgplayerPriceDto
+import com.robertobiggi.cardcollection.core.price.TcgplayerPricingDto
 import com.robertobiggi.cardcollection.core.validation.Validators
 
 /**

@@ -17,6 +17,5 @@ class CardCollectionApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         Notifications.createChannel(this)
-        container.work.startCardTraderLinks()
     }
 }

@@ -1,6 +1,5 @@
 package com.robertobiggi.cardcollection.core.tcgdex
 
-import com.robertobiggi.cardcollection.core.cardmarket.SetCodeAliases
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.net.ApiException
 import com.robertobiggi.cardcollection.core.net.InvalidResponseException
@@ -18,8 +17,7 @@ data class CardCodeQuery(val number: Int, val total: Int?, val tokens: List<Stri
 
 /**
  * Trova carte TCGdex dal codice stampato in basso a sinistra, es. "M3 117/080", "117/080 MUR",
- * "MEG 046/132" o "SM10a-030". Il set si può indicare con l'id TCGdex ("ex8 107") o con la sigla
- * Cardmarket ("dx 107"). Le parole che non corrispondono a nulla vengono ignorate.
+ * "MEG 046/132" o "SM10a-030". Le parole che non corrispondono a nulla vengono ignorate.
  */
 object CardCodeSearch {
 
@@ -65,83 +63,6 @@ object CardCodeSearch {
     }
 
     /**
-     * Cerca le carte che corrispondono al codice.
-     *
-     * Se una parola coincide con l'id di un set (nei cataloghi asiatici è la sigla stampata) o con la sua
-     * sigla Cardmarket (es. "dx" per "ex8") cerca solo lì. Altrimenti parte da tutte le carte con quel numero
-     * e restringe per totale del set, nome e sigla ufficiale; un filtro che non lascerebbe nessuna carta viene saltato.
-     * @param client TcgdexClient - client TCGdex.
-     * @param language Language - lingua del catalogo.
-     * @param query CardCodeQuery - ricerca già scomposta con [parse].
-     * @param aliases SetCodeAliases - sigle Cardmarket dei set.
-     * @return List<CardBriefDto> - carte trovate (possono essere anche Allenatori o carte digitali).
-     * @throws ApiException in caso di errore HTTP sulle richieste principali.
-     */
-    suspend fun find(
-        client: TcgdexClient,
-        language: Language,
-        query: CardCodeQuery,
-        aliases: SetCodeAliases = SetCodeAliases.bundled,
-    ): List<CardBriefDto> {
-        val sets = client.listSets(language)
-        val named = query.tokens.flatMap { aliases.setsFor(it, language, sets) }.distinctBy { it.id }.take(3)
-        if (named.isNotEmpty()) {
-            var hits = named.flatMap { client.getSet(language, it.id).cards }.filter { matchesNumber(it.localId, query.number) }
-            // Le altre parole possono essere il nome (es. "dx Rayquaza 107"): restringono se qualche carta le contiene.
-            val words = query.tokens.filterNot { token -> named.any { aliases.matches(token, language, it.id, it.name) } }
-            for (word in words) hits = hits.narrow { it.name.contains(word, ignoreCase = true) }
-            if (hits.isNotEmpty()) return hits
-        }
-
-        var hits = client.cardsByLocalId(language, query.number.toString()).filter { matchesNumber(it.localId, query.number) }
-        // Il set indicato non ha dato l'elenco delle carte: tra quelle con il numero valgono comunque le sue.
-        val namedIds = named.map { it.id }.toSet()
-        if (namedIds.isNotEmpty()) hits = hits.narrow { CatalogMapper.setIdFromCardId(it.id) in namedIds }
-        query.total?.let { total ->
-            val official = sets.associate { it.id to it.cardCount?.official }
-            hits = hits.narrow { card -> official[CatalogMapper.setIdFromCardId(card.id)]?.let { it == total } ?: true }
-        }
-        val leftover = query.tokens.filterNot { token -> named.any { aliases.matches(token, language, it.id, it.name) } }
-        for (token in leftover) hits = hits.narrow { it.name.contains(token, ignoreCase = true) }
-        if (!language.asianSets && leftover.isNotEmpty()) {
-            hits = narrowByAbbreviation(client, language, hits, leftover)
-        }
-        return hits
-    }
-
-    /**
-     * Restringe ai set la cui sigla ufficiale o localizzata (es. "MEG") è tra le parole cercate.
-     * Lo fa solo con pochi set candidati, per non moltiplicare le richieste.
-     * @param client TcgdexClient - client TCGdex.
-     * @param language Language - lingua del catalogo.
-     * @param hits List<CardBriefDto> - carte candidate.
-     * @param tokens List<String> - parole da confrontare con la sigla.
-     * @return List<CardBriefDto> - carte dei set con sigla corrispondente, oppure [hits] se nessuna corrisponde.
-     */
-    private suspend fun narrowByAbbreviation(
-        client: TcgdexClient,
-        language: Language,
-        hits: List<CardBriefDto>,
-        tokens: List<String>,
-    ): List<CardBriefDto> {
-        val setIds = hits.mapNotNull { CatalogMapper.setIdFromCardId(it.id) }.distinct()
-        if (setIds.size !in 2..MAX_SET_DETAILS) return hits
-        val matching = setIds.filter { id ->
-            val abbreviation = try {
-                client.getSet(language, id).abbreviation
-            } catch (e: ApiException) {
-                null
-            } catch (e: InvalidResponseException) {
-                null
-            } catch (e: IOException) {
-                null
-            }
-            tokens.any { it.equals(abbreviation?.official, ignoreCase = true) || it.equals(abbreviation?.localized, ignoreCase = true) }
-        }.toSet()
-        return hits.narrow { CatalogMapper.setIdFromCardId(it.id) in matching }
-    }
-
-    /**
      * Confronta il numero di una carta ignorando gli zeri iniziali ("046" e "46" coincidono).
      * @param localId String - numero della carta secondo TCGdex.
      * @param number Int - numero cercato.
@@ -149,11 +70,4 @@ object CardCodeSearch {
      */
     fun matchesNumber(localId: String, number: Int): Boolean =
         localId.isNotEmpty() && localId.length <= 6 && localId.all { it.isDigit() } && localId.toInt() == number
-
-    /**
-     * Applica un filtro solo se lascia almeno un elemento.
-     * @param predicate (T) -> Boolean - condizione da applicare.
-     * @return List<T> - elementi filtrati, oppure la lista intera se il filtro la svuoterebbe.
-     */
-    private fun <T> List<T>.narrow(predicate: (T) -> Boolean): List<T> = filter(predicate).ifEmpty { this }
 }

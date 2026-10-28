@@ -3,7 +3,7 @@ package com.robertobiggi.cardcollection.core.cardtrader
 import com.robertobiggi.cardcollection.core.net.BlockedException
 import com.robertobiggi.cardcollection.core.net.InvalidResponseException
 import com.robertobiggi.cardcollection.core.price.RateLimiter
-import com.robertobiggi.cardcollection.core.tcgdex.TcgdexClient
+import com.robertobiggi.cardcollection.core.net.Http
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
@@ -72,7 +72,7 @@ class CardTraderClient(
     private fun url(path: String, vararg params: Pair<String, String>): HttpUrl =
         base.newBuilder().addPathSegments(path).apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }.build()
 
-    private suspend fun <T> get(url: HttpUrl, deserializer: DeserializationStrategy<T>, maxBytes: Long = TcgdexClient.MAX_BODY_BYTES): T =
+    private suspend fun <T> get(url: HttpUrl, deserializer: DeserializationStrategy<T>, maxBytes: Long = Http.MAX_BODY_BYTES): T =
         withContext(Dispatchers.IO) {
             limiter.acquire()
             val request = Request.Builder()
@@ -82,10 +82,10 @@ class CardTraderClient(
                 .get()
                 .build()
             http.newCall(request).execute().use { response ->
-                TcgdexClient.throwIfError(response)
-                val body = TcgdexClient.readLimited(response, maxBytes)
+                Http.throwIfError(response)
+                val body = Http.readLimited(response, maxBytes)
                 try {
-                    TcgdexClient.JSON.decodeFromString(deserializer, body)
+                    Http.JSON.decodeFromString(deserializer, body)
                 } catch (e: IllegalArgumentException) {
                     throw InvalidResponseException("Risposta CardTrader non valida: ${e.message?.take(200)}")
                 }

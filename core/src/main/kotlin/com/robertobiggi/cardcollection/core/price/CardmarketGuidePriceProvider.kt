@@ -1,51 +1,28 @@
 package com.robertobiggi.cardcollection.core.price
 
-import com.robertobiggi.cardcollection.core.cardmarket.BallVariants
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketPriceGuide
 import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
-import com.robertobiggi.cardcollection.core.tcgdex.PricingDto
-
-/** Fonte che sa dire a quale prodotto Cardmarket corrisponde una carta. */
-fun interface CardmarketIdSource {
-    /**
-     * Trova l'id prodotto Cardmarket (`idProduct`) della carta.
-     * @param request PriceRequest - carta da cercare.
-     * @return Int? - l'id, oppure null se la carta non si abbina o l'abbinamento non è univoco.
-     */
-    suspend fun cardmarketProductId(request: PriceRequest): Int?
-}
+import com.robertobiggi.cardcollection.core.price.PricingDto
 
 /**
- * Prezzi Cardmarket (EUR) letti dal listino pubblico. Serve per le carte che TCGdex non ha:
- * l'id prodotto arriva dall'abbinamento CardTrader, anche quando la carta non ha annunci.
+ * Prezzi Cardmarket (EUR) letti dal listino pubblico. Il prodotto Cardmarket di ogni carta arriva dal database delle carte
+ * ([PriceRequest.cardmarketId]); le stampe a parte e le Poké Ball hanno il loro ([PriceRequest.printProductId]).
  *
- * @param ids fonte degli id prodotto.
  * @param guide listino Cardmarket.
- * @param ballVariants prodotti delle varianti Poké Ball e Master Ball.
  */
-class CardmarketGuidePriceProvider(
-    private val ids: CardmarketIdSource,
-    private val guide: CardmarketPriceGuide,
-    private val ballVariants: BallVariants = BallVariants.bundled,
-) : PriceProvider {
+class CardmarketGuidePriceProvider(private val guide: CardmarketPriceGuide) : PriceProvider {
     override val id: String = ID
     override val displayName: String = DISPLAY_NAME
 
     /**
      * Restituisce il prezzo della variante dal listino.
      * @param request PriceRequest - carta e variante da cercare.
-     * @return PriceQuote? - prezzo trovato, oppure null se la carta non è abbinata o non è nel listino.
+     * @return PriceQuote? - prezzo trovato, oppure null se la carta non ha un prodotto o non è nel listino.
      */
     override suspend fun fetch(request: PriceRequest): PriceQuote? {
-        // Una carta del catalogo Cardmarket porta già il suo prodotto: il numero della carta non serve (e spesso non c'è).
-        // Poké Ball e Master Ball sono prodotti Cardmarket a parte, ma sono reverse holo: il listino ha il loro prezzo nei campi "-holo".
-        // Le stampe a parte (shadowless, jumbo…) hanno il loro prodotto, indicato da TCGdex.
-        val productId = when {
-            request.variant.isBall -> ballVariants.productId(request.setId, request.localId, request.variant)
-            request.variant.isPrint -> request.printProductId
-            else -> request.cardmarketId ?: ids.cardmarketProductId(request)
-        }
+        // Poké Ball e Master Ball sono prodotti a parte, ma sono reverse holo: il listino ha il loro prezzo nei campi "-holo".
+        val productId = if (request.variant.isBall || request.variant.isPrint) request.printProductId else request.cardmarketId
         val cardmarket = guide.lookup(productId ?: return null) ?: return null
         val variant = when {
             request.variant.isBall -> VariantType.REVERSE

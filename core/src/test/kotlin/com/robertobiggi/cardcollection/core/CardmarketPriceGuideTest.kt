@@ -4,7 +4,6 @@ import com.robertobiggi.cardcollection.core.cardmarket.CardmarketPriceGuide
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.price.CardmarketGuidePriceProvider
-import com.robertobiggi.cardcollection.core.price.CardmarketIdSource
 import com.robertobiggi.cardcollection.core.price.PriceRequest
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
@@ -87,22 +86,6 @@ class CardmarketPriceGuideTest {
         assertEquals(false, File(dir, "guide.json.tmp").exists())
     }
 
-    @Test
-    fun `il prezzo di una variante viene dal prodotto trovato tramite CardTrader`() = runTest {
-        server.enqueue(MockResponse().setBody(body))
-        val request = PriceRequest(Language.JA, "WCP-017", VariantType.NORMAL, false, setId = "WCP", localId = "017")
-        val provider = CardmarketGuidePriceProvider(CardmarketIdSource { 765692 }, guide())
-        val q = provider.fetch(request)!!
-        assertEquals("Cardmarket", q.source)
-        assertEquals(20.68, q.eur)
-        assertEquals(25.0, q.eurLow)
-        assertEquals(15.73, q.eurAvg30)
-        // La reverse holo usa i campi "-holo": qui trend-holo è 0, cioè nessun dato.
-        assertNull(provider.fetch(request.copy(variant = VariantType.REVERSE)))
-        // Senza abbinamento a CardTrader, o fuori dal listino, nessun prezzo.
-        assertNull(CardmarketGuidePriceProvider({ null }, guide()).fetch(request))
-        assertNull(CardmarketGuidePriceProvider({ 42 }, guide()).fetch(request))
-    }
 
     @Test
     fun `l'avviso di scaricamento parte solo quando si scarica davvero`() = runTest {

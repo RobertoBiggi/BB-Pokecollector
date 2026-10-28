@@ -58,7 +58,10 @@ private enum class AppLanguage(val tag: String, val labelRes: Int) {
  */
 @Composable
 fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
-    val pausedUntil by vm.tcgdexPausedUntil.collectAsStateWithLifecycle()
+    val catalogInfo by vm.catalogInfo.collectAsStateWithLifecycle()
+    val savedUrl by vm.catalogUrl.collectAsStateWithLifecycle()
+    val download by vm.catalogDownload.collectAsStateWithLifecycle()
+    var urlInput by remember(savedUrl) { mutableStateOf(savedUrl) }
     val lastSync by vm.lastCatalogSync.collectAsStateWithLifecycle()
     val savedToken by vm.cardTraderToken.collectAsStateWithLifecycle()
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
@@ -93,6 +96,34 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 }
             }
             item {
+                Section(stringResource(R.string.settings_catalog)) {
+                    Text(stringResource(R.string.settings_catalog_text), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        catalogInfo?.let { stringResource(R.string.settings_catalog_installed, it.generatedAt.substringBefore('T'), it.languages.sorted().joinToString(", ")) }
+                            ?: stringResource(R.string.settings_catalog_missing),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    OutlinedTextField(
+                        value = urlInput,
+                        onValueChange = { urlInput = it.take(300) },
+                        label = { Text(stringResource(R.string.settings_catalog_url)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = { vm.downloadCatalog(urlInput) }, enabled = download == null) {
+                            Text(stringResource(if (catalogInfo == null) R.string.settings_catalog_download else R.string.settings_catalog_update))
+                        }
+                        download?.let { d ->
+                            Text(
+                                if (d.total != null) "${d.done * 100 / d.total} %" else "${d.done / (1024 * 1024)} MB",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+            item {
                 Section(stringResource(R.string.settings_first_edition)) {
                     PriceSwitch(stringResource(R.string.settings_first_edition), stringResource(R.string.settings_first_edition_text), countFirstEdition) {
                         vm.setCountFirstEdition(it)
@@ -111,14 +142,6 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                     PriceSwitch(stringResource(R.string.settings_cardtrader), stringResource(R.string.source_cardtrader_text), visibility.cardTrader) {
                         vm.setPriceShown(PriceKind.CARDTRADER, it)
                     }
-                    Text(
-                        if (pausedUntil > System.currentTimeMillis()) {
-                            stringResource(R.string.settings_paused, Format.dateTime(pausedUntil))
-                        } else {
-                            stringResource(R.string.settings_available)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                    )
                     Text(
                         if (lastSync > 0) stringResource(R.string.settings_last_catalog, Format.dateTime(lastSync)) else stringResource(R.string.settings_never_catalog),
                         style = MaterialTheme.typography.bodySmall,

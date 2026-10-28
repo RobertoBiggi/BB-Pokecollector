@@ -67,15 +67,6 @@ class WorkScheduler(context: Context) {
     }
 
     /**
-     * Avvia in background la ricerca dei link CardTrader mancanti, se non è già in corso. Sicuro da chiamare a ogni apertura.
-     * @return Unit
-     */
-    fun startCardTraderLinks() {
-        val request = OneTimeWorkRequestBuilder<CardTraderLinksWorker>().setConstraints(network).build()
-        workManager.enqueueUniqueWork(CARDTRADER_LINKS, ExistingWorkPolicy.KEEP, request)
-    }
-
-    /**
      * Avvia l'aggiornamento prezzi di una collezione, se non è già in corso.
      * @param collectionId Long - collezione.
      * @return Unit
@@ -125,6 +116,5 @@ class WorkScheduler(context: Context) {
     private fun priceName(collectionId: Long) = "price-check-$collectionId"
 
     private companion object {
-        const val CARDTRADER_LINKS = "cardtrader-links"
     }
 }
