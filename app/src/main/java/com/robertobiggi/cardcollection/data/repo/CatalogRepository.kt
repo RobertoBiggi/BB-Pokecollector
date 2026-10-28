@@ -12,6 +12,7 @@ import com.robertobiggi.cardcollection.core.tcgdex.CardCodeSearch
 import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.catalog.CardBrief
 import com.robertobiggi.cardcollection.data.catalog.CatalogStore
+import com.robertobiggi.cardcollection.data.image.ImagePaths
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
@@ -19,6 +20,8 @@ import com.robertobiggi.cardcollection.data.local.CardVariantEntity
 import com.robertobiggi.cardcollection.data.local.CollectionCardEntity
 import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Fase del sync del catalogo. */
 enum class SyncPhase { SEARCH, CARD, IMAGES, IMAGES_CARDTRADER }
@@ -127,6 +130,7 @@ class CatalogRepository(
         val stale = dao.membershipsOf(collectionId).filter { it.queryId in active && !it.hidden && it.cardId !in refreshed }.map { it.cardId }
         if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
         refreshOtherCards(collectionId, refreshed)
+        forgetMissingImageFiles()
         val imagesSaved = downloadMissingImages(progress)
         settings.setLastCatalogSync(System.currentTimeMillis())
         return SyncResult(saved, imagesSaved, 0, emptySets)
@@ -327,11 +331,27 @@ class CatalogRepository(
             val low = card.imageLowPath ?: images.ensure(card.id, url, ImageStore.Quality.LOW)
             val high = card.imageHighPath ?: images.ensure(card.id, url, ImageStore.Quality.HIGH)
             if (low != card.imageLowPath || high != card.imageHighPath) {
-                dao.setImagePaths(card.id, low, high)
+                // Solo i percorsi mancanti: un altro lavoro (immagine scelta a mano, CardTrader) può averne salvato uno nel frattempo.
+                dao.fillImagePaths(card.id, low, high)
                 count++
             }
         }
         return count
+    }
+
+    /**
+     * Dimentica i percorsi d'immagine il cui file non c'è più, così [downloadMissingImages] (e le immagini CardTrader) le
+     * riscaricano. Succede dopo una reinstallazione: il backup Android ripristina il database ma non le immagini.
+     * @return Int - numero di carte con almeno un percorso dimenticato.
+     */
+    private suspend fun forgetMissingImageFiles(): Int = withContext(Dispatchers.IO) {
+        var forgotten = 0
+        for (card in dao.cardsWithImagePaths()) {
+            val missing = ImagePaths.missing(card.imageLowPath, card.imageHighPath, images::isSaved)
+            missing.forEach { dao.forgetImagePath(card.id, it) }
+            if (missing.isNotEmpty()) forgotten++
+        }
+        forgotten
     }
 
     private companion object {

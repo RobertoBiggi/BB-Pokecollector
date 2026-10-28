@@ -137,19 +137,4 @@ class LibraryAssemblerTest {
         assertEquals(listOf("en:ex2-9"), applyFilter(a, CollectionFilter(owned = OwnedFilter.MISSING)).map { it.card.id })
         assertEquals(listOf("en:me03-032"), applyFilter(a, CollectionFilter(query = "por 032")).map { it.card.id })
     }
-
-    @Test
-    fun `ricerca per codice con la sigla Cardmarket o l'id TCGdex del set`() {
-        // EX Deoxys: "DX" su Cardmarket, "ex8" su TCGdex; la carta non ha una sigla stampata.
-        val a = LibraryAssembler.assemble(
-            listOf(card("en:ex8-107", "Rayquaza ☆", null, "ex8", "Deoxys", "107", "107/107"), card("en:me03-032", "Mawile", "POR")),
-            listOf(CardVariantEntity("en:ex8-107|HOLO", "en:ex8-107", "HOLO"), CardVariantEntity("en:me03-032|NORMAL", "en:me03-032", "NORMAL")),
-            emptyList(),
-            emptyList(),
-        )
-        assertEquals(listOf("en:ex8-107"), applyFilter(a, CollectionFilter(query = "dx 107")).map { it.card.id })
-        assertEquals(listOf("en:ex8-107"), applyFilter(a, CollectionFilter(query = "ex8 107")).map { it.card.id })
-        assertEquals(listOf("en:ex8-107"), applyFilter(a, CollectionFilter(query = "DX")).map { it.card.id })
-        assertEquals(listOf("en:me03-032"), applyFilter(a, CollectionFilter(query = "por 032")).map { it.card.id })
-    }
 }

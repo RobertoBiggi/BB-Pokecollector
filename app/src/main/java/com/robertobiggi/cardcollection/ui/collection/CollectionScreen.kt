@@ -3,7 +3,6 @@
 package com.robertobiggi.cardcollection.ui.collection
 
 import com.robertobiggi.cardcollection.ui.common.shortLabel
-import com.robertobiggi.cardcollection.core.cardmarket.SetCodeAliases
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
@@ -73,19 +72,6 @@ import com.robertobiggi.cardcollection.ui.common.SlotBadge
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 
 /**
- * Confronta la ricerca con il codice della carta scritto con l'id TCGdex, la sigla stampata o la sigla Cardmarket del set,
- * es. "ex8 107" o "dx 107" per Rayquaza ☆ di EX Deoxys (codice stampato "107/107").
- * @param c CardUi - carta.
- * @param q String - ricerca già in minuscolo.
- * @return Boolean - true se la ricerca è contenuta in uno dei codici.
- */
-private fun matchesSetAlias(c: CardUi, q: String): Boolean {
-    val number = c.card.printedNumber.ifEmpty { c.card.localId }
-    if ("${c.card.setId} $number".lowercase().contains(q)) return true
-    return SetCodeAliases.bundled.codesOf(c.language, c.card.setId, c.card.setName).any { "$it $number".contains(q) }
-}
-
-/**
  * Applica ricerca, filtri e ordinamento alla libreria.
  * @param cards List<CardUi> - carte tracciate.
  * @param filter CollectionFilter - filtri correnti.
@@ -101,8 +87,7 @@ fun applyFilter(cards: List<CardUi>, filter: CollectionFilter): List<CardUi> {
             (q.isEmpty() || c.card.name.lowercase().contains(q) ||
                 (normalized.isNotEmpty() && PokemonNames.normalize(c.card.name).contains(normalized)) ||
                 c.printedCode.lowercase().contains(q) || c.card.setName.lowercase().contains(q) ||
-                (c.card.dexId != null && c.card.dexId in dexMatches) || (c.card.rarity?.lowercase()?.contains(q) == true) ||
-                matchesSetAlias(c, q)) &&
+                (c.card.dexId != null && c.card.dexId in dexMatches) || (c.card.rarity?.lowercase()?.contains(q) == true)) &&
             when (filter.owned) {
                 OwnedFilter.ALL -> true
                 OwnedFilter.OWNED -> c.copies > 0
