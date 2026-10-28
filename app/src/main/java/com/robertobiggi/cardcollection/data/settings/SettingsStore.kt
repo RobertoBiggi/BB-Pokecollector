@@ -124,8 +124,8 @@ class SettingsStore(context: Context) {
     }
 
     companion object {
-        /** Dove si trova il database delle carte pubblicato (ultima release del repository). */
-        const val DEFAULT_CATALOG_URL = "https://github.com/RobertoBiggi/Card-collection/releases/latest/download/cards.sqlite"
+        /** Dove si trova il database delle carte pubblicato (release con tag fisso `catalog` del repository, separata dalle release dell'APK). */
+        const val DEFAULT_CATALOG_URL = "https://github.com/RobertoBiggi/Card-collection/releases/download/catalog/cards.sqlite"
 
         private val CATALOG_URL = stringPreferencesKey("catalog_url")
         private val CARDTRADER_TOKEN = stringPreferencesKey("cardtrader_token")

@@ -5,7 +5,7 @@ import com.robertobiggi.cardcollection.core.model.VariantType
 /**
  * Carte giapponesi con reverse holo Poké Ball e Master Ball (es. Pokémon Card 151). Su Cardmarket ogni variante è un
  * prodotto a parte, in un set "... - Poké Ball Reverse Holo", e TCGdex non le elenca. L'elenco è incluso nell'app
- * (`cardmarket-ball-variants.tsv`) e lo genera `tools/gen_extra_sets.py` dai set CardTrader.
+ * (`cardmarket-ball-variants.tsv`) e lo genera `gen_extra_sets.py` (repository Card-collector-db-gen) dai set CardTrader.
  *
  * @param products prodotto Cardmarket e blueprint CardTrader per set, numero e variante.
  */
