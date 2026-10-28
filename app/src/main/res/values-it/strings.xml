@@ -265,4 +265,10 @@
     <string name="msg_set_added">Set %1$s aggiunto: scarico le carte.</string>
     <string name="catalog_empty_sets">%1$d set non hanno ancora carte su TCGdex né nell\'elenco dei set mancanti.</string>
     <string name="action_retry">Riprova</string>
+    <string name="selected_count">%1$d selezionate</string>
+    <string name="select_all">Seleziona tutte</string>
+    <string name="remove_selected_title">Togliere %1$d carte?</string>
+    <string name="remove_selected_text">Escono dalla collezione e il sync non le riaggiunge. Puoi ripristinarle da Gestione.</string>
+    <string name="remove_selected_confirm">Togli</string>
+    <string name="msg_cards_removed">%1$d carte tolte dalla collezione. Puoi ripristinarle da Gestione.</string>
 </resources>
