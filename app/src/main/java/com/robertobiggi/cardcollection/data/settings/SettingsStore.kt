@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.robertobiggi.cardcollection.core.price.PriceAlertRules
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -94,6 +95,32 @@ class SettingsStore(context: Context) {
         store.edit { it[COUNT_FIRST_EDITION] = counted }
     }
 
+    /** True se il controllo giornaliero dei prezzi con gli avvisi è attivo (spento di default). */
+    val priceAlertsEnabled: Flow<Boolean> = store.data.map { it[PRICE_ALERTS_ENABLED] ?: false }
+
+    /**
+     * Attiva o spegne il controllo giornaliero dei prezzi con gli avvisi.
+     * @param enabled Boolean - true per attivarlo.
+     * @return Unit
+     */
+    suspend fun setPriceAlertsEnabled(enabled: Boolean) {
+        store.edit { it[PRICE_ALERTS_ENABLED] = enabled }
+    }
+
+    /** Variazione minima, in percentuale, per l'avviso "il prezzo sale o scende". */
+    val priceAlertChangePercent: Flow<Int> = store.data.map {
+        (it[PRICE_ALERT_CHANGE_PERCENT] ?: PriceAlertRules.DEFAULT_CHANGE_PERCENT).coerceIn(PriceAlertRules.CHANGE_PERCENT_RANGE)
+    }
+
+    /**
+     * Imposta la variazione minima per l'avviso "il prezzo sale o scende".
+     * @param percent Int - percentuale, ricondotta a [PriceAlertRules.CHANGE_PERCENT_RANGE].
+     * @return Unit
+     */
+    suspend fun setPriceAlertChangePercent(percent: Int) {
+        store.edit { it[PRICE_ALERT_CHANGE_PERCENT] = percent.coerceIn(PriceAlertRules.CHANGE_PERCENT_RANGE) }
+    }
+
     /** Prezzi mostrati nell'app (tutti di default). */
     val priceVisibility: Flow<PriceVisibility> = store.data.map {
         PriceVisibility(it[SHOW_CARDMARKET] ?: true, it[SHOW_TCGPLAYER] ?: true, it[SHOW_CARDTRADER] ?: true)
@@ -135,5 +162,7 @@ class SettingsStore(context: Context) {
         private val SHOW_CARDTRADER = booleanPreferencesKey("show_price_cardtrader")
         private val LAST_CATALOG_SYNC = longPreferencesKey("last_catalog_sync")
         private val CARDTRADER_CHECKED = intPreferencesKey("cardtrader_checked")
+        private val PRICE_ALERTS_ENABLED = booleanPreferencesKey("price_alerts_enabled")
+        private val PRICE_ALERT_CHANGE_PERCENT = intPreferencesKey("price_alert_change_percent")
     }
 }

@@ -78,7 +78,7 @@ TCGdex usa `0` per "nessun dato": i valori nulli o pari a zero vengono scartati.
 
 La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`: aggiungerne una richiede solo l'implementazione e l'inserimento in `PriceRepository`. Quando non c'è un prezzo nuovo resta l'ultimo salvato, oppure il prezzo manuale.
 
-## Modello dati (Room, versione 14)
+## Modello dati (Room, versione 15)
 
 | Tabella | Contenuto |
 |---|---|
@@ -90,6 +90,7 @@ La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`
 | `collection_entry` | **dati utente per collezione**: quantità, condizione, "la voglio", note. Nessun vincolo verso il catalogo |
 | `price_snapshot` | storico prezzi condiviso: ultimi 10 per variante, con fonte, data e affidabilità |
 | `price_run` | registro degli aggiornamenti prezzi, con la collezione (ultimi 10 per collezione) |
+| `price_alert` | avvisi di prezzo per variante: "sale o scende", prezzo obiettivo in euro, stato dell'ultimo controllo (prezzi di riferimento, obiettivo già notificato) |
 
 Uno slot è una variante desiderata (`wanted`) oppure posseduta: una variante con almeno una copia conta sempre come completata, anche senza "la voglio". Le mancanti sono le varianti desiderate con 0 copie.
 
@@ -97,7 +98,7 @@ Uno slot è una variante desiderata (`wanted`) oppure posseduta: una variante co
 
 Una carta è visibile in una collezione se non è nascosta e se è stata aggiunta a mano oppure da una ricerca attiva. Il sync del catalogo aggiorna solo `card`, `card_variant` e i collegamenti: non tocca mai i dati dell'utente.
 
-**Schema:** il database è alla versione 14; le versioni precedenti alla 11 non sono più supportate. Le migrazioni sono 11 → 12 (`card_variant.cardmarketId`, il prodotto Cardmarket delle stampe a parte), 12 → 13 (`card_variant.print`, il timbro o il prodotto che distingue più varianti dello stesso tipo) e 13 → 14 (`card.cardmarketProduct` e `card.cardTraderExpansionId`, letti dal database delle carte al primo sync). Gli id delle carte (`lingua:idTcgdex`) sono gli stessi del database, quindi quantità e note delle collezioni esistenti restano agganciate. Lo schema esportato da Room è in `app/schemas/`; una modifica allo schema richiede di alzare la versione e di scrivere la migrazione.
+**Schema:** il database è alla versione 15; le versioni precedenti alla 11 non sono più supportate. Le migrazioni sono 11 → 12 (`card_variant.cardmarketId`, il prodotto Cardmarket delle stampe a parte), 12 → 13 (`card_variant.print`, il timbro o il prodotto che distingue più varianti dello stesso tipo), 13 → 14 (`card.cardmarketProduct` e `card.cardTraderExpansionId`, letti dal database delle carte al primo sync) e 14 → 15 (tabella `price_alert`, vuota). Gli id delle carte (`lingua:idTcgdex`) sono gli stessi del database, quindi quantità e note delle collezioni esistenti restano agganciate. Lo schema esportato da Room è in `app/schemas/`; una modifica allo schema richiede di alzare la versione e di scrivere la migrazione.
 
 **Stampe a parte e 1st Edition:** oltre a normal, holo e reverse, una carta ha una variante per ogni stampa che Cardmarket vende come prodotto a parte e che TCGdex abbina a un prodotto diverso da quello della carta: Shadowless, Guance rosse, Pokétour '99 e Jumbo (`VariantType.isPrint`). Ogni timbro di TCGdex (tornei, prerelease, staff…) con un prodotto proprio è una variante `STAMPED` (il timbro sta in `print`, id `en:ex5-85|STAMPED|reed-weichler`); i timbri non contano finché l'utente non li segna come voluti. I prodotti Cardmarket della stessa carta (stessa metacard, stesso set) che TCGdex non elenca diventano varianti `CARDMARKET_PRINT`, solo se la carta è la sola con quel nome nel set. Il prezzo viene dal loro prodotto (listino Cardmarket, poi TCGdex); CardTrader non le distingue e le salta. Su Cardmarket la 1st Edition è un'etichetta degli annunci, non un prodotto: resta una sola variante `FIRST_EDITION` per carta, ricavata dal timbro `1st-edition` di TCGdex. L'interruttore "Conta le 1st Edition" delle impostazioni, se spento, rende "non volute" le 1st Edition su cui l'utente non ha fatto scelte: non contano tra le mancanti né nei totali, le copie possedute sì.
 
@@ -196,7 +197,14 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
    - Circuit breaker: dopo 3 blocchi la fonte va in pausa per 6 ore; la pausa è salvata in DataStore.
    - Dopo 5 errori di rete consecutivi l'aggiornamento si interrompe.
    - I prezzi già salvati restano validi.
-5. **Offline:** la UI legge solo da Room e le immagini dai file locali.
+5. **Avvisi di prezzo** (spenti di default, Impostazioni → Avvisi di prezzo):
+   - Dal dettaglio della carta, campanella su ogni variante: "avvisami se sale o scende" e/o "avvisami quando arriva a X €". Salvando, i prezzi di riferimento partono da quelli attuali.
+   - `PriceAlertWorker` gira ogni giorno alle 4:30 locali (`PriceAlertRules.DAILY_RUN_TIME`): il listino Cardmarket viene rigenerato verso le 3 (`createdAt` reale "…T02:48+0200"). È un lavoro unico (`price-alerts`) che alla fine accoda il controllo del giorno dopo con l'orario ricalcolato, così resta alle 4:30 anche con l'ora legale; all'apertura dell'app viene riprogrammato se manca. Aspetta la rete; se la rete o il listino non rispondono riprova fino a 3 volte, poi passa al giorno dopo.
+   - Aggiorna solo le varianti con un avviso (`PriceRepository.runAlertCheck`, stessa catena dell'aggiornamento manuale: listino Cardmarket e, con il token, CardTrader) e confronta i prezzi appena scaricati con lo stato salvato (`PriceAlertRules.evaluate`, core, testato in `PriceAlertsTest`):
+     - **sale o scende:** per ogni fonte (Cardmarket €, CardTrader €, TCGplayer $) quando il prezzo si sposta di almeno la soglia delle impostazioni (5% di default, da 1 a 50%) rispetto al prezzo dell'ultimo avviso, così le piccole variazioni di ogni giorno si sommano;
+     - **prezzo obiettivo:** quando il prezzo più basso in euro (Cardmarket o CardTrader) scende entro il 5% sopra l'obiettivo o sotto (`TARGET_MARGIN`); una volta sola, e si riarma quando il prezzo risale.
+   - Le notifiche vanno sul canale "Avvisi prezzo" (separato da quello silenzioso degli aggiornamenti) e aprono il dettaglio della carta. I prezzi inseriti a mano non fanno partire avvisi. Gli avvisi non sono inclusi nei file JSON delle collezioni.
+6. **Offline:** la UI legge solo da Room e le immagini dai file locali.
 
 ## Sicurezza
 

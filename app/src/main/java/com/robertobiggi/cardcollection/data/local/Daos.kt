@@ -349,6 +349,22 @@ interface CatalogDao {
     suspend fun variantsOf(cardIds: List<String>): List<CardVariantEntity>
 
     /**
+     * Legge alcune varianti dal loro id.
+     * @param ids List<String> - id delle varianti.
+     * @return List<CardVariantEntity> - varianti trovate.
+     */
+    @Query("SELECT * FROM card_variant WHERE id IN (:ids)")
+    suspend fun variantsByIds(ids: List<String>): List<CardVariantEntity>
+
+    /**
+     * Prima collezione (per id) che contiene una carta, per aprirne il dettaglio da una notifica.
+     * @param cardId String - carta.
+     * @return Long? - id della collezione, oppure null se nessuna la contiene.
+     */
+    @Query("SELECT collectionId FROM collection_card WHERE cardId = :cardId ORDER BY hidden ASC, collectionId ASC LIMIT 1")
+    suspend fun collectionOfCard(cardId: String): Long?
+
+    /**
      * Osserva le appartenenze carta ↔ collezione di tutte le collezioni.
      * @return Flow<List<CollectionCardEntity>> - appartenenze.
      */
@@ -476,6 +492,63 @@ interface CollectionDao {
 /** Accesso a prezzi e registro degli aggiornamenti. */
 @Dao
 interface PriceDao {
+
+    /**
+     * Osserva gli avvisi di prezzo delle varianti ancora presenti.
+     * @return Flow<List<PriceAlertEntity>> - avvisi.
+     */
+    @Query("SELECT * FROM price_alert WHERE variantId IN (SELECT id FROM card_variant)")
+    fun observeAlerts(): Flow<List<PriceAlertEntity>>
+
+    /**
+     * Elenca gli avvisi di prezzo delle varianti ancora presenti.
+     * @return List<PriceAlertEntity> - avvisi.
+     */
+    @Query("SELECT * FROM price_alert WHERE variantId IN (SELECT id FROM card_variant)")
+    suspend fun alerts(): List<PriceAlertEntity>
+
+    /**
+     * Legge l'avviso di prezzo di una variante.
+     * @param variantId String - variante.
+     * @return PriceAlertEntity? - avviso, oppure null se non c'è.
+     */
+    @Query("SELECT * FROM price_alert WHERE variantId = :variantId")
+    suspend fun getAlert(variantId: String): PriceAlertEntity?
+
+    /**
+     * Crea o sostituisce l'avviso di prezzo di una variante.
+     * @param alert PriceAlertEntity - avviso.
+     * @return Unit
+     */
+    @Upsert
+    suspend fun upsertAlert(alert: PriceAlertEntity)
+
+    /**
+     * Toglie l'avviso di prezzo di una variante.
+     * @param variantId String - variante.
+     * @return Unit
+     */
+    @Query("DELETE FROM price_alert WHERE variantId = :variantId")
+    suspend fun deleteAlert(variantId: String)
+
+    /**
+     * Salva lo stato di un avviso dopo il controllo giornaliero, senza toccare le scelte dell'utente.
+     * @param variantId String - variante.
+     * @param baselines String - prezzi di riferimento codificati.
+     * @param targetReached Boolean - true se l'avviso del prezzo obiettivo è partito.
+     * @param checkedAt Long - istante del controllo.
+     * @return Unit
+     */
+    @Query("UPDATE price_alert SET baselines = :baselines, targetReached = :targetReached, lastCheckedAt = :checkedAt WHERE variantId = :variantId")
+    suspend fun updateAlertState(variantId: String, baselines: String, targetReached: Boolean, checkedAt: Long)
+
+    /**
+     * Toglie gli avvisi delle varianti di alcune carte (carte tolte dal catalogo).
+     * @param cardIds List<String> - id delle carte.
+     * @return Unit
+     */
+    @Query("DELETE FROM price_alert WHERE variantId IN (SELECT id FROM card_variant WHERE cardId IN (:cardIds))")
+    suspend fun deleteAlertsOfCards(cardIds: List<String>)
 
     /**
      * Elimina i prezzi salvati per le varianti di alcune carte.

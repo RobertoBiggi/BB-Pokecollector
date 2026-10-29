@@ -50,6 +50,11 @@ jobs:
           ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
           -PversionCode="$BUILD_NUMBER" --stacktrace --console=plain
 
+      # TEMPORANEO: stampa lo schema Room generato, da copiare in app/schemas (poi questo step si toglie).
+      - name: Schema Room generato
+        if: always()
+        run: cat app/schemas/com.robertobiggi.cardcollection.data.local.AppDatabase/15.json || true
+
       - name: Verifica firma e pacchetto dell'APK debug
         run: |
           set -euo pipefail

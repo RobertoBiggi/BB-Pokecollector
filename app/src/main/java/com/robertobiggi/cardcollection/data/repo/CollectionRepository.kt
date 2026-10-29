@@ -312,6 +312,7 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
             val ids = chunk.map { it.id }
             db.withTransaction {
                 priceDao.deleteSnapshotsOfCards(ids)
+                priceDao.deleteAlertsOfCards(ids)
                 catalogDao.deleteCards(ids)
             }
             images.deleteFiles(chunk.flatMap { listOf(it.imageLowPath, it.imageHighPath) })

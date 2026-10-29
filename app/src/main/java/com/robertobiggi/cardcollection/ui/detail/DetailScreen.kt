@@ -15,6 +15,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material3.Switch
+import com.robertobiggi.cardcollection.data.local.PriceAlertEntity
+import java.util.Locale
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -105,6 +110,10 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     val cardTraderToken by vm.cardTraderToken.collectAsStateWithLifecycle()
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     var manualFor by remember { mutableStateOf<VariantUi?>(null) }
+    var alertFor by remember { mutableStateOf<VariantUi?>(null) }
+    val alerts by vm.priceAlerts.collectAsStateWithLifecycle()
+    val alertsEnabled by vm.priceAlertsEnabled.collectAsStateWithLifecycle()
+    val alertPercent by vm.priceAlertChangePercent.collectAsStateWithLifecycle()
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) vm.setCardImage(cardId, uri)
     }
@@ -144,6 +153,8 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
                     onCondition = { vm.setCondition(variant.id, it) },
                     onWanted = { vm.setWanted(variant.id, it) },
                     onManual = { manualFor = variant },
+                    hasAlert = variant.id in alerts,
+                    onAlert = { alertFor = variant },
                     showCardmarket = visibility.cardmarket,
                     showTcgplayer = visibility.tcgplayer,
                     showCardTrader = visibility.cardTrader && cardTraderToken.isNotEmpty(),
@@ -165,6 +176,20 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     }
 
     report?.let { CardActionDialog(it, onDismiss = vm::dismissCardReport) }
+
+    alertFor?.let { variant ->
+        val owner = card ?: return@let
+        PriceAlertDialog(
+            variantLabel = variantLabel(owner, variant),
+            variant = variant,
+            alert = alerts[variant.id],
+            alertsEnabled = alertsEnabled,
+            changePercent = alertPercent,
+            onDismiss = { alertFor = null },
+            onSave = { changes, target -> vm.savePriceAlert(variant.id, changes, target).also { saved -> if (saved) alertFor = null } },
+            onDelete = { vm.deletePriceAlert(variant.id); alertFor = null },
+        )
+    }
 
     manualFor?.let { variant ->
         val owner = card ?: return@let
@@ -333,6 +358,8 @@ private fun UriHandler.openSafely(url: String) {
  * @param onCondition (Condition) -> Unit - nuova condizione.
  * @param onWanted (Boolean) -> Unit - nuovo stato "la voglio".
  * @param onManual () -> Unit - apre l'inserimento del prezzo manuale.
+ * @param hasAlert Boolean - true se la variante ha un avviso di prezzo.
+ * @param onAlert () -> Unit - apre la finestra dell'avviso di prezzo.
  * @param showCardmarket Boolean - false se l'utente ha nascosto i prezzi Cardmarket.
  * @param showTcgplayer Boolean - false se l'utente ha nascosto i prezzi TCGplayer.
  * @param showCardTrader Boolean - true se c'è il token CardTrader e il prezzo non è nascosto: mostra il riquadro accanto agli altri mercati.
@@ -346,6 +373,8 @@ private fun VariantCard(
     onCondition: (Condition) -> Unit,
     onWanted: (Boolean) -> Unit,
     onManual: () -> Unit,
+    hasAlert: Boolean,
+    onAlert: () -> Unit,
     showCardmarket: Boolean,
     showTcgplayer: Boolean,
     showCardTrader: Boolean,
@@ -361,6 +390,13 @@ private fun VariantCard(
                 ) {}
                 Spacer(Modifier.width(8.dp))
                 Text(variantLabel(card, variant), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                IconButton(onClick = onAlert) {
+                    Icon(
+                        if (hasAlert) Icons.Filled.NotificationsActive else Icons.Outlined.NotificationsNone,
+                        contentDescription = stringResource(R.string.alert_button),
+                        tint = if (hasAlert) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Checkbox(checked = variant.wanted, onCheckedChange = onWanted)
                 Text(stringResource(R.string.want_it), style = MaterialTheme.typography.bodySmall)
             }
@@ -486,6 +522,73 @@ private fun ManualPriceDialog(variantLabel: String, onDismiss: () -> Unit, onSav
             )
         },
         confirmButton = { TextButton(onClick = { if (!onSave(text)) error = true }) { Text(stringResource(R.string.action_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
+}
+
+/**
+ * Finestra dell'avviso di prezzo di una variante: avviso quando il prezzo sale o scende e prezzo obiettivo in euro.
+ * @param variantLabel String - nome della variante.
+ * @param variant VariantUi - variante, per mostrare i prezzi attuali.
+ * @param alert PriceAlertEntity? - avviso già impostato, null se non c'è.
+ * @param alertsEnabled Boolean - true se il controllo giornaliero è attivo nelle impostazioni.
+ * @param changePercent Int - variazione minima delle impostazioni, in percentuale.
+ * @param onDismiss () -> Unit - chiude senza salvare.
+ * @param onSave (Boolean, String) -> Boolean - salva (avviso di variazione, prezzo obiettivo scritto); false se il prezzo non è valido.
+ * @param onDelete () -> Unit - toglie l'avviso.
+ * @return Unit
+ */
+@Composable
+private fun PriceAlertDialog(
+    variantLabel: String,
+    variant: VariantUi,
+    alert: PriceAlertEntity?,
+    alertsEnabled: Boolean,
+    changePercent: Int,
+    onDismiss: () -> Unit,
+    onSave: (Boolean, String) -> Boolean,
+    onDelete: () -> Unit,
+) {
+    var changes by remember { mutableStateOf(alert?.notifyChanges ?: true) }
+    var target by remember { mutableStateOf(alert?.targetEur?.let { String.format(Locale.getDefault(), "%.2f", it) }.orEmpty()) }
+    var error by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.alert_title, variantLabel)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val prices = listOfNotNull(
+                    variant.latestEur?.eur?.let { stringResource(R.string.price_cardmarket) + " " + Format.eur(it) },
+                    variant.latestCardTrader?.eur?.let { stringResource(R.string.price_cardtrader) + " " + Format.eur(it) },
+                    variant.latestUsd?.usd?.let { stringResource(R.string.price_tcgplayer) + " " + Format.usd(it) },
+                )
+                Text(
+                    if (prices.isEmpty()) stringResource(R.string.alert_no_prices) else prices.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.alert_changes, changePercent), modifier = Modifier.weight(1f))
+                    Switch(checked = changes, onCheckedChange = { changes = it })
+                }
+                OutlinedTextField(
+                    value = target,
+                    onValueChange = { target = it.take(10); error = false },
+                    label = { Text(stringResource(R.string.alert_target_label)) },
+                    isError = error,
+                    supportingText = { Text(stringResource(if (error) R.string.manual_price_error else R.string.alert_target_hint)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                )
+                if (!alertsEnabled) {
+                    Text(stringResource(R.string.alert_disabled_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+                if (alert != null) {
+                    TextButton(onClick = onDelete) { Text(stringResource(R.string.alert_delete), color = MaterialTheme.colorScheme.error) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { if (!onSave(changes, target)) error = true }) { Text(stringResource(R.string.action_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

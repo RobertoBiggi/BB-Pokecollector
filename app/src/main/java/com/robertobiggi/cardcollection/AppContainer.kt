@@ -15,6 +15,7 @@ import com.robertobiggi.cardcollection.work.WorkScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.io.File
@@ -66,6 +67,8 @@ class AppContainer(context: Context) {
         appScope.launch { catalogStore.load() }
         // Toglie le carte rimaste da collezioni cancellate (il margine di un'ora evita quelle di un sync in corso).
         appScope.launch { collection.purgeOrphanCards(System.currentTimeMillis() - ORPHAN_GRACE_MS) }
+        // Riprogramma il controllo giornaliero degli avvisi se è stato perso (es. app chiusa forzatamente).
+        appScope.launch { if (settings.priceAlertsEnabled.first()) work.schedulePriceAlerts() }
     }
 
     private companion object {
