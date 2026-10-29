@@ -125,6 +125,26 @@ interface CatalogDao {
     suspend fun deleteQuery(id: Long)
 
     /**
+     * Elenca le carte che nessuna collezione contiene più e di cui nessuna collezione ha quantità o note, aggiornate prima di [before]
+     * (il margine evita carte appena salvate da un sync che non le ha ancora collegate).
+     * @param before Long - millisecondi: si considerano solo le carte aggiornate prima.
+     * @return List<CardEntity> - carte orfane.
+     */
+    @Query(
+        "SELECT * FROM card WHERE catalogUpdatedAt < :before AND id NOT IN (SELECT cardId FROM collection_card) " +
+            "AND id NOT IN (SELECT v.cardId FROM card_variant v JOIN collection_entry e ON e.variantId = v.id)",
+    )
+    suspend fun orphanCards(before: Long): List<CardEntity>
+
+    /**
+     * Elimina carte del catalogo; le loro varianti vanno a cascata.
+     * @param ids List<String> - id delle carte.
+     * @return Unit
+     */
+    @Query("DELETE FROM card WHERE id IN (:ids)")
+    suspend fun deleteCards(ids: List<String>)
+
+    /**
      * Osserva tutte le carte del catalogo condiviso.
      * @return Flow<List<CardEntity>> - carte.
      */
@@ -447,6 +467,22 @@ interface CollectionDao {
 /** Accesso a prezzi e registro degli aggiornamenti. */
 @Dao
 interface PriceDao {
+
+    /**
+     * Elimina i prezzi salvati per le varianti di alcune carte.
+     * @param cardIds List<String> - id delle carte.
+     * @return Unit
+     */
+    @Query("DELETE FROM price_snapshot WHERE variantId IN (SELECT id FROM card_variant WHERE cardId IN (:cardIds))")
+    suspend fun deleteSnapshotsOfCards(cardIds: List<String>)
+
+    /**
+     * Elimina il registro degli aggiornamenti prezzi di una collezione.
+     * @param collectionId Long - collezione.
+     * @return Unit
+     */
+    @Query("DELETE FROM price_run WHERE collectionId = :collectionId")
+    suspend fun deleteRunsOf(collectionId: Long)
 
     /**
      * Osserva tutti i prezzi salvati, dal più vecchio al più recente.

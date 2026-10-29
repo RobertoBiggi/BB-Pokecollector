@@ -54,7 +54,7 @@ class AppContainer(context: Context) {
     val catalogStore = CatalogStore(appContext, downloadHttp)
     val images = ImageStore(appContext, http)
 
-    val collection = CollectionRepository(database, appScope, settings)
+    val collection = CollectionRepository(database, appScope, settings, images)
     val catalog = CatalogRepository(database, catalogStore, images, settings)
     val prices = PriceRepository(database, http, settings, appContext.cacheDir, images)
     val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
@@ -64,9 +64,12 @@ class AppContainer(context: Context) {
         // Legge subito i nomi dei Pokémon, così la prima ricerca non blocca l'interfaccia.
         appScope.launch { PokemonNames.preload() }
         appScope.launch { catalogStore.load() }
+        // Toglie le carte rimaste da collezioni cancellate (il margine di un'ora evita quelle di un sync in corso).
+        appScope.launch { collection.purgeOrphanCards(System.currentTimeMillis() - ORPHAN_GRACE_MS) }
     }
 
     private companion object {
+        const val ORPHAN_GRACE_MS = 60 * 60 * 1000L
         const val USER_AGENT = "CardCollection-Android (uso personale)"
 
         /** Host raggiungibili dall'app: immagini di TCGdex, listino prezzi di Cardmarket, API e immagini di CardTrader. */
