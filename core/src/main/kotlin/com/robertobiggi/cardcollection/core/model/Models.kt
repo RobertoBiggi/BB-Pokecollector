@@ -76,6 +76,7 @@ enum class VariantType(val tcgdexKey: String) {
     REVERSE("reverse"),
     POKE_BALL("pokeBall"),
     MASTER_BALL("masterBall"),
+    ENERGY_REVERSE("energyReverse"),
     SHADOWLESS("shadowless"),
     RED_CHEEK("redCheek"),
     FIRST_EDITION("firstEdition"),
@@ -89,8 +90,8 @@ enum class VariantType(val tcgdexKey: String) {
     /** Altra stampa della carta che Cardmarket elenca e TCGdex no: `print` è il suo prodotto Cardmarket. */
     CARDMARKET_PRINT("cardmarketPrint");
 
-    /** Reverse holo Poké Ball o Master Ball: prodotti Cardmarket a parte, che TCGdex non elenca. */
-    val isBall: Boolean get() = this == POKE_BALL || this == MASTER_BALL
+    /** Reverse holo Poké Ball, Master Ball o Energy (Ascended Heroes, MEGA Dream ex): prodotti Cardmarket a parte, che TCGdex non elenca come tali. */
+    val isBall: Boolean get() = this == POKE_BALL || this == MASTER_BALL || this == ENERGY_REVERSE
 
     /** Stampa a parte della stessa carta (shadowless, guance rosse, Pokétour '99, jumbo): ha un suo prodotto Cardmarket, che TCGdex indica per ognuna. */
     val isPrint: Boolean get() = this == SHADOWLESS || this == RED_CHEEK || this == POKETOUR_99 || this == JUMBO || this == STAMPED || this == CARDMARKET_PRINT
