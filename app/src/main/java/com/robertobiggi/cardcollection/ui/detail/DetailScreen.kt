@@ -18,7 +18,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Switch
+import com.robertobiggi.cardcollection.core.price.PriceAlertRules
 import com.robertobiggi.cardcollection.data.local.PriceAlertEntity
+import kotlin.math.roundToInt
 import java.util.Locale
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
@@ -576,7 +578,12 @@ private fun PriceAlertDialog(
                     onValueChange = { target = it.take(10); error = false },
                     label = { Text(stringResource(R.string.alert_target_label)) },
                     isError = error,
-                    supportingText = { Text(stringResource(if (error) R.string.manual_price_error else R.string.alert_target_hint)) },
+                    supportingText = {
+                        Text(
+                            if (error) stringResource(R.string.manual_price_error)
+                            else stringResource(R.string.alert_target_hint, (PriceAlertRules.TARGET_MARGIN * 100).roundToInt()),
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )

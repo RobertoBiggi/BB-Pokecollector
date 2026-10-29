@@ -318,7 +318,7 @@
     <string name="alert_no_prices">No price yet: update the card prices to get a starting point.</string>
     <string name="alert_changes">Alert me if it goes up or down by at least %1$d%%</string>
     <string name="alert_target_label">Alert me when it reaches (€)</string>
-    <string name="alert_target_hint">Empty = no target price. Alerts once from 5% above and below, on Cardmarket or CardTrader.</string>
+    <string name="alert_target_hint">Empty = no target price. Alerts once from %1$d%% above and below, on Cardmarket or CardTrader.</string>
     <string name="alert_disabled_hint">Alerts are off: turn them on in Settings → Price alerts.</string>
     <string name="alert_delete">Remove alert</string>
     <string name="msg_alert_saved">Price alert saved.</string>
