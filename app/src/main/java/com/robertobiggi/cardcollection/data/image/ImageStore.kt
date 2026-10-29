@@ -23,6 +23,9 @@ import java.io.InputStream
  * @param context contesto dell'applicazione.
  * @param http client OkHttp condiviso.
  */
+/** Tentativo di download fallito: [reason] è il codice HTTP o il tipo di errore di rete, [willRetry] dice se ne seguirà un altro. */
+data class DownloadIssue(val reason: String, val willRetry: Boolean)
+
 class ImageStore(context: Context, private val http: OkHttpClient) {
 
     private val resolver: ContentResolver = context.contentResolver
@@ -51,9 +54,10 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
      * @param cardId String - id locale della carta.
      * @param imageBaseUrl String - URL base TCGdex dell'immagine (senza qualità ed estensione).
      * @param quality Quality - qualità da scaricare.
+     * @param onIssue (DownloadIssue) -> Unit - chiamata a ogni tentativo fallito, con il motivo e se si riprova.
      * @return String? - percorso assoluto del file salvato, oppure null se l'URL non è consentito o il download fallisce.
      */
-    suspend fun ensure(cardId: String, imageBaseUrl: String, quality: Quality): String? = withContext(Dispatchers.IO) {
+    suspend fun ensure(cardId: String, imageBaseUrl: String, quality: Quality, onIssue: (DownloadIssue) -> Unit = {}): String? = withContext(Dispatchers.IO) {
         val target = fileFor(cardId, quality)
         if (target.isFile && target.length() > 0) return@withContext target.absolutePath
         val url = "$imageBaseUrl/${quality.suffix}.webp"
@@ -64,10 +68,14 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
                 download(url, target)
                 return@withContext target.absolutePath
             } catch (e: HttpStatusException) {
-                if (!e.retryable || attempt == DOWNLOAD_ATTEMPTS) return@withContext null
+                val again = e.retryable && attempt < DOWNLOAD_ATTEMPTS
+                onIssue(DownloadIssue("HTTP ${e.code}", again))
+                if (!again) return@withContext null
                 delay(e.retryAfterMs ?: (RETRY_BASE_MS * attempt))
             } catch (e: IOException) {
-                if (attempt == DOWNLOAD_ATTEMPTS) return@withContext null
+                val again = attempt < DOWNLOAD_ATTEMPTS
+                onIssue(DownloadIssue(e.javaClass.simpleName, again))
+                if (!again) return@withContext null
                 delay(RETRY_BASE_MS * attempt)
             }
         }

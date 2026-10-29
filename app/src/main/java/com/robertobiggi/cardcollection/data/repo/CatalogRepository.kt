@@ -12,6 +12,7 @@ import com.robertobiggi.cardcollection.core.tcgdex.CardCodeSearch
 import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.catalog.CardBrief
 import com.robertobiggi.cardcollection.data.catalog.CatalogStore
+import com.robertobiggi.cardcollection.data.image.DownloadIssue
 import com.robertobiggi.cardcollection.data.image.ImagePaths
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
@@ -21,7 +22,15 @@ import com.robertobiggi.cardcollection.data.local.CollectionCardEntity
 import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 /** Fase del sync del catalogo. */
 enum class SyncPhase { SEARCH, CARD, IMAGES, IMAGES_CARDTRADER }
@@ -30,7 +39,16 @@ enum class SyncPhase { SEARCH, CARD, IMAGES, IMAGES_CARDTRADER }
  * Avanzamento del sync del catalogo.
  * @property label testo della ricerca o nome della carta in lavorazione (dati, non frasi).
  */
-data class SyncProgress(val phase: SyncPhase, val label: String, val done: Int, val total: Int)
+data class SyncProgress(
+    val phase: SyncPhase,
+    val label: String,
+    val done: Int,
+    val total: Int,
+    /** Solo per le immagini: tentativi ripetuti, immagini non scaricate e ultimo motivo di errore (codice HTTP o tipo di errore di rete). */
+    val retries: Int = 0,
+    val failed: Int = 0,
+    val note: String? = null,
+)
 
 /**
  * Esito del sync del catalogo. [emptySets] conta i set (collezioni per set) di cui il database non ha le carte.
@@ -324,17 +342,36 @@ class CatalogRepository(
      * @return Int - numero di carte per cui è stata salvata almeno un'immagine nuova.
      */
     private suspend fun downloadMissingImages(progress: suspend (SyncProgress) -> Unit): Int {
-        val missing = dao.cardsMissingImages()
+        val missing = dao.cardsMissingImages().filter { it.imageUrl != null }
+        val lock = Mutex()
+        val semaphore = Semaphore(IMAGE_PARALLELISM)
         var count = 0
-        for ((index, card) in missing.withIndex()) {
-            val url = card.imageUrl ?: continue
-            progress(SyncProgress(SyncPhase.IMAGES, card.name, index, missing.size))
-            val low = card.imageLowPath ?: images.ensure(card.id, url, ImageStore.Quality.LOW)
-            val high = card.imageHighPath ?: images.ensure(card.id, url, ImageStore.Quality.HIGH)
-            if (low != card.imageLowPath || high != card.imageHighPath) {
-                // Solo i percorsi mancanti: un altro lavoro (immagine scelta a mano, CardTrader) può averne salvato uno nel frattempo.
-                dao.fillImagePaths(card.id, low, high)
-                count++
+        var started = 0
+        val retries = AtomicInteger()
+        val note = AtomicReference<String?>(null)
+        var failed = 0
+        coroutineScope {
+            for (card in missing) {
+                launch {
+                    semaphore.withPermit {
+                        val url = card.imageUrl ?: return@withPermit
+                        lock.withLock { started++; progress(SyncProgress(SyncPhase.IMAGES, card.name, started - 1, missing.size, retries.get(), failed, note.get())) }
+                        val onIssue = { issue: DownloadIssue ->
+                            if (issue.willRetry) retries.incrementAndGet()
+                            note.set(issue.reason)
+                        }
+                        val low = card.imageLowPath ?: images.ensure(card.id, url, ImageStore.Quality.LOW, onIssue)
+                        val high = card.imageHighPath ?: images.ensure(card.id, url, ImageStore.Quality.HIGH, onIssue)
+                        lock.withLock {
+                            if (low != card.imageLowPath || high != card.imageHighPath) {
+                                // Solo i percorsi mancanti: un altro lavoro (immagine scelta a mano, CardTrader) può averne salvato uno nel frattempo.
+                                dao.fillImagePaths(card.id, low, high)
+                                count++
+                            }
+                            if (low == null || high == null) failed++
+                        }
+                    }
+                }
             }
         }
         return count
@@ -358,5 +395,8 @@ class CatalogRepository(
     private companion object {
         const val MAX_SEARCH_RESULTS = 60
         const val PROGRESS_EVERY = 25
+
+        /** Immagini scaricate insieme: con una sola alla volta migliaia di carte richiedono ore. */
+        const val IMAGE_PARALLELISM = 4
     }
 }

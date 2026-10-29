@@ -157,6 +157,11 @@ fun FileError.messageRes(): Int = when (this) {
     FileError.PERMISSION_DENIED -> R.string.err_file_permission
 }
 
+/** Coda del testo delle immagini con tentativi ripetuti, immagini non scaricate e ultimo errore; vuota se tutto va liscio. */
+@Composable
+private fun imageIssues(state: JobState): String =
+    if (state.retries == 0 && state.imagesFailed == 0) "" else " · " + stringResource(R.string.job_images_issues, state.retries, state.imagesFailed, state.note ?: "-")
+
 /**
  * Testo dell'elemento in lavorazione di un lavoro in background.
  * @param state JobState - stato del lavoro.
@@ -181,7 +186,7 @@ fun jobProgressText(state: JobState, prices: Boolean): String {
     }
     return when (SyncPhase.entries.firstOrNull { it.name == state.phase }) {
         SyncPhase.SEARCH -> stringResource(R.string.job_search, label)
-        SyncPhase.IMAGES -> stringResource(R.string.job_images, state.done + 1, state.total, label)
+        SyncPhase.IMAGES -> stringResource(R.string.job_images, state.done + 1, state.total, label) + imageIssues(state)
         SyncPhase.IMAGES_CARDTRADER -> stringResource(R.string.job_images_cardtrader, state.done + 1, state.total, label)
         else -> stringResource(R.string.job_item, label, state.done + 1, state.total)
     }
