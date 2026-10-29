@@ -304,7 +304,7 @@
     <string name="alert_no_prices">Nessun prezzo ancora: aggiorna i prezzi della carta per avere un punto di partenza.</string>
     <string name="alert_changes">Avvisami se sale o scende di almeno %1$d%%</string>
     <string name="alert_target_label">Avvisami quando arriva a (€)</string>
-    <string name="alert_target_hint">Vuoto = nessun prezzo obiettivo. Avvisa una volta da 5% sopra in giù, su Cardmarket o CardTrader.</string>
+    <string name="alert_target_hint">Vuoto = nessun prezzo obiettivo. Avvisa una volta da %1$d%% sopra in giù, su Cardmarket o CardTrader.</string>
     <string name="alert_disabled_hint">Gli avvisi sono spenti: attivali in Impostazioni → Avvisi di prezzo.</string>
     <string name="alert_delete">Togli avviso</string>
     <string name="msg_alert_saved">Avviso di prezzo salvato.</string>
