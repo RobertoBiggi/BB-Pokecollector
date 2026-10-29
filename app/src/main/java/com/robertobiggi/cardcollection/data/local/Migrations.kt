@@ -18,6 +18,13 @@ object Migrations {
         "ALTER TABLE `card` ADD COLUMN `cardTraderExpansionId` INTEGER",
     )
 
+    /** Versione 14 → 15: avvisi di prezzo sulle varianti, vuota per chi aggiorna. */
+    val SQL_14_15: List<String> = listOf(
+        "CREATE TABLE IF NOT EXISTS `price_alert` (`variantId` TEXT NOT NULL, `notifyChanges` INTEGER NOT NULL, `targetEur` REAL, " +
+            "`targetReached` INTEGER NOT NULL, `baselines` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `lastCheckedAt` INTEGER, " +
+            "PRIMARY KEY(`variantId`), FOREIGN KEY(`variantId`) REFERENCES `card_variant`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+    )
+
     /** Migrazione Room 11 → 12. */
     val MIGRATION_11_12 = object : Migration(11, 12) {
         /**
@@ -51,6 +58,18 @@ object Migrations {
          */
         override fun migrate(db: SupportSQLiteDatabase) {
             SQL_13_14.forEach { db.execSQL(it) }
+        }
+    }
+
+    /** Migrazione Room 14 → 15. */
+    val MIGRATION_14_15 = object : Migration(14, 15) {
+        /**
+         * Esegue le istruzioni di [SQL_14_15].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_14_15.forEach { db.execSQL(it) }
         }
     }
 }
