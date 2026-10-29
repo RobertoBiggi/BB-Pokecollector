@@ -9,6 +9,11 @@ import com.robertobiggi.cardcollection.core.model.Confidence
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
+import com.robertobiggi.cardcollection.core.price.AlertConfig
+import com.robertobiggi.cardcollection.core.price.AlertEvent
+import com.robertobiggi.cardcollection.core.price.AlertState
+import com.robertobiggi.cardcollection.core.price.PriceAlertRules
+import com.robertobiggi.cardcollection.core.price.PricePoint
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.price.CardmarketGuidePriceProvider
 import com.robertobiggi.cardcollection.core.price.CircuitBreaker
@@ -21,12 +26,15 @@ import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.CardVariantEntity
+import com.robertobiggi.cardcollection.data.local.PriceAlertEntity
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.io.File
@@ -45,6 +53,25 @@ enum class AbortReason { SOURCE_PAUSED, OFFLINE }
 
 /** Esito dell'aggiornamento prezzi; [abort] è null se il run è arrivato in fondo. */
 data class PriceRunResult(val ok: Int, val fallback: Int, val failed: Int, val abort: AbortReason?)
+
+/**
+ * Avviso di prezzo da notificare.
+ * @property cardId carta.
+ * @property collectionId collezione da aprire toccando la notifica, null se la carta non è in nessuna.
+ * @property cardName nome della carta.
+ * @property variantType tipo della variante, null se non riconosciuto.
+ * @property event cosa è successo al prezzo.
+ */
+data class PriceAlertNotice(
+    val cardId: String,
+    val collectionId: Long?,
+    val cardName: String,
+    val variantType: VariantType?,
+    val event: AlertEvent,
+)
+
+/** Esito del controllo giornaliero degli avvisi; [abort] non è null se si è fermato prima della fine. */
+data class AlertCheckResult(val notices: List<PriceAlertNotice>, val checked: Int, val abort: AbortReason?)
 
 /**
  * Aggiorna i prezzi delle varianti desiderate o possedute e salva l'ultimo risultato in locale.
@@ -326,6 +353,115 @@ class PriceRepository(
     }
 
     /**
+     * Osserva gli avvisi di prezzo, per variante.
+     * @return Flow<Map<String, PriceAlertEntity>> - avviso per id della variante.
+     */
+    fun observeAlerts(): Flow<Map<String, PriceAlertEntity>> = priceDao.observeAlerts().map { list -> list.associateBy { it.variantId } }
+
+    /**
+     * Crea o modifica l'avviso di prezzo di una variante; senza nessuna delle due opzioni lo toglie. I prezzi di
+     * riferimento partono da quelli attuali, così il primo controllo misura le variazioni da quello che l'utente vede adesso.
+     * @param variantId String - variante.
+     * @param notifyChanges Boolean - true per l'avviso "sale o scende".
+     * @param targetEur Double? - prezzo obiettivo in euro (già validato), null se non impostato.
+     * @return Boolean - true se l'avviso è attivo, false se è stato tolto.
+     */
+    suspend fun saveAlert(variantId: String, notifyChanges: Boolean, targetEur: Double?): Boolean {
+        val target = targetEur?.takeIf { it > 0.0 && it <= PriceAlertRules.MAX_TARGET_EUR && it.isFinite() }
+        if (!notifyChanges && target == null) {
+            priceDao.deleteAlert(variantId)
+            return false
+        }
+        val current = pointsOf(priceDao.snapshotsOf(listOf(variantId))).associate { it.key to it.value }
+        val existing = priceDao.getAlert(variantId)
+        priceDao.upsertAlert(
+            PriceAlertEntity(
+                variantId = variantId,
+                notifyChanges = notifyChanges,
+                targetEur = target,
+                targetReached = false,
+                baselines = PriceAlertRules.encodeBaselines(current),
+                createdAt = System.currentTimeMillis(),
+                lastCheckedAt = existing?.lastCheckedAt,
+            ),
+        )
+        return true
+    }
+
+    /**
+     * Toglie l'avviso di prezzo di una variante.
+     * @param variantId String - variante.
+     * @return Unit
+     */
+    suspend fun deleteAlert(variantId: String) = priceDao.deleteAlert(variantId)
+
+    /**
+     * Controllo giornaliero degli avvisi: aggiorna i prezzi delle sole varianti con un avviso (listino Cardmarket e,
+     * con il token, CardTrader), li confronta con lo stato salvato ([PriceAlertRules.evaluate]) e restituisce gli avvisi
+     * da notificare. Non registra un run: non è l'aggiornamento di una collezione.
+     * @return AlertCheckResult - avvisi da notificare, varianti controllate ed eventuale interruzione.
+     */
+    suspend fun runAlertCheck(): AlertCheckResult {
+        val alerts = priceDao.alerts()
+        if (alerts.isEmpty()) return AlertCheckResult(emptyList(), 0, null)
+        val percent = settings.priceAlertChangePercent.first()
+        val variants = alerts.map { it.variantId }.chunked(SQL_CHUNK).flatMap { db.catalogDao().variantsByIds(it) }.associateBy { it.id }
+        val sources = priceSources {}
+        val notices = mutableListOf<PriceAlertNotice>()
+        var checked = 0
+        var consecutiveNetworkErrors = 0
+        var abortReason: AbortReason? = null
+        for (alert in alerts) {
+            val variant = variants[alert.variantId] ?: continue
+            val card = db.catalogDao().getCard(variant.cardId) ?: continue
+            if (sources.cardmarketGuide.allCircuitsOpen()) {
+                abortReason = AbortReason.SOURCE_PAUSED
+                break
+            }
+            val startedAt = System.currentTimeMillis()
+            val types = db.catalogDao().variantsOf(listOf(card.id)).map { it.type }
+            val check = checkVariant(sources, card, variant, types, Condition.NM)
+            if (check == VariantCheck.NETWORK_ERROR) {
+                if (++consecutiveNetworkErrors >= MAX_NETWORK_ERRORS) {
+                    abortReason = AbortReason.OFFLINE
+                    break
+                }
+            } else {
+                consecutiveNetworkErrors = 0
+            }
+            // Solo i prezzi scaricati adesso: quelli vecchi o inseriti a mano non fanno partire avvisi.
+            val fresh = priceDao.snapshotsOf(listOf(variant.id)).filter { it.fetchedAt >= startedAt }
+            val evaluation = PriceAlertRules.evaluate(
+                AlertConfig(alert.notifyChanges, alert.targetEur),
+                AlertState(PriceAlertRules.decodeBaselines(alert.baselines), alert.targetReached),
+                pointsOf(fresh),
+                percent,
+            )
+            priceDao.updateAlertState(alert.variantId, PriceAlertRules.encodeBaselines(evaluation.state.baselines), evaluation.state.targetReached, System.currentTimeMillis())
+            checked++
+            if (evaluation.events.isNotEmpty()) {
+                val collectionId = db.catalogDao().collectionOfCard(card.id)
+                evaluation.events.forEach { notices += PriceAlertNotice(card.id, collectionId, card.name, VariantType.fromName(variant.type), it) }
+            }
+        }
+        return AlertCheckResult(notices, checked, abortReason)
+    }
+
+    /**
+     * Prezzi utilizzabili dagli avvisi: l'ultimo di ogni fonte, esclusi quelli inseriti a mano. Gli euro di CardTrader
+     * contano come CardTrader, gli altri come la loro fonte (listino Cardmarket); i dollari come TCGplayer.
+     * @param snapshots List<PriceSnapshotEntity> - prezzi salvati della variante.
+     * @return List<PricePoint> - un prezzo per fonte e valuta.
+     */
+    private fun pointsOf(snapshots: List<PriceSnapshotEntity>): List<PricePoint> =
+        snapshots.filter { it.source != CollectionFiles.MANUAL_SOURCE }.sortedByDescending { it.fetchedAt }.flatMap { s ->
+            listOfNotNull(
+                s.eur?.let { PricePoint(s.source, PricePoint.EUR, it) },
+                s.usd?.let { PricePoint(TCGPLAYER_SOURCE, PricePoint.USD, it) },
+            )
+        }.distinctBy { it.key }
+
+    /**
      * Salva un prezzo inserito a mano dall'utente.
      * @param variantId String - variante a cui associare il prezzo.
      * @param eur Double - prezzo in euro già validato.
@@ -363,5 +499,8 @@ class PriceRepository(
         private const val GUIDE_FILE = "cardmarket-price-guide.json"
         private const val MAX_NETWORK_ERRORS = 5
         private const val SQL_CHUNK = 500
+
+        /** Nome con cui gli avvisi indicano i prezzi in dollari (TCGplayer), come nel dettaglio della carta. */
+        const val TCGPLAYER_SOURCE = "TCGplayer"
     }
 }

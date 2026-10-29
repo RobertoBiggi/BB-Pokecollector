@@ -158,6 +158,31 @@ data class PriceSnapshotEntity(
 )
 
 /**
+ * Avviso di prezzo su una variante, impostato dal dettaglio della carta. Lo controlla il lavoro giornaliero
+ * ([com.robertobiggi.cardcollection.work.PriceAlertWorker]) se gli avvisi sono attivi nelle impostazioni.
+ * @property variantId variante osservata.
+ * @property notifyChanges true per un avviso quando il prezzo sale o scende oltre la soglia delle impostazioni.
+ * @property targetEur prezzo in euro vicino o sotto cui avvisare; null se non impostato.
+ * @property targetReached true se l'avviso del prezzo obiettivo è già partito e il prezzo non è ancora risalito.
+ * @property baselines prezzi di riferimento per fonte (vedi [com.robertobiggi.cardcollection.core.price.PriceAlertRules.encodeBaselines]).
+ * @property createdAt quando è stato creato o modificato l'ultima volta.
+ * @property lastCheckedAt ultimo controllo giornaliero, null se mai controllato.
+ */
+@Entity(
+    tableName = "price_alert",
+    foreignKeys = [ForeignKey(entity = CardVariantEntity::class, parentColumns = ["id"], childColumns = ["variantId"], onDelete = ForeignKey.CASCADE)],
+)
+data class PriceAlertEntity(
+    @PrimaryKey val variantId: String,
+    val notifyChanges: Boolean,
+    val targetEur: Double?,
+    val targetReached: Boolean,
+    val baselines: String,
+    val createdAt: Long,
+    val lastCheckedAt: Long?,
+)
+
+/**
  * Registro di un aggiornamento prezzi. [summary] contiene il motivo dell'interruzione
  * ([com.robertobiggi.cardcollection.data.repo.AbortReason]) oppure null; [collectionId] è null per i run della versione 1.
  */

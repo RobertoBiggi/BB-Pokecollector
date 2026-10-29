@@ -2,6 +2,10 @@
 
 package com.robertobiggi.cardcollection.ui.settings
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,27 +24,33 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.robertobiggi.cardcollection.R
+import com.robertobiggi.cardcollection.core.price.PriceAlertRules
+import com.robertobiggi.cardcollection.work.Notifications
 import com.robertobiggi.cardcollection.data.settings.PriceKind
 import com.robertobiggi.cardcollection.ui.MainViewModel
 import com.robertobiggi.cardcollection.ui.common.Format
 import com.robertobiggi.cardcollection.ui.common.Section
+import kotlin.math.roundToInt
 
 /** Lingue dell'interfaccia: [tag] vuoto significa "lingua di sistema". */
 private enum class AppLanguage(val tag: String, val labelRes: Int) {
@@ -50,7 +60,7 @@ private enum class AppLanguage(val tag: String, val labelRes: Int) {
 }
 
 /**
- * Impostazioni: lingua dell'app, fonti dei prezzi e informazioni sui file JSON.
+ * Impostazioni: lingua dell'app, catalogo, avvisi di prezzo, fonti dei prezzi e informazioni sui file JSON.
  * La lingua viene applicata subito da Android (l'activity si ricrea) e ricordata tra un avvio e l'altro.
  * @param vm MainViewModel - stato.
  * @param onBack () -> Unit - torna all'elenco collezioni.
@@ -67,6 +77,12 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     val countFirstEdition by vm.countFirstEdition.collectAsStateWithLifecycle()
     var tokenInput by remember(savedToken) { mutableStateOf(savedToken) }
+    val alertsEnabled by vm.priceAlertsEnabled.collectAsStateWithLifecycle()
+    val alertPercent by vm.priceAlertChangePercent.collectAsStateWithLifecycle()
+    var percentDraft by remember(alertPercent) { mutableFloatStateOf(alertPercent.toFloat()) }
+    val context = LocalContext.current
+    // Il risultato non serve: se l'utente rifiuta, la sezione mostra che le notifiche sono bloccate.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val currentTag = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore('-')
     val current = AppLanguage.entries.firstOrNull { it.tag == currentTag } ?: AppLanguage.SYSTEM
 
@@ -127,6 +143,29 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 Section(stringResource(R.string.settings_first_edition)) {
                     PriceSwitch(stringResource(R.string.settings_first_edition), stringResource(R.string.settings_first_edition_text), countFirstEdition) {
                         vm.setCountFirstEdition(it)
+                    }
+                }
+            }
+            item {
+                Section(stringResource(R.string.settings_alerts)) {
+                    PriceSwitch(stringResource(R.string.settings_alerts_switch), stringResource(R.string.settings_alerts_text), alertsEnabled) { on ->
+                        vm.setPriceAlertsEnabled(on)
+                        if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !Notifications.canNotify(context)) {
+                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                    if (alertsEnabled) {
+                        Text(stringResource(R.string.settings_alerts_percent, alertPercent), style = MaterialTheme.typography.bodyMedium)
+                        Slider(
+                            value = percentDraft,
+                            onValueChange = { percentDraft = it },
+                            onValueChangeFinished = { vm.setPriceAlertChangePercent(percentDraft.roundToInt()) },
+                            valueRange = PriceAlertRules.CHANGE_PERCENT_RANGE.first.toFloat()..PriceAlertRules.CHANGE_PERCENT_RANGE.last.toFloat(),
+                            steps = PriceAlertRules.CHANGE_PERCENT_RANGE.last - PriceAlertRules.CHANGE_PERCENT_RANGE.first - 1,
+                        )
+                        if (!Notifications.canNotify(context)) {
+                            Text(stringResource(R.string.settings_alerts_no_permission), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }

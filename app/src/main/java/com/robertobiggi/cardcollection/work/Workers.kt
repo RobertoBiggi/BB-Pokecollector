@@ -9,6 +9,9 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.robertobiggi.cardcollection.CardCollectionApp
 import com.robertobiggi.cardcollection.R
+import com.robertobiggi.cardcollection.data.repo.AbortReason
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 import com.robertobiggi.cardcollection.data.repo.SyncPhase
 import com.robertobiggi.cardcollection.data.repo.SyncProgress
 
@@ -156,3 +159,38 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
  */
 fun issuesSuffix(context: Context, retries: Int, failed: Int, note: String?): String =
     if (retries == 0 && failed == 0) "" else "\n" + context.getString(R.string.job_images_issues, retries, failed, note ?: "-")
+
+/**
+ * Controllo giornaliero degli avvisi di prezzo, poco dopo l'aggiornamento del listino Cardmarket. Aggiorna solo le
+ * varianti con un avviso, mostra le notifiche e programma il controllo del giorno dopo. Se l'utente ha spento gli
+ * avvisi non fa nulla e non si riprogramma.
+ */
+class PriceAlertWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    /**
+     * Esegue il controllo degli avvisi.
+     * @return Result - successo; un nuovo tentativo (al massimo [MAX_ATTEMPTS]) se la rete o il listino non rispondono.
+     */
+    override suspend fun doWork(): Result {
+        val container = (applicationContext as CardCollectionApp).container
+        if (!container.settings.priceAlertsEnabled.first()) return Result.success()
+        val result = try {
+            container.prices.runAlertCheck()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Listino non scaricabile o risposta non valida: si riprova più tardi, poi si passa al giorno dopo.
+            null
+        }
+        result?.notices?.forEach { Notifications.showPriceAlert(applicationContext, it) }
+        val failed = result == null || result.abort == AbortReason.OFFLINE
+        if (failed && runAttemptCount < MAX_ATTEMPTS) return Result.retry()
+        container.work.scheduleNextPriceAlertCheck()
+        return Result.success()
+    }
+
+    private companion object {
+        const val MAX_ATTEMPTS = 3
+    }
+}
+
