@@ -155,4 +155,4 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
  * @return String - testo da accodare, già con il separatore.
  */
 fun issuesSuffix(context: Context, retries: Int, failed: Int, note: String?): String =
-    if (retries == 0 && failed == 0) "" else " · " + context.getString(R.string.job_images_issues, retries, failed, note ?: "-")
+    if (retries == 0 && failed == 0) "" else "\n" + context.getString(R.string.job_images_issues, retries, failed, note ?: "-")

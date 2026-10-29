@@ -74,7 +74,7 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
                 delay(e.retryAfterMs ?: (RETRY_BASE_MS * attempt))
             } catch (e: IOException) {
                 val again = attempt < DOWNLOAD_ATTEMPTS
-                onIssue(DownloadIssue(e.javaClass.simpleName, again))
+                onIssue(DownloadIssue(listOfNotNull(e.javaClass.simpleName, e.message).joinToString(": ").take(ISSUE_MAX_CHARS), again))
                 if (!again) return@withContext null
                 delay(RETRY_BASE_MS * attempt)
             }
@@ -117,10 +117,7 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     private fun downloadBytes(url: String, limit: Long): ByteArray? {
         val request = Request.Builder().url(url).get().build()
         http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                val wait = response.header("Retry-After")?.trim()?.toLongOrNull()?.let { (it * 1000).coerceIn(0, MAX_RETRY_AFTER_MS) }
-                throw HttpStatusException(response.code, wait)
-            }
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body ?: throw IOException("Corpo vuoto")
             if (body.contentType()?.type != "image") throw IOException("Non è un'immagine")
             if (body.contentLength() > limit) return null
@@ -293,7 +290,10 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     private fun download(url: String, target: File) {
         val request = Request.Builder().url(url).get().build()
         http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            if (!response.isSuccessful) {
+                val wait = response.header("Retry-After")?.trim()?.toLongOrNull()?.let { (it * 1000).coerceIn(0, MAX_RETRY_AFTER_MS) }
+                throw HttpStatusException(response.code, wait)
+            }
             val body = response.body ?: throw IOException("Corpo vuoto")
             val type = body.contentType()
             if (type == null || type.type != "image") throw IOException("Non è un'immagine")
@@ -352,6 +352,7 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         /** Dimensione massima di un'immagine (3 MB). */
         const val MAX_BYTES = 3L * 1024 * 1024
         private const val DOWNLOAD_ATTEMPTS = 4
+        private const val ISSUE_MAX_CHARS = 80
         private const val RETRY_BASE_MS = 1_500L
         private const val MAX_RETRY_AFTER_MS = 15_000L
 

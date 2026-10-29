@@ -356,9 +356,10 @@ class CatalogRepository(
                     semaphore.withPermit {
                         val url = card.imageUrl ?: return@withPermit
                         lock.withLock { started++; progress(SyncProgress(SyncPhase.IMAGES, card.name, started - 1, missing.size, retries.get(), failed, note.get())) }
+                        var notFound = false
                         val onIssue = { issue: DownloadIssue ->
+                            if (issue.reason == HTTP_NOT_FOUND) notFound = true else note.set(issue.reason)
                             if (issue.willRetry) retries.incrementAndGet()
-                            note.set(issue.reason)
                         }
                         val low = card.imageLowPath ?: images.ensure(card.id, url, ImageStore.Quality.LOW, onIssue)
                         val high = card.imageHighPath ?: images.ensure(card.id, url, ImageStore.Quality.HIGH, onIssue)
@@ -368,7 +369,9 @@ class CatalogRepository(
                                 dao.fillImagePaths(card.id, low, high)
                                 count++
                             }
-                            if (low == null || high == null) failed++
+                            // 404: TCGdex non ha l'immagine di questa carta (succede per molti set giapponesi vecchi), non è un errore di rete.
+                            if (low == null && high == null && notFound) dao.clearImageUrl(card.id)
+                            else if (low == null || high == null) failed++
                         }
                     }
                 }
@@ -395,6 +398,7 @@ class CatalogRepository(
     private companion object {
         const val MAX_SEARCH_RESULTS = 60
         const val PROGRESS_EVERY = 25
+        const val HTTP_NOT_FOUND = "HTTP 404"
 
         /** Immagini scaricate insieme: con una sola alla volta migliaia di carte richiedono ore. */
         const val IMAGE_PARALLELISM = 4
