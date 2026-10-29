@@ -56,7 +56,7 @@ data class CardUi(
     val language: Language get() = Language.fromCode(card.language) ?: Language.EN
 
     /** Codice stampato in basso a sinistra, es. "M1L 046/063". */
-    val printedCode: String get() = listOfNotNull(card.setCode, card.printedNumber).joinToString(" ")
+    val printedCode: String get() = card.printedCode()
 
     /** Slot della carta: varianti desiderate o possedute (stessa regola di [CollectionStats]). */
     val slots: Int get() = variants.count { it.wanted || it.quantity > 0 }
@@ -272,3 +272,11 @@ object LibraryAssembler {
 
 /** CardTrader ha un prezzo proprio: non deve prendere il posto di quello Cardmarket. */
 private fun PriceSnapshotEntity.isCardTrader(): Boolean = source == CardTraderPriceProvider.DISPLAY_NAME
+
+private val CARDMARKET_PLACEHOLDER = Regex("^Cardmarket\\d+$")
+
+/** Numero stampato, o "N/A" per le carte che Cardmarket elenca senza numero (anche se un database vecchio ci aveva messo "Cardmarket<id>"). */
+fun CardEntity.printedNumberOrNa(): String = printedNumber.takeIf { it.isNotBlank() && !CARDMARKET_PLACEHOLDER.matches(it) } ?: "N/A"
+
+/** Codice stampato in basso a sinistra, es. "M1L 046/063"; senza numero "N/A". */
+fun CardEntity.printedCode(): String = listOfNotNull(setCode, printedNumberOrNa()).joinToString(" ")

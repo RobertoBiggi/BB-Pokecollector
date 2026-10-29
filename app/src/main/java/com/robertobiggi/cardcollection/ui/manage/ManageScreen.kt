@@ -13,6 +13,7 @@ import com.robertobiggi.cardcollection.ui.common.labelRes
 import com.robertobiggi.cardcollection.ui.common.catalogResultText
 import com.robertobiggi.cardcollection.ui.common.LanguagePicker
 import com.robertobiggi.cardcollection.data.repo.InputError
+import com.robertobiggi.cardcollection.data.repo.printedCode
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -202,7 +203,7 @@ fun ManageScreen(vm: MainViewModel) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text(card.name, fontWeight = FontWeight.Bold)
-                                    Text(listOfNotNull(card.setCode, card.printedNumber).joinToString(" "), style = MonoStyle)
+                                    Text(card.printedCode(), style = MonoStyle)
                                 }
                                 TextButton(onClick = { vm.restoreCard(card.id) }) { Text(stringResource(R.string.action_restore)) }
                             }
