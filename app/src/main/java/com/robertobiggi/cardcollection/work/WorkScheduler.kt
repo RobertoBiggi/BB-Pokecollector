@@ -168,5 +168,10 @@ class WorkScheduler(context: Context) {
     private fun priceName(collectionId: Long) = "price-check-$collectionId"
 
     private companion object {
+        /** Nome del lavoro unico del controllo giornaliero degli avvisi di prezzo. */
+        const val PRICE_ALERTS = "price-alerts"
+
+        /** Attesa iniziale prima di riprovare il controllo degli avvisi (poi cresce). */
+        const val ALERT_RETRY_MINUTES = 15L
     }
 }
