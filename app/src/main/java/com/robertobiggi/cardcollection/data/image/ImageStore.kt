@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import com.robertobiggi.cardcollection.core.validation.Validators
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -57,12 +58,25 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         if (target.isFile && target.length() > 0) return@withContext target.absolutePath
         val url = "$imageBaseUrl/${quality.suffix}.webp"
         if (!Validators.isAllowedImageUrl(url)) return@withContext null
-        try {
-            download(url, target)
-            target.absolutePath
-        } catch (e: IOException) {
-            null
+        // Un blocco temporaneo (429, 5xx) o un timeout non deve lasciare la carta senza immagine: si riprova con attese crescenti.
+        for (attempt in 1..DOWNLOAD_ATTEMPTS) {
+            try {
+                download(url, target)
+                return@withContext target.absolutePath
+            } catch (e: HttpStatusException) {
+                if (!e.retryable || attempt == DOWNLOAD_ATTEMPTS) return@withContext null
+                delay(e.retryAfterMs ?: (RETRY_BASE_MS * attempt))
+            } catch (e: IOException) {
+                if (attempt == DOWNLOAD_ATTEMPTS) return@withContext null
+                delay(RETRY_BASE_MS * attempt)
+            }
         }
+        null
+    }
+
+    /** Risposta HTTP non riuscita; [retryAfterMs] è l'attesa chiesta dal server (intestazione Retry-After), al massimo [MAX_RETRY_AFTER_MS]. */
+    private class HttpStatusException(val code: Int, val retryAfterMs: Long?) : IOException("HTTP $code") {
+        val retryable: Boolean get() = code == 429 || code == 408 || code >= 500
     }
 
     /**
@@ -95,7 +109,10 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     private fun downloadBytes(url: String, limit: Long): ByteArray? {
         val request = Request.Builder().url(url).get().build()
         http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            if (!response.isSuccessful) {
+                val wait = response.header("Retry-After")?.trim()?.toLongOrNull()?.let { (it * 1000).coerceIn(0, MAX_RETRY_AFTER_MS) }
+                throw HttpStatusException(response.code, wait)
+            }
             val body = response.body ?: throw IOException("Corpo vuoto")
             if (body.contentType()?.type != "image") throw IOException("Non è un'immagine")
             if (body.contentLength() > limit) return null
@@ -326,6 +343,9 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     companion object {
         /** Dimensione massima di un'immagine (3 MB). */
         const val MAX_BYTES = 3L * 1024 * 1024
+        private const val DOWNLOAD_ATTEMPTS = 4
+        private const val RETRY_BASE_MS = 1_500L
+        private const val MAX_RETRY_AFTER_MS = 15_000L
 
         /** Dimensione massima del file scelto dall'utente prima della ricodifica (20 MB). */
         private const val MAX_PICKED_BYTES = 20L * 1024 * 1024
