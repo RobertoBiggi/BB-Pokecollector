@@ -30,9 +30,10 @@ fun JobBanner(title: String, state: JobState?, prices: Boolean) {
             Text(
                 stringResource(R.string.job_line, title, jobProgressText(state, prices)),
                 style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            jobIssuesText(state)?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }
             if (state.total > 0) {
                 LinearProgressIndicator(
                     progress = { (state.done.toFloat() / state.total).coerceIn(0f, 1f) },

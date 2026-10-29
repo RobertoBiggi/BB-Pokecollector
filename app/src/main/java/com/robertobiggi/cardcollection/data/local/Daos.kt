@@ -179,6 +179,15 @@ interface CatalogDao {
     suspend fun cardsMissingImages(): List<CardEntity>
 
     /**
+     * Toglie l'URL dell'immagine a una carta che TCGdex non ha (risposta 404), solo se non ha altre immagini: così la carta passa
+     * alle altre fonti (CardTrader) invece di restare per sempre "con un'immagine da scaricare".
+     * @param id String - id della riga.
+     * @return Unit
+     */
+    @Query("UPDATE card SET imageUrl = NULL WHERE id = :id AND imageLowPath IS NULL AND imageHighPath IS NULL")
+    suspend fun clearImageUrl(id: String)
+
+    /**
      * Elenca le carte inglesi e giapponesi senza URL immagine né immagini salvate (né scelte a mano).
      * @return List<CardEntity> - carte per cui si può provare un'altra fonte.
      */
