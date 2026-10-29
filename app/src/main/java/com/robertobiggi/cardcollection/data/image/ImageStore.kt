@@ -207,6 +207,18 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
+     * Cancella le immagini salvate di carte che non servono più (anche quelle scelte a mano), solo dentro la cartella dell'app.
+     * @param paths Collection<String?> - percorsi salvati nel database.
+     * @return Unit
+     */
+    suspend fun deleteFiles(paths: Collection<String?>) = withContext(Dispatchers.IO) {
+        for (path in paths.filterNotNull()) {
+            val file = File(path)
+            if (file.canonicalPath.startsWith(rootPath)) file.delete()
+        }
+    }
+
+    /**
      * Indica se un percorso è un'immagine scelta a mano dall'utente.
      * @param path String? - percorso salvato nel database.
      * @return Boolean - true se è un file manuale.

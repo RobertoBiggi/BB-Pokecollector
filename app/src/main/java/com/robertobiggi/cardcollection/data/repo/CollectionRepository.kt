@@ -10,6 +10,7 @@ import com.robertobiggi.cardcollection.core.model.LanguageQuery
 import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.core.price.CardTraderPriceProvider
 import com.robertobiggi.cardcollection.core.validation.Validators
+import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.CardVariantEntity
@@ -68,7 +69,7 @@ sealed interface CreateResult {
  * @param scope scope dell'applicazione, in cui viene condivisa la fotografia del database.
  * @param settings impostazioni: decidono quali prezzi mostrare.
  */
-class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, private val settings: SettingsStore) {
+class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, private val settings: SettingsStore, private val images: ImageStore) {
 
     private val catalogDao = db.catalogDao()
     private val collectionDao = db.collectionDao()
@@ -287,11 +288,35 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Elimina una collezione con ricerche e quantità; il catalogo condiviso e i prezzi restano.
+     * Elimina una collezione con ricerche, quantità e registro dei prezzi, e toglie dal catalogo le carte (con varianti, prezzi e immagini)
+     * che non appartengono più a nessuna collezione, così i lavori sul catalogo non le cercano più.
      * @param collectionId Long - collezione.
      * @return Unit
      */
-    suspend fun delete(collectionId: Long) = catalogDao.deleteCollection(collectionId)
+    suspend fun delete(collectionId: Long) {
+        db.withTransaction {
+            priceDao.deleteRunsOf(collectionId)
+            catalogDao.deleteCollection(collectionId)
+        }
+        purgeOrphanCards(System.currentTimeMillis())
+    }
+
+    /**
+     * Toglie le carte che nessuna collezione contiene più (anche quelle rimaste da collezioni cancellate da versioni precedenti).
+     * @param before Long - millisecondi: si tolgono solo le carte aggiornate prima.
+     * @return Unit
+     */
+    suspend fun purgeOrphanCards(before: Long) {
+        val orphans = catalogDao.orphanCards(before)
+        for (chunk in orphans.chunked(PURGE_CHUNK)) {
+            val ids = chunk.map { it.id }
+            db.withTransaction {
+                priceDao.deleteSnapshotsOfCards(ids)
+                catalogDao.deleteCards(ids)
+            }
+            images.deleteFiles(chunk.flatMap { listOf(it.imageLowPath, it.imageHighPath) })
+        }
+    }
 
     /**
      * Aggiunge o toglie copie partendo dal valore salvato (non da quello mostrato), così i tocchi
@@ -424,5 +449,8 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     private companion object {
         /** Tempo per cui la fotografia resta attiva senza osservatori (es. rotazione dello schermo). */
         const val STOP_TIMEOUT_MS = 5_000L
+
+        /** Carte tolte per volta (il limite di SQLite sui parametri è 999). */
+        const val PURGE_CHUNK = 500
     }
 }
