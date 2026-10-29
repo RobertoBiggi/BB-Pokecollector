@@ -45,7 +45,7 @@ data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int
  * @property cards carte del set, dichiarate o nel database.
  * @property releaseDate data di uscita (ISO, es. "2003-07-18"), se nota.
  */
-data class SetChoice(val id: String, val name: String, val cards: Int?, val releaseDate: String? = null)
+data class SetChoice(val id: String, val name: String, val cards: Int?, val releaseDate: String? = null, val code: String? = null)
 
 /** Esito della lettura dell'elenco dei set. */
 sealed interface SetListResult {
@@ -163,7 +163,7 @@ class CatalogRepository(
      */
     suspend fun setChoices(language: Language): SetListResult {
         val sets = store.use { it.sets(language) } ?: return SetListResult.NoCatalog
-        return SetListResult.Found(sets.filter { Validators.isValidRemoteId(it.id) }.map { SetChoice(it.id, it.name, it.declared ?: it.cards, it.releaseDate) })
+        return SetListResult.Found(sets.filter { Validators.isValidRemoteId(it.id) }.map { SetChoice(it.id, it.name, it.declared ?: it.cards, it.releaseDate, it.code) })
     }
 
     /**
