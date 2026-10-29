@@ -29,7 +29,7 @@ class BallVariants(private val products: Map<String, Map<VariantType, Product>>)
      * Prodotto Cardmarket di una variante.
      * @param setId String - id TCGdex del set.
      * @param localId String - numero della carta nel set.
-     * @param variant VariantType - [VariantType.POKE_BALL] o [VariantType.MASTER_BALL].
+     * @param variant VariantType - [VariantType.isBall].
      * @return Int? - `idProduct`, oppure null se la carta non ha quella variante.
      */
     fun productId(setId: String, localId: String, variant: VariantType): Int? = products[key(setId, localId)]?.get(variant)?.cardmarketId
@@ -38,7 +38,7 @@ class BallVariants(private val products: Map<String, Map<VariantType, Product>>)
      * Blueprint CardTrader di una variante, per cercarne gli annunci.
      * @param setId String - id TCGdex del set.
      * @param localId String - numero della carta nel set.
-     * @param variant VariantType - [VariantType.POKE_BALL] o [VariantType.MASTER_BALL].
+     * @param variant VariantType - [VariantType.isBall].
      * @return Int? - id del blueprint, oppure null se la carta non ha quella variante.
      */
     fun blueprintId(setId: String, localId: String, variant: VariantType): Int? = products[key(setId, localId)]?.get(variant)?.blueprintId

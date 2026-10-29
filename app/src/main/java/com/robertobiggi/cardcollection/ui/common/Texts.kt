@@ -72,6 +72,7 @@ fun VariantType.labelRes(): Int = when (this) {
     VariantType.REVERSE -> R.string.variant_reverse
     VariantType.POKE_BALL -> R.string.variant_poke_ball
     VariantType.MASTER_BALL -> R.string.variant_master_ball
+    VariantType.ENERGY_REVERSE -> R.string.variant_energy_reverse
     VariantType.FIRST_EDITION -> R.string.variant_first_edition
     VariantType.W_PROMO -> R.string.variant_w_promo
     VariantType.SHADOWLESS -> R.string.variant_shadowless

@@ -52,6 +52,7 @@ object SetCollectionPolicy {
         VariantType.REVERSE,
         VariantType.POKE_BALL,
         VariantType.MASTER_BALL,
+        VariantType.ENERGY_REVERSE,
         VariantType.W_PROMO,
         VariantType.FIRST_EDITION,
         VariantType.SHADOWLESS,
