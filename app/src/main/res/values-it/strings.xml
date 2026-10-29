@@ -94,6 +94,8 @@
     <string name="job_starting">avvio…</string>
     <string name="job_search">cerco \"%1$s\"</string>
     <string name="job_images">scarico immagine %1$d/%2$d · %3$s</string>
+    <string name="job_images_issues">tentativi ripetuti %1$d · non scaricate %2$d · ultimo errore: %3$s</string>
+    <string name="notification_images_title">Scarico le immagini</string>
     <string name="job_images_cardtrader">CardTrader: scarico immagine %1$d/%2$d · %3$s</string>
     <string name="job_download_guide">scarico il listino prezzi Cardmarket…</string>
     <string name="job_read_guide">leggo il listino prezzi Cardmarket…</string>

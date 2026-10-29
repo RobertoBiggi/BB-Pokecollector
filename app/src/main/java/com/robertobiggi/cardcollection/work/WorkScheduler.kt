@@ -24,6 +24,9 @@ data class JobState(
     val label: String?,
     val done: Int,
     val total: Int,
+    val retries: Int = 0,
+    val imagesFailed: Int = 0,
+    val note: String? = null,
     val output: Map<String, Any?>,
 )
 
@@ -97,6 +100,9 @@ class WorkScheduler(context: Context) {
                 label = progress.getString(WorkKeys.LABEL),
                 done = progress.getInt(WorkKeys.DONE, 0),
                 total = progress.getInt(WorkKeys.TOTAL, 0),
+                retries = progress.getInt(WorkKeys.RETRIES, 0),
+                imagesFailed = progress.getInt(WorkKeys.IMAGES_FAILED, 0),
+                note = progress.getString(WorkKeys.NOTE),
                 output = info.outputData.keyValueMap,
             )
         }

@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.work
 
+import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
 import androidx.work.CoroutineWorker
@@ -8,6 +9,8 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.robertobiggi.cardcollection.CardCollectionApp
 import com.robertobiggi.cardcollection.R
+import com.robertobiggi.cardcollection.data.repo.SyncPhase
+import com.robertobiggi.cardcollection.data.repo.SyncProgress
 
 /** Chiavi dei dati di input, avanzamento e risultato dei worker (solo dati: i testi li compone la UI). */
 object WorkKeys {
@@ -25,6 +28,9 @@ object WorkKeys {
     const val FALLBACK = "fallback"
     const val FAILED = "failed"
     const val ABORT = "abort"
+    const val RETRIES = "retries"
+    const val IMAGES_FAILED = "imagesFailed"
+    const val NOTE = "note"
 }
 
 /**
@@ -54,15 +60,37 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
         if (collectionId < 0) return Result.failure()
         promoteToForeground()
         val container = (applicationContext as CardCollectionApp).container
-        val result = container.catalog.sync(collectionId) { p ->
-            setProgress(workDataOf(WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
-        }
+        val result = container.catalog.sync(collectionId) { p -> publish(p) }
         // Le immagini che TCGdex non ha si prendono da CardTrader (se c'è il token).
-        val cardTraderImages = container.prices.fillImagesFromCardTrader { p ->
-            setProgress(workDataOf(WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total))
-        }
+        val cardTraderImages = container.prices.fillImagesFromCardTrader { p -> publish(p) }
         val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + cardTraderImages, WorkKeys.ERRORS to result.errors, WorkKeys.EMPTY_SETS to result.emptySets, WorkKeys.NO_CATALOG to result.noCatalog)
         return if (result.noCatalog || (result.cardsSaved == 0 && result.errors > 0)) Result.failure(data) else Result.success(data)
+    }
+
+    /**
+     * Pubblica l'avanzamento per la schermata e aggiorna la notifica (con il testo di cosa sta scaricando e di tentativi ed errori).
+     * Le immagini arrivano molte volte al secondo: la notifica si aggiorna al massimo una volta al secondo.
+     * @param p SyncProgress - avanzamento.
+     * @return Unit
+     */
+    private suspend fun publish(p: SyncProgress) {
+        setProgress(
+            workDataOf(
+                WorkKeys.PHASE to p.phase.name, WorkKeys.LABEL to p.label, WorkKeys.DONE to p.done, WorkKeys.TOTAL to p.total,
+                WorkKeys.RETRIES to p.retries, WorkKeys.IMAGES_FAILED to p.failed, WorkKeys.NOTE to p.note,
+            ),
+        )
+        val now = System.currentTimeMillis()
+        if (p.phase != SyncPhase.IMAGES && p.phase != SyncPhase.IMAGES_CARDTRADER || now - lastNotified < NOTIFY_EVERY_MS) return
+        lastNotified = now
+        val context = applicationContext
+        val text = context.getString(
+            if (p.phase == SyncPhase.IMAGES) R.string.job_images else R.string.job_images_cardtrader, p.done + 1, p.total, p.label,
+        ) + issuesSuffix(context, p.retries, p.failed, p.note)
+        context.getSystemService(NotificationManager::class.java).notify(
+            NOTIFICATION_ID,
+            Notifications.progress(context, context.getString(R.string.notification_images_title), text, p.done, p.total),
+        )
     }
 
     /**
@@ -75,8 +103,11 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
         ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
     )
 
+    private var lastNotified = 0L
+
     private companion object {
         const val NOTIFICATION_ID = 1001
+        const val NOTIFY_EVERY_MS = 1_000L
     }
 }
 
@@ -114,3 +145,14 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
         const val NOTIFICATION_ID = 1002
     }
 }
+
+/**
+ * Coda del testo di avanzamento delle immagini: tentativi ripetuti, immagini non scaricate e ultimo errore. Vuota se non c'è niente da dire.
+ * @param context Context - contesto per i testi tradotti.
+ * @param retries Int - tentativi ripetuti finora.
+ * @param failed Int - immagini non scaricate.
+ * @param note String? - ultimo motivo di errore (es. "HTTP 429").
+ * @return String - testo da accodare, già con il separatore.
+ */
+fun issuesSuffix(context: Context, retries: Int, failed: Int, note: String?): String =
+    if (retries == 0 && failed == 0) "" else " · " + context.getString(R.string.job_images_issues, retries, failed, note ?: "-")
