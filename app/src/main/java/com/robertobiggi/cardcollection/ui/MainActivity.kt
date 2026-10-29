@@ -1,6 +1,7 @@
 package com.robertobiggi.cardcollection.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -26,6 +27,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -49,12 +52,16 @@ import com.robertobiggi.cardcollection.ui.manage.ManageScreen
 import com.robertobiggi.cardcollection.ui.settings.SettingsScreen
 import com.robertobiggi.cardcollection.ui.stats.StatsScreen
 import com.robertobiggi.cardcollection.ui.theme.CardCollectionTheme
+import kotlinx.coroutines.flow.first
 
 /**
  * Unica activity: ospita la navigazione Compose. Estende AppCompatActivity per applicare la lingua
  * scelta in Impostazioni anche sulle versioni di Android precedenti alla 13.
  */
 class MainActivity : AppCompatActivity() {
+
+    /** Carta da aprire chiesta da una notifica (collezione e id), consumata dalla navigazione. */
+    private val cardRequest = mutableStateOf<CardRequest?>(null)
 
     /**
      * Imposta il contenuto Compose a tutto schermo.
@@ -64,9 +71,46 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { CardCollectionTheme { AppRoot() } }
+        // Dopo una rotazione l'intent è lo stesso: la carta è già stata aperta.
+        if (savedInstanceState == null) cardRequest.value = cardRequestOf(intent)
+        setContent { CardCollectionTheme { AppRoot(cardRequest) } }
+    }
+
+    /**
+     * Notifica toccata con l'app già aperta: apre la carta indicata.
+     * @param intent Intent - intent della notifica.
+     * @return Unit
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        cardRequestOf(intent)?.let { cardRequest.value = it }
+    }
+
+    companion object {
+        /** Id della carta da aprire (avvisi di prezzo). */
+        const val EXTRA_CARD_ID = "com.robertobiggi.cardcollection.CARD_ID"
+
+        /** Collezione in cui aprire la carta. */
+        const val EXTRA_COLLECTION_ID = "com.robertobiggi.cardcollection.COLLECTION_ID"
+
+        /**
+         * Legge dall'intent la carta da aprire, con controlli sui valori (l'intent può arrivare da fuori).
+         * @param intent Intent? - intent ricevuto.
+         * @return CardRequest? - carta da aprire, oppure null se manca o non è valida.
+         */
+        private fun cardRequestOf(intent: Intent?): CardRequest? {
+            val cardId = intent?.getStringExtra(EXTRA_CARD_ID)?.takeIf { it.isNotBlank() && it.length <= MAX_CARD_ID } ?: return null
+            val collectionId = intent.getLongExtra(EXTRA_COLLECTION_ID, -1L).takeIf { it > 0 } ?: return null
+            return CardRequest(collectionId, cardId)
+        }
+
+        private const val MAX_CARD_ID = 200
     }
 }
+
+/** Carta da aprire: [collectionId] è la collezione in cui mostrarla. */
+data class CardRequest(val collectionId: Long, val cardId: String)
 
 /** Schede della navigazione in basso dentro una collezione. */
 private enum class Tab(val segment: String, @StringRes val labelRes: Int, val icon: ImageVector) {
@@ -78,12 +122,24 @@ private enum class Tab(val segment: String, @StringRes val labelRes: Int, val ic
 
 /**
  * Radice dell'interfaccia: elenco collezioni, schede della collezione aperta, snackbar.
+ * @param cardRequest MutableState<CardRequest?> - carta da aprire chiesta da una notifica; viene azzerata dopo l'apertura.
  * @return Unit
  */
 @Composable
-private fun AppRoot() {
+private fun AppRoot(cardRequest: MutableState<CardRequest?>) {
     val vm: MainViewModel = viewModel(factory = MainViewModel.Factory)
     val nav = rememberNavController()
+    // Notifica di un avviso di prezzo: apre la carta nella sua collezione.
+    val request = cardRequest.value
+    LaunchedEffect(request) {
+        if (request == null) return@LaunchedEffect
+        // Aspetta che il NavHost abbia impostato il grafo (prima navigare farebbe chiudere l'app).
+        nav.currentBackStackEntryFlow.first()
+        vm.open(request.collectionId)
+        nav.navigate("c/${request.collectionId}/${Tab.CARDS.segment}") { popUpTo("home") }
+        nav.navigate("c/${request.collectionId}/card/${Uri.encode(request.cardId)}")
+        cardRequest.value = null
+    }
     val snackbar = remember { SnackbarHostState() }
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route

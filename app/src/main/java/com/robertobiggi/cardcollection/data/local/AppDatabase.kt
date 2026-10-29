@@ -16,8 +16,9 @@ import androidx.room.RoomDatabase
         CollectionEntryEntity::class,
         PriceSnapshotEntity::class,
         PriceRunEntity::class,
+        PriceAlertEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -50,7 +51,7 @@ abstract class AppDatabase : RoomDatabase() {
          */
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
-                .addMigrations(Migrations.MIGRATION_11_12, Migrations.MIGRATION_12_13, Migrations.MIGRATION_13_14)
+                .addMigrations(Migrations.MIGRATION_11_12, Migrations.MIGRATION_12_13, Migrations.MIGRATION_13_14, Migrations.MIGRATION_14_15)
                 .build()
     }
 }

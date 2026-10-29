@@ -1,5 +1,7 @@
 package com.robertobiggi.cardcollection.ui
 
+import com.robertobiggi.cardcollection.core.price.PriceAlertRules
+import com.robertobiggi.cardcollection.data.local.PriceAlertEntity
 import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
@@ -150,6 +152,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val cardTraderToken: StateFlow<String> = container.settings.cardTraderToken.stateInVm("")
     val countFirstEdition: StateFlow<Boolean> = container.settings.countFirstEdition.stateInVm(true)
     val priceVisibility: StateFlow<PriceVisibility> = container.settings.priceVisibility.stateInVm(PriceVisibility())
+    val priceAlertsEnabled: StateFlow<Boolean> = container.settings.priceAlertsEnabled.stateInVm(false)
+    val priceAlertChangePercent: StateFlow<Int> = container.settings.priceAlertChangePercent.stateInVm(PriceAlertRules.DEFAULT_CHANGE_PERCENT)
+
+    /** Avvisi di prezzo per id della variante. */
+    val priceAlerts: StateFlow<Map<String, PriceAlertEntity>> = container.prices.observeAlerts().stateInVm(emptyMap())
 
     private val _filter = MutableStateFlow(CollectionFilter())
     val filter: StateFlow<CollectionFilter> = _filter.asStateFlow()
@@ -505,6 +512,55 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      */
     fun setCountFirstEdition(counted: Boolean) {
         viewModelScope.launch { container.settings.setCountFirstEdition(counted) }
+    }
+
+    /**
+     * Attiva o spegne gli avvisi di prezzo e il controllo giornaliero che li verifica.
+     * @param enabled Boolean - true per attivarli.
+     * @return Unit
+     */
+    fun setPriceAlertsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            container.settings.setPriceAlertsEnabled(enabled)
+            if (enabled) container.work.schedulePriceAlerts() else container.work.cancelPriceAlerts()
+        }
+    }
+
+    /**
+     * Imposta la variazione minima per l'avviso "il prezzo sale o scende".
+     * @param percent Int - percentuale (ricondotta ai limiti ammessi).
+     * @return Unit
+     */
+    fun setPriceAlertChangePercent(percent: Int) {
+        viewModelScope.launch { container.settings.setPriceAlertChangePercent(percent) }
+    }
+
+    /**
+     * Crea, modifica o toglie l'avviso di prezzo di una variante.
+     * @param variantId String - variante.
+     * @param notifyChanges Boolean - true per l'avviso "sale o scende".
+     * @param targetText String - prezzo obiettivo scritto dall'utente (vuoto = nessuno; virgola o punto).
+     * @return Boolean - false se il prezzo obiettivo non è valido (la finestra resta aperta), true altrimenti.
+     */
+    fun savePriceAlert(variantId: String, notifyChanges: Boolean, targetText: String): Boolean {
+        val target = if (targetText.isBlank()) null else Validators.parseManualPrice(targetText)?.takeIf { it <= PriceAlertRules.MAX_TARGET_EUR } ?: return false
+        viewModelScope.launch {
+            val active = container.prices.saveAlert(variantId, notifyChanges, target)
+            say(if (active) R.string.msg_alert_saved else R.string.msg_alert_removed)
+        }
+        return true
+    }
+
+    /**
+     * Toglie l'avviso di prezzo di una variante.
+     * @param variantId String - variante.
+     * @return Unit
+     */
+    fun deletePriceAlert(variantId: String) {
+        viewModelScope.launch {
+            container.prices.deleteAlert(variantId)
+            say(R.string.msg_alert_removed)
+        }
     }
 
     /**

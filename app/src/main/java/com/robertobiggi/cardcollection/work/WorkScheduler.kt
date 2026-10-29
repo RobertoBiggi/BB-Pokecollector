@@ -1,16 +1,22 @@
 package com.robertobiggi.cardcollection.work
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import kotlinx.coroutines.flow.Flow
+import com.robertobiggi.cardcollection.core.price.PriceAlertRules
 import kotlinx.coroutines.flow.map
+import java.time.Duration
+import java.time.ZonedDateTime
+import java.util.concurrent.TimeUnit
 
 /**
  * Stato di un lavoro in background. [phase] e [label] descrivono l'elemento in lavorazione,
@@ -31,8 +37,8 @@ data class JobState(
 )
 
 /**
- * Avvia e osserva i lavori manuali (catalogo e prezzi) di ogni collezione. Ogni lavoro è unico per
- * collezione: un secondo tocco mentre il primo è in corso non avvia un duplicato.
+ * Avvia e osserva i lavori manuali (catalogo e prezzi) di ogni collezione e programma il controllo giornaliero degli
+ * avvisi di prezzo. Ogni lavoro è unico per collezione: un secondo tocco mentre il primo è in corso non avvia un duplicato.
  *
  * @param context contesto dell'applicazione.
  */
@@ -84,6 +90,46 @@ class WorkScheduler(context: Context) {
     }
 
     /**
+     * Programma il controllo giornaliero degli avvisi di prezzo al prossimo [PriceAlertRules.DAILY_RUN_TIME], se non è
+     * già programmato. Sicuro da chiamare a ogni apertura dell'app e quando l'utente attiva gli avvisi.
+     * @return Unit
+     */
+    fun schedulePriceAlerts() {
+        workManager.enqueueUniqueWork(PRICE_ALERTS, ExistingWorkPolicy.KEEP, priceAlertRequest())
+    }
+
+    /**
+     * Programma il controllo del giorno dopo, accodato a quello in corso (lo chiama il lavoro stesso alla fine):
+     * l'orario si ricalcola ogni volta, così resta alle 4:30 anche con il cambio dell'ora legale.
+     * @return Unit
+     */
+    fun scheduleNextPriceAlertCheck() {
+        workManager.enqueueUniqueWork(PRICE_ALERTS, ExistingWorkPolicy.APPEND_OR_REPLACE, priceAlertRequest())
+    }
+
+    /**
+     * Toglie il controllo giornaliero degli avvisi (l'utente li ha spenti).
+     * @return Unit
+     */
+    fun cancelPriceAlerts() {
+        workManager.cancelUniqueWork(PRICE_ALERTS)
+    }
+
+    /**
+     * Richiesta del controllo degli avvisi, ritardata fino al prossimo orario giornaliero; aspetta la rete.
+     * @return OneTimeWorkRequest - richiesta pronta.
+     */
+    private fun priceAlertRequest(): OneTimeWorkRequest {
+        val now = ZonedDateTime.now()
+        val delay = Duration.between(now, PriceAlertRules.nextRun(now)).toMillis().coerceAtLeast(0)
+        return OneTimeWorkRequestBuilder<PriceAlertWorker>()
+            .setConstraints(network)
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, ALERT_RETRY_MINUTES, TimeUnit.MINUTES)
+            .build()
+    }
+
+    /**
      * Osserva un lavoro unico e lo converte in [JobState].
      * @param name String - nome del lavoro unico.
      * @return Flow<JobState?> - stato corrente, null se il lavoro non è mai stato avviato.
@@ -122,5 +168,10 @@ class WorkScheduler(context: Context) {
     private fun priceName(collectionId: Long) = "price-check-$collectionId"
 
     private companion object {
+        /** Nome del lavoro unico del controllo giornaliero degli avvisi di prezzo. */
+        const val PRICE_ALERTS = "price-alerts"
+
+        /** Attesa iniziale prima di riprovare il controllo degli avvisi (poi cresce). */
+        const val ALERT_RETRY_MINUTES = 15L
     }
 }
