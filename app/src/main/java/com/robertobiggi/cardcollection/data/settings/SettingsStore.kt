@@ -10,9 +10,15 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.robertobiggi.cardcollection.core.price.PriceAlertRules
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import java.security.GeneralSecurityException
 
 /** Prezzi che l'utente può mostrare o nascondere in tutta l'app. */
 enum class PriceKind { CARDMARKET, TCGPLAYER, CARDTRADER }
@@ -36,13 +42,22 @@ data class PriceVisibility(val cardmarket: Boolean = true, val tcgplayer: Boolea
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 /**
- * Impostazioni persistenti dell'app. Unico dato personale: il token API di CardTrader, salvato solo sul telefono.
+ * Segreti dell'utente, cifrati ([TokenCipher]). File a parte (`datastore/secrets.preferences_pb`) escluso dal backup
+ * Android: la chiave resta nel Keystore del telefono, quindi altrove non si decifrerebbe comunque.
+ */
+private val Context.secretsDataStore: DataStore<Preferences> by preferencesDataStore(name = "secrets")
+
+/**
+ * Impostazioni persistenti dell'app. Unico dato personale: il token API di CardTrader, salvato solo sul telefono e cifrato
+ * con una chiave dell'Android Keystore.
  *
  * @param context contesto dell'applicazione.
+ * @param cipher TokenCipher - cifratura del token (sul telefono con la chiave del Keystore).
  */
-class SettingsStore(context: Context) {
+class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCipher(KeystoreKeys::cardTraderKey)) {
 
     private val store = context.applicationContext.settingsDataStore
+    private val secrets = context.applicationContext.secretsDataStore
 
     /** Indirizzo da cui scaricare il database delle carte (vedi [DEFAULT_CATALOG_URL]). */
     val catalogUrl: Flow<String> = store.data.map { it[CATALOG_URL] ?: DEFAULT_CATALOG_URL }
@@ -59,16 +74,48 @@ class SettingsStore(context: Context) {
     /** Ultimo aggiornamento del catalogo riuscito (0 = mai). */
     val lastCatalogSync: Flow<Long> = store.data.map { it[LAST_CATALOG_SYNC] ?: 0L }
 
-    /** Token API di CardTrader inserito dall'utente (stringa vuota = CardTrader disattivato). */
-    val cardTraderToken: Flow<String> = store.data.map { it[CARDTRADER_TOKEN].orEmpty() }
+    /**
+     * Token API di CardTrader inserito dall'utente (stringa vuota = CardTrader disattivato), decifrato. Finché il token
+     * salvato in chiaro dalle versioni precedenti non è stato cifrato ([migrateCardTraderToken]) vale quello. Se il
+     * token cifrato non si decifra (chiave del Keystore persa, es. dopo un ripristino) risulta assente e va reinserito.
+     */
+    val cardTraderToken: Flow<String> = combine(store.data, secrets.data) { plain, secret ->
+        secret[CARDTRADER_TOKEN_ENCRYPTED]?.let { cipher.decrypt(it) } ?: plain[LEGACY_CARDTRADER_TOKEN].orEmpty()
+    }.distinctUntilChanged().flowOn(Dispatchers.IO)
 
     /**
-     * Salva il token API di CardTrader.
+     * Salva il token API di CardTrader cifrato e toglie l'eventuale copia in chiaro delle versioni precedenti.
      * @param token String - token già ripulito; vuoto per disattivare la fonte.
+     * @return Boolean - false se il Keystore non ha potuto cifrarlo: in quel caso non viene salvato niente (mai in chiaro).
+     */
+    suspend fun setCardTraderToken(token: String): Boolean = withContext(Dispatchers.IO) {
+        if (token.isEmpty()) {
+            secrets.edit { it.remove(CARDTRADER_TOKEN_ENCRYPTED) }
+            store.edit { it.remove(LEGACY_CARDTRADER_TOKEN) }
+            return@withContext true
+        }
+        val sealed = try {
+            cipher.encrypt(token)
+        } catch (e: GeneralSecurityException) {
+            return@withContext false
+        }
+        secrets.edit { it[CARDTRADER_TOKEN_ENCRYPTED] = sealed }
+        store.edit { it.remove(LEGACY_CARDTRADER_TOKEN) }
+        true
+    }
+
+    /**
+     * Cifra il token salvato in chiaro dalle versioni precedenti e cancella la copia in chiaro. Da chiamare all'avvio;
+     * se il Keystore non risponde il token resta com'era e si riprova al prossimo avvio.
      * @return Unit
      */
-    suspend fun setCardTraderToken(token: String) {
-        store.edit { if (token.isEmpty()) it.remove(CARDTRADER_TOKEN) else it[CARDTRADER_TOKEN] = token }
+    suspend fun migrateCardTraderToken() {
+        val legacy = store.data.first()[LEGACY_CARDTRADER_TOKEN]?.takeIf { it.isNotEmpty() } ?: return
+        if (secrets.data.first()[CARDTRADER_TOKEN_ENCRYPTED] != null) {
+            store.edit { it.remove(LEGACY_CARDTRADER_TOKEN) }
+            return
+        }
+        setCardTraderToken(legacy)
     }
 
     /** True se le versioni 1st Edition contano tra le mancanti e nei totali (di default sì). */
@@ -143,7 +190,9 @@ class SettingsStore(context: Context) {
         const val DEFAULT_CATALOG_URL = "https://github.com/RobertoBiggi/Card-collection/releases/download/catalog/cards.sqlite"
 
         private val CATALOG_URL = stringPreferencesKey("catalog_url")
-        private val CARDTRADER_TOKEN = stringPreferencesKey("cardtrader_token")
+        /** Token in chiaro delle versioni precedenti: si legge solo per cifrarlo, poi viene cancellato. */
+        private val LEGACY_CARDTRADER_TOKEN = stringPreferencesKey("cardtrader_token")
+        private val CARDTRADER_TOKEN_ENCRYPTED = stringPreferencesKey("cardtrader_token_v1")
         private val SHOW_CARDMARKET = booleanPreferencesKey("show_price_cardmarket")
         private val SHOW_TCGPLAYER = booleanPreferencesKey("show_price_tcgplayer")
         private val COUNT_FIRST_EDITION = booleanPreferencesKey("count_first_edition")

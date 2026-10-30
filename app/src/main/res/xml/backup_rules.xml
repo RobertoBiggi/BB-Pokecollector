@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Backup automatico Android (fino ad Android 11): database e impostazioni, non le immagini (si riscaricano). -->
+<!-- Backup automatico Android (fino ad Android 11): database e impostazioni, non le immagini (si riscaricano) né il
+     token CardTrader (cifrato con una chiave del Keystore di questo telefono). -->
 <full-backup-content>
     <include domain="database" path="." />
     <include domain="sharedpref" path="." />
     <include domain="file" path="datastore/" />
+    <exclude domain="file" path="datastore/secrets.preferences_pb" />
 </full-backup-content>

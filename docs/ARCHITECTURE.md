@@ -198,7 +198,7 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
 ## Sicurezza
 
 - **Rete:** solo HTTPS (`network_security_config` senza traffico in chiaro). Un interceptor di rete blocca ogni host fuori da `assets.tcgdex.net`, `downloads.s3.cardmarket.com` e `api.cardtrader.com`, anche dopo un redirect (il download del database delle carte usa un client a parte, solo HTTPS). Le immagini si scaricano con controllo di tipo e dimensione (massimo 3 MB).
-- **Segreti:** nessuno nel repository. Le fonti usate non richiedono chiavi.
+- **Segreti:** nessuno nel repository. L'unico segreto è il token CardTrader inserito dall'utente: è salvato cifrato con AES-256-GCM (`TokenCipher`, IV casuale e controllo di integrità, contesto autenticato) con una chiave dell'Android Keystore (`KeystoreKeys`, non esportabile, utilizzabile anche a telefono bloccato perché il controllo prezzi gira in background). Sta in un file a parte (`datastore/secrets.preferences_pb`) escluso dal backup automatico e dal trasferimento tra telefoni: dopo un ripristino va reinserito. Il token in chiaro delle versioni precedenti viene cifrato al primo avvio e la copia in chiaro cancellata (`SettingsStore.migrateCardTraderToken`); se il Keystore non risponde il token non viene salvato, mai in chiaro. Test: `TokenCipherTest`.
 - **Validazione:** gli id remoti passano da una whitelist (niente `..` né `/`) prima di finire in URL o nomi file. I percorsi delle immagini sono verificati in forma canonica sotto `filesDir/cards`.
 - **Risposte API:** limite di 2 MB; JSON tollerante ai campi sconosciuti ma con i tipi controllati.
 - **Database:** solo query Room parametrizzate.
