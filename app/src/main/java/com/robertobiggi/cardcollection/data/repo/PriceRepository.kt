@@ -363,10 +363,11 @@ class PriceRepository(
      * riferimento partono da quelli attuali, così il primo controllo misura le variazioni da quello che l'utente vede adesso.
      * @param variantId String - variante.
      * @param notifyChanges Boolean - true per l'avviso "sale o scende".
+     * @param changePercent Int - variazione minima per l'avviso "sale o scende", ricondotta a [PriceAlertRules.CHANGE_PERCENT_RANGE].
      * @param targetEur Double? - prezzo obiettivo in euro (già validato), null se non impostato.
      * @return Boolean - true se l'avviso è attivo, false se è stato tolto.
      */
-    suspend fun saveAlert(variantId: String, notifyChanges: Boolean, targetEur: Double?): Boolean {
+    suspend fun saveAlert(variantId: String, notifyChanges: Boolean, changePercent: Int, targetEur: Double?): Boolean {
         val target = targetEur?.takeIf { it > 0.0 && it <= PriceAlertRules.MAX_TARGET_EUR && it.isFinite() }
         if (!notifyChanges && target == null) {
             priceDao.deleteAlert(variantId)
@@ -383,6 +384,7 @@ class PriceRepository(
                 baselines = PriceAlertRules.encodeBaselines(current),
                 createdAt = System.currentTimeMillis(),
                 lastCheckedAt = existing?.lastCheckedAt,
+                changePercent = changePercent.coerceIn(PriceAlertRules.CHANGE_PERCENT_RANGE),
             ),
         )
         return true
@@ -404,7 +406,7 @@ class PriceRepository(
     suspend fun runAlertCheck(): AlertCheckResult {
         val alerts = priceDao.alerts()
         if (alerts.isEmpty()) return AlertCheckResult(emptyList(), 0, null)
-        val percent = settings.priceAlertChangePercent.first()
+        val defaultPercent = settings.priceAlertChangePercent.first()
         val variants = alerts.map { it.variantId }.chunked(SQL_CHUNK).flatMap { db.catalogDao().variantsByIds(it) }.associateBy { it.id }
         val sources = priceSources {}
         val notices = mutableListOf<PriceAlertNotice>()
@@ -435,7 +437,7 @@ class PriceRepository(
                 AlertConfig(alert.notifyChanges, alert.targetEur),
                 AlertState(PriceAlertRules.decodeBaselines(alert.baselines), alert.targetReached),
                 pointsOf(fresh),
-                percent,
+                alert.changePercent ?: defaultPercent,
             )
             priceDao.updateAlertState(alert.variantId, PriceAlertRules.encodeBaselines(evaluation.state.baselines), evaluation.state.targetReached, System.currentTimeMillis())
             checked++
