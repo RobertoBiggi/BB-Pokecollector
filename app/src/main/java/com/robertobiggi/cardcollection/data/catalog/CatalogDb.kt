@@ -118,6 +118,24 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
     }
 
     /**
+     * Le carte che hanno un prodotto Cardmarket, per ritrovare una carta il cui id è cambiato.
+     * @param language Language - lingua del catalogo.
+     * @param product Int - id prodotto Cardmarket.
+     * @return List<CatalogCard> - carte con quel prodotto.
+     */
+    fun cardsByProduct(language: Language, product: Int): List<CatalogCard> =
+        query("WHERE s.language = ? AND (c.cmProduct = ? OR c.cardmarketId = ?)", arrayOf(language.code, product.toString(), product.toString()))
+
+    /**
+     * Le carte con un nome esatto (originale o inglese).
+     * @param language Language - lingua del catalogo.
+     * @param name String - nome della carta.
+     * @return List<CatalogCard> - carte con quel nome.
+     */
+    fun cardsNamed(language: Language, name: String): List<CatalogCard> =
+        query("WHERE s.language = ? AND (c.name = ? OR ${if (hasNameEn) "c.nameEn" else "c.name"} = ?)", arrayOf(language.code, name, name))
+
+    /**
      * Una carta con le sue varianti.
      * @param cardId String - id locale ("lingua:idTcgdex").
      * @return CatalogCard? - la carta, oppure null se il catalogo non la contiene.
