@@ -285,7 +285,6 @@
     <string name="add_set">Add set</string>
     <string name="msg_set_added">Set %1$s added: downloading its cards.</string>
     <string name="catalog_empty_sets">%1$d sets have no cards in the card database.</string>
-    <string name="action_retry">Retry</string>
     <string name="selected_count">%1$d selected</string>
     <string name="select_all">Select all</string>
     <string name="remove_selected_title">Remove %1$d cards?</string>

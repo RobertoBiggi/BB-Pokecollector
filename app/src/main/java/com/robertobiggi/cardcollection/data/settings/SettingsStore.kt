@@ -59,18 +59,6 @@ class SettingsStore(context: Context) {
     /** Ultimo aggiornamento del catalogo riuscito (0 = mai). */
     val lastCatalogSync: Flow<Long> = store.data.map { it[LAST_CATALOG_SYNC] ?: 0L }
 
-    /** Versione delle regole di abbinamento CardTrader con cui sono stati controllati i blueprint salvati (0 = mai). */
-    val cardTraderChecked: Flow<Int> = store.data.map { it[CARDTRADER_CHECKED] ?: 0 }
-
-    /**
-     * Registra la versione delle regole di abbinamento con cui i blueprint salvati sono stati controllati.
-     * @param version Int - versione.
-     * @return Unit
-     */
-    suspend fun setCardTraderChecked(version: Int) {
-        store.edit { it[CARDTRADER_CHECKED] = version }
-    }
-
     /** Token API di CardTrader inserito dall'utente (stringa vuota = CardTrader disattivato). */
     val cardTraderToken: Flow<String> = store.data.map { it[CARDTRADER_TOKEN].orEmpty() }
 
@@ -161,7 +149,6 @@ class SettingsStore(context: Context) {
         private val COUNT_FIRST_EDITION = booleanPreferencesKey("count_first_edition")
         private val SHOW_CARDTRADER = booleanPreferencesKey("show_price_cardtrader")
         private val LAST_CATALOG_SYNC = longPreferencesKey("last_catalog_sync")
-        private val CARDTRADER_CHECKED = intPreferencesKey("cardtrader_checked")
         private val PRICE_ALERTS_ENABLED = booleanPreferencesKey("price_alerts_enabled")
         private val PRICE_ALERT_CHANGE_PERCENT = intPreferencesKey("price_alert_change_percent")
     }

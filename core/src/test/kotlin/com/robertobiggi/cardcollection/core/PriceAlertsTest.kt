@@ -134,4 +134,26 @@ class PriceAlertsTest {
         assertEquals(emptyMap<String, Double>(), PriceAlertRules.decodeBaselines(null))
         assertEquals(emptyMap<String, Double>(), PriceAlertRules.decodeBaselines("x".repeat(5000)))
     }
+
+    @Test
+    fun `un avviso nuovo parte dai prezzi attuali`() {
+        val state = PriceAlertRules.editedState(null, null, 50.0, mapOf("Cardmarket|EUR" to 60.0))
+        assertEquals(AlertState(mapOf("Cardmarket|EUR" to 60.0), targetReached = false), state)
+    }
+
+    @Test
+    fun `cambiare solo la soglia non rimanda l'avviso del prezzo obiettivo e tiene i riferimenti`() {
+        val saved = AlertState(mapOf("Cardmarket|EUR" to 10.0), targetReached = true)
+        val state = PriceAlertRules.editedState(saved, 50.0, 50.0, mapOf("Cardmarket|EUR" to 10.4, "CardTrader|EUR" to 9.0))
+        // Il riferimento di Cardmarket resta 10 (le variazioni si sommano); CardTrader, nuovo, parte dal prezzo attuale.
+        assertEquals(mapOf("Cardmarket|EUR" to 10.0, "CardTrader|EUR" to 9.0), state.baselines)
+        assertTrue(state.targetReached)
+    }
+
+    @Test
+    fun `un prezzo obiettivo nuovo riarma l'avviso`() {
+        val saved = AlertState(mapOf("Cardmarket|EUR" to 10.0), targetReached = true)
+        assertFalse(PriceAlertRules.editedState(saved, 50.0, 40.0, emptyMap()).targetReached)
+        assertFalse(PriceAlertRules.editedState(saved, 50.0, null, emptyMap()).targetReached)
+    }
 }

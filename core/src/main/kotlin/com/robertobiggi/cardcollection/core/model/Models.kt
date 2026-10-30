@@ -98,13 +98,6 @@ enum class VariantType(val tcgdexKey: String) {
 
     companion object {
         /**
-         * Converte la chiave di variante usata da TCGdex nel valore dell'enum.
-         * @param key String - chiave TCGdex ("normal", "holo", "reverse", "firstEdition", "wPromo").
-         * @return VariantType? - la variante corrispondente, oppure null se sconosciuta.
-         */
-        fun fromTcgdexKey(key: String): VariantType? = entries.firstOrNull { it.tcgdexKey == key }
-
-        /**
          * Trova la variante dal nome salvato nel database o nei file (es. "HOLO").
          * @param name String? - nome dell'enum.
          * @return VariantType? - variante, oppure null se il nome non è riconosciuto.
@@ -276,15 +269,6 @@ object Ids {
         if (print.isNotEmpty() && !PRINT.matches(print)) return null
         return type to print
     }
-
-    /**
-     * Trasforma un timbro di TCGdex in un testo adatto a un id di variante.
-     * @param stamps List<String> - timbri della variante (es. ["staff", "pre-release"]).
-     * @return String - es. "staff+pre-release", vuoto se non resta nulla di valido.
-     */
-    fun stampPrint(stamps: List<String>): String =
-        stamps.map { it.lowercase().filter { c -> c in 'a'..'z' || c in '0'..'9' || c == '-' }.trim('-') }
-            .filter { it.isNotEmpty() }.joinToString("+").take(80).takeIf { PRINT.matches(it) }.orEmpty()
 
     /**
      * Dice se una carta viene dal catalogo Cardmarket senza numero (id "en:s-p-Cardmarket786632").

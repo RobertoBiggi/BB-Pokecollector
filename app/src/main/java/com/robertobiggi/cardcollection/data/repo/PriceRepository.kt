@@ -359,8 +359,9 @@ class PriceRepository(
     fun observeAlerts(): Flow<Map<String, PriceAlertEntity>> = priceDao.observeAlerts().map { list -> list.associateBy { it.variantId } }
 
     /**
-     * Crea o modifica l'avviso di prezzo di una variante; senza nessuna delle due opzioni lo toglie. I prezzi di
-     * riferimento partono da quelli attuali, così il primo controllo misura le variazioni da quello che l'utente vede adesso.
+     * Crea o modifica l'avviso di prezzo di una variante; senza nessuna delle due opzioni lo toglie. Un avviso nuovo parte
+     * dai prezzi attuali, così il primo controllo misura le variazioni da quello che l'utente vede adesso; uno modificato
+     * tiene il suo stato (vedi [PriceAlertRules.editedState]).
      * @param variantId String - variante.
      * @param notifyChanges Boolean - true per l'avviso "sale o scende".
      * @param changePercent Int - variazione minima per l'avviso "sale o scende", ricondotta a [PriceAlertRules.CHANGE_PERCENT_RANGE].
@@ -375,13 +376,19 @@ class PriceRepository(
         }
         val current = pointsOf(priceDao.snapshotsOf(listOf(variantId))).associate { it.key to it.value }
         val existing = priceDao.getAlert(variantId)
+        val state = PriceAlertRules.editedState(
+            existing?.let { AlertState(PriceAlertRules.decodeBaselines(it.baselines), it.targetReached) },
+            existing?.targetEur,
+            target,
+            current,
+        )
         priceDao.upsertAlert(
             PriceAlertEntity(
                 variantId = variantId,
                 notifyChanges = notifyChanges,
                 targetEur = target,
-                targetReached = false,
-                baselines = PriceAlertRules.encodeBaselines(current),
+                targetReached = state.targetReached,
+                baselines = PriceAlertRules.encodeBaselines(state.baselines),
                 createdAt = System.currentTimeMillis(),
                 lastCheckedAt = existing?.lastCheckedAt,
                 changePercent = changePercent.coerceIn(PriceAlertRules.CHANGE_PERCENT_RANGE),
@@ -422,7 +429,9 @@ class PriceRepository(
             }
             val startedAt = System.currentTimeMillis()
             val types = db.catalogDao().variantsOf(listOf(card.id)).map { it.type }
-            val check = checkVariant(sources, card, variant, types, Condition.NM)
+            // Stessa condizione dell'aggiornamento della collezione: il prezzo CardTrader salvato è condiviso e non deve cambiare a seconda di chi l'ha scaricato.
+            val condition = conditionOf(db.collectionDao().entriesOfVariant(variant.id).firstOrNull()?.condition)
+            val check = checkVariant(sources, card, variant, types, condition)
             if (check == VariantCheck.NETWORK_ERROR) {
                 if (++consecutiveNetworkErrors >= MAX_NETWORK_ERRORS) {
                     abortReason = AbortReason.OFFLINE
