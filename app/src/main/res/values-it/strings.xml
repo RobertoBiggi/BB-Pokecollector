@@ -271,7 +271,6 @@
     <string name="add_set">Aggiungi set</string>
     <string name="msg_set_added">Set %1$s aggiunto: scarico le carte.</string>
     <string name="catalog_empty_sets">%1$d set non hanno carte nel database delle carte.</string>
-    <string name="action_retry">Riprova</string>
     <string name="selected_count">%1$d selezionate</string>
     <string name="select_all">Seleziona tutte</string>
     <string name="remove_selected_title">Togliere %1$d carte?</string>
@@ -297,16 +296,21 @@
     <string name="settings_alerts">Avvisi di prezzo</string>
     <string name="settings_alerts_switch">Controllo giornaliero dei prezzi</string>
     <string name="settings_alerts_text">Ogni mattina verso le 4:30, dopo l\'aggiornamento del listino Cardmarket, aggiorna i prezzi delle carte con un avviso (campanella nel dettaglio della carta) e ti manda una notifica. Spento non scarica nulla.</string>
-    <string name="settings_alerts_percent">Avvisa quando il prezzo cambia di almeno %1$d%%</string>
+    <string name="settings_alerts_percent">Soglia proposta ai nuovi avvisi: %1$d%% (ogni carta può averne una sua)</string>
     <string name="settings_alerts_no_permission">Le notifiche dell\'app sono bloccate: attivale nelle impostazioni di Android per ricevere gli avvisi.</string>
     <string name="alert_button">Avviso prezzo</string>
-    <string name="alert_title">Avviso prezzo · %1$s</string>
-    <string name="alert_no_prices">Nessun prezzo ancora: aggiorna i prezzi della carta per avere un punto di partenza.</string>
-    <string name="alert_changes">Avvisami se sale o scende di almeno %1$d%%</string>
     <string name="alert_target_label">Avvisami quando arriva a (€)</string>
     <string name="alert_target_hint">Vuoto = nessun prezzo obiettivo. Avvisa una volta da %1$d%% sopra in giù, su Cardmarket o CardTrader.</string>
     <string name="alert_disabled_hint">Gli avvisi sono spenti: attivali in Impostazioni → Avvisi di prezzo.</string>
     <string name="alert_delete">Togli avviso</string>
     <string name="msg_alert_saved">Avviso di prezzo salvato.</string>
     <string name="msg_alert_removed">Avviso di prezzo tolto.</string>
+    <string name="alert_changes_switch">Avvisami se sale o scende</string>
+    <string name="alert_percent_label">Di almeno</string>
+    <string name="alert_percent_value">%1$d%%</string>
+    <string name="alert_percent_less">Soglia più bassa</string>
+    <string name="alert_percent_more">Soglia più alta</string>
+    <string name="alert_none">Nessun avviso: tocca per impostarlo</string>
+    <string name="alert_summary_changes">±%1$d%%</string>
+    <string name="alert_summary_target">a %1$s o meno</string>
 </resources>

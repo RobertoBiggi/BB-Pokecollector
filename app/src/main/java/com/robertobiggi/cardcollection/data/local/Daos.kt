@@ -195,27 +195,6 @@ interface CatalogDao {
     suspend fun cardsWithoutImage(): List<CardEntity>
 
     /**
-     * Elenca le carte inglesi e giapponesi del catalogo Cardmarket senza rarità (o senza numero stampato).
-     * @return List<CardEntity> - carte per cui CardTrader può dare i dati mancanti.
-     */
-    @Query("SELECT * FROM card WHERE cardmarketId IS NOT NULL AND (rarity IS NULL OR printedNumber = '') AND language IN ('en', 'ja')")
-    suspend fun cardsMissingDetails(): List<CardEntity>
-
-    /**
-     * Elenca le carte di cui non si conosce ancora il blueprint CardTrader.
-     * @return List<CardEntity> - carte per cui si può cercare il link diretto.
-     */
-    @Query("SELECT * FROM card WHERE cardTraderBlueprintId IS NULL")
-    suspend fun cardsWithoutCardTraderBlueprint(): List<CardEntity>
-
-    /**
-     * Elenca le carte con un blueprint CardTrader salvato e l'id Cardmarket di TCGdex, con cui si può controllare che l'abbinamento sia giusto.
-     * @return List<CardEntity> - carte da ricontrollare.
-     */
-    @Query("SELECT * FROM card WHERE cardTraderBlueprintId IS NOT NULL AND cardmarketProductHint IS NOT NULL")
-    suspend fun cardsWithCardTraderBlueprintToCheck(): List<CardEntity>
-
-    /**
      * Inserisce o aggiorna una carta del catalogo.
      * @param card CardEntity - carta da salvare.
      * @return Unit
@@ -263,34 +242,6 @@ interface CatalogDao {
     suspend fun cardsWithImagePaths(): List<CardEntity>
 
     /**
-     * Toglie l'immagine presa da CardTrader quando il blueprint cambia, solo se la carta non ha un'immagine TCGdex
-     * né una scelta a mano (letto al momento, non da una copia della carta che potrebbe essere vecchia).
-     * @param id String - id della riga.
-     * @return Unit
-     */
-    @Query("UPDATE card SET imageLowPath = NULL, imageHighPath = NULL WHERE id = :id AND imageUrl IS NULL AND (imageHighPath IS NULL OR imageHighPath NOT LIKE '%-manual-%')")
-    suspend fun clearCardTraderImage(id: String)
-
-    /**
-     * Imposta l'illustratore di una carta solo se non è ancora noto.
-     * @param id String - id della riga.
-     * @param illustrator String - illustratore.
-     * @return Unit
-     */
-    @Query("UPDATE card SET illustrator = :illustrator WHERE id = :id AND illustrator IS NULL")
-    suspend fun fillIllustrator(id: String, illustrator: String)
-
-    /**
-     * Completa rarità e numero stampato di una carta solo dove mancano.
-     * @param id String - id della riga.
-     * @param rarity String? - rarità trovata.
-     * @param printedNumber String - numero stampato trovato (vuoto se non c'è).
-     * @return Unit
-     */
-    @Query("UPDATE card SET rarity = COALESCE(rarity, :rarity), printedNumber = CASE WHEN printedNumber = '' THEN :printedNumber ELSE printedNumber END WHERE id = :id")
-    suspend fun fillDetails(id: String, rarity: String?, printedNumber: String)
-
-    /**
      * Imposta il numero del Pokédex di una carta solo se non è ancora noto.
      * @param id String - id della riga.
      * @param dexId Int - numero del Pokédex.
@@ -298,15 +249,6 @@ interface CatalogDao {
      */
     @Query("UPDATE card SET dexId = :dexId WHERE id = :id AND dexId IS NULL")
     suspend fun fillDexId(id: String, dexId: Int)
-
-    /**
-     * Salva l'id del blueprint CardTrader di una carta.
-     * @param id String - id della riga.
-     * @param blueprintId Int - id del blueprint.
-     * @return Unit
-     */
-    @Query("UPDATE card SET cardTraderBlueprintId = :blueprintId WHERE id = :id")
-    suspend fun setCardTraderBlueprint(id: String, blueprintId: Int)
 
     /**
      * Aggiunge varianti, ignorando quelle già presenti.

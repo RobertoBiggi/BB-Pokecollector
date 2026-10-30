@@ -78,7 +78,7 @@ TCGdex usa `0` per "nessun dato": i valori nulli o pari a zero vengono scartati.
 
 La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`: aggiungerne una richiede solo l'implementazione e l'inserimento in `PriceRepository`. Quando non c'è un prezzo nuovo resta l'ultimo salvato, oppure il prezzo manuale.
 
-## Modello dati (Room, versione 15)
+## Modello dati (Room, versione 16)
 
 | Tabella | Contenuto |
 |---|---|
@@ -90,7 +90,7 @@ La catena `PriceChain` accetta altre fonti tramite l'interfaccia `PriceProvider`
 | `collection_entry` | **dati utente per collezione**: quantità, condizione, "la voglio", note. Nessun vincolo verso il catalogo |
 | `price_snapshot` | storico prezzi condiviso: ultimi 10 per variante, con fonte, data e affidabilità |
 | `price_run` | registro degli aggiornamenti prezzi, con la collezione (ultimi 10 per collezione) |
-| `price_alert` | avvisi di prezzo per variante: "sale o scende", prezzo obiettivo in euro, stato dell'ultimo controllo (prezzi di riferimento, obiettivo già notificato) |
+| `price_alert` | avvisi di prezzo per variante: "sale o scende" con la sua soglia, prezzo obiettivo in euro, stato dell'ultimo controllo (prezzi di riferimento, obiettivo già notificato) |
 
 Uno slot è una variante desiderata (`wanted`) oppure posseduta: una variante con almeno una copia conta sempre come completata, anche senza "la voglio". Le mancanti sono le varianti desiderate con 0 copie.
 
@@ -98,7 +98,7 @@ Uno slot è una variante desiderata (`wanted`) oppure posseduta: una variante co
 
 Una carta è visibile in una collezione se non è nascosta e se è stata aggiunta a mano oppure da una ricerca attiva. Il sync del catalogo aggiorna solo `card`, `card_variant` e i collegamenti: non tocca mai i dati dell'utente.
 
-**Schema:** il database è alla versione 15; le versioni precedenti alla 11 non sono più supportate. Le migrazioni sono 11 → 12 (`card_variant.cardmarketId`, il prodotto Cardmarket delle stampe a parte), 12 → 13 (`card_variant.print`, il timbro o il prodotto che distingue più varianti dello stesso tipo), 13 → 14 (`card.cardmarketProduct` e `card.cardTraderExpansionId`, letti dal database delle carte al primo sync) e 14 → 15 (tabella `price_alert`, vuota). Gli id delle carte (`lingua:idTcgdex`) sono gli stessi del database, quindi quantità e note delle collezioni esistenti restano agganciate. Lo schema esportato da Room è in `app/schemas/`; una modifica allo schema richiede di alzare la versione e di scrivere la migrazione.
+**Schema:** il database è alla versione 16; le versioni precedenti alla 11 non sono più supportate. Le migrazioni sono 11 → 12 (`card_variant.cardmarketId`, il prodotto Cardmarket delle stampe a parte), 12 → 13 (`card_variant.print`, il timbro o il prodotto che distingue più varianti dello stesso tipo), 13 → 14 (`card.cardmarketProduct` e `card.cardTraderExpansionId`, letti dal database delle carte al primo sync) , 14 → 15 (tabella `price_alert`, vuota) e 15 → 16 (`price_alert.changePercent`, vuota per gli avvisi esistenti, che usano la soglia delle impostazioni). Gli id delle carte (`lingua:idTcgdex`) sono gli stessi del database, quindi quantità e note delle collezioni esistenti restano agganciate. Lo schema esportato da Room è in `app/schemas/`; una modifica allo schema richiede di alzare la versione e di scrivere la migrazione.
 
 **Stampe a parte e 1st Edition:** oltre a normal, holo e reverse, una carta ha una variante per ogni stampa che Cardmarket vende come prodotto a parte e che TCGdex abbina a un prodotto diverso da quello della carta: Shadowless, Guance rosse, Pokétour '99 e Jumbo (`VariantType.isPrint`). Ogni timbro di TCGdex (tornei, prerelease, staff…) con un prodotto proprio è una variante `STAMPED` (il timbro sta in `print`, id `en:ex5-85|STAMPED|reed-weichler`); i timbri non contano finché l'utente non li segna come voluti. I prodotti Cardmarket della stessa carta (stessa metacard, stesso set) che TCGdex non elenca diventano varianti `CARDMARKET_PRINT`, solo se la carta è la sola con quel nome nel set. Il prezzo viene dal loro prodotto (listino Cardmarket, poi TCGdex); CardTrader non le distingue e le salta. Su Cardmarket la 1st Edition è un'etichetta degli annunci, non un prodotto: resta una sola variante `FIRST_EDITION` per carta, ricavata dal timbro `1st-edition` di TCGdex. L'interruttore "Conta le 1st Edition" delle impostazioni, se spento, rende "non volute" le 1st Edition su cui l'utente non ha fatto scelte: non contano tra le mancanti né nei totali, le copie possedute sì.
 
@@ -106,22 +106,11 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 
 **Ricerca per nome in ogni lingua:** `PokemonNames` (core) legge una tabella dei 1025 Pokémon in 7 lingue (da PokeAPI, BSD-3-Clause) inclusa nel modulo con percorso assoluto, sicuro con R8. I nomi sono normalizzati (NFKC, senza accenti né punteggiatura, hiragana → katakana); bastano 3 caratteri latini o 2 CJK. Viene precaricata all'avvio.
 
-### Carte con simboli speciali (☆, ★, δ, ◇)
+### Carte con simboli speciali e sigle dei set
 
-TCGdex scrive le Gold Star con ☆ (U+2606) nei set EX e con ★ (U+2605) in POP 5, le Delta Species con δ (in giapponese "デルタ種") e le Prism Star con ◇. Cardmarket usa le parole: "Rayquaza Gold Star", "Omastar δ Delta Species", "Rainbow Energy Delta", "Lunala ◇". `CardmarketCatalog.nameKey` trasforma simboli e parole in marcatori in fondo alla chiave (`gyarados~delta~goldstar`), così la carta speciale e quella normale non coincidono mai, e i nomi del Pokémon usati per l'abbinamento prendono i marcatori della carta. Il nome completo esatto ("Rayquaza ex") ha la precedenza sui nomi del Pokémon.
+L'abbinamento a Cardmarket e CardTrader, comprese le carte con simboli (Gold Star ☆/★, Delta Species δ, Prism Star ◇, che Cardmarket scrive a parole: "Rayquaza Gold Star") e i set che hanno sigle diverse sulla carta, su Cardmarket e su TCGdex (EX Deoxys: `DX` e `ex8`; Astral Radiance: `ASR`, `astr` e `swsh10`), lo fa il generatore del database delle carte (vedi sotto): l'app legge il prodotto Cardmarket e il blueprint CardTrader già abbinati.
 
-### Sigle dei set
-
-Lo stesso set ha sigle diverse sulla carta, su Cardmarket/CardTrader e su TCGdex (EX Deoxys: `DX` sulla carta e su Cardmarket, `ex8` su TCGdex; Astral Radiance: `ASR` sulla carta, `astr` su CardTrader, `swsh10` su TCGdex). `SetCodeAliases` (core) accetta tutte e tre:
-- **Sigla Cardmarket/CardTrader:** dall'elenco incluso nell'app (`cardmarket-expansions.tsv`), abbinata al set TCGdex con le stesse regole dei prezzi (`CardTraderMatcher.expansionFor`) e tenuta in cache.
-- **Sigla stampata dei set europei:** da `tcgdex-printed-codes.tsv` (id TCGdex → `abbreviation.official`), perché l'elenco dei set di TCGdex non la riporta. Tabella generata il 27/10/2026 dal dettaglio di ogni set inglese (probe `tcgdex-probe.yml`: `jq '[.id, .abbreviation.official]'` su `/v2/en/sets/{id}`); i set nuovi senza riga si cercano comunque per id, sigla Cardmarket o, con pochi set candidati, per sigla ufficiale scaricata al momento (`CardCodeSearch.narrowByAbbreviation`). Le Trainer Gallery ("ASR:TG") rispondono alla sigla del set principale. Nei cataloghi asiatici la sigla stampata è già l'id.
-- Una sigla può indicare più set: `TR` è Team Rocket Returns sulla carta e Team Rocket su Cardmarket, e si cerca in entrambi. Le parole dei nomi delle carte (`ex`, `GX`, `V`…) non valgono mai come sigla.
-
-Su 205 set inglesi (TCG Pocket escluso) una sessantina hanno la sigla stampata diversa da quella Cardmarket/CardTrader (es. `ASR`/`astr`, `LOR`/`lorg`, `CIN`/`cinv`, `HS`/`hgs`, `SF`/`sft`, `COL`/`clo`, `EP`/`epo`, `P1`…`P9`/`pop1`…`pop9`, i Trainer Kit `TK…`); quattro non ne hanno nessuna (Poké Card Creator Pack, Jumbo, Sample, W Promotional) e si cercano solo per id. Le usano la ricerca per codice (`CardCodeSearch`, `CardmarketCardSearch.findByCode`, che accetta anche la sigla dei set solo Cardmarket), la scelta del set per le collezioni per set (le sigle compaiono accanto all'id) e il filtro della griglia (`dx 107` trova la carta 107/107 di ex8).
-
-I set EX inglesi (`ex1`…`ex16`) si abbinano a Cardmarket prima per "EX " + nome: senza, "Holon Phantoms" prendeva il set giapponese omonimo e "Deoxys" restava ambiguo tra diversi mazzi. Lo stesso confronto non ha trovato altri set abbinati male per i prezzi: "Arceus" (pl4) si abbina grazie alla sigla stampata `AR`, che la richiesta dei prezzi passa già; Trainer Gallery, Shiny Vault, Celebrations Classic Collection, Trainer Kit EX Latias/Latios e McDonald's 2021-2024 finiscono nel set Cardmarket indicato dalle eccezioni di `CardTraderMatcher`, come previsto.
-
-TCGdex a volte collega la carta speciale al prodotto Cardmarket della versione normale (es. ex8-107 "Rayquaza ☆" → prodotto 276425, il Rayquaza normale). Se i marcatori del prodotto indicato non coincidono con quelli della carta, `PriceRepository` scarta quell'id per l'abbinamento CardTrader e il prezzo Cardmarket che ne deriva, e tiene solo quello TCGplayer. Test di regressione: `SpecialCardNamesTest`.
+**Ricerca per codice:** `CatalogDb.cardsByCode` accetta come set l'id TCGdex o la sigla stampata salvata nel database (`card_set.setCode`). La sigla Cardmarket, dove è diversa da quella stampata (es. `astr` per `ASR`), per ora non vale: la vecchia ricerca per sigla Cardmarket/stampata (`SetCodeAliases`) è stata tolta nel passaggio al database e va rifatta leggendo le sigle dal database. La tabella delle sigle stampate dei set inglesi raccolta per quella ricerca (`tcgdex-printed-codes.tsv`, probe TCGdex del 27/10/2026) è nella storia git, se serve al generatore.
 
 ## Database di tutte le carte (repository Card-collector-db-gen)
 
@@ -135,8 +124,8 @@ Il generatore (`gen_card_db.py`, Python con sola libreria standard) non sta più
 
 Oltre alle ricerche per nome, una collezione può contenere un **set intero**: si crea con "Nuova collezione → Per set" oppure da Gestione → "Aggiungi un set intero".
 
-- **Elenco dei set** (`CatalogRepository.setChoices`): i set di TCGdex della lingua (EN o JP, senza quelli di TCG Pocket) più, per il giapponese, i set che TCGdex non elenca presi da `cardmarket-extra-sets.tsv` (DP, Platino, BW, promo, mazzi).
-- **Sync** (`syncSet`): scarica il dettaglio del set da TCGdex e ogni sua carta (Allenatori ed Energie comprese) con lo stesso percorso delle ricerche per nome (varianti, Poké Ball/Master Ball, Cardmarket). Se TCGdex non ha carte per quel set usa l'elenco dei set mancanti (`CardmarketCardSearch.extraSetAll`). Se nessuna fonte ha le carte, il set viene contato come vuoto e segnalato nell'esito dell'aggiornamento.
+- **Elenco dei set** (`CatalogRepository.setChoices`): i set della lingua presenti nel database delle carte (`CatalogDb.sets`), con la sigla stampata.
+- **Sync:** prende tutte le carte del set dal database delle carte (`CatalogDb.cardsOfSet`, Allenatori ed Energie comprese), con le stesse varianti delle ricerche per nome. Se il database non ha carte per quel set, il set viene contato come vuoto e segnalato nell'esito dell'aggiornamento.
 - **Livelli** (`SetCollectionPolicy`, core):
   - *Set base*: uno slot per carta, la variante principale (normal, altrimenti holo, poi reverse…);
   - *Master set*: tutte le finiture (normale, holo, reverse, Poké Ball, Master Ball), senza le edizioni: 1st Edition e stampe a parte (Shadowless, Guance rosse, Pokétour '99, Jumbo, timbri, altre stampe Cardmarket) non contano, a meno che siano l'unica versione della carta.
@@ -187,9 +176,9 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
    - *Aggiorna prezzo*: `PriceRepository.checkCard` interroga la stessa catena (rate limiter e circuit breaker compresi) per tutte le varianti della carta, senza registrare un run.
    - *Scarica immagine*: riscarica il dettaglio da TCGdex (l'immagine può essere arrivata dopo) e salva low/high; sostituisce l'eventuale immagine manuale.
    - *Scegli immagine*: selettore di sistema (Photo Picker), lettura fino a 20 MB, decodifica con sottocampionamento, lato lungo massimo 1200 px, ricodifica WebP (scarta metadati e contenuti non immagine). Il file ha nome `<id>-manual-<timestamp>.webp` dentro `filesDir/cards` e viene usato sia come low sia come high, quindi il sync non lo sovrascrive; finisce anche negli export con immagini.
-3. **Aggiungi carta singola:** cerca su TCGdex per nome oppure, se il testo contiene un numero, per codice stampato (`CardCodeSearch`).
-   - Se una parola coincide con l'id di un set (nei cataloghi asiatici è la sigla stampata, es. `M3`) o con la sua sigla Cardmarket (`SetCodeAliases`, es. `dx` per EX Deoxys, che su TCGdex è `ex8`) cerca solo in quel set; le altre parole restringono per nome (`dx Rayquaza 102`). Le parole dei nomi delle carte (`ex`, `GX`, `V`…) non valgono come sigla: "Rayquaza ex 102" non cerca in Expedition (`EX` su Cardmarket).
-   - Altrimenti scarica le carte con quel numero (`/cards?localId=`, confronto esatto lato app) e restringe per totale ufficiale del set, nome e, per i cataloghi europei con pochi set candidati, sigla ufficiale (es. `MEG`).
+3. **Aggiungi carta singola:** cerca nel database delle carte per nome (anche in un'altra lingua) oppure, se il testo contiene un numero, per codice stampato (`CardCodeSearch.parse`, poi `CatalogDb.cardsByCode`).
+   - Parte dalle carte con quel numero e, se c'è, restringe per totale stampato (`117/080`).
+   - Una parola che è l'id o la sigla stampata di un set (`M3`, `MEG`) tiene solo le carte di quel set; le altre parole restringono per nome.
    - Un filtro che svuoterebbe i risultati viene saltato, così le parole in più (es. la rarità `MUR`) non bloccano la ricerca.
 4. **Aggiorna prezzi:** riguarda le varianti desiderate o possedute delle carte tracciate. Ogni carta viene scaricata una sola volta per run.
    - Rate limit di 300 ms tra le richieste.
@@ -198,10 +187,10 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
    - Dopo 5 errori di rete consecutivi l'aggiornamento si interrompe.
    - I prezzi già salvati restano validi.
 5. **Avvisi di prezzo** (spenti di default, Impostazioni → Avvisi di prezzo):
-   - Dal dettaglio della carta, campanella su ogni variante: "avvisami se sale o scende" e/o "avvisami quando arriva a X €". Salvando, i prezzi di riferimento partono da quelli attuali.
+   - Dal dettaglio della carta, pannello "Avviso prezzo" sotto i grafici di ogni variante: "avvisami se sale o scende" con la soglia di quella variante (1-50%, proposta quella delle impostazioni) e/o "avvisami quando arriva a X €". Salvando, i prezzi di riferimento partono da quelli attuali.
    - `PriceAlertWorker` gira ogni giorno alle 4:30 locali (`PriceAlertRules.DAILY_RUN_TIME`): il listino Cardmarket viene rigenerato verso le 3 (`createdAt` reale "…T02:48+0200"). È un lavoro unico (`price-alerts`) che alla fine accoda il controllo del giorno dopo con l'orario ricalcolato, così resta alle 4:30 anche con l'ora legale; all'apertura dell'app viene riprogrammato se manca. Aspetta la rete; se la rete o il listino non rispondono riprova fino a 3 volte, poi passa al giorno dopo.
    - Aggiorna solo le varianti con un avviso (`PriceRepository.runAlertCheck`, stessa catena dell'aggiornamento manuale: listino Cardmarket e, con il token, CardTrader) e confronta i prezzi appena scaricati con lo stato salvato (`PriceAlertRules.evaluate`, core, testato in `PriceAlertsTest`):
-     - **sale o scende:** per ogni fonte (Cardmarket €, CardTrader €, TCGplayer $) quando il prezzo si sposta di almeno la soglia delle impostazioni (5% di default, da 1 a 50%) rispetto al prezzo dell'ultimo avviso, così le piccole variazioni di ogni giorno si sommano;
+     - **sale o scende:** per ogni fonte (Cardmarket €, CardTrader €, TCGplayer $) quando il prezzo si sposta di almeno la soglia dell'avviso (scelta nel pannello; gli avvisi senza una soglia propria usano quella delle impostazioni, 5% di default) rispetto al prezzo dell'ultimo avviso, così le piccole variazioni di ogni giorno si sommano;
      - **prezzo obiettivo:** quando il prezzo più basso in euro (Cardmarket o CardTrader) scende entro il 5% sopra l'obiettivo o sotto (`TARGET_MARGIN`); una volta sola, e si riarma quando il prezzo risale.
    - Le notifiche vanno sul canale "Avvisi prezzo" (separato da quello silenzioso degli aggiornamenti) e aprono il dettaglio della carta. I prezzi inseriti a mano non fanno partire avvisi. Gli avvisi non sono inclusi nei file JSON delle collezioni.
 6. **Offline:** la UI legge solo da Room e le immagini dai file locali.

@@ -285,7 +285,6 @@
     <string name="add_set">Add set</string>
     <string name="msg_set_added">Set %1$s added: downloading its cards.</string>
     <string name="catalog_empty_sets">%1$d sets have no cards in the card database.</string>
-    <string name="action_retry">Retry</string>
     <string name="selected_count">%1$d selected</string>
     <string name="select_all">Select all</string>
     <string name="remove_selected_title">Remove %1$d cards?</string>
@@ -311,16 +310,21 @@
     <string name="settings_alerts">Price alerts</string>
     <string name="settings_alerts_switch">Daily price check</string>
     <string name="settings_alerts_text">Every morning around 4:30, after the Cardmarket price guide is updated, refreshes the prices of cards with an alert (bell in the card detail) and sends you a notification. When off, nothing is downloaded.</string>
-    <string name="settings_alerts_percent">Alert when the price changes by at least %1$d%%</string>
+    <string name="settings_alerts_percent">Default threshold for new alerts: %1$d%% (each card can have its own)</string>
     <string name="settings_alerts_no_permission">The app\'s notifications are blocked: enable them in Android settings to receive alerts.</string>
     <string name="alert_button">Price alert</string>
-    <string name="alert_title">Price alert · %1$s</string>
-    <string name="alert_no_prices">No price yet: update the card prices to get a starting point.</string>
-    <string name="alert_changes">Alert me if it goes up or down by at least %1$d%%</string>
     <string name="alert_target_label">Alert me when it reaches (€)</string>
     <string name="alert_target_hint">Empty = no target price. Alerts once from %1$d%% above and below, on Cardmarket or CardTrader.</string>
     <string name="alert_disabled_hint">Alerts are off: turn them on in Settings → Price alerts.</string>
     <string name="alert_delete">Remove alert</string>
     <string name="msg_alert_saved">Price alert saved.</string>
     <string name="msg_alert_removed">Price alert removed.</string>
+    <string name="alert_changes_switch">Alert me if it goes up or down</string>
+    <string name="alert_percent_label">By at least</string>
+    <string name="alert_percent_value">%1$d%%</string>
+    <string name="alert_percent_less">Lower threshold</string>
+    <string name="alert_percent_more">Higher threshold</string>
+    <string name="alert_none">No alert: tap to set one</string>
+    <string name="alert_summary_changes">±%1$d%%</string>
+    <string name="alert_summary_target">at %1$s or less</string>
 </resources>
