@@ -41,8 +41,12 @@ class CardTraderPriceProvider(
     override suspend fun fetch(request: PriceRequest): PriceQuote? = mutex.withLock {
         val languageCode = languageParam(request.language)
         // Il blueprint arriva dal database delle carte (già abbinato dal generatore); Poké Ball e Master Ball ne hanno uno a parte.
-        val blueprint = (if (request.variant.isBall) ballVariants.blueprintId(request.setId, request.localId, request.variant) else request.cardTraderBlueprintId)
-            ?: return null
+        // Le stampe a parte hanno un blueprint solo se il database lo indica per la variante: quello della carta è della carta normale.
+        val blueprint = when {
+            request.variant.isBall -> ballVariants.blueprintId(request.setId, request.localId, request.variant)
+            request.variant.isPrint -> request.variantBlueprintId
+            else -> request.variantBlueprintId ?: request.cardTraderBlueprintId
+        } ?: return null
         val listings = productsOf(blueprint, languageCode)
         val pick = CardTraderPicker.lowest(
             listings, request.variant, pickerLanguage(request.language), request.cardTraderCondition ?: worstCondition,

@@ -120,8 +120,10 @@ object CardTraderPicker {
             VariantType.NORMAL, VariantType.HOLO, VariantType.W_PROMO -> !reverse && !firstEdition
             // Hanno un blueprint a parte (set "... Poké Ball Reverse Holo"): lì sono tutti annunci della variante.
             VariantType.POKE_BALL, VariantType.MASTER_BALL, VariantType.ENERGY_REVERSE -> !firstEdition
-            // CardTrader non distingue le stampe a parte: i loro prezzi non si ricavano dagli annunci della carta.
-            VariantType.SHADOWLESS, VariantType.RED_CHEEK, VariantType.POKETOUR_99, VariantType.JUMBO, VariantType.STAMPED, VariantType.CARDMARKET_PRINT -> false
+            // Le oversize con un blueprint proprio (Jumbo Oversized): lì sono tutti annunci della variante.
+            VariantType.JUMBO -> !firstEdition
+            // CardTrader non distingue le altre stampe a parte: i loro prezzi non si ricavano dagli annunci della carta.
+            VariantType.SHADOWLESS, VariantType.RED_CHEEK, VariantType.POKETOUR_99, VariantType.STAMPED, VariantType.CARDMARKET_PRINT -> false
         }
     }
 

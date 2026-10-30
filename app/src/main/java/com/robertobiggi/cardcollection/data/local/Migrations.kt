@@ -28,6 +28,9 @@ object Migrations {
     /** Versione 15 → 16: variazione minima scelta per ogni avviso; vuota per quelli esistenti, che usano quella delle impostazioni. */
     val SQL_15_16: List<String> = listOf("ALTER TABLE `price_alert` ADD COLUMN `changePercent` INTEGER")
 
+    /** Versione 16 → 17: blueprint CardTrader delle singole varianti (oversize senza prodotto Cardmarket), vuoto per le esistenti. */
+    val SQL_16_17: List<String> = listOf("ALTER TABLE `card_variant` ADD COLUMN `cardTraderBlueprintId` INTEGER")
+
     /** Migrazione Room 11 → 12. */
     val MIGRATION_11_12 = object : Migration(11, 12) {
         /**
@@ -85,6 +88,18 @@ object Migrations {
          */
         override fun migrate(db: SupportSQLiteDatabase) {
             SQL_15_16.forEach { db.execSQL(it) }
+        }
+    }
+
+    /** Migrazione Room 16 → 17. */
+    val MIGRATION_16_17 = object : Migration(16, 17) {
+        /**
+         * Esegue le istruzioni di [SQL_16_17].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_16_17.forEach { db.execSQL(it) }
         }
     }
 }

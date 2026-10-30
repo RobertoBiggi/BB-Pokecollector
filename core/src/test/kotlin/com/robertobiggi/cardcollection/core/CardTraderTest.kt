@@ -72,6 +72,12 @@ class CardTraderTest {
     }
 
     @Test
+    fun `l'oversize col suo blueprint prende il piu basso tra tutti gli annunci non 1st Edition`() {
+        assertEquals(90L, CardTraderPicker.lowest(omastar, VariantType.JUMBO, "en")?.cents)
+        assertNull(CardTraderPicker.lowest(omastar, VariantType.SHADOWLESS, "en"))
+    }
+
+    @Test
     fun `reverse prende il piu basso tra i soli annunci reverse`() {
         assertEquals(450L, CardTraderPicker.lowest(omastar, VariantType.REVERSE, "en")?.cents)
     }

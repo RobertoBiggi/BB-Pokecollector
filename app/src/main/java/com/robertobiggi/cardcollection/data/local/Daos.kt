@@ -267,6 +267,14 @@ interface CatalogDao {
     suspend fun setVariantProduct(variantId: String, cardmarketId: Int)
 
     /**
+     * Imposta il blueprint CardTrader di una variante (oversize senza prodotto Cardmarket), anche se era già nel database.
+     * @param variantId String - id della variante.
+     * @param blueprintId Int - blueprint CardTrader.
+     */
+    @Query("UPDATE card_variant SET cardTraderBlueprintId = :blueprintId WHERE id = :variantId")
+    suspend fun setVariantBlueprint(variantId: String, blueprintId: Int)
+
+    /**
      * Toglie le varianti che il catalogo non elenca più (es. una reverse holo dedotta male), tranne quelle di cui l'utente
      * possiede delle copie o ha scritto delle note.
      * @param cardId String - carta.
