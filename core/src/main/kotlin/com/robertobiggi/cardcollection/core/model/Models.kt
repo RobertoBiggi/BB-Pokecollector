@@ -128,11 +128,13 @@ enum class Confidence {
  * Variante disponibile per una carta del catalogo.
  * @property cardmarketId prodotto Cardmarket della variante, solo per le stampe a parte ([VariantType.isPrint]); le altre usano quello della carta.
  * @property print distingue più varianti dello stesso tipo: il timbro di [VariantType.STAMPED] o il prodotto di [VariantType.CARDMARKET_PRINT]; vuoto per gli altri.
+ * @property cardTraderBlueprintId blueprint CardTrader della sola variante, per le oversize ([VariantType.JUMBO]) senza prodotto Cardmarket: da lì viene il prezzo.
  */
 data class CatalogVariant(
     val type: VariantType,
     val cardmarketId: Int? = null,
     val print: String = "",
+    val cardTraderBlueprintId: Int? = null,
 ) {
     /** Chiave della variante nella carta, come in [Ids.variantKey]. */
     val key: String get() = Ids.variantKey(type, print)

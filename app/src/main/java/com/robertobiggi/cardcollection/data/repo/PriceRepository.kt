@@ -229,10 +229,11 @@ class PriceRepository(
             printProductId = variant.cardmarketId,
             printFinish = if (VariantType.HOLO.name in types && VariantType.NORMAL.name !in types) VariantType.HOLO else VariantType.NORMAL,
             cardTraderBlueprintId = card.cardTraderBlueprintId,
+            variantBlueprintId = variant.cardTraderBlueprintId,
         )
         val outcome = sources.cardmarketGuide.fetch(request)
-        // CardTrader non distingue le stampe a parte (shadowless, jumbo…).
-        val cardTraderOutcome = if (type.isPrint) null else sources.cardTrader?.fetch(request)
+        // CardTrader non distingue le stampe a parte (shadowless, jumbo…), tranne quelle con un blueprint proprio (oversize senza prodotto Cardmarket).
+        val cardTraderOutcome = if (type.isPrint && variant.cardTraderBlueprintId == null) null else sources.cardTrader?.fetch(request)
         val cardTraderSaved = cardTraderOutcome?.quote?.let { saveQuote(variant.id, it) } == true
         // Normal e holo condividono il blueprint: se CardTrader ha una sola stampa, l'altra non ha prezzo e quello salvato prima era dell'altra.
         if (cardTraderOutcome != null && cardTraderOutcome.quote == null && request.cardHasNormalAndHolo &&

@@ -98,6 +98,8 @@ data class CardVariantEntity(
     val cardmarketId: Int? = null,
     /** Timbro o prodotto che distingue più varianti dello stesso tipo (vedi [com.robertobiggi.cardcollection.core.model.CatalogVariant.print]). */
     @ColumnInfo(defaultValue = "") val print: String = "",
+    /** Blueprint CardTrader della sola variante (oversize senza prodotto Cardmarket): da lì viene il prezzo. */
+    val cardTraderBlueprintId: Int? = null,
 )
 
 /**

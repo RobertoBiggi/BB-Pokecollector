@@ -238,7 +238,7 @@ class CatalogRepository(
             for (variant in dao.variantsOf(listOf(old.id))) {
                 val type = VariantType.fromName(variant.type) ?: continue
                 val to = Ids.variantId(new.id, type, variant.print)
-                dao.insertVariants(listOf(CardVariantEntity(to, new.id, variant.type, variant.cardmarketId, variant.print)))
+                dao.insertVariants(listOf(CardVariantEntity(to, new.id, variant.type, variant.cardmarketId, variant.print, variant.cardTraderBlueprintId)))
                 user.entriesOfVariant(variant.id).forEach { user.upsertEntry(EntryMerge.move(it, to, user.getEntry(it.collectionId, to))) }
                 user.deleteEntriesOfVariant(variant.id)
                 prices.moveSnapshots(variant.id, to)
@@ -360,8 +360,11 @@ class CatalogRepository(
                 ),
             )
             val ids = card.variants.map { Ids.variantId(card.id, it.type, it.print) }
-            dao.insertVariants(card.variants.zip(ids).map { (v, id) -> CardVariantEntity(id, card.id, v.type.name, v.cardmarketId, v.print) })
-            card.variants.zip(ids).forEach { (v, id) -> v.cardmarketId?.let { dao.setVariantProduct(id, it) } }
+            dao.insertVariants(card.variants.zip(ids).map { (v, id) -> CardVariantEntity(id, card.id, v.type.name, v.cardmarketId, v.print, v.cardTraderBlueprintId) })
+            card.variants.zip(ids).forEach { (v, id) ->
+                v.cardmarketId?.let { dao.setVariantProduct(id, it) }
+                v.cardTraderBlueprintId?.let { dao.setVariantBlueprint(id, it) }
+            }
             moveStaleVariants(card.id, card.variants.map { it.type })
             dao.deleteStaleVariants(card.id, ids)
         }

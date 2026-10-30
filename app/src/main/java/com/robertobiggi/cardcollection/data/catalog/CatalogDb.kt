@@ -153,12 +153,12 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
         val variants = HashMap<Long, MutableList<CatalogVariant>>()
         for (chunk in rows.map { it.n }.chunked(SQL_CHUNK)) {
             db.rawQuery(
-                "SELECT n, type, print, cardmarketId FROM card_variant WHERE n IN (${chunk.joinToString(",")}) ORDER BY n, type, print",
+                "SELECT n, type, print, cardmarketId, cardTraderBlueprintId FROM card_variant WHERE n IN (${chunk.joinToString(",")}) ORDER BY n, type, print",
                 null,
             ).use { c ->
                 while (c.moveToNext()) {
                     val type = variantTypes[c.getInt(1)] ?: continue
-                    variants.getOrPut(c.getLong(0)) { ArrayList() } += CatalogVariant(type, if (c.isNull(3)) null else c.getInt(3), c.getString(2))
+                    variants.getOrPut(c.getLong(0)) { ArrayList() } += CatalogVariant(type, if (c.isNull(3)) null else c.getInt(3), c.getString(2), if (c.isNull(4)) null else c.getInt(4))
                 }
             }
         }

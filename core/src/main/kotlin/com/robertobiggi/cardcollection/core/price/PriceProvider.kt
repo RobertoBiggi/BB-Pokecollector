@@ -43,6 +43,8 @@ data class PriceRequest(
     val printProductId: Int? = null,
     val printFinish: VariantType = VariantType.NORMAL,
     val cardTraderBlueprintId: Int? = null,
+    /** Blueprint CardTrader della sola variante (oversize senza prodotto Cardmarket): se c'è vale al posto di quello della carta. */
+    val variantBlueprintId: Int? = null,
 )
 
 /** Fonte di prezzi. Le implementazioni lanciano le eccezioni di [com.robertobiggi.cardcollection.core.net]. */
