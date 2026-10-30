@@ -131,6 +131,21 @@ object PriceAlertRules {
     }
 
     /**
+     * Stato di un avviso appena creato o modificato dall'utente. Un avviso nuovo parte dai prezzi attuali. Uno modificato
+     * tiene i prezzi di riferimento che aveva (le variazioni continuano a sommarsi) e, se il prezzo obiettivo non è
+     * cambiato, anche il fatto che l'avviso dell'obiettivo è già partito: cambiare solo la soglia non deve rimandarlo.
+     * @param existing AlertState? - stato salvato, null se l'avviso è nuovo.
+     * @param existingTarget Double? - prezzo obiettivo salvato.
+     * @param newTarget Double? - prezzo obiettivo scelto adesso.
+     * @param current Map<String, Double> - prezzi attuali per [PricePoint.key].
+     * @return AlertState - stato da salvare.
+     */
+    fun editedState(existing: AlertState?, existingTarget: Double?, newTarget: Double?, current: Map<String, Double>): AlertState {
+        if (existing == null) return AlertState(current, targetReached = false)
+        return AlertState(current + existing.baselines, targetReached = existing.targetReached && existingTarget == newTarget)
+    }
+
+    /**
      * Prossimo controllo giornaliero: oggi a [DAILY_RUN_TIME] se non è ancora passato, altrimenti domani.
      * Calcolato a ogni esecuzione, così resta all'ora giusta anche con il cambio dell'ora legale.
      * @param now ZonedDateTime - adesso, nel fuso orario del telefono.

@@ -6,7 +6,7 @@ import org.junit.Test
 import java.sql.Connection
 import java.sql.DriverManager
 
-/** Migrazione 14 → 15 (tabella degli avvisi di prezzo) eseguita su SQLite, come la esegue Room sul telefono. */
+/** Migrazioni 14 → 15 (tabella degli avvisi di prezzo) e 15 → 16 (soglia per avviso) eseguite su SQLite, come le esegue Room sul telefono. */
 class PriceAlertMigrationTest {
 
     /**
@@ -39,6 +39,26 @@ class PriceAlertMigrationTest {
                 st.executeQuery("PRAGMA table_info(price_alert)").use { rs -> buildList { while (rs.next()) add(rs.getString("name")) } }
             }
             assertEquals(listOf("variantId", "notifyChanges", "targetEur", "targetReached", "baselines", "createdAt", "lastCheckedAt"), columns)
+        }
+    }
+
+    @Test
+    fun `la migrazione 15 a 16 aggiunge la soglia per avviso, vuota per quelli esistenti`() {
+        version14().use { db ->
+            db.createStatement().use { st ->
+                Migrations.SQL_14_15.forEach { st.execute(it) }
+                st.execute("INSERT INTO price_alert VALUES ('en:ex8-107|HOLO', 1, NULL, 0, '', 0, NULL)")
+                Migrations.SQL_15_16.forEach { st.execute(it) }
+                // L'avviso di prima resta, senza soglia propria: usa quella delle impostazioni.
+                st.executeQuery("SELECT changePercent FROM price_alert").use { rs ->
+                    rs.next()
+                    rs.getInt(1)
+                    assertEquals(true, rs.wasNull())
+                }
+                st.execute("INSERT INTO card_variant VALUES ('en:ex8-102|HOLO', 'en:ex8-102', 'HOLO')")
+                st.execute("INSERT INTO price_alert VALUES ('en:ex8-102|HOLO', 1, NULL, 0, '', 0, NULL, 12)")
+            }
+            assertEquals(2, count(db, "price_alert"))
         }
     }
 

@@ -15,6 +15,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Switch
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.robertobiggi.cardcollection.ui.CardAction
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,6 +67,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -112,7 +116,6 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     val cardTraderToken by vm.cardTraderToken.collectAsStateWithLifecycle()
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     var manualFor by remember { mutableStateOf<VariantUi?>(null) }
-    var alertFor by remember { mutableStateOf<VariantUi?>(null) }
     val alerts by vm.priceAlerts.collectAsStateWithLifecycle()
     val alertsEnabled by vm.priceAlertsEnabled.collectAsStateWithLifecycle()
     val alertPercent by vm.priceAlertChangePercent.collectAsStateWithLifecycle()
@@ -155,8 +158,11 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
                     onCondition = { vm.setCondition(variant.id, it) },
                     onWanted = { vm.setWanted(variant.id, it) },
                     onManual = { manualFor = variant },
-                    hasAlert = variant.id in alerts,
-                    onAlert = { alertFor = variant },
+                    alert = alerts[variant.id],
+                    alertsEnabled = alertsEnabled,
+                    defaultPercent = alertPercent,
+                    onSaveAlert = { changes, percent, target -> vm.savePriceAlert(variant.id, changes, percent, target) },
+                    onDeleteAlert = { vm.deletePriceAlert(variant.id) },
                     showCardmarket = visibility.cardmarket,
                     showTcgplayer = visibility.tcgplayer,
                     showCardTrader = visibility.cardTrader && cardTraderToken.isNotEmpty(),
@@ -178,20 +184,6 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     }
 
     report?.let { CardActionDialog(it, onDismiss = vm::dismissCardReport) }
-
-    alertFor?.let { variant ->
-        val owner = card ?: return@let
-        PriceAlertDialog(
-            variantLabel = variantLabel(owner, variant),
-            variant = variant,
-            alert = alerts[variant.id],
-            alertsEnabled = alertsEnabled,
-            changePercent = alertPercent,
-            onDismiss = { alertFor = null },
-            onSave = { changes, target -> vm.savePriceAlert(variant.id, changes, target).also { saved -> if (saved) alertFor = null } },
-            onDelete = { vm.deletePriceAlert(variant.id); alertFor = null },
-        )
-    }
 
     manualFor?.let { variant ->
         val owner = card ?: return@let
@@ -360,8 +352,11 @@ private fun UriHandler.openSafely(url: String) {
  * @param onCondition (Condition) -> Unit - nuova condizione.
  * @param onWanted (Boolean) -> Unit - nuovo stato "la voglio".
  * @param onManual () -> Unit - apre l'inserimento del prezzo manuale.
- * @param hasAlert Boolean - true se la variante ha un avviso di prezzo.
- * @param onAlert () -> Unit - apre la finestra dell'avviso di prezzo.
+ * @param alert PriceAlertEntity? - avviso di prezzo della variante, null se non c'è.
+ * @param alertsEnabled Boolean - true se il controllo giornaliero degli avvisi è attivo nelle impostazioni.
+ * @param defaultPercent Int - variazione minima proposta ai nuovi avvisi, dalle impostazioni.
+ * @param onSaveAlert (Boolean, Int, String) -> Boolean - salva l'avviso (sale o scende, soglia, prezzo obiettivo scritto); false se il prezzo non è valido.
+ * @param onDeleteAlert () -> Unit - toglie l'avviso.
  * @param showCardmarket Boolean - false se l'utente ha nascosto i prezzi Cardmarket.
  * @param showTcgplayer Boolean - false se l'utente ha nascosto i prezzi TCGplayer.
  * @param showCardTrader Boolean - true se c'è il token CardTrader e il prezzo non è nascosto: mostra il riquadro accanto agli altri mercati.
@@ -375,8 +370,11 @@ private fun VariantCard(
     onCondition: (Condition) -> Unit,
     onWanted: (Boolean) -> Unit,
     onManual: () -> Unit,
-    hasAlert: Boolean,
-    onAlert: () -> Unit,
+    alert: PriceAlertEntity?,
+    alertsEnabled: Boolean,
+    defaultPercent: Int,
+    onSaveAlert: (Boolean, Int, String) -> Boolean,
+    onDeleteAlert: () -> Unit,
     showCardmarket: Boolean,
     showTcgplayer: Boolean,
     showCardTrader: Boolean,
@@ -392,13 +390,6 @@ private fun VariantCard(
                 ) {}
                 Spacer(Modifier.width(8.dp))
                 Text(variantLabel(card, variant), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                IconButton(onClick = onAlert) {
-                    Icon(
-                        if (hasAlert) Icons.Filled.NotificationsActive else Icons.Outlined.NotificationsNone,
-                        contentDescription = stringResource(R.string.alert_button),
-                        tint = if (hasAlert) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
                 Checkbox(checked = variant.wanted, onCheckedChange = onWanted)
                 Text(stringResource(R.string.want_it), style = MaterialTheme.typography.bodySmall)
             }
@@ -458,6 +449,8 @@ private fun VariantCard(
             if (showCardTrader) {
                 variant.latestCardTrader?.let { SourceStatusRow(stringResource(R.string.price_source_date, Format.date(it.fetchedAt), "CardTrader"), it, variant.cardTraderHistory) }
             }
+            // Avviso di prezzo subito sotto i grafici: soglia di variazione e prezzo obiettivo di questa variante.
+            PriceAlertPanel(alert, alertsEnabled, defaultPercent, onSaveAlert, onDeleteAlert)
             TextButton(onClick = onManual) { Text(stringResource(R.string.manual_price_button)) }
         }
     }
@@ -529,75 +522,105 @@ private fun ManualPriceDialog(variantLabel: String, onDismiss: () -> Unit, onSav
 }
 
 /**
- * Finestra dell'avviso di prezzo di una variante: avviso quando il prezzo sale o scende e prezzo obiettivo in euro.
- * @param variantLabel String - nome della variante.
- * @param variant VariantUi - variante, per mostrare i prezzi attuali.
+ * Pannello dell'avviso di prezzo di una variante, sotto i grafici dei prezzi. Chiuso mostra un riassunto (soglia e prezzo
+ * obiettivo); aperto fa scegliere se avvisare quando il prezzo sale o scende, di quanto (soglia di questa variante) e il
+ * prezzo obiettivo in euro.
  * @param alert PriceAlertEntity? - avviso già impostato, null se non c'è.
  * @param alertsEnabled Boolean - true se il controllo giornaliero è attivo nelle impostazioni.
- * @param changePercent Int - variazione minima delle impostazioni, in percentuale.
- * @param onDismiss () -> Unit - chiude senza salvare.
- * @param onSave (Boolean, String) -> Boolean - salva (avviso di variazione, prezzo obiettivo scritto); false se il prezzo non è valido.
+ * @param defaultPercent Int - soglia proposta a un avviso nuovo (o salvato prima che si potesse scegliere).
+ * @param onSave (Boolean, Int, String) -> Boolean - salva (sale o scende, soglia, prezzo obiettivo scritto); false se il prezzo non è valido.
  * @param onDelete () -> Unit - toglie l'avviso.
  * @return Unit
  */
 @Composable
-private fun PriceAlertDialog(
-    variantLabel: String,
-    variant: VariantUi,
+private fun PriceAlertPanel(
     alert: PriceAlertEntity?,
     alertsEnabled: Boolean,
-    changePercent: Int,
-    onDismiss: () -> Unit,
-    onSave: (Boolean, String) -> Boolean,
+    defaultPercent: Int,
+    onSave: (Boolean, Int, String) -> Boolean,
     onDelete: () -> Unit,
 ) {
-    var changes by remember { mutableStateOf(alert?.notifyChanges ?: true) }
-    var target by remember { mutableStateOf(alert?.targetEur?.let { String.format(Locale.getDefault(), "%.2f", it) }.orEmpty()) }
-    var error by remember { mutableStateOf(false) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.alert_title, variantLabel)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                val prices = listOfNotNull(
-                    variant.latestEur?.eur?.let { stringResource(R.string.price_cardmarket) + " " + Format.eur(it) },
-                    variant.latestCardTrader?.eur?.let { stringResource(R.string.price_cardtrader) + " " + Format.eur(it) },
-                    variant.latestUsd?.usd?.let { stringResource(R.string.price_tcgplayer) + " " + Format.usd(it) },
+    var open by remember { mutableStateOf(false) }
+    // I campi ripartono da quanto salvato ogni volta che l'avviso cambia (salvato, tolto o spostato dal sync).
+    var changes by remember(alert) { mutableStateOf(alert?.notifyChanges ?: true) }
+    var percent by remember(alert, defaultPercent) { mutableIntStateOf(alert?.changePercent ?: defaultPercent) }
+    var target by remember(alert) { mutableStateOf(alert?.targetEur?.let { String.format(Locale.getDefault(), "%.2f", it) }.orEmpty()) }
+    var error by remember(alert) { mutableStateOf(false) }
+    val range = PriceAlertRules.CHANGE_PERCENT_RANGE
+    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (alert != null) Icons.Filled.NotificationsActive else Icons.Outlined.NotificationsNone,
+                    contentDescription = null,
+                    tint = if (alert != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    if (prices.isEmpty()) stringResource(R.string.alert_no_prices) else prices.joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.alert_changes, changePercent), modifier = Modifier.weight(1f))
-                    Switch(checked = changes, onCheckedChange = { changes = it })
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
+                    Text(stringResource(R.string.alert_button), style = MaterialTheme.typography.labelLarge)
+                    Text(alertSummary(alert, defaultPercent), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                OutlinedTextField(
-                    value = target,
-                    onValueChange = { target = it.take(10); error = false },
-                    label = { Text(stringResource(R.string.alert_target_label)) },
-                    isError = error,
-                    supportingText = {
-                        Text(
-                            if (error) stringResource(R.string.manual_price_error)
-                            else stringResource(R.string.alert_target_hint, (PriceAlertRules.TARGET_MARGIN * 100).roundToInt()),
-                        )
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                )
-                if (!alertsEnabled) {
-                    Text(stringResource(R.string.alert_disabled_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                }
-                if (alert != null) {
-                    TextButton(onClick = onDelete) { Text(stringResource(R.string.alert_delete), color = MaterialTheme.colorScheme.error) }
+                Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
+            }
+            if (!open) return@Column
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.alert_changes_switch), modifier = Modifier.weight(1f))
+                Switch(checked = changes, onCheckedChange = { changes = it })
+            }
+            if (changes) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.alert_percent_label), modifier = Modifier.weight(1f))
+                    FilledTonalIconButton(onClick = { percent = (percent - 1).coerceIn(range) }, enabled = percent > range.first) {
+                        Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.alert_percent_less))
+                    }
+                    Text(stringResource(R.string.alert_percent_value, percent), style = MaterialTheme.typography.titleMedium)
+                    FilledTonalIconButton(onClick = { percent = (percent + 1).coerceIn(range) }, enabled = percent < range.last) {
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.alert_percent_more))
+                    }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = { if (!onSave(changes, target)) error = true }) { Text(stringResource(R.string.action_save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+            OutlinedTextField(
+                value = target,
+                onValueChange = { target = it.take(10); error = false },
+                label = { Text(stringResource(R.string.alert_target_label)) },
+                isError = error,
+                supportingText = {
+                    Text(
+                        if (error) stringResource(R.string.manual_price_error)
+                        else stringResource(R.string.alert_target_hint, (PriceAlertRules.TARGET_MARGIN * 100).roundToInt()),
+                    )
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (!alertsEnabled) {
+                Text(stringResource(R.string.alert_disabled_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { if (onSave(changes, percent, target)) open = false else error = true }) { Text(stringResource(R.string.action_save)) }
+                if (alert != null) {
+                    TextButton(onClick = { onDelete(); open = false }) { Text(stringResource(R.string.alert_delete), color = MaterialTheme.colorScheme.error) }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Riassunto di un avviso di prezzo per il pannello chiuso.
+ * @param alert PriceAlertEntity? - avviso, null se non c'è.
+ * @param defaultPercent Int - soglia usata dagli avvisi salvati senza una soglia propria.
+ * @return String - es. "±5% · sotto 50,00 €", oppure "Nessun avviso".
+ */
+@Composable
+private fun alertSummary(alert: PriceAlertEntity?, defaultPercent: Int): String {
+    if (alert == null) return stringResource(R.string.alert_none)
+    val parts = listOfNotNull(
+        if (alert.notifyChanges) stringResource(R.string.alert_summary_changes, alert.changePercent ?: defaultPercent) else null,
+        alert.targetEur?.let { stringResource(R.string.alert_summary_target, Format.eur(it)) },
     )
+    return parts.joinToString(" · ")
 }
 
 /**
