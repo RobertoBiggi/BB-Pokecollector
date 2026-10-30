@@ -161,12 +161,14 @@ data class PriceSnapshotEntity(
  * Avviso di prezzo su una variante, impostato dal dettaglio della carta. Lo controlla il lavoro giornaliero
  * ([com.robertobiggi.cardcollection.work.PriceAlertWorker]) se gli avvisi sono attivi nelle impostazioni.
  * @property variantId variante osservata.
- * @property notifyChanges true per un avviso quando il prezzo sale o scende oltre la soglia delle impostazioni.
+ * @property notifyChanges true per un avviso quando il prezzo sale o scende oltre la soglia ([changePercent]).
  * @property targetEur prezzo in euro vicino o sotto cui avvisare; null se non impostato.
  * @property targetReached true se l'avviso del prezzo obiettivo è già partito e il prezzo non è ancora risalito.
  * @property baselines prezzi di riferimento per fonte (vedi [com.robertobiggi.cardcollection.core.price.PriceAlertRules.encodeBaselines]).
  * @property createdAt quando è stato creato o modificato l'ultima volta.
  * @property lastCheckedAt ultimo controllo giornaliero, null se mai controllato.
+ * @property changePercent variazione minima scelta per questa variante, in percentuale; null = quella predefinita delle impostazioni
+ *   (gli avvisi creati prima che si potesse scegliere).
  */
 @Entity(
     tableName = "price_alert",
@@ -180,6 +182,7 @@ data class PriceAlertEntity(
     val baselines: String,
     val createdAt: Long,
     val lastCheckedAt: Long?,
+    val changePercent: Int? = null,
 )
 
 /**

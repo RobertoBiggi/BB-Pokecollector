@@ -25,6 +25,9 @@ object Migrations {
             "PRIMARY KEY(`variantId`), FOREIGN KEY(`variantId`) REFERENCES `card_variant`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
     )
 
+    /** Versione 15 → 16: variazione minima scelta per ogni avviso; vuota per quelli esistenti, che usano quella delle impostazioni. */
+    val SQL_15_16: List<String> = listOf("ALTER TABLE `price_alert` ADD COLUMN `changePercent` INTEGER")
+
     /** Migrazione Room 11 → 12. */
     val MIGRATION_11_12 = object : Migration(11, 12) {
         /**
@@ -70,6 +73,18 @@ object Migrations {
          */
         override fun migrate(db: SupportSQLiteDatabase) {
             SQL_14_15.forEach { db.execSQL(it) }
+        }
+    }
+
+    /** Migrazione Room 15 → 16. */
+    val MIGRATION_15_16 = object : Migration(15, 16) {
+        /**
+         * Esegue le istruzioni di [SQL_15_16].
+         * @param db SupportSQLiteDatabase - database da migrare.
+         * @return Unit
+         */
+        override fun migrate(db: SupportSQLiteDatabase) {
+            SQL_15_16.forEach { db.execSQL(it) }
         }
     }
 }

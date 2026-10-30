@@ -527,7 +527,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Imposta la variazione minima per l'avviso "il prezzo sale o scende".
+     * Imposta la variazione minima proposta ai nuovi avvisi "il prezzo sale o scende" (ognuno poi ha la sua).
      * @param percent Int - percentuale (ricondotta ai limiti ammessi).
      * @return Unit
      */
@@ -539,13 +539,14 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * Crea, modifica o toglie l'avviso di prezzo di una variante.
      * @param variantId String - variante.
      * @param notifyChanges Boolean - true per l'avviso "sale o scende".
+     * @param changePercent Int - variazione minima scelta per questa variante, in percentuale.
      * @param targetText String - prezzo obiettivo scritto dall'utente (vuoto = nessuno; virgola o punto).
-     * @return Boolean - false se il prezzo obiettivo non è valido (la finestra resta aperta), true altrimenti.
+     * @return Boolean - false se il prezzo obiettivo non è valido (il campo resta da correggere), true altrimenti.
      */
-    fun savePriceAlert(variantId: String, notifyChanges: Boolean, targetText: String): Boolean {
+    fun savePriceAlert(variantId: String, notifyChanges: Boolean, changePercent: Int, targetText: String): Boolean {
         val target = if (targetText.isBlank()) null else Validators.parseManualPrice(targetText)?.takeIf { it <= PriceAlertRules.MAX_TARGET_EUR } ?: return false
         viewModelScope.launch {
-            val active = container.prices.saveAlert(variantId, notifyChanges, target)
+            val active = container.prices.saveAlert(variantId, notifyChanges, changePercent, target)
             say(if (active) R.string.msg_alert_saved else R.string.msg_alert_removed)
         }
         return true
