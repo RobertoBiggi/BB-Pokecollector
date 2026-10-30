@@ -67,6 +67,8 @@ class AppContainer(context: Context) {
         appScope.launch { catalogStore.load() }
         // Toglie le carte rimaste da collezioni cancellate (il margine di un'ora evita quelle di un sync in corso).
         appScope.launch { collection.purgeOrphanCards(System.currentTimeMillis() - ORPHAN_GRACE_MS) }
+        // Il token CardTrader salvato in chiaro dalle versioni precedenti viene cifrato e la copia in chiaro cancellata.
+        appScope.launch { settings.migrateCardTraderToken() }
         // Riprogramma il controllo giornaliero degli avvisi se è stato perso (es. app chiusa forzatamente).
         appScope.launch { if (settings.priceAlertsEnabled.first()) work.schedulePriceAlerts() }
     }
