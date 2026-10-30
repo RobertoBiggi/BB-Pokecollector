@@ -575,12 +575,14 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Salva il token CardTrader (spazi e a capo ai bordi vengono tolti).
+     * Salva il token CardTrader cifrato (spazi e a capo ai bordi vengono tolti).
      * @param input String - testo incollato dall'utente.
      * @return Unit
      */
     fun saveCardTraderToken(input: String) {
-        viewModelScope.launch { container.settings.setCardTraderToken(input.trim()) }
+        viewModelScope.launch {
+            if (!container.settings.setCardTraderToken(input.trim())) say(R.string.msg_token_not_saved)
+        }
     }
 
     /**
