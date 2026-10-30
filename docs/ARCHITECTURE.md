@@ -106,22 +106,11 @@ Una carta è visibile in una collezione se non è nascosta e se è stata aggiunt
 
 **Ricerca per nome in ogni lingua:** `PokemonNames` (core) legge una tabella dei 1025 Pokémon in 7 lingue (da PokeAPI, BSD-3-Clause) inclusa nel modulo con percorso assoluto, sicuro con R8. I nomi sono normalizzati (NFKC, senza accenti né punteggiatura, hiragana → katakana); bastano 3 caratteri latini o 2 CJK. Viene precaricata all'avvio.
 
-### Carte con simboli speciali (☆, ★, δ, ◇)
+### Carte con simboli speciali e sigle dei set
 
-TCGdex scrive le Gold Star con ☆ (U+2606) nei set EX e con ★ (U+2605) in POP 5, le Delta Species con δ (in giapponese "デルタ種") e le Prism Star con ◇. Cardmarket usa le parole: "Rayquaza Gold Star", "Omastar δ Delta Species", "Rainbow Energy Delta", "Lunala ◇". `CardmarketCatalog.nameKey` trasforma simboli e parole in marcatori in fondo alla chiave (`gyarados~delta~goldstar`), così la carta speciale e quella normale non coincidono mai, e i nomi del Pokémon usati per l'abbinamento prendono i marcatori della carta. Il nome completo esatto ("Rayquaza ex") ha la precedenza sui nomi del Pokémon.
+L'abbinamento a Cardmarket e CardTrader, comprese le carte con simboli (Gold Star ☆/★, Delta Species δ, Prism Star ◇, che Cardmarket scrive a parole: "Rayquaza Gold Star") e i set che hanno sigle diverse sulla carta, su Cardmarket e su TCGdex (EX Deoxys: `DX` e `ex8`; Astral Radiance: `ASR`, `astr` e `swsh10`), lo fa il generatore del database delle carte (vedi sotto): l'app legge il prodotto Cardmarket e il blueprint CardTrader già abbinati.
 
-### Sigle dei set
-
-Lo stesso set ha sigle diverse sulla carta, su Cardmarket/CardTrader e su TCGdex (EX Deoxys: `DX` sulla carta e su Cardmarket, `ex8` su TCGdex; Astral Radiance: `ASR` sulla carta, `astr` su CardTrader, `swsh10` su TCGdex). `SetCodeAliases` (core) accetta tutte e tre:
-- **Sigla Cardmarket/CardTrader:** dall'elenco incluso nell'app (`cardmarket-expansions.tsv`), abbinata al set TCGdex con le stesse regole dei prezzi (`CardTraderMatcher.expansionFor`) e tenuta in cache.
-- **Sigla stampata dei set europei:** da `tcgdex-printed-codes.tsv` (id TCGdex → `abbreviation.official`), perché l'elenco dei set di TCGdex non la riporta. Tabella generata il 27/10/2026 dal dettaglio di ogni set inglese (probe `tcgdex-probe.yml`: `jq '[.id, .abbreviation.official]'` su `/v2/en/sets/{id}`); i set nuovi senza riga si cercano comunque per id, sigla Cardmarket o, con pochi set candidati, per sigla ufficiale scaricata al momento (`CardCodeSearch.narrowByAbbreviation`). Le Trainer Gallery ("ASR:TG") rispondono alla sigla del set principale. Nei cataloghi asiatici la sigla stampata è già l'id.
-- Una sigla può indicare più set: `TR` è Team Rocket Returns sulla carta e Team Rocket su Cardmarket, e si cerca in entrambi. Le parole dei nomi delle carte (`ex`, `GX`, `V`…) non valgono mai come sigla.
-
-Su 205 set inglesi (TCG Pocket escluso) una sessantina hanno la sigla stampata diversa da quella Cardmarket/CardTrader (es. `ASR`/`astr`, `LOR`/`lorg`, `CIN`/`cinv`, `HS`/`hgs`, `SF`/`sft`, `COL`/`clo`, `EP`/`epo`, `P1`…`P9`/`pop1`…`pop9`, i Trainer Kit `TK…`); quattro non ne hanno nessuna (Poké Card Creator Pack, Jumbo, Sample, W Promotional) e si cercano solo per id. Le usano la ricerca per codice (`CardCodeSearch`, `CardmarketCardSearch.findByCode`, che accetta anche la sigla dei set solo Cardmarket), la scelta del set per le collezioni per set (le sigle compaiono accanto all'id) e il filtro della griglia (`dx 107` trova la carta 107/107 di ex8).
-
-I set EX inglesi (`ex1`…`ex16`) si abbinano a Cardmarket prima per "EX " + nome: senza, "Holon Phantoms" prendeva il set giapponese omonimo e "Deoxys" restava ambiguo tra diversi mazzi. Lo stesso confronto non ha trovato altri set abbinati male per i prezzi: "Arceus" (pl4) si abbina grazie alla sigla stampata `AR`, che la richiesta dei prezzi passa già; Trainer Gallery, Shiny Vault, Celebrations Classic Collection, Trainer Kit EX Latias/Latios e McDonald's 2021-2024 finiscono nel set Cardmarket indicato dalle eccezioni di `CardTraderMatcher`, come previsto.
-
-TCGdex a volte collega la carta speciale al prodotto Cardmarket della versione normale (es. ex8-107 "Rayquaza ☆" → prodotto 276425, il Rayquaza normale). Se i marcatori del prodotto indicato non coincidono con quelli della carta, `PriceRepository` scarta quell'id per l'abbinamento CardTrader e il prezzo Cardmarket che ne deriva, e tiene solo quello TCGplayer. Test di regressione: `SpecialCardNamesTest`.
+**Ricerca per codice:** `CatalogDb.cardsByCode` accetta come set l'id TCGdex o la sigla stampata salvata nel database (`card_set.setCode`). La sigla Cardmarket, dove è diversa da quella stampata (es. `astr` per `ASR`), per ora non vale: la vecchia ricerca per sigla Cardmarket/stampata (`SetCodeAliases`) è stata tolta nel passaggio al database e va rifatta leggendo le sigle dal database. La tabella delle sigle stampate dei set inglesi raccolta per quella ricerca (`tcgdex-printed-codes.tsv`, probe TCGdex del 27/10/2026) è nella storia git, se serve al generatore.
 
 ## Database di tutte le carte (repository Card-collector-db-gen)
 
@@ -135,8 +124,8 @@ Il generatore (`gen_card_db.py`, Python con sola libreria standard) non sta più
 
 Oltre alle ricerche per nome, una collezione può contenere un **set intero**: si crea con "Nuova collezione → Per set" oppure da Gestione → "Aggiungi un set intero".
 
-- **Elenco dei set** (`CatalogRepository.setChoices`): i set di TCGdex della lingua (EN o JP, senza quelli di TCG Pocket) più, per il giapponese, i set che TCGdex non elenca presi da `cardmarket-extra-sets.tsv` (DP, Platino, BW, promo, mazzi).
-- **Sync** (`syncSet`): scarica il dettaglio del set da TCGdex e ogni sua carta (Allenatori ed Energie comprese) con lo stesso percorso delle ricerche per nome (varianti, Poké Ball/Master Ball, Cardmarket). Se TCGdex non ha carte per quel set usa l'elenco dei set mancanti (`CardmarketCardSearch.extraSetAll`). Se nessuna fonte ha le carte, il set viene contato come vuoto e segnalato nell'esito dell'aggiornamento.
+- **Elenco dei set** (`CatalogRepository.setChoices`): i set della lingua presenti nel database delle carte (`CatalogDb.sets`), con la sigla stampata.
+- **Sync:** prende tutte le carte del set dal database delle carte (`CatalogDb.cardsOfSet`, Allenatori ed Energie comprese), con le stesse varianti delle ricerche per nome. Se il database non ha carte per quel set, il set viene contato come vuoto e segnalato nell'esito dell'aggiornamento.
 - **Livelli** (`SetCollectionPolicy`, core):
   - *Set base*: uno slot per carta, la variante principale (normal, altrimenti holo, poi reverse…);
   - *Master set*: tutte le finiture (normale, holo, reverse, Poké Ball, Master Ball), senza le edizioni: 1st Edition e stampe a parte (Shadowless, Guance rosse, Pokétour '99, Jumbo, timbri, altre stampe Cardmarket) non contano, a meno che siano l'unica versione della carta.
@@ -187,9 +176,9 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
    - *Aggiorna prezzo*: `PriceRepository.checkCard` interroga la stessa catena (rate limiter e circuit breaker compresi) per tutte le varianti della carta, senza registrare un run.
    - *Scarica immagine*: riscarica il dettaglio da TCGdex (l'immagine può essere arrivata dopo) e salva low/high; sostituisce l'eventuale immagine manuale.
    - *Scegli immagine*: selettore di sistema (Photo Picker), lettura fino a 20 MB, decodifica con sottocampionamento, lato lungo massimo 1200 px, ricodifica WebP (scarta metadati e contenuti non immagine). Il file ha nome `<id>-manual-<timestamp>.webp` dentro `filesDir/cards` e viene usato sia come low sia come high, quindi il sync non lo sovrascrive; finisce anche negli export con immagini.
-3. **Aggiungi carta singola:** cerca su TCGdex per nome oppure, se il testo contiene un numero, per codice stampato (`CardCodeSearch`).
-   - Se una parola coincide con l'id di un set (nei cataloghi asiatici è la sigla stampata, es. `M3`) o con la sua sigla Cardmarket (`SetCodeAliases`, es. `dx` per EX Deoxys, che su TCGdex è `ex8`) cerca solo in quel set; le altre parole restringono per nome (`dx Rayquaza 102`). Le parole dei nomi delle carte (`ex`, `GX`, `V`…) non valgono come sigla: "Rayquaza ex 102" non cerca in Expedition (`EX` su Cardmarket).
-   - Altrimenti scarica le carte con quel numero (`/cards?localId=`, confronto esatto lato app) e restringe per totale ufficiale del set, nome e, per i cataloghi europei con pochi set candidati, sigla ufficiale (es. `MEG`).
+3. **Aggiungi carta singola:** cerca nel database delle carte per nome (anche in un'altra lingua) oppure, se il testo contiene un numero, per codice stampato (`CardCodeSearch.parse`, poi `CatalogDb.cardsByCode`).
+   - Parte dalle carte con quel numero e, se c'è, restringe per totale stampato (`117/080`).
+   - Una parola che è l'id o la sigla stampata di un set (`M3`, `MEG`) tiene solo le carte di quel set; le altre parole restringono per nome.
    - Un filtro che svuoterebbe i risultati viene saltato, così le parole in più (es. la rarità `MUR`) non bloccano la ricerca.
 4. **Aggiorna prezzi:** riguarda le varianti desiderate o possedute delle carte tracciate. Ogni carta viene scaricata una sola volta per run.
    - Rate limit di 300 ms tra le richieste.

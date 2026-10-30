@@ -53,7 +53,10 @@ jobs:
       # TEMPORANEO: stampa lo schema Room generato, da copiare in app/schemas (poi questo step si toglie).
       - name: Schema Room generato
         if: always()
-        run: cat app/schemas/com.robertobiggi.cardcollection.data.local.AppDatabase/16.json || true
+        run: |
+          cat app/schemas/com.robertobiggi.cardcollection.data.local.AppDatabase/16.json || true
+          echo "===== LINT"
+          cat app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt || true
 
       - name: Verifica firma e pacchetto dell'APK debug
         run: |
