@@ -330,14 +330,6 @@ interface CatalogDao {
     suspend fun membershipsOf(collectionId: Long): List<CollectionCardEntity>
 
     /**
-     * Elenca le appartenenze di una carta, in tutte le collezioni.
-     * @param cardId String - carta.
-     * @return List<CollectionCardEntity> - appartenenze.
-     */
-    @Query("SELECT * FROM collection_card WHERE cardId = :cardId")
-    suspend fun membershipsOfCard(cardId: String): List<CollectionCardEntity>
-
-    /**
      * Collega una carta a una collezione, ignorando i collegamenti già presenti.
      * @param membership CollectionCardEntity - collegamento da aggiungere.
      * @return Long - id della riga, oppure -1 se esisteva già.
@@ -480,24 +472,6 @@ interface PriceDao {
      */
     @Upsert
     suspend fun upsertAlert(alert: PriceAlertEntity)
-
-    /**
-     * Sposta lo storico dei prezzi di una variante su un'altra (carta il cui id è cambiato).
-     * @param from String - variante di partenza.
-     * @param to String - variante di arrivo.
-     * @return Unit
-     */
-    @Query("UPDATE price_snapshot SET variantId = :to WHERE variantId = :from")
-    suspend fun moveSnapshots(from: String, to: String)
-
-    /**
-     * Sposta l'avviso di prezzo di una variante su un'altra, se l'arrivo non ne ha già uno (la variante di arrivo deve esistere).
-     * @param from String - variante di partenza.
-     * @param to String - variante di arrivo.
-     * @return Unit
-     */
-    @Query("UPDATE OR IGNORE price_alert SET variantId = :to WHERE variantId = :from")
-    suspend fun moveAlert(from: String, to: String)
 
     /**
      * Toglie l'avviso di prezzo di una variante.

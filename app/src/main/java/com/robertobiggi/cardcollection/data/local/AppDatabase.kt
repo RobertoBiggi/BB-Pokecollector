@@ -45,13 +45,11 @@ abstract class AppDatabase : RoomDatabase() {
 
         /**
          * Crea il database. Alla prima installazione è vuoto, senza collezioni né ricerche.
-         * Si migra solo dalla versione 11: le precedenti non sono più supportate.
          * @param context Context - contesto dell'applicazione.
          * @return AppDatabase - istanza del database.
          */
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
-                .addMigrations(Migrations.MIGRATION_11_12, Migrations.MIGRATION_12_13, Migrations.MIGRATION_13_14, Migrations.MIGRATION_14_15, Migrations.MIGRATION_15_16, Migrations.MIGRATION_16_17)
                 .build()
     }
 }
