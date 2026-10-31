@@ -7,8 +7,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 
 /**
- * Condizioni degli annunci CardTrader, dalla migliore alla peggiore. Per ogni variante si accetta la
- * condizione della copia posseduta o una migliore: [NEAR_MINT] accetta Mint e Near Mint, [POOR] qualsiasi.
+ * Conditions of CardTrader listings, from best to worst. For each variant the condition of the
+ * owned copy or a better one is accepted: [NEAR_MINT] accepts Mint and Near Mint, [POOR] any.
  */
 enum class CtCondition(val label: String) {
     MINT("Mint"),
@@ -20,15 +20,15 @@ enum class CtCondition(val label: String) {
 
     companion object {
         /**
-         * Converte il nome salvato nelle impostazioni.
-         * @param name String? - nome dell'enum.
-         * @return CtCondition - la condizione, [NEAR_MINT] se assente o sconosciuta.
+         * Converts the name saved in the settings.
+         * @param name String? - name of the enum.
+         * @return CtCondition - the condition, [NEAR_MINT] if absent or unknown.
          */
         fun fromName(name: String?): CtCondition = entries.firstOrNull { it.name == name } ?: NEAR_MINT
 
         /**
-         * Traduce la condizione della copia posseduta (scala Cardmarket) in quella di CardTrader.
-         * @param condition Condition - condizione della variante.
+         * Translates the condition of the owned copy (Cardmarket scale) into the CardTrader one.
+         * @param condition Condition - condition of the variant.
          * @return CtCondition - NM → Near Mint, LP → Slightly Played, MP → Moderately Played, HP → Played, DMG → Poor.
          */
         fun fromCondition(condition: Condition): CtCondition = when (condition) {
@@ -40,38 +40,38 @@ enum class CtCondition(val label: String) {
         }
 
         /**
-         * Converte la condizione scritta in un annuncio.
-         * @param label String? - testo di `properties_hash.condition`.
-         * @return CtCondition? - la condizione, oppure null se mancante o sconosciuta.
+         * Converts the condition written in a listing.
+         * @param label String? - text of `properties_hash.condition`.
+         * @return CtCondition? - the condition, or null if missing or unknown.
          */
         fun fromLabel(label: String?): CtCondition? = entries.firstOrNull { it.label.equals(label, ignoreCase = true) }
     }
 }
 
-/** Prezzo più basso trovato tra gli annunci. */
+/** Lowest price found among the listings. */
 data class CtPick(val cents: Long, val currency: String)
 
 /**
- * Sceglie il prezzo di una variante tra gli annunci di CardTrader.
+ * Picks the price of a variant among the CardTrader listings.
  *
- * CardTrader non ha una pagina per rarità: reverse holo e normal della stessa carta stanno nello
- * stesso blueprint e si distinguono solo dalle proprietà dell'annuncio. Per ogni variante si tengono
- * quindi gli annunci giusti e si prende il più economico.
+ * CardTrader has no page per rarity: reverse holo and normal of the same card are in the
+ * same blueprint and are told apart only by the listing properties. For each variant the right
+ * listings are therefore kept and the cheapest is taken.
  */
 object CardTraderPicker {
     /**
-     * Trova l'annuncio più economico per la variante.
-     * @param products List<CtProductDto> - annunci di uno o più blueprint della stessa carta.
-     * @param variant VariantType - variante richiesta.
-     * @param languageCode String? - lingua richiesta (es. "en"), null per non filtrare.
-     * @param worstCondition CtCondition - condizione peggiore accettata; gli annunci senza condizione nota restano esclusi.
-     * @param firstEditionFallback Boolean - se per una variante normal/holo non c'è nessun annuncio "non 1st Edition", usa i più economici tra quelli 1st Edition.
-     *        Serve alle carte giapponesi, che per interi set escono solo con il marchio 1st Edition e che TCGdex non distingue.
-     * @param splitHolo Boolean - true se la carta ha sia normal sia holo: normal e holo condividono il blueprint, quindi ognuna tiene solo
-     *        gli annunci la cui rarità (`pokemon_rarity`) è quella della sua stampa. Una rarità assente o ambigua vale per entrambe.
-     * @param lowerCondition Boolean - se nessun annuncio rispetta [worstCondition], scende una condizione alla volta
-     *        (Near Mint → Slightly Played → … → Poor) e usa il primo prezzo trovato; se manca anche in Poor, nessun prezzo.
-     * @return CtPick? - prezzo più basso, oppure null se nessun annuncio corrisponde.
+     * Finds the cheapest listing for the variant.
+     * @param products List<CtProductDto> - listings of one or more blueprints of the same card.
+     * @param variant VariantType - requested variant.
+     * @param languageCode String? - requested language (e.g. "en"), null for no filter.
+     * @param worstCondition CtCondition - worst accepted condition; listings without a known condition stay excluded.
+     * @param firstEditionFallback Boolean - if a normal/holo variant has no "non 1st Edition" listing, use the cheapest among the 1st Edition ones.
+     *        Needed for Japanese cards, which for entire sets only come with the 1st Edition mark and which TCGdex does not tell apart.
+     * @param splitHolo Boolean - true if the card has both normal and holo: normal and holo share the blueprint, so each keeps only
+     *        the listings whose rarity (`pokemon_rarity`) is that of its print. An absent or ambiguous rarity counts for both.
+     * @param lowerCondition Boolean - if no listing meets [worstCondition], goes down one condition at a time
+     *        (Near Mint → Slightly Played → … → Poor) and uses the first price found; if missing even in Poor, no price.
+     * @return CtPick? - lowest price, or null if no listing matches.
      */
     fun lowest(
         products: List<CtProductDto>,
@@ -118,18 +118,18 @@ object CardTraderPicker {
             VariantType.REVERSE -> reverse
             VariantType.FIRST_EDITION -> firstEdition
             VariantType.NORMAL, VariantType.HOLO, VariantType.W_PROMO -> !reverse && !firstEdition
-            // Hanno un blueprint a parte (set "... Poké Ball Reverse Holo"): lì sono tutti annunci della variante.
+            // They have a separate blueprint (set "... Poké Ball Reverse Holo"): there all listings are of the variant.
             VariantType.POKE_BALL, VariantType.MASTER_BALL, VariantType.ENERGY_REVERSE -> !firstEdition
-            // Le oversize con un blueprint proprio (Jumbo Oversized): lì sono tutti annunci della variante.
+            // Oversized cards with their own blueprint (Jumbo Oversized): there all listings are of the variant.
             VariantType.JUMBO -> !firstEdition
-            // CardTrader non distingue le altre stampe a parte: i loro prezzi non si ricavano dagli annunci della carta.
+            // CardTrader does not tell the other separate prints apart: their prices cannot be derived from the card's listings.
             VariantType.SHADOWLESS, VariantType.RED_CHEEK, VariantType.POKETOUR_99, VariantType.STAMPED, VariantType.CARDMARKET_PRINT -> false
         }
     }
 
     /**
-     * Dice se la rarità dell'annuncio è quella della stampa richiesta. "Common", "Uncommon" e "Rare" sono non holo, ogni altra
-     * rarità ("Holo Rare", "Ultra Rare"…) è holo; senza rarità, o con una ambigua ("Promo"), l'annuncio vale per entrambe.
+     * Tells whether the rarity of the listing is that of the requested print. "Common", "Uncommon" and "Rare" are non-holo, any other
+     * rarity ("Holo Rare", "Ultra Rare"…) is holo; without rarity, or with an ambiguous one ("Promo"), the listing counts for both.
      */
     private fun matchesPrint(props: JsonObject?, variant: VariantType): Boolean {
         if (variant != VariantType.NORMAL && variant != VariantType.HOLO) return true
@@ -153,7 +153,7 @@ object CardTraderPicker {
     private fun condition(props: JsonObject?): CtCondition? =
         CtCondition.fromLabel((props?.get("condition") as? JsonPrimitive)?.content)
 
-    /** Legge un flag booleano del tipo `pokemon_reverse` (accetta true, "true" e 1). */
+    /** Reads a boolean flag such as `pokemon_reverse` (accepts true, "true" and 1). */
     private fun flag(props: JsonObject?, suffix: String): Boolean {
         val value = props?.entries?.firstOrNull { it.key.endsWith(suffix) }?.value as? JsonPrimitive ?: return false
         return value.booleanOrNull ?: (value.content == "1")

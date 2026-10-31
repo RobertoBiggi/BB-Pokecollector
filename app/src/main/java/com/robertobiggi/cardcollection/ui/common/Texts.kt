@@ -21,23 +21,23 @@ import com.robertobiggi.cardcollection.work.JobState
 import com.robertobiggi.cardcollection.work.WorkKeys
 
 /**
- * Testo da mostrare all'utente, risolto nella lingua corrente solo al momento della visualizzazione.
- * @property id risorsa stringa.
- * @property args argomenti del formato.
+ * Text to show to the user, resolved in the current language only at display time.
+ * @property id string resource.
+ * @property args format arguments.
  */
 class UiText(@StringRes val id: Int, vararg val args: Any) {
     /**
-     * Risolve il testo con le risorse del contesto (che seguono la lingua scelta).
-     * @param context Context - contesto di un'activity.
-     * @return String - testo tradotto.
+     * Resolves the text with the context's resources (which follow the chosen language).
+     * @param context Context - context of an activity.
+     * @return String - translated text.
      */
     fun resolve(context: Context): String = context.getString(id, *args)
 }
 
 /**
- * Nome della lingua del catalogo.
- * @receiver Language - lingua.
- * @return Int - risorsa stringa del nome.
+ * Name of the catalog language.
+ * @receiver Language - language.
+ * @return Int - string resource of the name.
  */
 @StringRes
 fun Language.labelRes(): Int = when (this) {
@@ -54,16 +54,16 @@ fun Language.labelRes(): Int = when (this) {
 }
 
 /**
- * Sigla breve della lingua per chip e righe (JP per il giapponese, come sulle carte).
- * @receiver Language - lingua.
- * @return String - es. "EN", "IT", "JP", "ZH-TW".
+ * Short code of the language for chips and rows (JP for Japanese, as on the cards).
+ * @receiver Language - language.
+ * @return String - e.g. "EN", "IT", "JP", "ZH-TW".
  */
 fun Language.shortLabel(): String = if (this == Language.JA) "JP" else code.uppercase()
 
 /**
- * Nome della variante.
- * @receiver VariantType - variante.
- * @return Int - risorsa stringa.
+ * Name of the variant.
+ * @receiver VariantType - variant.
+ * @return Int - string resource.
  */
 @StringRes
 fun VariantType.labelRes(): Int = when (this) {
@@ -84,18 +84,18 @@ fun VariantType.labelRes(): Int = when (this) {
 }
 
 /**
- * Nome di un timbro di TCGdex, con le parole in maiuscolo ("chris-fulop" → "Chris Fulop", "staff+pre-release" → "Staff + Pre Release").
- * @param print String - timbro come salvato.
- * @return String - nome da mostrare.
+ * Name of a TCGdex stamp, with words capitalized ("chris-fulop" → "Chris Fulop", "staff+pre-release" → "Staff + Pre Release").
+ * @param print String - stamp as saved.
+ * @return String - name to show.
  */
 fun stampName(print: String): String =
     print.split('+').joinToString(" + ") { part -> part.split('-').joinToString(" ") { w -> w.replaceFirstChar(Char::uppercase) } }
 
 /**
- * Nome della variante di una carta: nelle carte solo holo è la rarità (es. "Double Rare").
- * @param card CardUi - carta.
- * @param variant VariantUi - variante.
- * @return String - nome da mostrare.
+ * Name of a card's variant: on holo-only cards it is the rarity (e.g. "Double Rare").
+ * @param card CardUi - card.
+ * @param variant VariantUi - variant.
+ * @return String - name to show.
  */
 @Composable
 fun variantLabel(card: CardUi, variant: VariantUi): String = when (variant.type) {
@@ -105,9 +105,9 @@ fun variantLabel(card: CardUi, variant: VariantUi): String = when (variant.type)
 }
 
 /**
- * Messaggio per l'esito di un'azione sull'immagine di una carta.
- * @receiver ImageResult - esito.
- * @return Int - risorsa stringa.
+ * Message for the outcome of an action on a card's image.
+ * @receiver ImageResult - outcome.
+ * @return Int - string resource.
  */
 @StringRes
 fun ImageResult.messageRes(): Int = when (this) {
@@ -119,9 +119,9 @@ fun ImageResult.messageRes(): Int = when (this) {
 }
 
 /**
- * Messaggio per un dato non valido.
- * @receiver InputError - errore.
- * @return Int - risorsa stringa.
+ * Message for invalid data.
+ * @receiver InputError - error.
+ * @return Int - string resource.
  */
 @StringRes
 fun InputError.messageRes(): Int = when (this) {
@@ -131,9 +131,9 @@ fun InputError.messageRes(): Int = when (this) {
 }
 
 /**
- * Messaggio per un file da importare non valido.
- * @receiver ImportError - errore.
- * @return Int - risorsa stringa.
+ * Message for an invalid file to import.
+ * @receiver ImportError - error.
+ * @return Int - string resource.
  */
 @StringRes
 fun ImportError.messageRes(): Int = when (this) {
@@ -146,9 +146,9 @@ fun ImportError.messageRes(): Int = when (this) {
 }
 
 /**
- * Messaggio per un errore di accesso al file.
- * @receiver FileError - errore.
- * @return Int - risorsa stringa.
+ * Message for a file access error.
+ * @receiver FileError - error.
+ * @return Int - string resource.
  */
 @StringRes
 fun FileError.messageRes(): Int = when (this) {
@@ -158,19 +158,19 @@ fun FileError.messageRes(): Int = when (this) {
 }
 
 /**
- * Riga con tentativi ripetuti, immagini non scaricate e ultimo errore del download delle immagini.
- * @param state JobState - stato del lavoro.
- * @return String? - testo, oppure null se non c'è niente da dire.
+ * Line with repeated attempts, images not downloaded and last error of the image download.
+ * @param state JobState - state of the job.
+ * @return String? - text, or null if there is nothing to say.
  */
 @Composable
 fun jobIssuesText(state: JobState): String? =
     if (state.retries == 0 && state.imagesFailed == 0) null else stringResource(R.string.job_images_issues, state.retries, state.imagesFailed, state.note ?: "-")
 
 /**
- * Testo dell'elemento in lavorazione di un lavoro in background.
- * @param state JobState - stato del lavoro.
- * @param prices Boolean - true per l'aggiornamento prezzi, false per il catalogo.
- * @return String - descrizione breve, es. "cerco \"Mawile\"" o "Mawile GX · Holo".
+ * Text of the item being processed by a background job.
+ * @param state JobState - state of the job.
+ * @param prices Boolean - true for the price update, false for the catalog.
+ * @return String - short description, e.g. "searching \"Mawile\"" or "Mawile GX · Holo".
  */
 @Composable
 fun jobProgressText(state: JobState, prices: Boolean): String {
@@ -197,9 +197,9 @@ fun jobProgressText(state: JobState, prices: Boolean): String {
 }
 
 /**
- * Riepilogo dell'ultimo sync del catalogo.
- * @param state JobState? - stato del lavoro.
- * @return String? - riepilogo, oppure null se il lavoro non è concluso.
+ * Summary of the last catalog sync.
+ * @param state JobState? - state of the job.
+ * @return String? - summary, or null if the job is not finished.
  */
 @Composable
 fun catalogResultText(state: JobState?): String? {
@@ -214,9 +214,9 @@ fun catalogResultText(state: JobState?): String? {
 }
 
 /**
- * Riepilogo di un aggiornamento prezzi registrato.
+ * Summary of a recorded price update.
  * @param run PriceRunEntity - run.
- * @return String - conteggi oppure motivo dell'interruzione.
+ * @return String - counts or reason for the interruption.
  */
 @Composable
 fun runSummaryText(run: PriceRunEntity): String {

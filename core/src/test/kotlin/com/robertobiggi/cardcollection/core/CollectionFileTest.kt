@@ -99,7 +99,7 @@ class CollectionFileTest {
         }
         assertEquals("ja", language(CollectionInfo("A", language = "ja"), "en"))
         assertEquals("mixed", language(CollectionInfo("A", language = "mixed"), "en"))
-        // Valore sconosciuto o assente: si deduce da ricerche e carte.
+        // Unknown or missing value: inferred from searches and cards.
         assertEquals("en", language(CollectionInfo("A", language = "../x"), "en", "en"))
         assertEquals("mixed", language(CollectionInfo("A"), "en", "ja"))
         assertEquals("mixed", language(CollectionInfo("A", listOf(BackupQuery("ja", "クチート"))), "en"))

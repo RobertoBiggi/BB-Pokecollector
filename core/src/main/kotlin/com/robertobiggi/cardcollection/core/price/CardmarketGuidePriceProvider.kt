@@ -6,22 +6,22 @@ import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.price.PricingDto
 
 /**
- * Prezzi Cardmarket (EUR) letti dal listino pubblico. Il prodotto Cardmarket di ogni carta arriva dal database delle carte
- * ([PriceRequest.cardmarketId]); le stampe a parte e le Poké Ball hanno il loro ([PriceRequest.printProductId]).
+ * Cardmarket prices (EUR) read from the public price list. The Cardmarket product of each card comes from the card database
+ * ([PriceRequest.cardmarketId]); separate prints and Poké Balls have their own ([PriceRequest.printProductId]).
  *
- * @param guide listino Cardmarket.
+ * @param guide Cardmarket price list.
  */
 class CardmarketGuidePriceProvider(private val guide: CardmarketPriceGuide) : PriceProvider {
     override val id: String = ID
     override val displayName: String = DISPLAY_NAME
 
     /**
-     * Restituisce il prezzo della variante dal listino.
-     * @param request PriceRequest - carta e variante da cercare.
-     * @return PriceQuote? - prezzo trovato, oppure null se la carta non ha un prodotto o non è nel listino.
+     * Returns the price of the variant from the price list.
+     * @param request PriceRequest - card and variant to look up.
+     * @return PriceQuote? - price found, or null if the card has no product or is not in the price list.
      */
     override suspend fun fetch(request: PriceRequest): PriceQuote? {
-        // Poké Ball e Master Ball sono prodotti a parte, ma sono reverse holo: il listino ha il loro prezzo nei campi "-holo".
+        // Poké Ball and Master Ball are separate products, but they are reverse holo: the price list has their price in the "-holo" fields.
         val productId = if (request.variant.isBall || request.variant.isPrint) request.printProductId else request.cardmarketId
         val cardmarket = guide.lookup(productId ?: return null) ?: return null
         val variant = when {

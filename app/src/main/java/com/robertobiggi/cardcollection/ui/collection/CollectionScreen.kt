@@ -72,14 +72,14 @@ import com.robertobiggi.cardcollection.ui.common.SlotBadge
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 
 /**
- * Applica ricerca, filtri e ordinamento alla libreria.
- * @param cards List<CardUi> - carte tracciate.
- * @param filter CollectionFilter - filtri correnti.
- * @return List<CardUi> - carte da mostrare.
+ * Applies search, filters and ordering to the library.
+ * @param cards List<CardUi> - tracked cards.
+ * @param filter CollectionFilter - current filters.
+ * @return List<CardUi> - cards to show.
  */
 fun applyFilter(cards: List<CardUi>, filter: CollectionFilter): List<CardUi> {
     val q = filter.query.trim().lowercase()
-    // Nome confrontato senza accenti e punteggiatura, anche tramite i nomi del Pokémon in altre lingue.
+    // Name compared without accents and punctuation, also via the Pokémon names in other languages.
     val normalized = PokemonNames.normalize(q)
     val dexMatches = PokemonNames.dexIdsMatching(q)
     val filtered = cards.filter { c ->
@@ -103,10 +103,10 @@ fun applyFilter(cards: List<CardUi>, filter: CollectionFilter): List<CardUi> {
 }
 
 /**
- * Schermata principale: griglia delle carte con ricerca, filtri e pulsanti di aggiornamento.
- * @param vm MainViewModel - stato e azioni.
- * @param onOpen (String) -> Unit - apre il dettaglio della carta con l'id indicato.
- * @param onHome () -> Unit - torna all'elenco delle collezioni.
+ * Main screen: card grid with search, filters and update buttons.
+ * @param vm MainViewModel - state and actions.
+ * @param onOpen (String) -> Unit - opens the detail of the card with the given id.
+ * @param onHome () -> Unit - returns to the list of collections.
  * @return Unit
  */
 @Composable
@@ -119,7 +119,7 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
     val name by vm.collectionName.collectAsStateWithLifecycle()
     val cards = library
     val visible by vm.visibleCards.collectAsStateWithLifecycle()
-    // Selezione multipla: si apre con il tocco lungo su una carta e si chiude con la X o il tasto indietro.
+    // Multiple selection: opens with a long press on a card and closes with the X or the back button.
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var confirmRemove by remember { mutableStateOf(false) }
     val selecting = selected.isNotEmpty()
@@ -186,7 +186,7 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
             cards == null -> Unit
             cards.isEmpty() -> EmptyLibrary(onSync = vm::startCatalogSync, syncing = catalogJob?.running == true)
             else -> Column(Modifier.fillMaxSize()) {
-                // La ricerca resta fissa sopra l'elenco; i filtri scorrono con le carte.
+                // The search stays fixed above the list; the filters scroll with the cards.
                 SearchField(filter, vm::updateFilter, Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp))
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 150.dp),
@@ -214,9 +214,9 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
 }
 
 /**
- * Testo con la data dell'ultimo aggiornamento prezzi concluso.
- * @param runs List<PriceRunEntity> - ultimi aggiornamenti.
- * @return String - frase da mostrare sotto il titolo.
+ * Text with the date of the last completed price update.
+ * @param runs List<PriceRunEntity> - latest updates.
+ * @return String - sentence to show below the title.
  */
 @Composable
 private fun lastUpdateText(runs: List<PriceRunEntity>): String {
@@ -225,9 +225,9 @@ private fun lastUpdateText(runs: List<PriceRunEntity>): String {
 }
 
 /**
- * Stato vuoto: invita a scaricare il catalogo.
- * @param onSync () -> Unit - avvia il sync.
- * @param syncing Boolean - true se il sync è già in corso.
+ * Empty state: invites to download the catalog.
+ * @param onSync () -> Unit - starts the sync.
+ * @param syncing Boolean - true if the sync is already running.
  * @return Unit
  */
 @Composable
@@ -248,10 +248,10 @@ private fun EmptyLibrary(onSync: () -> Unit, syncing: Boolean) {
 }
 
 /**
- * Campo di ricerca per nome, sempre visibile sopra l'elenco.
- * @param filter CollectionFilter - filtri correnti.
- * @param onChange ((CollectionFilter) -> CollectionFilter) -> Unit - applica una modifica ai filtri.
- * @param modifier Modifier - posizione e margini.
+ * Search-by-name field, always visible above the list.
+ * @param filter CollectionFilter - current filters.
+ * @param onChange ((CollectionFilter) -> CollectionFilter) -> Unit - applies a change to the filters.
+ * @param modifier Modifier - position and margins.
  * @return Unit
  */
 @Composable
@@ -267,11 +267,11 @@ private fun SearchField(filter: CollectionFilter, onChange: ((CollectionFilter) 
 }
 
 /**
- * Chip di filtro, ordinamento e numero di carte visibili.
- * @param filter CollectionFilter - filtri correnti.
- * @param count Int - carte visibili.
- * @param languages List<Language> - lingue presenti nella collezione.
- * @param onChange ((CollectionFilter) -> CollectionFilter) -> Unit - applica una modifica ai filtri.
+ * Filter chips, ordering and number of visible cards.
+ * @param filter CollectionFilter - current filters.
+ * @param count Int - visible cards.
+ * @param languages List<Language> - languages present in the collection.
+ * @param onChange ((CollectionFilter) -> CollectionFilter) -> Unit - applies a change to the filters.
  * @return Unit
  */
 @Composable
@@ -326,11 +326,11 @@ private fun Filters(filter: CollectionFilter, count: Int, languages: List<Langua
 }
 
 /**
- * Riquadro di una carta nella griglia.
- * @param card CardUi - carta.
- * @param selected Boolean - true se la carta è nella selezione multipla.
- * @param onClick () -> Unit - apre il dettaglio, o in selezione la aggiunge o toglie.
- * @param onLongClick () -> Unit - avvia la selezione o aggiunge o toglie la carta.
+ * Tile of a card in the grid.
+ * @param card CardUi - card.
+ * @param selected Boolean - true if the card is in the multiple selection.
+ * @param onClick () -> Unit - opens the detail, or in selection adds or removes it.
+ * @param onLongClick () -> Unit - starts the selection or adds or removes the card.
  * @return Unit
  */
 @Composable

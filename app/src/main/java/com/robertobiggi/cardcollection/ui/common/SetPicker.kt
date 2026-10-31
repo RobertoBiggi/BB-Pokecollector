@@ -38,13 +38,13 @@ import com.robertobiggi.cardcollection.data.repo.SetChoice
 import com.robertobiggi.cardcollection.ui.SetPickerState
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 
-/** Cifre dell'anno in una data ISO ("2003-07-18"). */
+/** Year digits in an ISO date ("2003-07-18"). */
 private const val YEAR_LENGTH = 4
 
-/** Lingue proposte per le collezioni per set: le uniche con set completi su TCGdex o nell'elenco dei set mancanti. */
+/** Languages offered for set collections: the only ones with complete sets on TCGdex or in the list of missing sets. */
 val SET_LANGUAGES = listOf(Language.EN, Language.JA)
 
-/** Ordine dell'elenco dei set nella finestra di scelta. */
+/** Order of the set list in the picker dialog. */
 private enum class SetSort(val label: Int) {
     NEWEST(R.string.set_sort_newest),
     OLDEST(R.string.set_sort_oldest),
@@ -52,10 +52,10 @@ private enum class SetSort(val label: Int) {
 }
 
 /**
- * Ordina i set: per data di uscita (i set senza data in fondo, a parità per nome) o per nome.
- * @param sets List<SetChoice> - set da ordinare.
- * @param sort SetSort - ordine voluto.
- * @return List<SetChoice> - set ordinati.
+ * Sorts the sets: by release date (sets without a date at the end, by name when equal) or by name.
+ * @param sets List<SetChoice> - sets to sort.
+ * @param sort SetSort - wanted order.
+ * @return List<SetChoice> - sorted sets.
  */
 private fun sortSets(sets: List<SetChoice>, sort: SetSort): List<SetChoice> {
     val byName = compareBy<SetChoice, String>(String.CASE_INSENSITIVE_ORDER) { it.name }
@@ -67,11 +67,11 @@ private fun sortSets(sets: List<SetChoice>, sort: SetSort): List<SetChoice> {
 }
 
 /**
- * Finestra di scelta di un set: lingua (EN/JP), ricerca per nome o sigla ed elenco dei set.
- * @param state SetPickerState - elenco dei set e stato del caricamento.
- * @param onLanguage (Language, Boolean) -> Unit - chiede l'elenco di una lingua; il secondo parametro forza il nuovo download.
- * @param onPick (Language, SetChoice) -> Unit - set scelto.
- * @param onDismiss () -> Unit - chiude senza scegliere.
+ * Dialog to choose a set: language (EN/JP), search by name or code and the list of sets.
+ * @param state SetPickerState - list of sets and loading state.
+ * @param onLanguage (Language, Boolean) -> Unit - asks for the list of a language; the second parameter forces a new download.
+ * @param onPick (Language, SetChoice) -> Unit - chosen set.
+ * @param onDismiss () -> Unit - closes without choosing.
  * @return Unit
  */
 @Composable
@@ -145,9 +145,9 @@ fun SetPickerDialog(
 }
 
 /**
- * Scelta del livello di una collezione per set: set base (una carta per slot) o master set (tutte le varianti).
- * @param selected QueryKind - livello scelto.
- * @param onSelect (QueryKind) -> Unit - nuova scelta.
+ * Choice of the level of a set collection: base set (one card per slot) or master set (all variants).
+ * @param selected QueryKind - chosen level.
+ * @param onSelect (QueryKind) -> Unit - new choice.
  * @return Unit
  */
 @Composable
@@ -166,10 +166,10 @@ fun SetLevelPicker(selected: QueryKind, onSelect: (QueryKind) -> Unit) {
 }
 
 /**
- * Descrizione breve di una ricerca: il nome cercato oppure il set con il livello.
- * @param kind QueryKind - tipo di ricerca.
- * @param pattern String - nome o id del set.
- * @return String - testo da mostrare nell'elenco delle ricerche.
+ * Short description of a search: the searched name or the set with its level.
+ * @param kind QueryKind - type of search.
+ * @param pattern String - name or id of the set.
+ * @return String - text to show in the list of searches.
  */
 @Composable
 fun queryLabel(kind: QueryKind, pattern: String): String = when (kind) {

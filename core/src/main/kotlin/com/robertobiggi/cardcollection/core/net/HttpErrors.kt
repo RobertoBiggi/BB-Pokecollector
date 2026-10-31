@@ -1,16 +1,16 @@
 package com.robertobiggi.cardcollection.core.net
 
-/** Errore restituito da un'API remota, con il codice HTTP per decidere retry e circuit breaker. */
+/** Error returned by a remote API, with the HTTP code to decide retries and circuit breaker. */
 open class ApiException(val httpCode: Int, message: String) : Exception(message)
 
-/** La fonte limita le richieste (HTTP 429). [retryAfterMs] viene dall'header Retry-After, se presente. */
+/** The source limits requests (HTTP 429). [retryAfterMs] comes from the Retry-After header, if present. */
 class RateLimitedException(val retryAfterMs: Long?) : ApiException(429, "Troppe richieste (429)")
 
-/** La fonte rifiuta l'accesso (HTTP 401/403), ad esempio per blocchi anti-bot o chiave non valida. */
+/** The source refuses access (HTTP 401/403), for example due to anti-bot blocks or an invalid key. */
 class BlockedException(httpCode: Int) : ApiException(httpCode, "Accesso rifiutato ($httpCode)")
 
-/** La risorsa richiesta non esiste (HTTP 404). */
+/** The requested resource does not exist (HTTP 404). */
 class NotFoundException : ApiException(404, "Risorsa non trovata (404)")
 
-/** La risposta supera la dimensione massima accettata o non è nel formato atteso. */
+/** The response exceeds the maximum accepted size or is not in the expected format. */
 class InvalidResponseException(message: String) : Exception(message)

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Backup automatico Android 12+: database e impostazioni, non le immagini (si riscaricano) né il token CardTrader
-     (cifrato con una chiave del Keystore di questo telefono: altrove non si decifra, va reinserito). -->
+<!-- Android 12+ automatic backup: database and settings, not the images (downloaded again) nor the CardTrader token
+     (encrypted with a key from this phone's Keystore: elsewhere it cannot be decrypted and must be entered again). -->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="database" path="." />

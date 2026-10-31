@@ -3,14 +3,14 @@ package com.robertobiggi.cardcollection.core.net
 import kotlinx.serialization.json.Json
 import okhttp3.Response
 
-/** Funzioni comuni ai client HTTP (CardTrader, listino Cardmarket). */
+/** Functions shared by the HTTP clients (CardTrader, Cardmarket price list). */
 object Http {
-    /** Dimensione massima accettata per una risposta JSON (2 MB). */
+    /** Maximum accepted size for a JSON response (2 MB). */
     const val MAX_BODY_BYTES = 2L * 1024 * 1024
 
     private const val MAX_RETRY_AFTER_SECONDS = 60L
 
-    /** Parser JSON tollerante ai campi sconosciuti, condiviso dai client. */
+    /** JSON parser tolerant of unknown fields, shared by the clients. */
     val JSON = Json {
         ignoreUnknownKeys = true
         isLenient = false
@@ -18,10 +18,10 @@ object Http {
     }
 
     /**
-     * Converte una risposta HTTP non riuscita nell'eccezione tipizzata corrispondente.
-     * @param response Response - risposta OkHttp da controllare.
-     * @return Unit - non restituisce nulla se la risposta è 2xx.
-     * @throws ApiException per qualsiasi codice diverso da 2xx.
+     * Converts an unsuccessful HTTP response into the corresponding typed exception.
+     * @param response Response - OkHttp response to check.
+     * @return Unit - returns nothing if the response is 2xx.
+     * @throws ApiException for any code other than 2xx.
      */
     fun throwIfError(response: Response) {
         if (response.isSuccessful) return
@@ -34,10 +34,10 @@ object Http {
     }
 
     /**
-     * Legge il corpo della risposta rifiutando quelli oltre [maxBytes].
-     * @param response Response - risposta OkHttp con corpo da leggere.
-     * @return String - corpo decodificato in UTF-8.
-     * @throws InvalidResponseException se il corpo manca o è troppo grande.
+     * Reads the response body, rejecting those over [maxBytes].
+     * @param response Response - OkHttp response with a body to read.
+     * @return String - body decoded as UTF-8.
+     * @throws InvalidResponseException if the body is missing or too large.
      */
     fun readLimited(response: Response, maxBytes: Long = MAX_BODY_BYTES): String {
         val body = response.body ?: throw InvalidResponseException("Risposta senza corpo")
@@ -49,9 +49,9 @@ object Http {
     }
 
     /**
-     * Interpreta l'header Retry-After espresso in secondi (massimo 60: attese più lunghe superano il tempo dei lavori in background).
-     * @param value String? - valore dell'header, se presente.
-     * @return Long? - attesa in millisecondi, oppure null se assente o non numerico.
+     * Interprets the Retry-After header expressed in seconds (maximum 60: longer waits exceed the time of background jobs).
+     * @param value String? - value of the header, if present.
+     * @return Long? - wait in milliseconds, or null if absent or not numeric.
      */
     fun parseRetryAfter(value: String?): Long? {
         val seconds = value?.trim()?.toLongOrNull() ?: return null

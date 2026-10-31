@@ -2,17 +2,17 @@ package com.robertobiggi.cardcollection.core.cardmarket
 
 import java.net.URLEncoder
 
-/** Indirizzi delle pagine di Cardmarket (aperti nel browser, nessuna chiamata dall'app). */
+/** Addresses of the Cardmarket pages (opened in the browser, no calls from the app). */
 object CardmarketLinks {
     private const val SEARCH = "https://www.cardmarket.com/it/Pokemon/Products/Search"
 
     /**
-     * Ricerca per nome; limitata al set se si conosce, così trova la carta giusta (o le poche con lo stesso nome nel set)
-     * invece di tutte le stampe in tutti i set. Cardmarket non ha un indirizzo fisso per le carte: il nome della pagina
-     * contiene il set e il codice stampato come li scrive lui, che non si ricavano dai dati del catalogo.
-     * @param name String - nome della carta come lo scrive Cardmarket (inglese), se noto.
-     * @param idExpansion Int? - set su Cardmarket (`idExpansion`), se noto.
-     * @return String - indirizzo della ricerca.
+     * Search by name; limited to the set if known, so it finds the right card (or the few with the same name in the set)
+     * instead of all prints in all sets. Cardmarket has no fixed address for cards: the page name
+     * contains the set and the printed code as it writes them, which cannot be derived from the catalog data.
+     * @param name String - name of the card as Cardmarket writes it (English), if known.
+     * @param idExpansion Int? - set on Cardmarket (`idExpansion`), if known.
+     * @return String - address of the search.
      */
     fun search(name: String, idExpansion: Int?): String {
         val term = URLEncoder.encode(name, Charsets.UTF_8.name())

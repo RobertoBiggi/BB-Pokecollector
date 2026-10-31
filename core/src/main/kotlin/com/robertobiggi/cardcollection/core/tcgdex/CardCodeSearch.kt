@@ -6,18 +6,18 @@ import com.robertobiggi.cardcollection.core.net.InvalidResponseException
 import java.io.IOException
 
 /**
- * Ricerca scomposta a partire dal codice stampato sulla carta.
+ * Search broken down from the code printed on the card.
  *
- * @param number Int - numero della carta nel set (es. 117 da "117/080").
- * @param total Int? - numero ufficiale di carte del set, se indicato (es. 80 da "117/080").
- * @param tokens List<String> - altre parole: sigla del set (es. "M3"), parte del nome o testo
- *        da ignorare (es. la rarità "MUR").
+ * @param number Int - number of the card in the set (e.g. 117 from "117/080").
+ * @param total Int? - official number of cards in the set, if given (e.g. 80 from "117/080").
+ * @param tokens List<String> - other words: set code (e.g. "M3"), part of the name or text
+ *        to ignore (e.g. the rarity "MUR").
  */
 data class CardCodeQuery(val number: Int, val total: Int?, val tokens: List<String>)
 
 /**
- * Trova carte TCGdex dal codice stampato in basso a sinistra, es. "M3 117/080", "117/080 MUR",
- * "MEG 046/132" o "SM10a-030". Le parole che non corrispondono a nulla vengono ignorate.
+ * Finds TCGdex cards from the code printed at the bottom left, e.g. "M3 117/080", "117/080 MUR",
+ * "MEG 046/132" or "SM10a-030". Words that match nothing are ignored.
  */
 object CardCodeSearch {
 
@@ -25,17 +25,17 @@ object CardCodeSearch {
     private val NUMBER = Regex("^(\\d{1,4})(?:/(\\d{1,4}))?$")
     private val SET_DASH_NUMBER = Regex("^([A-Za-z][A-Za-z0-9.\\-]{0,15})-(\\d{1,4})$")
 
-    /** Massimo di parole aggiuntive considerate. */
+    /** Maximum number of additional words considered. */
     private const val MAX_TOKENS = 4
 
-    /** Massimo di set di cui scaricare il dettaglio per confrontare la sigla. */
+    /** Maximum number of sets whose detail is downloaded to compare the code. */
     private const val MAX_SET_DETAILS = 6
 
     /**
-     * Riconosce un testo che contiene un numero di carta.
-     * @param text String - testo inserito dall'utente.
-     * @return CardCodeQuery? - ricerca scomposta, oppure null se il testo non contiene un numero
-     *         di carta (in quel caso va cercato per nome) o ha caratteri non ammessi.
+     * Recognizes a text that contains a card number.
+     * @param text String - text entered by the user.
+     * @return CardCodeQuery? - broken-down search, or null if the text does not contain a card
+     *         number (in that case it must be searched by name) or has disallowed characters.
      */
     fun parse(text: String): CardCodeQuery? {
         val trimmed = text.trim()
@@ -63,10 +63,10 @@ object CardCodeSearch {
     }
 
     /**
-     * Confronta il numero di una carta ignorando gli zeri iniziali ("046" e "46" coincidono).
-     * @param localId String - numero della carta secondo TCGdex.
-     * @param number Int - numero cercato.
-     * @return Boolean - true se il numero è solo cifre e vale [number].
+     * Compares the number of a card ignoring leading zeros ("046" and "46" match).
+     * @param localId String - number of the card according to TCGdex.
+     * @param number Int - number searched.
+     * @return Boolean - true if the number is only digits and equals [number].
      */
     fun matchesNumber(localId: String, number: Int): Boolean =
         localId.isNotEmpty() && localId.length <= 6 && localId.all { it.isDigit() } && localId.toInt() == number

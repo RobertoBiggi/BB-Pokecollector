@@ -50,9 +50,9 @@ import com.robertobiggi.cardcollection.ui.common.Format
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 
 /**
- * Elenco delle varianti desiderate che non possiedi, con il costo stimato.
- * @param vm MainViewModel - stato.
- * @param onOpen (String) -> Unit - apre il dettaglio della carta.
+ * List of the wanted variants you do not own, with the estimated cost.
+ * @param vm MainViewModel - state.
+ * @param onOpen (String) -> Unit - opens the card detail.
  * @return Unit
  */
 @Composable
@@ -62,7 +62,7 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val cards = library.orEmpty()
     var query by rememberSaveable { mutableStateOf("") }
     val missing = remember(cards, query) {
-        // Stessa ricerca della collezione (nome, codice, set, rarità, nomi in altre lingue); ordine di uscita.
+        // Same search as the collection (name, code, set, rarity, names in other languages); release order.
         applyFilter(cards, CollectionFilter(query = query.take(40)))
             .flatMap { c -> c.variants.filter { it.wanted && it.quantity == 0 }.map { c to it } }
     }
@@ -110,7 +110,7 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                     )
                 }
             } else {
-                // Una riga per elemento della lista: con molte mancanti si disegnano solo quelle visibili.
+                // One row per list item: with many missing, only the visible ones are drawn.
                 itemsIndexed(missing, key = { _, row -> row.second.id }) { index, (card, variant) ->
                     Column {
                         if (index > 0) HorizontalDivider()
@@ -130,11 +130,11 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
 }
 
 /**
- * Riga di una variante mancante.
- * @param card CardUi - carta.
- * @param variant VariantUi - variante mancante.
- * @param showPrice Boolean - false se i prezzi Cardmarket sono nascosti.
- * @param onClick () -> Unit - apre il dettaglio.
+ * Row of a missing variant.
+ * @param card CardUi - card.
+ * @param variant VariantUi - missing variant.
+ * @param showPrice Boolean - false if Cardmarket prices are hidden.
+ * @param onClick () -> Unit - opens the detail.
  * @return Unit
  */
 @Composable

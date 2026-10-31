@@ -22,16 +22,16 @@ import com.robertobiggi.cardcollection.ui.common.labelRes
 import java.util.Locale
 import kotlin.math.abs
 
-/** Canali e notifiche: avanzamento dei lavori in background (silenziose) e avvisi di prezzo. */
+/** Channels and notifications: progress of background jobs (silent) and price alerts. */
 object Notifications {
     const val CHANNEL_ID = "updates"
 
-    /** Canale degli avvisi di prezzo: a parte, così si può silenziare uno senza l'altro. */
+    /** Price alerts channel: separate, so one can be muted without the other. */
     const val ALERTS_CHANNEL_ID = "price_alerts"
 
     /**
-     * Crea il canale delle notifiche (necessario da Android 8).
-     * @param context Context - contesto dell'applicazione.
+     * Creates the notification channel (required from Android 8).
+     * @param context Context - application context.
      * @return Unit
      */
     fun createChannel(context: Context) {
@@ -49,10 +49,10 @@ object Notifications {
     }
 
     /**
-     * Mostra un avviso di prezzo; toccandolo si apre il dettaglio della carta. Senza il permesso delle notifiche non fa nulla.
-     * @param context Context - contesto dell'applicazione.
-     * @param notice PriceAlertNotice - avviso da mostrare.
-     * @return Boolean - true se la notifica è stata mostrata.
+     * Shows a price alert; tapping it opens the card detail. Without the notification permission it does nothing.
+     * @param context Context - application context.
+     * @param notice PriceAlertNotice - alert to show.
+     * @return Boolean - true if the notification was shown.
      */
     fun showPriceAlert(context: Context, notice: PriceAlertNotice): Boolean {
         if (!canNotify(context)) return false
@@ -91,9 +91,9 @@ object Notifications {
     }
 
     /**
-     * Controlla che l'app possa mostrare notifiche (permesso su Android 13+ e notifiche non disattivate).
-     * @param context Context - contesto.
-     * @return Boolean - true se si possono mostrare.
+     * Checks that the app can show notifications (permission on Android 13+ and notifications not disabled).
+     * @param context Context - context.
+     * @return Boolean - true if they can be shown.
      */
     fun canNotify(context: Context): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -105,20 +105,20 @@ object Notifications {
     }
 
     /**
-     * Formatta il prezzo di un avviso nella sua valuta.
-     * @param point PricePoint - prezzo.
-     * @return String - importo formattato.
+     * Formats the price of an alert in its currency.
+     * @param point PricePoint - price.
+     * @return String - formatted amount.
      */
     private fun money(point: PricePoint): String = if (point.currency == PricePoint.USD) Format.usd(point.value) else Format.eur(point.value)
 
     /**
-     * Costruisce la notifica di un lavoro in corso, con avanzamento indeterminato.
-     * @param context Context - contesto.
-     * @param title String - titolo già tradotto.
-     * @param text String? - cosa sta facendo, già tradotto.
-     * @param done Int - elementi finiti; con [total] positivo la barra mostra l'avanzamento, altrimenti è indeterminata.
-     * @param total Int - elementi da fare.
-     * @return Notification - notifica pronta.
+     * Builds the notification of a running job, with indeterminate progress.
+     * @param context Context - context.
+     * @param title String - already translated title.
+     * @param text String? - what it is doing, already translated.
+     * @param done Int - items finished; with a positive [total] the bar shows progress, otherwise it is indeterminate.
+     * @param total Int - items to do.
+     * @return Notification - notification ready.
      */
     fun progress(context: Context, title: String, text: String? = null, done: Int = 0, total: Int = 0): Notification =
         NotificationCompat.Builder(context, CHANNEL_ID)

@@ -51,17 +51,17 @@ import com.robertobiggi.cardcollection.ui.theme.StatusColors
 import java.io.File
 
 /**
- * Immagine della carta letta dal file locale; se manca mostra un segnaposto con nome e codice.
- * @param card CardUi - carta da mostrare.
- * @param path String? - percorso del file locale.
- * @param modifier Modifier - modificatore di layout.
+ * Card image read from the local file; if missing it shows a placeholder with name and code.
+ * @param card CardUi - card to show.
+ * @param path String? - path of the local file.
+ * @param modifier Modifier - layout modifier.
  * @return Unit
  */
 @Composable
 fun CardImage(card: CardUi, path: String?, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(8.dp)
     Box(modifier.aspectRatio(63f / 88f).clip(shape)) {
-        // Se il file manca, Coil segnala l'errore e si mostra il segnaposto (niente accessi al disco qui).
+        // If the file is missing, Coil reports the error and the placeholder is shown (no disk access here).
         var failed by remember(path) { mutableStateOf(false) }
         if (path != null && !failed) {
             AsyncImage(
@@ -78,8 +78,8 @@ fun CardImage(card: CardUi, path: String?, modifier: Modifier = Modifier) {
 }
 
 /**
- * Segnaposto per le carte senza immagine (molte carte giapponesi su TCGdex non ne hanno).
- * @param card CardUi - carta da rappresentare.
+ * Placeholder for cards without an image (many Japanese cards on TCGdex have none).
+ * @param card CardUi - card to represent.
  * @return Unit
  */
 @Composable
@@ -113,9 +113,9 @@ private fun Placeholder(card: CardUi) {
 }
 
 /**
- * Badge "possedute/slot" con colore di stato.
- * @param owned Int - slot posseduti.
- * @param slots Int - slot desiderati.
+ * "Owned/slots" badge with status color.
+ * @param owned Int - owned slots.
+ * @param slots Int - wanted slots.
  * @return Unit
  */
 @Composable
@@ -138,9 +138,9 @@ fun SlotBadge(owned: Int, slots: Int) {
 }
 
 /**
- * Etichetta dell'affidabilità di un prezzo.
- * @param confidence String - nome del valore [Confidence].
- * @param stale Boolean - true se il prezzo è vecchio.
+ * Label of the reliability of a price.
+ * @param confidence String - name of the [Confidence] value.
+ * @param stale Boolean - true if the price is old.
  * @return Unit
  */
 @Composable
@@ -160,9 +160,9 @@ fun ConfidenceChip(confidence: String, stale: Boolean) {
 }
 
 /**
- * Piccolo grafico dell'andamento del prezzo.
- * @param values List<Double> - prezzi dal più vecchio al più recente.
- * @param modifier Modifier - dimensioni del grafico.
+ * Small chart of the price trend.
+ * @param values List<Double> - prices from oldest to most recent.
+ * @param modifier Modifier - chart size.
  * @return Unit
  */
 @Composable
@@ -186,10 +186,10 @@ fun Sparkline(values: List<Double>, modifier: Modifier = Modifier) {
 }
 
 /**
- * Riga etichetta-valore per i metadati.
- * @param label String - etichetta.
- * @param value String - valore.
- * @param mono Boolean - true per usare il font monospaziato.
+ * Label-value row for metadata.
+ * @param label String - label.
+ * @param value String - value.
+ * @param mono Boolean - true to use the monospaced font.
  * @return Unit
  */
 @Composable
@@ -201,9 +201,9 @@ fun MetaRow(label: String, value: String, mono: Boolean = false) {
 }
 
 /**
- * Sezione con titolo dentro una card.
- * @param title String - titolo.
- * @param content @Composable () -> Unit - contenuto della sezione.
+ * Section with a title inside a card.
+ * @param title String - title.
+ * @param content @Composable () -> Unit - content of the section.
  * @return Unit
  */
 @Composable
@@ -217,10 +217,10 @@ fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 /**
- * Scelta della lingua delle carte: blocchetti EN e JP, più "Altro" con il menu delle altre lingue.
- * Se è scelta un'altra lingua, il terzo blocchetto ne mostra il nome. Avvisa per le lingue con pochi dati.
- * @param selected Language - lingua selezionata.
- * @param onSelect (Language) -> Unit - nuova scelta.
+ * Choice of the cards' language: EN and JP chips, plus "Other" with the menu of the other languages.
+ * If another language is chosen, the third chip shows its name. Warns for languages with little data.
+ * @param selected Language - selected language.
+ * @param onSelect (Language) -> Unit - new choice.
  * @return Unit
  */
 @Composable
@@ -266,10 +266,10 @@ fun LanguagePicker(selected: Language, onSelect: (Language) -> Unit) {
 }
 
 /**
- * Scelta di una o più lingue delle carte: blocchetti EN e JP attivabili insieme, più "Altro" con il menu delle
- * altre lingue (anch'esse a scelta multipla). Resta sempre almeno una lingua. Avvisa per le lingue con pochi dati.
- * @param selected List<Language> - lingue selezionate.
- * @param onChange (List<Language>) -> Unit - nuova scelta, mai vuota.
+ * Choice of one or more card languages: EN and JP chips that can be enabled together, plus "Other" with the menu of the
+ * other languages (also multiple choice). At least one language always remains. Warns for languages with little data.
+ * @param selected List<Language> - selected languages.
+ * @param onChange (List<Language>) -> Unit - new choice, never empty.
  * @return Unit
  */
 @Composable

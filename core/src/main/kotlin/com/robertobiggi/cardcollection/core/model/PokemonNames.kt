@@ -3,30 +3,30 @@ package com.robertobiggi.cardcollection.core.model
 import java.text.Normalizer
 
 /**
- * Nomi dei Pokémon in più lingue (inglese, giapponese, francese, tedesco, spagnolo, italiano, cinese
- * tradizionale), indicizzati per numero del Pokédex nazionale. Serve a trovare una carta cercando il
- * nome in una lingua diversa da quella della carta, es. "Omastar" per オムスター.
- * I dati vengono da PokeAPI (pokemon_species_names.csv, licenza BSD-3-Clause).
+ * Pokémon names in several languages (English, Japanese, French, German, Spanish, Italian, traditional
+ * Chinese), indexed by national Pokédex number. Used to find a card by searching for the
+ * name in a language different from the card's, e.g. "Omastar" for オムスター.
+ * The data comes from PokeAPI (pokemon_species_names.csv, BSD-3-Clause license).
  */
 object PokemonNames {
 
-    /** Percorso assoluto del file incluso nel modulo: resta valido anche se R8 rinomina le classi. */
+    /** Absolute path of the file included in the module: stays valid even if R8 renames the classes. */
     private const val RESOURCE = "/com/robertobiggi/cardcollection/core/model/pokemon-names.tsv"
 
     private val COMBINING_MARKS = Regex("\\p{Mn}+")
     private val NOT_LETTER_OR_DIGIT = Regex("[^\\p{L}\\p{N}]+")
 
     /**
-     * Numero del Pokédex → nomi già normalizzati con [normalize], letti una sola volta. Se il file
-     * mancasse la ricerca resterebbe solo sul nome della carta (la CI controlla che sia nell'APK).
+     * Pokédex number → names already normalized with [normalize], read only once. If the file
+     * were missing the search would only work on the card's name (CI checks that it is in the APK).
      */
     private val namesByDex: Map<Int, List<String>> by lazy {
         rawNamesByDex.mapValues { (_, names) -> names.map { normalize(it) }.filter { it.isNotEmpty() } }
     }
 
     /**
-     * Numero del Pokédex → nomi come scritti nel file, nell'ordine delle colonne: il giapponese è sempre il
-     * primo e l'inglese l'ultimo; le altre lingue possono mancare.
+     * Pokédex number → names as written in the file, in column order: Japanese is always
+     * first and English last; the other languages may be missing.
      */
     private val rawNamesByDex: Map<Int, List<String>> by lazy {
         val stream = PokemonNames::class.java.getResourceAsStream(RESOURCE) ?: return@lazy emptyMap()
@@ -38,19 +38,19 @@ object PokemonNames {
         }
     }
 
-    /** Lunghezza minima del testo cercato in alfabeto latino; per i caratteri CJK bastano 2 (es. "伊布"). */
+    /** Minimum length of the searched text in Latin script; for CJK characters 2 are enough (e.g. "伊布"). */
     const val MIN_QUERY_LENGTH = 3
 
-    /** Numero massimo di termini di [searchTerms], per non fare troppe richieste con un testo breve. */
+    /** Maximum number of [searchTerms] terms, to avoid making too many requests with a short text. */
     const val MAX_TERMS = 12
 
     /**
-     * Termini con cui cercare un nome nel catalogo di una lingua: il testo cercato e, se è il nome di uno o più
-     * Pokémon in un'altra lingua, il loro nome in quella del catalogo. Così "Pikachu" trova ピカチュウ nel catalogo
-     * giapponese. Per le lingue diverse da inglese e giapponese resta solo il testo cercato.
-     * @param query String - testo cercato, così come l'ha scritto l'utente.
-     * @param language Language - lingua del catalogo.
-     * @return List<String> - termini da cercare, il testo originale per primo, al massimo [MAX_TERMS].
+     * Terms to search for a name in the catalog of a language: the searched text and, if it is the name of one or more
+     * Pokémon in another language, their name in the catalog's language. This way "Pikachu" finds ピカチュウ in the
+     * Japanese catalog. For languages other than English and Japanese only the searched text remains.
+     * @param query String - searched text, as written by the user.
+     * @param language Language - language of the catalog.
+     * @return List<String> - terms to search, the original text first, at most [MAX_TERMS].
      */
     fun searchTerms(query: String, language: Language): List<String> {
         val index = when (language) {
@@ -66,17 +66,17 @@ object PokemonNames {
     }
 
     /**
-     * Carica in anticipo i nomi, così la prima ricerca non legge il file sul thread dell'interfaccia.
-     * @return Int - numero di Pokémon caricati.
+     * Preloads the names, so the first search does not read the file on the UI thread.
+     * @return Int - number of Pokémon loaded.
      */
     fun preload(): Int = namesByDex.size
 
     /**
-     * Rende confrontabili due nomi: ignora maiuscole, accenti, punteggiatura e spazi, converte
-     * l'hiragana in katakana e i caratteri a larghezza piena o ridotta nella forma normale.
-     * Es. "Flabébé" → "flabebe", "Mr. Mime" → "mrmime", "くちーと" → "クチート".
-     * @param text String - testo da normalizzare.
-     * @return String - testo normalizzato (può essere vuoto).
+     * Makes two names comparable: ignores case, accents, punctuation and spaces, converts
+     * hiragana to katakana and full-width or half-width characters to the normal form.
+     * E.g. "Flabébé" → "flabebe", "Mr. Mime" → "mrmime", "くちーと" → "クチート".
+     * @param text String - text to normalize.
+     * @return String - normalized text (may be empty).
      */
     fun normalize(text: String): String {
         val folded = Normalizer.normalize(text, Normalizer.Form.NFKC).lowercase()
@@ -88,9 +88,9 @@ object PokemonNames {
     }
 
     /**
-     * Trova i Pokémon il cui nome, in una qualsiasi lingua, contiene il testo cercato.
-     * @param query String - testo cercato, così come l'ha scritto l'utente.
-     * @return Set<Int> - numeri del Pokédex corrispondenti (vuoto se il testo è troppo corto).
+     * Finds the Pokémon whose name, in any language, contains the searched text.
+     * @param query String - searched text, as written by the user.
+     * @return Set<Int> - matching Pokédex numbers (empty if the text is too short).
      */
     fun dexIdsMatching(query: String): Set<Int> {
         val q = normalize(query)
@@ -100,9 +100,9 @@ object PokemonNames {
     }
 
     /**
-     * Trova i Pokémon il cui nome, in una qualsiasi lingua, compare nel testo ("Brock's Golem" → Golem; "Farfetch'd" → Farfetch'd).
-     * @param text String - nome di una carta.
-     * @return Set<Int> - numeri del Pokédex dei nomi trovati (vuoto se non ne compare nessuno).
+     * Finds the Pokémon whose name, in any language, appears in the text ("Brock's Golem" → Golem; "Farfetch'd" → Farfetch'd).
+     * @param text String - name of a card.
+     * @return Set<Int> - Pokédex numbers of the names found (empty if none appears).
      */
     fun dexIdsInName(text: String): Set<Int> {
         val t = normalize(text)
@@ -111,9 +111,9 @@ object PokemonNames {
     }
 
     /**
-     * Indica se un carattere è cinese, giapponese o coreano (un solo carattere vale quanto una sillaba).
-     * @param c Char - carattere da controllare.
-     * @return Boolean - true per ideogrammi, kana e hangul.
+     * Tells whether a character is Chinese, Japanese or Korean (a single character counts as a syllable).
+     * @param c Char - character to check.
+     * @return Boolean - true for ideograms, kana and hangul.
      */
     private fun isCjk(c: Char): Boolean = when (Character.UnicodeScript.of(c.code)) {
         Character.UnicodeScript.HAN, Character.UnicodeScript.HIRAGANA,

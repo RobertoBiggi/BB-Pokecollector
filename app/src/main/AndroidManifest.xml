@@ -29,7 +29,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Ricorda la lingua scelta in Impostazioni su Android 12 e precedenti (da Android 13 se ne occupa il sistema). -->
+        <!-- Remembers the language chosen in Settings on Android 12 and earlier (from Android 13 the system handles it). -->
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
             android:enabled="false"
@@ -39,7 +39,7 @@
                 android:value="true" />
         </service>
 
-        <!-- I worker espressi di WorkManager girano come servizio in primo piano di tipo dataSync. -->
+        <!-- WorkManager expedited workers run as a foreground service of type dataSync. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"

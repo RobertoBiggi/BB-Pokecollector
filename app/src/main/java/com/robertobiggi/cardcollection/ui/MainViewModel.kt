@@ -62,10 +62,10 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Filtro per possesso nella griglia. */
+/** Ownership filter in the grid. */
 enum class OwnedFilter { ALL, OWNED, MISSING }
 
-/** Ordinamento della griglia; [labelRes] è il nome mostrato. */
+/** Grid ordering; [labelRes] is the name shown. */
 enum class SortMode(@StringRes val labelRes: Int) {
     RELEASE(R.string.sort_release),
     PRICE(R.string.sort_price),
@@ -73,7 +73,7 @@ enum class SortMode(@StringRes val labelRes: Int) {
     NAME(R.string.sort_name),
 }
 
-/** Stato dei filtri della collezione. */
+/** State of the collection filters. */
 data class CollectionFilter(
     val query: String = "",
     val owned: OwnedFilter = OwnedFilter.ALL,
@@ -81,13 +81,13 @@ data class CollectionFilter(
     val sort: SortMode = SortMode.RELEASE,
 )
 
-/** Stato della ricerca di carte da aggiungere a mano; [messageRes] è un avviso da mostrare, se c'è. */
+/** State of the search for cards to add by hand; [messageRes] is a notice to show, if any. */
 /**
- * Stato del selettore dei set per le collezioni per set.
- * @property language lingua dei set mostrati.
- * @property loading true mentre l'elenco si scarica.
- * @property sets set disponibili.
- * @property noCatalog true se il database delle carte non è installato.
+ * State of the set picker for set collections.
+ * @property language language of the sets shown.
+ * @property loading true while the list is downloading.
+ * @property sets available sets.
+ * @property noCatalog true if the card database is not installed.
  */
 data class SetPickerState(
     val language: Language = Language.EN,
@@ -96,7 +96,7 @@ data class SetPickerState(
     val noCatalog: Boolean = false,
 )
 
-/** Scaricamento del database delle carte: byte letti e totali (null se il server non li dichiara). */
+/** Download of the card database: bytes read and total (null if the server does not declare them). */
 data class CatalogDownload(val done: Long, val total: Long?)
 
 data class CardSearchState(
@@ -106,31 +106,31 @@ data class CardSearchState(
     @StringRes val messageRes: Int? = null,
 )
 
-/** Azione in corso nel dettaglio di una carta. */
+/** Action in progress in the detail of a card. */
 enum class CardAction { PRICE, DOWNLOAD_IMAGE, PICK_IMAGE }
 
-/** Stato del dialog di un'azione sulla carta: `message` è l'esito, null finché l'azione è in corso. */
+/** State of the dialog of an action on the card: `message` is the outcome, null while the action is in progress. */
 data class CardActionReport(val action: CardAction, val message: UiText? = null)
 
 /**
- * ViewModel unico dell'app: elenco delle collezioni e stato della collezione aperta, letti dal
- * database locale; inoltra le azioni ai repository.
+ * The app's single ViewModel: list of collections and state of the open collection, read from the
+ * local database; forwards the actions to the repositories.
  *
- * @param container dipendenze dell'app.
+ * @param container dependencies of the app.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     private val _selected = MutableStateFlow<Long?>(null)
 
-    /** Collezione aperta, null nell'elenco iniziale. */
+    /** Open collection, null in the initial list. */
     val selected: StateFlow<Long?> = _selected.asStateFlow()
 
     val summaries: StateFlow<List<CollectionSummary>?> = container.collection.summaries.stateInVm(null)
 
     val collectionName: StateFlow<String?> = perCollection { container.collection.name(it) }.stateInVm(null)
 
-    /** Lingua della collezione aperta: valore di CollectionLanguage, null finché non è caricata. */
+    /** Language of the open collection: value of CollectionLanguage, null until loaded. */
     val collectionLanguage: StateFlow<String?> = perCollection { container.collection.language(it) }.stateInVm(null)
     val library: StateFlow<List<CardUi>?> = perCollection { container.collection.library(it) }.stateInVm(null)
     val queries: StateFlow<List<TrackedQueryEntity>> = perCollection(emptyList()) { container.collection.queries(it) }.stateInVm(emptyList())
@@ -139,14 +139,14 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val catalogJob: StateFlow<JobState?> = perCollection { container.work.catalogState(it) }.stateInVm(null)
     val priceJob: StateFlow<JobState?> = perCollection { container.work.priceState(it) }.stateInVm(null)
 
-    /** Database delle carte installato, null se manca. */
+    /** Installed card database, null if missing. */
     val catalogInfo: StateFlow<CatalogInfo?> = container.catalogStore.info
 
     val catalogUrl: StateFlow<String> = container.settings.catalogUrl.stateInVm(SettingsStore.DEFAULT_CATALOG_URL)
 
     private val _catalogDownload = MutableStateFlow<CatalogDownload?>(null)
 
-    /** Scaricamento del database delle carte in corso, null se non c'è. */
+    /** Card database download in progress, null if none. */
     val catalogDownload: StateFlow<CatalogDownload?> = _catalogDownload.asStateFlow()
     val lastCatalogSync: StateFlow<Long> = container.settings.lastCatalogSync.stateInVm(0L)
     val cardTraderToken: StateFlow<String> = container.settings.cardTraderToken.stateInVm("")
@@ -155,13 +155,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val priceAlertsEnabled: StateFlow<Boolean> = container.settings.priceAlertsEnabled.stateInVm(false)
     val priceAlertChangePercent: StateFlow<Int> = container.settings.priceAlertChangePercent.stateInVm(PriceAlertRules.DEFAULT_CHANGE_PERCENT)
 
-    /** Avvisi di prezzo per id della variante. */
+    /** Price alerts by variant id. */
     val priceAlerts: StateFlow<Map<String, PriceAlertEntity>> = container.prices.observeAlerts().stateInVm(emptyMap())
 
     private val _filter = MutableStateFlow(CollectionFilter())
     val filter: StateFlow<CollectionFilter> = _filter.asStateFlow()
 
-    /** Carte della collezione aperta dopo ricerca, filtri e ordinamento (calcolate fuori dal thread UI). */
+    /** Cards of the open collection after search, filters and ordering (computed off the UI thread). */
     val visibleCards: StateFlow<List<CardUi>> = combine(library, _filter) { cards, f -> applyFilter(cards.orEmpty(), f) }
         .flowOn(Dispatchers.Default)
         .stateInVm(emptyList())
@@ -174,16 +174,16 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     private val _cardAction = MutableStateFlow<CardAction?>(null)
 
-    /** Azione sulla carta aperta in corso (prezzo o immagine), null se nessuna. */
+    /** Action on the open card in progress (price or image), null if none. */
     val cardAction: StateFlow<CardAction?> = _cardAction.asStateFlow()
 
     private val _cardReport = MutableStateFlow<CardActionReport?>(null)
 
-    /** Dialog dell'azione sulla carta: avanzamento mentre è in corso, poi l'esito fino a quando l'utente lo chiude. */
+    /** Dialog of the action on the card: progress while it is in progress, then the outcome until the user closes it. */
     val cardReport: StateFlow<CardActionReport?> = _cardReport.asStateFlow()
 
     /**
-     * Chiude il dialog dell'esito.
+     * Closes the outcome dialog.
      * @return Unit
      */
     fun dismissCardReport() {
@@ -196,13 +196,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     private val _messages = MutableSharedFlow<UiText>(extraBufferCapacity = 4)
 
-    /** Messaggi brevi da mostrare in uno snackbar, tradotti al momento della visualizzazione. */
+    /** Short messages to show in a snackbar, translated at display time. */
     val messages: SharedFlow<UiText> = _messages.asSharedFlow()
 
     /**
-     * Accoda un messaggio per lo snackbar.
-     * @param id Int - risorsa stringa.
-     * @param args Any - argomenti del formato.
+     * Queues a message for the snackbar.
+     * @param id Int - string resource.
+     * @param args Any - format arguments.
      * @return Unit
      */
     private fun say(@StringRes id: Int, vararg args: Any) {
@@ -210,33 +210,33 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Converte un flusso in StateFlow legato al ViewModel.
-     * @receiver Flow<T> - flusso di partenza.
-     * @param initial T - valore iniziale.
-     * @return StateFlow<T> - stato condiviso.
+     * Converts a flow into a StateFlow tied to the ViewModel.
+     * @receiver Flow<T> - source flow.
+     * @param initial T - initial value.
+     * @return StateFlow<T> - shared state.
      */
     private fun <T> Flow<T>.stateInVm(initial: T): StateFlow<T> =
         stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial)
 
     /**
-     * Crea un flusso che segue la collezione aperta.
-     * @param empty T - valore quando nessuna collezione è aperta.
-     * @param source (Long) -> Flow<T> - flusso per una collezione.
-     * @return Flow<T> - flusso della collezione corrente.
+     * Creates a flow that follows the open collection.
+     * @param empty T - value when no collection is open.
+     * @param source (Long) -> Flow<T> - flow for a collection.
+     * @return Flow<T> - flow of the current collection.
      */
     private fun <T> perCollection(empty: T, source: (Long) -> Flow<T>): Flow<T> =
         _selected.flatMapLatest { id -> if (id == null) flowOf(empty) else source(id) }
 
     /**
-     * Variante di [perCollection] con valore vuoto null.
-     * @param source (Long) -> Flow<T?> - flusso per una collezione.
-     * @return Flow<T?> - flusso della collezione corrente.
+     * Variant of [perCollection] with null as the empty value.
+     * @param source (Long) -> Flow<T?> - flow for a collection.
+     * @return Flow<T?> - flow of the current collection.
      */
     private fun <T> perCollection(source: (Long) -> Flow<T?>): Flow<T?> = perCollection(null, source)
 
     /**
-     * Apre una collezione (azzera filtri e ricerca se cambia).
-     * @param collectionId Long - collezione.
+     * Opens a collection (resets filters and search if it changes).
+     * @param collectionId Long - collection.
      * @return Unit
      */
     fun open(collectionId: Long) {
@@ -248,8 +248,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Esegue un'azione sulla collezione aperta, se c'è.
-     * @param block suspend (Long) -> Unit - azione.
+     * Runs an action on the open collection, if any.
+     * @param block suspend (Long) -> Unit - action.
      * @return Unit
      */
     private fun withSelected(block: suspend (Long) -> Unit) {
@@ -258,8 +258,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Aggiorna i filtri della collezione.
-     * @param change (CollectionFilter) -> CollectionFilter - modifica.
+     * Updates the collection filters.
+     * @param change (CollectionFilter) -> CollectionFilter - modification.
      * @return Unit
      */
     fun updateFilter(change: (CollectionFilter) -> CollectionFilter) {
@@ -267,7 +267,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Avvia il sync del catalogo della collezione aperta.
+     * Starts the catalog sync of the open collection.
      * @return Unit
      */
     fun startCatalogSync() {
@@ -275,8 +275,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Scarica (o aggiorna) il database delle carte dall'indirizzo indicato nelle impostazioni.
-     * @param url String - indirizzo HTTPS; se è diverso da quello salvato lo ricorda per i prossimi aggiornamenti.
+     * Downloads (or updates) the card database from the address given in the settings.
+     * @param url String - HTTPS address; if different from the saved one it is remembered for the next updates.
      * @return Unit
      */
     fun downloadCatalog(url: String) {
@@ -299,7 +299,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Avvia l'aggiornamento prezzi della collezione aperta.
+     * Starts the price update of the open collection.
      * @return Unit
      */
     fun startPriceCheck() {
@@ -307,11 +307,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Crea una collezione e, se ha una ricerca, ne scarica subito il catalogo.
-     * @param name String - nome.
-     * @param languages List<Language> - lingue della prima ricerca (una ricerca per lingua).
-     * @param pattern String - nomi della prima ricerca, separati da virgole (vuota = nessuna).
-     * @param onResult (InputError?, Long?) -> Unit - riceve l'errore oppure l'id creato.
+     * Creates a collection and, if it has a search, downloads its catalog right away.
+     * @param name String - name.
+     * @param languages List<Language> - languages of the first search (one search per language).
+     * @param pattern String - names of the first search, separated by commas (empty = none).
+     * @param onResult (InputError?, Long?) -> Unit - receives the error or the created id.
      * @return Unit
      */
     fun createCollection(name: String, languages: List<Language>, pattern: String, onResult: (InputError?, Long?) -> Unit) {
@@ -327,9 +327,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Scarica l'elenco dei set di una lingua per il selettore (se non è già caricato).
-     * @param language Language - lingua dei set.
-     * @param force Boolean - true per riscaricarlo anche se presente (es. dopo un errore).
+     * Downloads the list of sets of a language for the picker (if not already loaded).
+     * @param language Language - language of the sets.
+     * @param force Boolean - true to download it again even if present (e.g. after an error).
      * @return Unit
      */
     fun loadSets(language: Language, force: Boolean = false) {
@@ -345,12 +345,12 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Crea una collezione per set e ne scarica subito le carte.
-     * @param name String - nome (vuoto = nome del set).
-     * @param language Language - lingua del catalogo.
-     * @param set SetChoice - set scelto.
-     * @param kind QueryKind - set base o master set.
-     * @param onResult (InputError?, Long?) -> Unit - riceve l'errore oppure l'id creato.
+     * Creates a set collection and downloads its cards right away.
+     * @param name String - name (empty = name of the set).
+     * @param language Language - catalog language.
+     * @param set SetChoice - chosen set.
+     * @param kind QueryKind - base set or master set.
+     * @param onResult (InputError?, Long?) -> Unit - receives the error or the created id.
      * @return Unit
      */
     fun createSetCollection(name: String, language: Language, set: SetChoice, kind: QueryKind, onResult: (InputError?, Long?) -> Unit) {
@@ -366,11 +366,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Aggiunge un set intero alla collezione aperta e ne avvia il download.
-     * @param language Language - lingua del catalogo.
-     * @param set SetChoice - set scelto.
-     * @param kind QueryKind - set base o master set.
-     * @param onResult (InputError?) -> Unit - riceve l'errore, oppure null se aggiunto.
+     * Adds an entire set to the open collection and starts its download.
+     * @param language Language - catalog language.
+     * @param set SetChoice - chosen set.
+     * @param kind QueryKind - base set or master set.
+     * @param onResult (InputError?) -> Unit - receives the error, or null if added.
      * @return Unit
      */
     fun addSetQuery(language: Language, set: SetChoice, kind: QueryKind, onResult: (InputError?) -> Unit) = withSelected { id ->
@@ -383,10 +383,10 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Rinomina una collezione.
-     * @param collectionId Long - collezione.
-     * @param name String - nuovo nome.
-     * @param onResult (InputError?) -> Unit - riceve l'errore, oppure null se rinominata.
+     * Renames a collection.
+     * @param collectionId Long - collection.
+     * @param name String - new name.
+     * @param onResult (InputError?) -> Unit - receives the error, or null if renamed.
      * @return Unit
      */
     fun renameCollection(collectionId: Long, name: String, onResult: (InputError?) -> Unit) {
@@ -394,16 +394,16 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Cambia la lingua della collezione aperta.
-     * @param language Language? - lingua fissa, oppure null per una collezione mista.
+     * Changes the language of the open collection.
+     * @param language Language? - fixed language, or null for a mixed collection.
      * @return Unit
      */
     fun setCollectionLanguage(language: Language?) = withSelected { id -> container.collection.setLanguage(id, language) }
 
     /**
-     * Legge le impostazioni di una collezione per mostrarle nel dialogo.
-     * @param collectionId Long - collezione.
-     * @param onResult (CollectionSettings?) -> Unit - impostazioni, oppure null se la collezione non esiste più.
+     * Reads the settings of a collection to show them in the dialog.
+     * @param collectionId Long - collection.
+     * @param onResult (CollectionSettings?) -> Unit - settings, or null if the collection no longer exists.
      * @return Unit
      */
     fun loadCollectionSettings(collectionId: Long, onResult: (CollectionSettings?) -> Unit) {
@@ -411,11 +411,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Salva nome e lingue di una collezione; se servono carte nuove avvia il sync del catalogo.
-     * @param collectionId Long - collezione.
-     * @param name String - nome.
-     * @param languages Set<Language> - lingue volute.
-     * @param onResult (InputError?) -> Unit - errore da mostrare, oppure null se salvate.
+     * Saves name and languages of a collection; if new cards are needed it starts the catalog sync.
+     * @param collectionId Long - collection.
+     * @param name String - name.
+     * @param languages Set<Language> - wanted languages.
+     * @param onResult (InputError?) -> Unit - error to show, or null if saved.
      * @return Unit
      */
     fun saveCollectionSettings(collectionId: Long, name: String, languages: Set<Language>, onResult: (InputError?) -> Unit) {
@@ -431,8 +431,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Elimina una collezione.
-     * @param collectionId Long - collezione.
+     * Deletes a collection.
+     * @param collectionId Long - collection.
      * @return Unit
      */
     fun deleteCollection(collectionId: Long) {
@@ -444,10 +444,10 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Esporta una collezione nel file scelto.
-     * @param collectionId Long - collezione.
-     * @param uri Uri - destinazione.
-     * @param images ImageExport - immagini da includere.
+     * Exports a collection to the chosen file.
+     * @param collectionId Long - collection.
+     * @param uri Uri - destination.
+     * @param images ImageExport - images to include.
      * @return Unit
      */
     fun exportCollection(collectionId: Long, uri: Uri, images: ImageExport) {
@@ -462,9 +462,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Importa un file come nuova collezione.
-     * @param uri Uri - file sorgente.
-     * @param defaultName String - nome da usare se il file non ne ha uno (già tradotto).
+     * Imports a file as a new collection.
+     * @param uri Uri - source file.
+     * @param defaultName String - name to use if the file has none (already translated).
      * @return Unit
      */
     fun importCollection(uri: Uri, defaultName: String) {
@@ -482,32 +482,32 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Aggiunge o toglie copie di una variante nella collezione aperta, partendo dal valore salvato.
-     * @param variantId String - variante.
-     * @param delta Int - copie da aggiungere (negativo per toglierle).
+     * Adds or removes copies of a variant in the open collection, starting from the saved value.
+     * @param variantId String - variant.
+     * @param delta Int - copies to add (negative to remove them).
      * @return Unit
      */
     fun changeQuantity(variantId: String, delta: Int) = withSelected { container.collection.changeQuantity(it, variantId, delta) }
 
     /**
-     * Imposta la condizione di una variante nella collezione aperta.
-     * @param variantId String - variante.
-     * @param condition Condition - condizione.
+     * Sets the condition of a variant in the open collection.
+     * @param variantId String - variant.
+     * @param condition Condition - condition.
      * @return Unit
      */
     fun setCondition(variantId: String, condition: Condition) = withSelected { container.collection.setCondition(it, variantId, condition) }
 
     /**
-     * Indica se una variante conta come slot nella collezione aperta.
-     * @param variantId String - variante.
-     * @param wanted Boolean - true se desiderata.
+     * Tells whether a variant counts as a slot in the open collection.
+     * @param variantId String - variant.
+     * @param wanted Boolean - true if wanted.
      * @return Unit
      */
     fun setWanted(variantId: String, wanted: Boolean) = withSelected { container.collection.setWanted(it, variantId, wanted) }
 
     /**
-     * Fa contare o no le versioni 1st Edition tra le mancanti e nei totali.
-     * @param counted Boolean - true per contarle.
+     * Makes the 1st Edition versions count or not among the missing and in the totals.
+     * @param counted Boolean - true to count them.
      * @return Unit
      */
     fun setCountFirstEdition(counted: Boolean) {
@@ -515,8 +515,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Attiva o spegne gli avvisi di prezzo e il controllo giornaliero che li verifica.
-     * @param enabled Boolean - true per attivarli.
+     * Turns the price alerts and the daily check that verifies them on or off.
+     * @param enabled Boolean - true to turn them on.
      * @return Unit
      */
     fun setPriceAlertsEnabled(enabled: Boolean) {
@@ -527,8 +527,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Imposta la variazione minima proposta ai nuovi avvisi "il prezzo sale o scende" (ognuno poi ha la sua).
-     * @param percent Int - percentuale (ricondotta ai limiti ammessi).
+     * Sets the minimum change proposed for new "price rises or falls" alerts (each then has its own).
+     * @param percent Int - percentage (brought back to the allowed limits).
      * @return Unit
      */
     fun setPriceAlertChangePercent(percent: Int) {
@@ -536,12 +536,12 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Crea, modifica o toglie l'avviso di prezzo di una variante.
-     * @param variantId String - variante.
-     * @param notifyChanges Boolean - true per l'avviso "sale o scende".
-     * @param changePercent Int - variazione minima scelta per questa variante, in percentuale.
-     * @param targetText String - prezzo obiettivo scritto dall'utente (vuoto = nessuno; virgola o punto).
-     * @return Boolean - false se il prezzo obiettivo non è valido (il campo resta da correggere), true altrimenti.
+     * Creates, modifies or removes the price alert of a variant.
+     * @param variantId String - variant.
+     * @param notifyChanges Boolean - true for the "rises or falls" alert.
+     * @param changePercent Int - minimum change chosen for this variant, in percent.
+     * @param targetText String - target price written by the user (empty = none; comma or period).
+     * @return Boolean - false if the target price is not valid (the field stays to be corrected), true otherwise.
      */
     fun savePriceAlert(variantId: String, notifyChanges: Boolean, changePercent: Int, targetText: String): Boolean {
         val target = if (targetText.isBlank()) null else Validators.parseManualPrice(targetText)?.takeIf { it <= PriceAlertRules.MAX_TARGET_EUR } ?: return false
@@ -553,8 +553,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Toglie l'avviso di prezzo di una variante.
-     * @param variantId String - variante.
+     * Removes the price alert of a variant.
+     * @param variantId String - variant.
      * @return Unit
      */
     fun deletePriceAlert(variantId: String) {
@@ -565,9 +565,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Mostra o nasconde un tipo di prezzo in tutta l'app.
-     * @param kind PriceKind - prezzo da cambiare.
-     * @param shown Boolean - true per mostrarlo.
+     * Shows or hides a type of price throughout the app.
+     * @param kind PriceKind - price to change.
+     * @param shown Boolean - true to show it.
      * @return Unit
      */
     fun setPriceShown(kind: PriceKind, shown: Boolean) {
@@ -575,8 +575,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Salva il token CardTrader cifrato (spazi e a capo ai bordi vengono tolti).
-     * @param input String - testo incollato dall'utente.
+     * Saves the CardTrader token encrypted (spaces and newlines at the edges are removed).
+     * @param input String - text pasted by the user.
      * @return Unit
      */
     fun saveCardTraderToken(input: String) {
@@ -586,10 +586,10 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Valida e salva un prezzo manuale (i prezzi sono condivisi tra le collezioni).
-     * @param variantId String - variante.
-     * @param input String - testo inserito.
-     * @return Boolean - true se valido e salvato.
+     * Validates and saves a manual price (prices are shared among collections).
+     * @param variantId String - variant.
+     * @param input String - text entered.
+     * @return Boolean - true if valid and saved.
      */
     fun addManualPrice(variantId: String, input: String): Boolean {
         val value = Validators.parseManualPrice(input) ?: return false
@@ -601,8 +601,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Aggiorna subito i prezzi di una sola carta.
-     * @param cardId String - carta.
+     * Immediately updates the prices of a single card.
+     * @param cardId String - card.
      * @return Unit
      */
     fun checkCardPrice(cardId: String) = runCardAction(CardAction.PRICE) {
@@ -617,24 +617,24 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Scarica da TCGdex l'immagine ufficiale di una carta; se TCGdex non la ha (o non risponde) e c'è il token CardTrader, la prende da lì.
-     * @param cardId String - carta.
+     * Downloads the official image of a card from TCGdex; if TCGdex does not have it (or does not respond) and there is a CardTrader token, it takes it from there.
+     * @param cardId String - card.
      * @return Unit
      */
     fun downloadCardImage(cardId: String) = runCardAction(CardAction.DOWNLOAD_IMAGE) {
         var result = container.catalog.downloadImage(cardId)
         if (result == ImageResult.NOT_AVAILABLE || result == ImageResult.NETWORK_ERROR) {
             val fromCardTrader = container.prices.downloadImageFromCardTrader(cardId)
-            // Senza token o senza abbinamento resta l'esito di TCGdex, che spiega meglio perché manca.
+            // Without a token or a match the TCGdex outcome stays, which explains better why it is missing.
             if (fromCardTrader == ImageResult.DOWNLOADED) result = fromCardTrader
         }
         report(result.messageRes())
     }
 
     /**
-     * Usa un'immagine scelta dall'utente per una carta.
-     * @param cardId String - carta.
-     * @param uri Uri - immagine scelta con il selettore di sistema.
+     * Uses an image chosen by the user for a card.
+     * @param cardId String - card.
+     * @param uri Uri - image chosen with the system picker.
      * @return Unit
      */
     fun setCardImage(cardId: String, uri: Uri) = runCardAction(CardAction.PICK_IMAGE) {
@@ -642,9 +642,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Esegue un'azione sulla carta aperta, una alla volta, esponendo lo stato in [cardAction].
-     * @param action CardAction - azione da segnalare alla UI.
-     * @param block suspend () -> Unit - lavoro da eseguire.
+     * Runs an action on the open card, one at a time, exposing the state in [cardAction].
+     * @param action CardAction - action to signal to the UI.
+     * @param block suspend () -> Unit - work to run.
      * @return Unit
      */
     private fun runCardAction(action: CardAction, block: suspend () -> Unit) {
@@ -656,17 +656,17 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 block()
             } finally {
                 _cardAction.value = null
-                // Senza esito (azione interrotta) il dialog si chiude da solo.
+                // Without an outcome (action interrupted) the dialog closes by itself.
                 if (_cardReport.value?.message == null) _cardReport.value = null
             }
         }
     }
 
     /**
-     * Aggiunge una ricerca alla collezione aperta.
-     * @param language Language - lingua.
-     * @param pattern String - testo da cercare.
-     * @param onResult (InputError?) -> Unit - riceve l'errore, oppure null se aggiunta.
+     * Adds a search to the open collection.
+     * @param language Language - language.
+     * @param pattern String - text to search.
+     * @param onResult (InputError?) -> Unit - receives the error, or null if added.
      * @return Unit
      */
     fun addQuery(language: Language, pattern: String, onResult: (InputError?) -> Unit) = withSelected { id ->
@@ -676,9 +676,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Attiva o disattiva una ricerca.
-     * @param id Long - ricerca.
-     * @param enabled Boolean - nuovo stato.
+     * Enables or disables a search.
+     * @param id Long - search.
+     * @param enabled Boolean - new state.
      * @return Unit
      */
     fun setQueryEnabled(id: Long, enabled: Boolean) {
@@ -686,8 +686,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Elimina una ricerca.
-     * @param id Long - ricerca.
+     * Deletes a search.
+     * @param id Long - search.
      * @return Unit
      */
     fun deleteQuery(id: Long) {
@@ -695,9 +695,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Cerca nel database delle carte quelle da aggiungere a mano.
-     * @param language Language - lingua.
-     * @param text String - testo da cercare.
+     * Searches the card database for cards to add by hand.
+     * @param language Language - language.
+     * @param text String - text to search.
      * @return Unit
      */
     fun searchCards(language: Language, text: String) {
@@ -716,8 +716,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Aggiunge alla collezione aperta una carta trovata con la ricerca.
-     * @param card CardBrief - carta scelta.
+     * Adds to the open collection a card found with the search.
+     * @param card CardBrief - chosen card.
      * @return Unit
      */
     fun addSingleCard(card: CardBrief, onAdded: () -> Unit = {}) = withSelected { id ->
@@ -733,8 +733,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Toglie una carta dalla collezione aperta.
-     * @param cardId String - carta.
+     * Removes a card from the open collection.
+     * @param cardId String - card.
      * @return Unit
      */
     fun hideCard(cardId: String) = withSelected { id ->
@@ -743,8 +743,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Toglie più carte dalla collezione aperta.
-     * @param cardIds Set<String> - carte.
+     * Removes several cards from the open collection.
+     * @param cardIds Set<String> - cards.
      * @return Unit
      */
     fun hideCards(cardIds: Set<String>) = withSelected { id ->
@@ -753,14 +753,14 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Rimette una carta nella collezione aperta.
-     * @param cardId String - carta.
+     * Puts a card back in the open collection.
+     * @param cardId String - card.
      * @return Unit
      */
     fun restoreCard(cardId: String) = withSelected { container.collection.restoreCard(it, cardId) }
 
     companion object {
-        /** Factory che recupera il contenitore delle dipendenze dall'Application. */
+        /** Factory that gets the dependency container from the Application. */
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = checkNotNull(this[APPLICATION_KEY]) as CardCollectionApp

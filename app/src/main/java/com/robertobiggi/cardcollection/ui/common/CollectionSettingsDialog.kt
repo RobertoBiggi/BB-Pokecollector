@@ -25,12 +25,12 @@ import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.CollectionSettings
 
 /**
- * Impostazioni di una collezione: nome e lingue. Le lingue nuove copiano le ricerche per nome della collezione, quelle tolte
- * eliminano le loro ricerche (con una conferma, perché le carte trovate da quelle ricerche escono dalla collezione).
- * @param settings CollectionSettings - valori attuali.
- * @param error String? - errore da mostrare sotto il nome.
- * @param onDismiss () -> Unit - chiude senza salvare.
- * @param onSave (String, Set<Language>) -> Unit - salva nome e lingue scelte.
+ * Settings of a collection: name and languages. New languages copy the collection's searches by name, removed ones
+ * delete their searches (with a confirmation, because the cards found by those searches leave the collection).
+ * @param settings CollectionSettings - current values.
+ * @param error String? - error to show below the name.
+ * @param onDismiss () -> Unit - closes without saving.
+ * @param onSave (String, Set<Language>) -> Unit - saves the chosen name and languages.
  * @return Unit
  */
 @Composable
@@ -61,7 +61,7 @@ fun CollectionSettingsDialog(settings: CollectionSettings, error: String?, onDis
                         val selected = lang in languages
                         FilterChip(
                             selected = selected,
-                            // Si può togliere una lingua solo se ne resta un'altra, e metterne una nuova solo se c'è una ricerca per nome da copiare.
+                            // A language can be removed only if another one remains, and a new one added only if there is a search by name to copy.
                             enabled = if (selected) languages.size > 1 else settings.canAddLanguage || lang in settings.languages,
                             onClick = { chosen = if (selected) chosen - lang.code else chosen + lang.code },
                             label = { Text(lang.shortLabel()) },

@@ -33,41 +33,41 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 
-/** Errore di un dato inserito dall'utente; la UI lo traduce in un messaggio. */
+/** Error in data entered by the user; the UI translates it into a message. */
 enum class InputError { NAME_EMPTY, QUERY_INVALID, QUERY_DUPLICATE }
 
 /**
- * Impostazioni modificabili di una collezione.
- * @property name nome.
- * @property languages lingue delle ricerche.
- * @property canAddLanguage true se c'è almeno una ricerca per nome da copiare in una lingua nuova.
+ * Editable settings of a collection.
+ * @property name name.
+ * @property languages languages of the searches.
+ * @property canAddLanguage true if there is at least one search by name to copy into a new language.
  */
 data class CollectionSettings(val name: String, val languages: Set<Language>, val canAddLanguage: Boolean)
 
-/** Esito del salvataggio delle impostazioni di una collezione. */
+/** Outcome of saving a collection's settings. */
 sealed interface SettingsResult {
-    /** Salvate; [needsSync] è true se ci sono ricerche nuove da cercare nel catalogo. */
+    /** Saved; [needsSync] is true if there are new searches to look up in the catalog. */
     data class Saved(val needsSync: Boolean) : SettingsResult
 
-    /** Valori non validi. */
+    /** Invalid values. */
     data class Invalid(val error: InputError) : SettingsResult
 }
 
-/** Esito della creazione di una collezione. */
+/** Outcome of creating a collection. */
 sealed interface CreateResult {
-    /** Collezione creata con id [id]. */
+    /** Collection created with id [id]. */
     data class Created(val id: Long) : CreateResult
 
-    /** Dati non validi. */
+    /** Invalid data. */
     data class Invalid(val error: InputError) : CreateResult
 }
 
 /**
- * Collezioni, libreria e modifiche dell'utente (quantità, condizione, slot, ricerche, carte).
+ * Collections, library and user changes (quantity, condition, slot, searches, cards).
  *
- * @param db database dell'app.
- * @param scope scope dell'applicazione, in cui viene condivisa la fotografia del database.
- * @param settings impostazioni: decidono quali prezzi mostrare.
+ * @param db the app's database.
+ * @param scope application scope, in which the database snapshot is shared.
+ * @param settings settings: they decide which prices to show.
  */
 class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, private val settings: SettingsStore, private val images: ImageStore) {
 
@@ -76,9 +76,9 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     private val priceDao = db.priceDao()
 
     /**
-     * Fotografia delle tabelle osservate: si aggiorna a ogni modifica del database. È calcolata una
-     * sola volta per tutti gli osservatori, fuori dal thread dell'interfaccia; durante gli aggiornamenti
-     * prezzi le modifiche ravvicinate vengono accorpate.
+     * Snapshot of the observed tables: updated at every change of the database. It is computed only
+     * once for all observers, off the UI thread; during price updates
+     * close-together changes are merged.
      */
     private val state: Flow<DbState> = combine(
         combine(catalogDao.observeCollections(), catalogDao.observeMemberships(), catalogDao.observeAllQueries(), catalogDao.observeCards()) { c, m, q, cards ->
@@ -105,10 +105,10 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
         .shareIn(scope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), replay = 1)
 
     /**
-     * Ricava un dato dalla fotografia del database fuori dal thread dell'interfaccia, emettendo solo
-     * quando cambia.
-     * @param transform (DbState) -> T - calcolo da eseguire.
-     * @return Flow<T> - risultato aggiornato.
+     * Derives a value from the database snapshot off the UI thread, emitting only
+     * when it changes.
+     * @param transform (DbState) -> T - computation to run.
+     * @return Flow<T> - updated result.
      */
     private fun <T> derive(transform: (DbState) -> T): Flow<T> =
         combine(state, settings.priceVisibility, settings.countFirstEdition) { s, visibility, countFirstEdition ->
@@ -117,10 +117,10 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
             .distinctUntilChanged().flowOn(Dispatchers.Default)
 
     /**
-     * Toglie dalla fotografia i prezzi che l'utente ha nascosto: CardTrader sparisce del tutto, euro e dollari
-     * vengono azzerati nei prezzi che li contengono. I prezzi inseriti a mano contano come Cardmarket.
-     * @param visibility PriceVisibility - prezzi da mostrare.
-     * @return DbState - fotografia con i soli prezzi visibili.
+     * Removes from the snapshot the prices the user has hidden: CardTrader disappears entirely, euros and dollars
+     * are zeroed in the prices that contain them. Manually entered prices count as Cardmarket.
+     * @param visibility PriceVisibility - prices to show.
+     * @return DbState - snapshot with only the visible prices.
      */
     private fun DbState.withVisiblePrices(visibility: PriceVisibility): DbState {
         if (visibility.showsAll) return this
@@ -134,20 +134,20 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
         return copy(snapshots = visible)
     }
 
-    /** Riepiloghi di tutte le collezioni per l'elenco iniziale. */
+    /** Summaries of all collections for the initial list. */
     val summaries: Flow<List<CollectionSummary>> = derive { LibraryAssembler.summaries(it) }
 
     /**
-     * Libreria di una collezione.
-     * @param collectionId Long - collezione.
-     * @return Flow<List<CardUi>> - carte visibili con varianti, quantità e prezzi.
+     * Library of a collection.
+     * @param collectionId Long - collection.
+     * @return Flow<List<CardUi>> - visible cards with variants, quantities and prices.
      */
     fun library(collectionId: Long): Flow<List<CardUi>> = derive { LibraryAssembler.libraryOf(it, collectionId) }
 
     /**
-     * Carte tolte dall'utente da una collezione.
-     * @param collectionId Long - collezione.
-     * @return Flow<List<CardEntity>> - carte nascoste.
+     * Cards removed by the user from a collection.
+     * @param collectionId Long - collection.
+     * @return Flow<List<CardEntity>> - hidden cards.
      */
     fun hiddenCards(collectionId: Long): Flow<List<CardEntity>> = derive { s ->
         val ids = s.memberships.filter { it.collectionId == collectionId && it.hidden }.map { it.cardId }.toSet()
@@ -155,41 +155,41 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Ricerche di una collezione.
-     * @param collectionId Long - collezione.
-     * @return Flow<List<TrackedQueryEntity>> - ricerche.
+     * Searches of a collection.
+     * @param collectionId Long - collection.
+     * @return Flow<List<TrackedQueryEntity>> - searches.
      */
     fun queries(collectionId: Long): Flow<List<TrackedQueryEntity>> = derive { s -> s.queries.filter { it.collectionId == collectionId } }
 
     /**
-     * Ultimi aggiornamenti prezzi di una collezione.
-     * @param collectionId Long - collezione.
-     * @return Flow<List<PriceRunEntity>> - al massimo 10 run, dal più recente.
+     * Latest price updates of a collection.
+     * @param collectionId Long - collection.
+     * @return Flow<List<PriceRunEntity>> - at most 10 runs, most recent first.
      */
     fun runs(collectionId: Long): Flow<List<PriceRunEntity>> = derive { s -> s.runs.filter { it.collectionId == collectionId }.take(10) }
 
     /**
-     * Nome di una collezione.
-     * @param collectionId Long - collezione.
-     * @return Flow<String?> - nome, oppure null se la collezione non esiste più.
+     * Name of a collection.
+     * @param collectionId Long - collection.
+     * @return Flow<String?> - name, or null if the collection no longer exists.
      */
     fun name(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.name }
 
     /**
-     * Lingua di una collezione.
-     * @param collectionId Long - collezione.
-     * @return Flow<String?> - valore di [CollectionLanguage] ("en", "ja" o "mixed"), oppure null se la collezione non esiste più.
+     * Language of a collection.
+     * @param collectionId Long - collection.
+     * @return Flow<String?> - value of [CollectionLanguage] ("en", "ja" or "mixed"), or null if the collection no longer exists.
      */
     fun language(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.language }
 
     /**
-     * Crea una collezione, con una prima ricerca facoltativa.
-     * @param rawName String - nome inserito dall'utente.
-     * @param languages Collection<Language> - lingue della prima ricerca: una ricerca per lingua. La lingua della
-     *        collezione ne è dedotta (una sola tra EN e JP, altrimenti mista).
-     * @param pattern String? - nomi della prima ricerca, anche più d'uno separati da virgole (vuoto = nessuna ricerca):
-     *        per ogni nome e ogni lingua si crea una ricerca.
-     * @return CreateResult - id della collezione creata, oppure l'errore da mostrare.
+     * Creates a collection, with an optional first search.
+     * @param rawName String - name entered by the user.
+     * @param languages Collection<Language> - languages of the first search: one search per language. The language of the
+     *        collection is inferred from them (a single one among EN and JP, otherwise mixed).
+     * @param pattern String? - names of the first search, also more than one separated by commas (empty = no search):
+     *        a search is created for each name and each language.
+     * @return CreateResult - id of the created collection, or the error to show.
      */
     suspend fun createCollection(rawName: String, languages: Collection<Language>, pattern: String?): CreateResult {
         val name = CollectionFiles.cleanName(rawName) ?: return CreateResult.Invalid(InputError.NAME_EMPTY)
@@ -208,18 +208,18 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Cambia la lingua di una collezione. Le ricerche già salvate restano com'erano.
-     * @param collectionId Long - collezione.
-     * @param language Language? - lingua fissa, oppure null per una collezione mista.
+     * Changes the language of a collection. Searches already saved stay as they were.
+     * @param collectionId Long - collection.
+     * @param language Language? - fixed language, or null for a mixed collection.
      * @return Unit
      */
     suspend fun setLanguage(collectionId: Long, language: Language?) =
         catalogDao.setCollectionLanguage(collectionId, CollectionLanguage.codeOf(language))
 
     /**
-     * Legge le impostazioni modificabili di una collezione.
-     * @param collectionId Long - collezione.
-     * @return CollectionSettings? - nome e lingue, oppure null se la collezione non esiste.
+     * Reads the editable settings of a collection.
+     * @param collectionId Long - collection.
+     * @return CollectionSettings? - name and languages, or null if the collection does not exist.
      */
     suspend fun settings(collectionId: Long): CollectionSettings? {
         val name = catalogDao.collectionName(collectionId) ?: return null
@@ -228,13 +228,13 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Salva le impostazioni di una collezione: il nome e le lingue. Le lingue nuove copiano le ricerche per nome,
-     * quelle tolte eliminano le loro ricerche (e le carte che solo quelle ricerche avevano trovato); le quantità restano
-     * salvate e riappaiono se la lingua viene rimessa.
-     * @param collectionId Long - collezione.
-     * @param rawName String - nome voluto.
-     * @param languages Set<Language> - lingue volute, almeno una.
-     * @return SettingsResult - esito: errore sul nome, oppure se le lingue sono cambiate e servono nuove carte.
+     * Saves the settings of a collection: name and languages. New languages copy the searches by name,
+     * removed ones delete their searches (and the cards that only those searches had found); quantities stay
+     * saved and reappear if the language is added back.
+     * @param collectionId Long - collection.
+     * @param rawName String - wanted name.
+     * @param languages Set<Language> - wanted languages, at least one.
+     * @return SettingsResult - outcome: error on the name, or whether the languages changed and new cards are needed.
      */
     suspend fun saveSettings(collectionId: Long, rawName: String, languages: Set<Language>): SettingsResult {
         val name = CollectionFiles.cleanName(rawName) ?: return SettingsResult.Invalid(InputError.NAME_EMPTY)
@@ -254,18 +254,18 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Ricerche di una collezione nella forma che serve per cambiarne le lingue.
-     * @param collectionId Long - collezione.
-     * @return List<LanguageQuery> - ricerche.
+     * Searches of a collection in the form needed to change its languages.
+     * @param collectionId Long - collection.
+     * @return List<LanguageQuery> - searches.
      */
     private suspend fun languageQueries(collectionId: Long): List<LanguageQuery> = catalogDao.queriesOf(collectionId).map {
         LanguageQuery(it.id, Language.fromCode(it.language), it.pattern, QueryKind.fromCode(it.kind) ?: QueryKind.NAME)
     }
 
     /**
-     * Rende unico un nome di collezione aggiungendo " (2)", " (3)"… se serve.
-     * @param name String - nome desiderato.
-     * @return String - nome non ancora usato.
+     * Makes a collection name unique by adding " (2)", " (3)"… if needed.
+     * @param name String - desired name.
+     * @return String - name not yet used.
      */
     suspend fun uniqueName(name: String): String {
         val existing = catalogDao.collectionNames().map { it.lowercase() }.toSet()
@@ -276,10 +276,10 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Rinomina una collezione.
-     * @param collectionId Long - collezione.
-     * @param rawName String - nuovo nome.
-     * @return InputError? - errore, oppure null se rinominata.
+     * Renames a collection.
+     * @param collectionId Long - collection.
+     * @param rawName String - new name.
+     * @return InputError? - error, or null if renamed.
      */
     suspend fun rename(collectionId: Long, rawName: String): InputError? {
         val name = CollectionFiles.cleanName(rawName) ?: return InputError.NAME_EMPTY
@@ -288,9 +288,9 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Elimina una collezione con ricerche, quantità e registro dei prezzi, e toglie dal catalogo le carte (con varianti, prezzi e immagini)
-     * che non appartengono più a nessuna collezione, così i lavori sul catalogo non le cercano più.
-     * @param collectionId Long - collezione.
+     * Deletes a collection with its searches, quantities and price log, and removes from the catalog the cards (with variants, prices and images)
+     * that no longer belong to any collection, so catalog jobs no longer look for them.
+     * @param collectionId Long - collection.
      * @return Unit
      */
     suspend fun delete(collectionId: Long) {
@@ -302,8 +302,8 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Toglie le carte che nessuna collezione contiene più (anche quelle rimaste da collezioni cancellate da versioni precedenti).
-     * @param before Long - millisecondi: si tolgono solo le carte aggiornate prima.
+     * Removes the cards that no collection contains anymore (also those left over from collections deleted by earlier versions).
+     * @param before Long - milliseconds: only cards updated before are removed.
      * @return Unit
      */
     suspend fun purgeOrphanCards(before: Long) {
@@ -320,42 +320,42 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Aggiunge o toglie copie partendo dal valore salvato (non da quello mostrato), così i tocchi
-     * ravvicinati su +/- non si perdono.
-     * @param collectionId Long - collezione.
-     * @param variantId String - variante.
-     * @param delta Int - copie da aggiungere (negativo per toglierle).
+     * Adds or removes copies starting from the saved value (not the displayed one), so close-together
+     * taps on +/- are not lost.
+     * @param collectionId Long - collection.
+     * @param variantId String - variant.
+     * @param delta Int - copies to add (negative to remove them).
      * @return Unit
      */
     suspend fun changeQuantity(collectionId: Long, variantId: String, delta: Int) =
         update(collectionId, variantId) { it.copy(quantity = Validators.clampQuantity(it.quantity + delta)) }
 
     /**
-     * Imposta la condizione della copia posseduta.
-     * @param collectionId Long - collezione.
-     * @param variantId String - variante.
-     * @param condition Condition - nuova condizione.
+     * Sets the condition of the owned copy.
+     * @param collectionId Long - collection.
+     * @param variantId String - variant.
+     * @param condition Condition - new condition.
      * @return Unit
      */
     suspend fun setCondition(collectionId: Long, variantId: String, condition: Condition) =
         update(collectionId, variantId) { it.copy(condition = condition.name) }
 
     /**
-     * Indica se la variante conta come slot della collezione.
-     * @param collectionId Long - collezione.
-     * @param variantId String - variante.
-     * @param wanted Boolean - true se desiderata.
+     * Tells whether the variant counts as a slot of the collection.
+     * @param collectionId Long - collection.
+     * @param variantId String - variant.
+     * @param wanted Boolean - true if wanted.
      * @return Unit
      */
     suspend fun setWanted(collectionId: Long, variantId: String, wanted: Boolean) =
         update(collectionId, variantId) { it.copy(wanted = wanted) }
 
     /**
-     * Aggiunge una ricerca alla collezione dopo averla validata.
-     * @param collectionId Long - collezione.
-     * @param language Language - lingua del catalogo.
-     * @param pattern String - testo da cercare nel nome.
-     * @return InputError? - errore, oppure null se aggiunta.
+     * Adds a search to the collection after validating it.
+     * @param collectionId Long - collection.
+     * @param language Language - catalog language.
+     * @param pattern String - text to search in the name.
+     * @return InputError? - error, or null if added.
      */
     suspend fun addQuery(collectionId: Long, language: Language, pattern: String): InputError? {
         val clean = pattern.trim()
@@ -365,12 +365,12 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Aggiunge alla collezione un set intero (set base o master set).
-     * @param collectionId Long - collezione.
-     * @param language Language - lingua del catalogo.
-     * @param setId String - id del set (es. "base1", "M3", "Pt4").
-     * @param kind QueryKind - [QueryKind.SET_BASE] o [QueryKind.SET_MASTER].
-     * @return InputError? - errore, oppure null se aggiunto.
+     * Adds an entire set to the collection (base set or master set).
+     * @param collectionId Long - collection.
+     * @param language Language - catalog language.
+     * @param setId String - id of the set (e.g. "base1", "M3", "Pt4").
+     * @param kind QueryKind - [QueryKind.SET_BASE] or [QueryKind.SET_MASTER].
+     * @return InputError? - error, or null if added.
      */
     suspend fun addSetQuery(collectionId: Long, language: Language, setId: String, kind: QueryKind): InputError? {
         val clean = setId.trim()
@@ -380,13 +380,13 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Crea una collezione per set: un set intero, come set base o master set.
-     * @param rawName String - nome inserito; se vuoto si usa il nome del set.
-     * @param language Language - lingua del catalogo.
-     * @param setId String - id del set.
-     * @param setName String - nome del set, usato se il nome è vuoto.
-     * @param kind QueryKind - [QueryKind.SET_BASE] o [QueryKind.SET_MASTER].
-     * @return CreateResult - id della collezione creata, oppure l'errore da mostrare.
+     * Creates a set collection: an entire set, as base set or master set.
+     * @param rawName String - name entered; if empty the name of the set is used.
+     * @param language Language - catalog language.
+     * @param setId String - id of the set.
+     * @param setName String - name of the set, used if the name is empty.
+     * @param kind QueryKind - [QueryKind.SET_BASE] or [QueryKind.SET_MASTER].
+     * @return CreateResult - id of the created collection, or the error to show.
      */
     suspend fun createSetCollection(rawName: String, language: Language, setId: String, setName: String, kind: QueryKind): CreateResult {
         val name = CollectionFiles.cleanName(rawName) ?: CollectionFiles.cleanName(setName) ?: return CreateResult.Invalid(InputError.NAME_EMPTY)
@@ -403,41 +403,41 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     /**
-     * Attiva o disattiva una ricerca (le sue carte si nascondono ma le quantità restano).
-     * @param id Long - ricerca.
-     * @param enabled Boolean - nuovo stato.
+     * Enables or disables a search (its cards are hidden but quantities stay).
+     * @param id Long - search.
+     * @param enabled Boolean - new state.
      * @return Unit
      */
     suspend fun setQueryEnabled(id: Long, enabled: Boolean) = catalogDao.setQueryEnabled(id, enabled)
 
     /**
-     * Elimina una ricerca e i collegamenti delle carte che aveva trovato.
-     * @param id Long - ricerca.
+     * Deletes a search and the links of the cards it had found.
+     * @param id Long - search.
      * @return Unit
      */
     suspend fun deleteQuery(id: Long) = catalogDao.deleteQuery(id)
 
     /**
-     * Toglie una carta dalla collezione; il sync non la riaggiunge.
-     * @param collectionId Long - collezione.
-     * @param cardId String - carta.
+     * Removes a card from the collection; the sync does not add it back.
+     * @param collectionId Long - collection.
+     * @param cardId String - card.
      * @return Unit
      */
     suspend fun hideCard(collectionId: Long, cardId: String) = catalogDao.setHidden(collectionId, cardId, true)
 
     /**
-     * Rimette nella collezione una carta tolta in precedenza.
-     * @param collectionId Long - collezione.
-     * @param cardId String - carta.
+     * Puts back in the collection a previously removed card.
+     * @param collectionId Long - collection.
+     * @param cardId String - card.
      * @return Unit
      */
     suspend fun restoreCard(collectionId: Long, cardId: String) = catalogDao.makeManual(collectionId, cardId)
 
     /**
-     * Legge, modifica e salva i dati utente di una variante in una collezione.
-     * @param collectionId Long - collezione.
-     * @param variantId String - variante.
-     * @param change (CollectionEntryEntity) -> CollectionEntryEntity - modifica.
+     * Reads, modifies and saves the user data of a variant in a collection.
+     * @param collectionId Long - collection.
+     * @param variantId String - variant.
+     * @param change (CollectionEntryEntity) -> CollectionEntryEntity - modification.
      * @return Unit
      */
     private suspend fun update(collectionId: Long, variantId: String, change: (CollectionEntryEntity) -> CollectionEntryEntity) {
@@ -448,10 +448,10 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     }
 
     private companion object {
-        /** Tempo per cui la fotografia resta attiva senza osservatori (es. rotazione dello schermo). */
+        /** Time the snapshot stays active without observers (e.g. screen rotation). */
         const val STOP_TIMEOUT_MS = 5_000L
 
-        /** Carte tolte per volta (il limite di SQLite sui parametri è 999). */
+        /** Cards removed at a time (SQLite's limit on parameters is 999). */
         const val PURGE_CHUNK = 500
     }
 }

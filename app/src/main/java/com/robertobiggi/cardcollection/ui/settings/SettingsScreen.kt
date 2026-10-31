@@ -52,7 +52,7 @@ import com.robertobiggi.cardcollection.ui.common.Format
 import com.robertobiggi.cardcollection.ui.common.Section
 import kotlin.math.roundToInt
 
-/** Lingue dell'interfaccia: [tag] vuoto significa "lingua di sistema". */
+/** UI languages: an empty [tag] means "system language". */
 private enum class AppLanguage(val tag: String, val labelRes: Int) {
     SYSTEM("", R.string.app_lang_system),
     ITALIAN("it", R.string.app_lang_it),
@@ -60,10 +60,10 @@ private enum class AppLanguage(val tag: String, val labelRes: Int) {
 }
 
 /**
- * Impostazioni: lingua dell'app, catalogo, avvisi di prezzo, fonti dei prezzi e informazioni sui file JSON.
- * La lingua viene applicata subito da Android (l'activity si ricrea) e ricordata tra un avvio e l'altro.
- * @param vm MainViewModel - stato.
- * @param onBack () -> Unit - torna all'elenco collezioni.
+ * Settings: app language, catalog, price alerts, price sources and information on the JSON files.
+ * The language is applied right away by Android (the activity is recreated) and remembered between launches.
+ * @param vm MainViewModel - state.
+ * @param onBack () -> Unit - returns to the list of collections.
  * @return Unit
  */
 @Composable
@@ -81,7 +81,7 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val alertPercent by vm.priceAlertChangePercent.collectAsStateWithLifecycle()
     var percentDraft by remember(alertPercent) { mutableFloatStateOf(alertPercent.toFloat()) }
     val context = LocalContext.current
-    // Il risultato non serve: se l'utente rifiuta, la sezione mostra che le notifiche sono bloccate.
+    // The result is not needed: if the user refuses, the section shows that notifications are blocked.
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val currentTag = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore('-')
     val current = AppLanguage.entries.firstOrNull { it.tag == currentTag } ?: AppLanguage.SYSTEM
@@ -223,11 +223,11 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
 }
 
 /**
- * Riga con nome, descrizione e interruttore di un tipo di prezzo.
- * @param title String - nome del prezzo.
- * @param description String - da dove arriva.
- * @param checked Boolean - prezzo mostrato.
- * @param onChange (Boolean) -> Unit - nuovo stato scelto.
+ * Row with name, description and switch of a price type.
+ * @param title String - name of the price.
+ * @param description String - where it comes from.
+ * @param checked Boolean - price shown.
+ * @param onChange (Boolean) -> Unit - new state chosen.
  * @return Unit
  */
 @Composable

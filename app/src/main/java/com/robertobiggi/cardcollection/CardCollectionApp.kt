@@ -3,14 +3,14 @@ package com.robertobiggi.cardcollection
 import android.app.Application
 import com.robertobiggi.cardcollection.work.Notifications
 
-/** Applicazione: crea il contenitore delle dipendenze e il canale delle notifiche. */
+/** Application: creates the dependency container and the notification channel. */
 class CardCollectionApp : Application() {
 
     lateinit var container: AppContainer
         private set
 
     /**
-     * Inizializza le dipendenze all'avvio del processo.
+     * Initializes the dependencies when the process starts.
      * @return Unit
      */
     override fun onCreate() {

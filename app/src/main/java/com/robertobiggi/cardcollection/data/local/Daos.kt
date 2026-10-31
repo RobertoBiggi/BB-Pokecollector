@@ -8,127 +8,127 @@ import androidx.room.Update
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
-/** Accesso a collezioni, ricerche, carte e varianti. Tutte le query sono parametrizzate. */
+/** Access to collections, searches, cards and variants. All queries are parameterized. */
 @Dao
 interface CatalogDao {
 
     /**
-     * Osserva tutte le collezioni, in ordine di creazione.
-     * @return Flow<List<CollectionEntity>> - collezioni aggiornate a ogni modifica.
+     * Observes all collections, in creation order.
+     * @return Flow<List<CollectionEntity>> - collections updated at every change.
      */
     @Query("SELECT * FROM collection ORDER BY createdAt")
     fun observeCollections(): Flow<List<CollectionEntity>>
 
     /**
-     * Legge una collezione.
-     * @param id Long - id della riga.
-     * @return CollectionEntity? - collezione, oppure null se non esiste.
+     * Reads a collection.
+     * @param id Long - row id.
+     * @return CollectionEntity? - collection, or null if it does not exist.
      */
     @Query("SELECT * FROM collection WHERE id = :id")
     suspend fun getCollection(id: Long): CollectionEntity?
 
     /**
-     * Elenca i nomi di tutte le collezioni (per renderne unico uno nuovo).
-     * @return List<String> - nomi.
+     * Lists the names of all collections (to make a new one unique).
+     * @return List<String> - names.
      */
     @Query("SELECT name FROM collection")
     suspend fun collectionNames(): List<String>
 
     /**
-     * Legge il nome di una collezione.
-     * @param id Long - collezione.
-     * @return String? - nome, oppure null se non esiste.
+     * Reads the name of a collection.
+     * @param id Long - collection.
+     * @return String? - name, or null if it does not exist.
      */
     @Query("SELECT name FROM collection WHERE id = :id")
     suspend fun collectionName(id: Long): String?
 
     /**
-     * Crea una collezione.
-     * @param collection CollectionEntity - collezione da creare.
-     * @return Long - id assegnato.
+     * Creates a collection.
+     * @param collection CollectionEntity - collection to create.
+     * @return Long - assigned id.
      */
     @Insert
     suspend fun insertCollection(collection: CollectionEntity): Long
 
     /**
-     * Rinomina una collezione.
-     * @param id Long - id della riga.
-     * @param name String - nuovo nome.
+     * Renames a collection.
+     * @param id Long - row id.
+     * @param name String - new name.
      * @return Unit
      */
     @Query("UPDATE collection SET name = :name WHERE id = :id")
     suspend fun renameCollection(id: Long, name: String)
 
     /**
-     * Cambia la lingua di una collezione.
-     * @param id Long - id della riga.
-     * @param language String - valore di CollectionLanguage ("en", "ja" o "mixed").
+     * Changes the language of a collection.
+     * @param id Long - row id.
+     * @param language String - value of CollectionLanguage ("en", "ja" or "mixed").
      * @return Unit
      */
     @Query("UPDATE collection SET language = :language WHERE id = :id")
     suspend fun setCollectionLanguage(id: Long, language: String)
 
     /**
-     * Elimina una collezione; ricerche, appartenenze e quantità vengono eliminate a cascata.
-     * @param id Long - id della riga.
+     * Deletes a collection; searches, memberships and quantities are deleted in cascade.
+     * @param id Long - row id.
      * @return Unit
      */
     @Query("DELETE FROM collection WHERE id = :id")
     suspend fun deleteCollection(id: Long)
 
     /**
-     * Osserva le ricerche di tutte le collezioni.
-     * @return Flow<List<TrackedQueryEntity>> - ricerche ordinate per lingua e testo.
+     * Observes the searches of all collections.
+     * @return Flow<List<TrackedQueryEntity>> - searches ordered by language and text.
      */
     @Query("SELECT * FROM tracked_query ORDER BY language, pattern")
     fun observeAllQueries(): Flow<List<TrackedQueryEntity>>
 
     /**
-     * Elenca le ricerche di una collezione.
-     * @param collectionId Long - collezione.
-     * @return List<TrackedQueryEntity> - ricerche.
+     * Lists the searches of a collection.
+     * @param collectionId Long - collection.
+     * @return List<TrackedQueryEntity> - searches.
      */
     @Query("SELECT * FROM tracked_query WHERE collectionId = :collectionId")
     suspend fun queriesOf(collectionId: Long): List<TrackedQueryEntity>
 
     /**
-     * Elenca le ricerche attive di una collezione.
-     * @param collectionId Long - collezione.
-     * @return List<TrackedQueryEntity> - ricerche attive.
+     * Lists the active searches of a collection.
+     * @param collectionId Long - collection.
+     * @return List<TrackedQueryEntity> - active searches.
      */
     @Query("SELECT * FROM tracked_query WHERE collectionId = :collectionId AND enabled = 1")
     suspend fun enabledQueriesOf(collectionId: Long): List<TrackedQueryEntity>
 
     /**
-     * Aggiunge una ricerca, ignorandola se esiste già nella collezione.
-     * @param query TrackedQueryEntity - ricerca da aggiungere.
-     * @return Long - id assegnato, oppure -1 se duplicata.
+     * Adds a search, ignoring it if it already exists in the collection.
+     * @param query TrackedQueryEntity - search to add.
+     * @return Long - assigned id, or -1 if duplicate.
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertQuery(query: TrackedQueryEntity): Long
 
     /**
-     * Attiva o disattiva una ricerca.
-     * @param id Long - id della riga.
-     * @param enabled Boolean - true per attivarla.
+     * Enables or disables a search.
+     * @param id Long - row id.
+     * @param enabled Boolean - true to enable it.
      * @return Unit
      */
     @Query("UPDATE tracked_query SET enabled = :enabled WHERE id = :id")
     suspend fun setQueryEnabled(id: Long, enabled: Boolean)
 
     /**
-     * Elimina una ricerca.
-     * @param id Long - id della riga.
+     * Deletes a search.
+     * @param id Long - row id.
      * @return Unit
      */
     @Query("DELETE FROM tracked_query WHERE id = :id")
     suspend fun deleteQuery(id: Long)
 
     /**
-     * Elenca le carte che nessuna collezione contiene più e di cui nessuna collezione ha quantità o note, aggiornate prima di [before]
-     * (il margine evita carte appena salvate da un sync che non le ha ancora collegate).
-     * @param before Long - millisecondi: si considerano solo le carte aggiornate prima.
-     * @return List<CardEntity> - carte orfane.
+     * Lists the cards that no collection contains anymore and for which no collection has quantity or notes, updated before [before]
+     * (the margin avoids cards just saved by a sync that has not linked them yet).
+     * @param before Long - milliseconds: only cards updated before are considered.
+     * @return List<CardEntity> - orphan cards.
      */
     @Query(
         "SELECT * FROM card WHERE catalogUpdatedAt < :before AND id NOT IN (SELECT cardId FROM collection_card) " +
@@ -137,32 +137,32 @@ interface CatalogDao {
     suspend fun orphanCards(before: Long): List<CardEntity>
 
     /**
-     * Elimina carte del catalogo; le loro varianti vanno a cascata.
-     * @param ids List<String> - id delle carte.
+     * Deletes catalog cards; their variants go in cascade.
+     * @param ids List<String> - ids of the cards.
      * @return Unit
      */
     @Query("DELETE FROM card WHERE id IN (:ids)")
     suspend fun deleteCards(ids: List<String>)
 
     /**
-     * Osserva tutte le carte del catalogo condiviso.
-     * @return Flow<List<CardEntity>> - carte.
+     * Observes all the cards of the shared catalog.
+     * @return Flow<List<CardEntity>> - cards.
      */
     @Query("SELECT * FROM card")
     fun observeCards(): Flow<List<CardEntity>>
 
     /**
-     * Legge una carta del catalogo.
-     * @param id String - id della riga.
-     * @return CardEntity? - carta, oppure null se non esiste.
+     * Reads a catalog card.
+     * @param id String - row id.
+     * @return CardEntity? - card, or null if it does not exist.
      */
     @Query("SELECT * FROM card WHERE id = :id")
     suspend fun getCard(id: String): CardEntity?
 
     /**
-     * Elenca le carte visibili di una collezione: non nascoste e aggiunte a mano o da una ricerca attiva.
-     * @param collectionId Long - collezione.
-     * @return List<CardEntity> - carte visibili.
+     * Lists the visible cards of a collection: not hidden and added by hand or by an active search.
+     * @param collectionId Long - collection.
+     * @return List<CardEntity> - visible cards.
      */
     @Query(
         "SELECT c.* FROM card c INNER JOIN collection_card cc ON cc.cardId = c.id " +
@@ -172,60 +172,60 @@ interface CatalogDao {
     suspend fun visibleCardsOf(collectionId: Long): List<CardEntity>
 
     /**
-     * Elenca le carte con un URL immagine ma senza tutte le immagini salvate.
-     * @return List<CardEntity> - carte da completare.
+     * Lists the cards with an image URL but without all images saved.
+     * @return List<CardEntity> - cards to complete.
      */
     @Query("SELECT * FROM card WHERE imageUrl IS NOT NULL AND (imageLowPath IS NULL OR imageHighPath IS NULL)")
     suspend fun cardsMissingImages(): List<CardEntity>
 
     /**
-     * Toglie l'URL dell'immagine a una carta che TCGdex non ha (risposta 404), solo se non ha altre immagini: così la carta passa
-     * alle altre fonti (CardTrader) invece di restare per sempre "con un'immagine da scaricare".
-     * @param id String - id della riga.
+     * Removes the image URL from a card that TCGdex does not have (404 response), only if it has no other images: this way the card moves
+     * to the other sources (CardTrader) instead of staying forever "with an image to download".
+     * @param id String - row id.
      * @return Unit
      */
     @Query("UPDATE card SET imageUrl = NULL WHERE id = :id AND imageLowPath IS NULL AND imageHighPath IS NULL")
     suspend fun clearImageUrl(id: String)
 
     /**
-     * Elenca le carte inglesi e giapponesi senza URL immagine né immagini salvate (né scelte a mano).
-     * @return List<CardEntity> - carte per cui si può provare un'altra fonte.
+     * Lists the English and Japanese cards without an image URL or saved images (or manually chosen ones).
+     * @return List<CardEntity> - cards for which another source can be tried.
      */
     @Query("SELECT * FROM card WHERE imageUrl IS NULL AND imageLowPath IS NULL AND imageHighPath IS NULL AND language IN ('en', 'ja')")
     suspend fun cardsWithoutImage(): List<CardEntity>
 
     /**
-     * Inserisce o aggiorna una carta del catalogo.
-     * @param card CardEntity - carta da salvare.
+     * Inserts or updates a catalog card.
+     * @param card CardEntity - card to save.
      * @return Unit
      */
     @Upsert
     suspend fun upsertCard(card: CardEntity)
 
     /**
-     * Salva i percorsi locali delle immagini di una carta.
-     * @param id String - id della riga.
-     * @param low String? - percorso dell'immagine piccola.
-     * @param high String? - percorso dell'immagine grande.
+     * Saves the local image paths of a card.
+     * @param id String - row id.
+     * @param low String? - path of the small image.
+     * @param high String? - path of the large image.
      * @return Unit
      */
     @Query("UPDATE card SET imageLowPath = :low, imageHighPath = :high WHERE id = :id")
     suspend fun setImagePaths(id: String, low: String?, high: String?)
 
     /**
-     * Completa i percorsi delle immagini mancanti senza toccare quelli già salvati (anche da un altro lavoro nel frattempo).
-     * @param id String - id della riga.
-     * @param low String? - percorso dell'immagine piccola appena scaricata.
-     * @param high String? - percorso dell'immagine grande appena scaricata.
+     * Fills in the missing image paths without touching those already saved (even by another job in the meantime).
+     * @param id String - row id.
+     * @param low String? - path of the small image just downloaded.
+     * @param high String? - path of the large image just downloaded.
      * @return Unit
      */
     @Query("UPDATE card SET imageLowPath = COALESCE(imageLowPath, :low), imageHighPath = COALESCE(imageHighPath, :high) WHERE id = :id")
     suspend fun fillImagePaths(id: String, low: String?, high: String?)
 
     /**
-     * Dimentica un percorso d'immagine il cui file non esiste più, solo se è ancora quello salvato.
-     * @param id String - id della riga.
-     * @param path String - percorso da togliere.
+     * Forgets an image path whose file no longer exists, only if it is still the saved one.
+     * @param id String - row id.
+     * @param path String - path to remove.
      * @return Unit
      */
     @Query(
@@ -235,122 +235,122 @@ interface CatalogDao {
     suspend fun forgetImagePath(id: String, path: String)
 
     /**
-     * Elenca le carte con almeno un percorso d'immagine salvato.
-     * @return List<CardEntity> - carte da controllare.
+     * Lists the cards with at least one saved image path.
+     * @return List<CardEntity> - cards to check.
      */
     @Query("SELECT * FROM card WHERE imageLowPath IS NOT NULL OR imageHighPath IS NOT NULL")
     suspend fun cardsWithImagePaths(): List<CardEntity>
 
     /**
-     * Imposta il numero del Pokédex di una carta solo se non è ancora noto.
-     * @param id String - id della riga.
-     * @param dexId Int - numero del Pokédex.
+     * Sets the Pokédex number of a card only if it is not known yet.
+     * @param id String - row id.
+     * @param dexId Int - Pokédex number.
      * @return Unit
      */
     @Query("UPDATE card SET dexId = :dexId WHERE id = :id AND dexId IS NULL")
     suspend fun fillDexId(id: String, dexId: Int)
 
     /**
-     * Aggiunge varianti, ignorando quelle già presenti.
-     * @param variants List<CardVariantEntity> - varianti da aggiungere.
+     * Adds variants, ignoring those already present.
+     * @param variants List<CardVariantEntity> - variants to add.
      * @return Unit
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertVariants(variants: List<CardVariantEntity>)
 
     /**
-     * Salva il prodotto Cardmarket di una stampa a parte (anche su una variante già presente, per esempio importata da un file).
-     * @param variantId String - variante.
-     * @param cardmarketId Int - prodotto Cardmarket.
+     * Saves the Cardmarket product of a separate print (also on an already present variant, for example imported from a file).
+     * @param variantId String - variant.
+     * @param cardmarketId Int - Cardmarket product.
      */
     @Query("UPDATE card_variant SET cardmarketId = :cardmarketId WHERE id = :variantId")
     suspend fun setVariantProduct(variantId: String, cardmarketId: Int)
 
     /**
-     * Imposta il blueprint CardTrader di una variante (oversize senza prodotto Cardmarket), anche se era già nel database.
-     * @param variantId String - id della variante.
-     * @param blueprintId Int - blueprint CardTrader.
+     * Sets the CardTrader blueprint of a variant (oversized card without a Cardmarket product), even if it was already in the database.
+     * @param variantId String - id of the variant.
+     * @param blueprintId Int - CardTrader blueprint.
      */
     @Query("UPDATE card_variant SET cardTraderBlueprintId = :blueprintId WHERE id = :variantId")
     suspend fun setVariantBlueprint(variantId: String, blueprintId: Int)
 
     /**
-     * Toglie le varianti che il catalogo non elenca più (es. una reverse holo dedotta male), tranne quelle di cui l'utente
-     * possiede delle copie o ha scritto delle note.
-     * @param cardId String - carta.
-     * @param types List<String> - tipi di variante da tenere.
+     * Removes the variants that the catalog no longer lists (e.g. a wrongly inferred reverse holo), except those of which the user
+     * owns copies or has written notes.
+     * @param cardId String - card.
+     * @param types List<String> - variant types to keep.
      */
     @Query("DELETE FROM card_variant WHERE cardId = :cardId AND id NOT IN (:keepIds) AND id NOT IN (SELECT variantId FROM collection_entry WHERE quantity > 0 OR notes IS NOT NULL)")
     suspend fun deleteStaleVariants(cardId: String, keepIds: List<String>)
 
     /**
-     * Osserva tutte le varianti del catalogo.
-     * @return Flow<List<CardVariantEntity>> - varianti.
+     * Observes all the variants of the catalog.
+     * @return Flow<List<CardVariantEntity>> - variants.
      */
     @Query("SELECT * FROM card_variant")
     fun observeVariants(): Flow<List<CardVariantEntity>>
 
     /**
-     * Elenca le varianti di alcune carte.
-     * @param cardIds List<String> - id delle carte.
-     * @return List<CardVariantEntity> - varianti.
+     * Lists the variants of some cards.
+     * @param cardIds List<String> - ids of the cards.
+     * @return List<CardVariantEntity> - variants.
      */
     @Query("SELECT * FROM card_variant WHERE cardId IN (:cardIds)")
     suspend fun variantsOf(cardIds: List<String>): List<CardVariantEntity>
 
     /**
-     * Legge alcune varianti dal loro id.
-     * @param ids List<String> - id delle varianti.
-     * @return List<CardVariantEntity> - varianti trovate.
+     * Reads some variants from their id.
+     * @param ids List<String> - ids of the variants.
+     * @return List<CardVariantEntity> - variants found.
      */
     @Query("SELECT * FROM card_variant WHERE id IN (:ids)")
     suspend fun variantsByIds(ids: List<String>): List<CardVariantEntity>
 
     /**
-     * Prima collezione (per id) che contiene una carta, per aprirne il dettaglio da una notifica.
-     * @param cardId String - carta.
-     * @return Long? - id della collezione, oppure null se nessuna la contiene.
+     * First collection (by id) that contains a card, to open its detail from a notification.
+     * @param cardId String - card.
+     * @return Long? - id of the collection, or null if none contains it.
      */
     @Query("SELECT collectionId FROM collection_card WHERE cardId = :cardId ORDER BY hidden ASC, collectionId ASC LIMIT 1")
     suspend fun collectionOfCard(cardId: String): Long?
 
     /**
-     * Osserva le appartenenze carta ↔ collezione di tutte le collezioni.
-     * @return Flow<List<CollectionCardEntity>> - appartenenze.
+     * Observes the card ↔ collection memberships of all collections.
+     * @return Flow<List<CollectionCardEntity>> - memberships.
      */
     @Query("SELECT * FROM collection_card")
     fun observeMemberships(): Flow<List<CollectionCardEntity>>
 
     /**
-     * Elenca le appartenenze di una collezione.
-     * @param collectionId Long - collezione.
-     * @return List<CollectionCardEntity> - appartenenze.
+     * Lists the memberships of a collection.
+     * @param collectionId Long - collection.
+     * @return List<CollectionCardEntity> - memberships.
      */
     @Query("SELECT * FROM collection_card WHERE collectionId = :collectionId")
     suspend fun membershipsOf(collectionId: Long): List<CollectionCardEntity>
 
     /**
-     * Collega una carta a una collezione, ignorando i collegamenti già presenti.
-     * @param membership CollectionCardEntity - collegamento da aggiungere.
-     * @return Long - id della riga, oppure -1 se esisteva già.
+     * Links a card to a collection, ignoring links already present.
+     * @param membership CollectionCardEntity - link to add.
+     * @return Long - row id, or -1 if it already existed.
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertMembership(membership: CollectionCardEntity): Long
 
     /**
-     * Nasconde o rimette una carta in una collezione.
-     * @param collectionId Long - collezione.
-     * @param cardId String - carta.
-     * @param hidden Boolean - true per nasconderla.
+     * Hides or restores a card in a collection.
+     * @param collectionId Long - collection.
+     * @param cardId String - card.
+     * @param hidden Boolean - true to hide it.
      * @return Unit
      */
     @Query("UPDATE collection_card SET hidden = :hidden WHERE collectionId = :collectionId AND cardId = :cardId")
     suspend fun setHidden(collectionId: Long, cardId: String, hidden: Boolean)
 
     /**
-     * Toglie da una collezione le carte trovate da una ricerca che il catalogo non indica più, se non hanno copie, note né sono volute.
-     * @param collectionId Long - collezione.
-     * @param cardIds List<String> - carte da togliere.
+     * Removes from a collection the cards found by a search that the catalog no longer lists, if they have no copies, notes and are not wanted.
+     * @param collectionId Long - collection.
+     * @param cardIds List<String> - cards to remove.
      * @return Unit
      */
     @Query(
@@ -361,197 +361,197 @@ interface CatalogDao {
     suspend fun dropStaleMemberships(collectionId: Long, cardIds: List<String>)
 
     /**
-     * Rende visibile una carta come aggiunta a mano (non dipende più da una ricerca).
-     * @param collectionId Long - collezione.
-     * @param cardId String - carta.
+     * Makes a card visible as added by hand (no longer depends on a search).
+     * @param collectionId Long - collection.
+     * @param cardId String - card.
      * @return Unit
      */
     @Query("UPDATE collection_card SET hidden = 0, queryId = NULL WHERE collectionId = :collectionId AND cardId = :cardId")
     suspend fun makeManual(collectionId: Long, cardId: String)
 }
 
-/** Accesso ai dati dell'utente (quantità, condizione, slot desiderati), separati per collezione. */
+/** Access to the user data (quantity, condition, wanted slots), separate per collection. */
 @Dao
 interface CollectionDao {
 
     /**
-     * Osserva i dati dell'utente di tutte le collezioni.
-     * @return Flow<List<CollectionEntryEntity>> - voci.
+     * Observes the user data of all collections.
+     * @return Flow<List<CollectionEntryEntity>> - entries.
      */
     @Query("SELECT * FROM collection_entry")
     fun observeEntries(): Flow<List<CollectionEntryEntity>>
 
     /**
-     * Elenca i dati dell'utente di una collezione.
-     * @param collectionId Long - collezione.
-     * @return List<CollectionEntryEntity> - voci.
+     * Lists the user data of a collection.
+     * @param collectionId Long - collection.
+     * @return List<CollectionEntryEntity> - entries.
      */
     @Query("SELECT * FROM collection_entry WHERE collectionId = :collectionId")
     suspend fun entriesOf(collectionId: Long): List<CollectionEntryEntity>
 
     /**
-     * Legge i dati dell'utente per una variante di una collezione.
-     * @param collectionId Long - collezione.
-     * @param variantId String - variante.
-     * @return CollectionEntryEntity? - voce, oppure null se mai modificata.
+     * Reads the user data for a variant of a collection.
+     * @param collectionId Long - collection.
+     * @param variantId String - variant.
+     * @return CollectionEntryEntity? - entry, or null if never modified.
      */
     @Query("SELECT * FROM collection_entry WHERE collectionId = :collectionId AND variantId = :variantId")
     suspend fun getEntry(collectionId: Long, variantId: String): CollectionEntryEntity?
 
     /**
-     * Elenca i dati dell'utente per una variante, in tutte le collezioni.
-     * @param variantId String - variante.
-     * @return List<CollectionEntryEntity> - dati.
+     * Lists the user data for a variant, in all collections.
+     * @param variantId String - variant.
+     * @return List<CollectionEntryEntity> - data.
      */
     @Query("SELECT * FROM collection_entry WHERE variantId = :variantId")
     suspend fun entriesOfVariant(variantId: String): List<CollectionEntryEntity>
 
     /**
-     * Cancella i dati dell'utente per una variante, in tutte le collezioni.
-     * @param variantId String - variante.
+     * Deletes the user data for a variant, in all collections.
+     * @param variantId String - variant.
      * @return Unit
      */
     @Query("DELETE FROM collection_entry WHERE variantId = :variantId")
     suspend fun deleteEntriesOfVariant(variantId: String)
 
     /**
-     * Inserisce o aggiorna i dati dell'utente per una variante.
-     * @param entry CollectionEntryEntity - voce da salvare.
+     * Inserts or updates the user data for a variant.
+     * @param entry CollectionEntryEntity - entry to save.
      * @return Unit
      */
     @Upsert
     suspend fun upsertEntry(entry: CollectionEntryEntity)
 
     /**
-     * Inserisce o aggiorna più voci dell'utente.
-     * @param entries List<CollectionEntryEntity> - voci da salvare.
+     * Inserts or updates several user entries.
+     * @param entries List<CollectionEntryEntity> - entries to save.
      * @return Unit
      */
     @Upsert
     suspend fun upsertEntries(entries: List<CollectionEntryEntity>)
 
     /**
-     * Inserisce le voci che non esistono ancora, lasciando invariate quelle già salvate (scelte dell'utente comprese).
-     * @param entries List<CollectionEntryEntity> - voci da aggiungere.
+     * Inserts the entries that do not exist yet, leaving unchanged those already saved (user choices included).
+     * @param entries List<CollectionEntryEntity> - entries to add.
      * @return Unit
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertEntriesIfAbsent(entries: List<CollectionEntryEntity>)
 }
 
-/** Accesso a prezzi e registro degli aggiornamenti. */
+/** Access to prices and the update log. */
 @Dao
 interface PriceDao {
 
     /**
-     * Osserva gli avvisi di prezzo delle varianti ancora presenti.
-     * @return Flow<List<PriceAlertEntity>> - avvisi.
+     * Observes the price alerts of the variants still present.
+     * @return Flow<List<PriceAlertEntity>> - alerts.
      */
     @Query("SELECT * FROM price_alert WHERE variantId IN (SELECT id FROM card_variant)")
     fun observeAlerts(): Flow<List<PriceAlertEntity>>
 
     /**
-     * Elenca gli avvisi di prezzo delle varianti ancora presenti.
-     * @return List<PriceAlertEntity> - avvisi.
+     * Lists the price alerts of the variants still present.
+     * @return List<PriceAlertEntity> - alerts.
      */
     @Query("SELECT * FROM price_alert WHERE variantId IN (SELECT id FROM card_variant)")
     suspend fun alerts(): List<PriceAlertEntity>
 
     /**
-     * Legge l'avviso di prezzo di una variante.
-     * @param variantId String - variante.
-     * @return PriceAlertEntity? - avviso, oppure null se non c'è.
+     * Reads the price alert of a variant.
+     * @param variantId String - variant.
+     * @return PriceAlertEntity? - alert, or null if there is none.
      */
     @Query("SELECT * FROM price_alert WHERE variantId = :variantId")
     suspend fun getAlert(variantId: String): PriceAlertEntity?
 
     /**
-     * Crea o sostituisce l'avviso di prezzo di una variante.
-     * @param alert PriceAlertEntity - avviso.
+     * Creates or replaces the price alert of a variant.
+     * @param alert PriceAlertEntity - alert.
      * @return Unit
      */
     @Upsert
     suspend fun upsertAlert(alert: PriceAlertEntity)
 
     /**
-     * Toglie l'avviso di prezzo di una variante.
-     * @param variantId String - variante.
+     * Removes the price alert of a variant.
+     * @param variantId String - variant.
      * @return Unit
      */
     @Query("DELETE FROM price_alert WHERE variantId = :variantId")
     suspend fun deleteAlert(variantId: String)
 
     /**
-     * Salva lo stato di un avviso dopo il controllo giornaliero, senza toccare le scelte dell'utente.
-     * @param variantId String - variante.
-     * @param baselines String - prezzi di riferimento codificati.
-     * @param targetReached Boolean - true se l'avviso del prezzo obiettivo è partito.
-     * @param checkedAt Long - istante del controllo.
+     * Saves the state of an alert after the daily check, without touching the user's choices.
+     * @param variantId String - variant.
+     * @param baselines String - encoded reference prices.
+     * @param targetReached Boolean - true if the target price alert has been sent.
+     * @param checkedAt Long - instant of the check.
      * @return Unit
      */
     @Query("UPDATE price_alert SET baselines = :baselines, targetReached = :targetReached, lastCheckedAt = :checkedAt WHERE variantId = :variantId")
     suspend fun updateAlertState(variantId: String, baselines: String, targetReached: Boolean, checkedAt: Long)
 
     /**
-     * Toglie gli avvisi delle varianti di alcune carte (carte tolte dal catalogo).
-     * @param cardIds List<String> - id delle carte.
+     * Removes the alerts of the variants of some cards (cards removed from the catalog).
+     * @param cardIds List<String> - ids of the cards.
      * @return Unit
      */
     @Query("DELETE FROM price_alert WHERE variantId IN (SELECT id FROM card_variant WHERE cardId IN (:cardIds))")
     suspend fun deleteAlertsOfCards(cardIds: List<String>)
 
     /**
-     * Elimina i prezzi salvati per le varianti di alcune carte.
-     * @param cardIds List<String> - id delle carte.
+     * Deletes the saved prices for the variants of some cards.
+     * @param cardIds List<String> - ids of the cards.
      * @return Unit
      */
     @Query("DELETE FROM price_snapshot WHERE variantId IN (SELECT id FROM card_variant WHERE cardId IN (:cardIds))")
     suspend fun deleteSnapshotsOfCards(cardIds: List<String>)
 
     /**
-     * Elimina il registro degli aggiornamenti prezzi di una collezione.
-     * @param collectionId Long - collezione.
+     * Deletes the price update log of a collection.
+     * @param collectionId Long - collection.
      * @return Unit
      */
     @Query("DELETE FROM price_run WHERE collectionId = :collectionId")
     suspend fun deleteRunsOf(collectionId: Long)
 
     /**
-     * Osserva tutti i prezzi salvati, dal più vecchio al più recente.
-     * @return Flow<List<PriceSnapshotEntity>> - prezzi.
+     * Observes all saved prices, from oldest to most recent.
+     * @return Flow<List<PriceSnapshotEntity>> - prices.
      */
     @Query("SELECT * FROM price_snapshot ORDER BY fetchedAt ASC")
     fun observeSnapshots(): Flow<List<PriceSnapshotEntity>>
 
     /**
-     * Elenca i prezzi di alcune varianti, dal più vecchio al più recente.
-     * @param variantIds List<String> - id delle varianti.
-     * @return List<PriceSnapshotEntity> - prezzi.
+     * Lists the prices of some variants, from oldest to most recent.
+     * @param variantIds List<String> - ids of the variants.
+     * @return List<PriceSnapshotEntity> - prices.
      */
     @Query("SELECT * FROM price_snapshot WHERE variantId IN (:variantIds) ORDER BY fetchedAt ASC")
     suspend fun snapshotsOf(variantIds: List<String>): List<PriceSnapshotEntity>
 
     /**
-     * Salva un prezzo.
-     * @param snapshot PriceSnapshotEntity - prezzo da salvare.
-     * @return Long - id assegnato.
+     * Saves a price.
+     * @param snapshot PriceSnapshotEntity - price to save.
+     * @return Long - assigned id.
      */
     @Insert
     suspend fun insertSnapshot(snapshot: PriceSnapshotEntity): Long
 
     /**
-     * Cancella i prezzi di una variante che vengono da una fonte.
-     * @param variantId String - variante.
-     * @param source String - fonte dei prezzi da cancellare.
+     * Deletes the prices of a variant that come from a source.
+     * @param variantId String - variant.
+     * @param source String - source of the prices to delete.
      * @return Unit
      */
     @Query("DELETE FROM price_snapshot WHERE variantId = :variantId AND source = :source")
     suspend fun deleteSnapshotsOf(variantId: String, source: String)
 
     /**
-     * Tiene solo i prezzi più recenti di una variante.
-     * @param variantId String - variante.
-     * @param keep Int - quanti tenerne.
+     * Keeps only the most recent prices of a variant.
+     * @param variantId String - variant.
+     * @param keep Int - how many to keep.
      * @return Unit
      */
     @Query(
@@ -561,42 +561,42 @@ interface PriceDao {
     suspend fun pruneSnapshots(variantId: String, keep: Int)
 
     /**
-     * Conta i prezzi identici (stessa variante, fonte e data), per non importare doppioni.
-     * @param variantId String - variante.
-     * @param source String - fonte del prezzo.
-     * @param fetchedAt Long - data del prezzo in millisecondi.
-     * @return Int - numero di prezzi trovati.
+     * Counts identical prices (same variant, source and date), to avoid importing duplicates.
+     * @param variantId String - variant.
+     * @param source String - source of the price.
+     * @param fetchedAt Long - date of the price in milliseconds.
+     * @return Int - number of prices found.
      */
     @Query("SELECT COUNT(*) FROM price_snapshot WHERE variantId = :variantId AND source = :source AND fetchedAt = :fetchedAt")
     suspend fun countSnapshot(variantId: String, source: String, fetchedAt: Long): Int
 
     /**
-     * Registra l'inizio di un aggiornamento prezzi.
-     * @param run PriceRunEntity - aggiornamento da salvare.
-     * @return Long - id assegnato.
+     * Records the start of a price update.
+     * @param run PriceRunEntity - update to save.
+     * @return Long - assigned id.
      */
     @Insert
     suspend fun insertRun(run: PriceRunEntity): Long
 
     /**
-     * Aggiorna il registro di un aggiornamento prezzi.
-     * @param run PriceRunEntity - aggiornamento da salvare.
+     * Updates the log of a price update.
+     * @param run PriceRunEntity - update to save.
      * @return Unit
      */
     @Update
     suspend fun updateRun(run: PriceRunEntity)
 
     /**
-     * Osserva il registro degli aggiornamenti prezzi, dal più recente.
-     * @return Flow<List<PriceRunEntity>> - aggiornamenti.
+     * Observes the log of price updates, most recent first.
+     * @return Flow<List<PriceRunEntity>> - updates.
      */
     @Query("SELECT * FROM price_run ORDER BY startedAt DESC")
     fun observeRuns(): Flow<List<PriceRunEntity>>
 
     /**
-     * Tiene solo gli aggiornamenti prezzi più recenti di una collezione.
-     * @param collectionId Long - collezione.
-     * @param keep Int - quanti tenerne.
+     * Keeps only the most recent price updates of a collection.
+     * @param collectionId Long - collection.
+     * @param keep Int - how many to keep.
      * @return Unit
      */
     @Query(

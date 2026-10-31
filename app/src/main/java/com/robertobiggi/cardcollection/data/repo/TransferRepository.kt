@@ -30,33 +30,33 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.time.Instant
 
-/** Errore di accesso al file scelto dall'utente. */
+/** Error accessing the file chosen by the user. */
 enum class FileError { NOT_FOUND, OPEN_FAILED, PERMISSION_DENIED }
 
-/** Esito dell'export di una collezione. */
+/** Outcome of exporting a collection. */
 sealed interface ExportResult {
-    /** File scritto con [cards] carte, di cui [withImages] con immagine incorporata. */
+    /** File written with [cards] cards, of which [withImages] with an embedded image. */
     data class Done(val cards: Int, val withImages: Int) : ExportResult
 
-    /** Export non riuscito. */
+    /** Export failed. */
     data class Failed(val error: FileError) : ExportResult
 }
 
-/** Esito dell'import di una collezione. */
+/** Outcome of importing a collection. */
 sealed interface ImportOutcome {
-    /** Collezione [name] creata con id [collectionId]; [skipped] voci non valide ignorate. */
+    /** Collection [name] created with id [collectionId]; [skipped] invalid entries ignored. */
     data class Done(val collectionId: Long, val name: String, val cards: Int, val images: Int, val skipped: Int) : ImportOutcome
 
-    /** Il file non è un JSON di collezione valido. */
+    /** The file is not a valid collection JSON. */
     data class Invalid(val error: ImportError) : ImportOutcome
 
-    /** Il file non si può leggere. */
+    /** The file cannot be read. */
     data class Failed(val error: FileError) : ImportOutcome
 }
 
 /**
- * Esporta e importa singole collezioni in file JSON (con o senza immagini) scelti dall'utente
- * tramite Storage Access Framework.
+ * Exports and imports single collections as JSON files (with or without images) chosen by the user
+ * through the Storage Access Framework.
  */
 class TransferRepository(
     private val db: AppDatabase,
@@ -68,11 +68,11 @@ class TransferRepository(
     private val catalogDao = db.catalogDao()
 
     /**
-     * Esporta una collezione: ricerche, carte del catalogo, quantità, ultimi prezzi e prezzi manuali.
-     * @param collectionId Long - collezione da esportare.
-     * @param uri Uri - file scelto con ACTION_CREATE_DOCUMENT.
-     * @param imageExport ImageExport - quali immagini incorporare.
-     * @return ExportResult - carte esportate oppure errore sul file.
+     * Exports a collection: searches, catalog cards, quantities, latest prices and manual prices.
+     * @param collectionId Long - collection to export.
+     * @param uri Uri - file chosen with ACTION_CREATE_DOCUMENT.
+     * @param imageExport ImageExport - which images to embed.
+     * @return ExportResult - cards exported or file error.
      */
     suspend fun export(collectionId: Long, uri: Uri, imageExport: ImageExport): ExportResult = withContext(Dispatchers.IO) {
         val collection = catalogDao.getCollection(collectionId) ?: return@withContext ExportResult.Failed(FileError.NOT_FOUND)
@@ -116,11 +116,11 @@ class TransferRepository(
     }
 
     /**
-     * Importa un file come nuova collezione. Accetta file schema 2 (con o senza immagini) e i backup
-     * della prima versione.
-     * @param uri Uri - file scelto con ACTION_OPEN_DOCUMENT.
-     * @param defaultName String - nome da usare se il file non ne ha uno (backup della prima versione).
-     * @return ImportOutcome - collezione creata oppure motivo del fallimento.
+     * Imports a file as a new collection. Accepts schema 2 files (with or without images) and first-version
+     * backups.
+     * @param uri Uri - file chosen with ACTION_OPEN_DOCUMENT.
+     * @param defaultName String - name to use if the file has none (first-version backup).
+     * @return ImportOutcome - collection created or reason for the failure.
      */
     suspend fun import(uri: Uri, defaultName: String): ImportOutcome = withContext(Dispatchers.IO) {
         val result = try {
@@ -142,11 +142,11 @@ class TransferRepository(
     }
 
     /**
-     * Scrive la collezione importata nel database in un'unica transazione.
-     * Le carte già presenti nel catalogo non vengono sovrascritte.
-     * @param imported ImportedCollection - dati validati.
-     * @param desiredName String - nome da dare alla collezione (reso unico se serve).
-     * @return Pair<Long, String> - id e nome effettivo della nuova collezione.
+     * Writes the imported collection to the database in a single transaction.
+     * Cards already in the catalog are not overwritten.
+     * @param imported ImportedCollection - validated data.
+     * @param desiredName String - name to give the collection (made unique if needed).
+     * @return Pair<Long, String> - id and actual name of the new collection.
      */
     private suspend fun apply(imported: ImportedCollection, desiredName: String): Pair<Long, String> = db.withTransaction {
         val name = collections.uniqueName(desiredName)
@@ -158,8 +158,8 @@ class TransferRepository(
             if (catalogDao.getCard(c.card.id) == null) {
                 catalog.saveCard(c.card, legacyQueryId = 0)
             } else {
-                // Carta già nel catalogo: non si sovrascrive, ma si aggiungono le varianti mancanti
-                // (altrimenti le quantità importate non sarebbero visibili) e il numero del Pokédex.
+                // Card already in the catalog: it is not overwritten, but the missing variants are added
+                // (otherwise the imported quantities would not be visible) and the Pokédex number.
                 catalogDao.insertVariants(c.card.variants.map { CardVariantEntity(Ids.variantId(c.card.id, it.type, it.print), c.card.id, it.type.name, it.cardmarketId, it.print, it.cardTraderBlueprintId) })
                 c.card.dexId?.let { catalogDao.fillDexId(c.card.id, it) }
             }
@@ -192,16 +192,16 @@ class TransferRepository(
     }
 
     /**
-     * Salva le immagini incluse nel file per le carte che non ne hanno ancora una.
-     * @param imported ImportedCollection - dati validati.
-     * @return Int - numero di carte per cui è stata salvata un'immagine.
+     * Saves the images included in the file for the cards that do not have one yet.
+     * @param imported ImportedCollection - validated data.
+     * @return Int - number of cards for which an image was saved.
      */
     private suspend fun saveImages(imported: ImportedCollection): Int {
         var count = 0
         for (c in imported.cards) {
             if (c.imageLow == null && c.imageHigh == null) continue
             val current = catalogDao.getCard(c.card.id) ?: continue
-            // Un percorso senza file (database ripristinato dal backup Android, che non salva le immagini) vale come immagine mancante.
+            // A path without a file (database restored from Android backup, which does not save images) counts as a missing image.
             val currentLow = current.imageLowPath?.takeIf { withContext(Dispatchers.IO) { images.isSaved(it) } }
             val currentHigh = current.imageHighPath?.takeIf { withContext(Dispatchers.IO) { images.isSaved(it) } }
             val low = currentLow ?: c.imageLow?.let { images.write(c.card.id, ImageStore.Quality.LOW, it) }
@@ -215,13 +215,13 @@ class TransferRepository(
     }
 
     /**
-     * Converte una carta del database nel record del file.
-     * @receiver CardEntity - carta.
-     * @param variants List<String> - nomi delle varianti.
-     * @param hidden Boolean - true se tolta dalla collezione.
-     * @param low String? - immagine piccola in base64.
-     * @param high String? - immagine grande in base64.
-     * @return CardRecord - record esportabile.
+     * Converts a database card into the file record.
+     * @receiver CardEntity - card.
+     * @param variants List<String> - names of the variants.
+     * @param hidden Boolean - true if removed from the collection.
+     * @param low String? - small image in base64.
+     * @param high String? - large image in base64.
+     * @return CardRecord - exportable record.
      */
     private fun CardEntity.toRecord(variants: List<String>, hidden: Boolean, low: String?, high: String?) = CardRecord(
         id = id, language = language, tcgdexId = tcgdexId, name = name, setId = setId, setName = setName,
@@ -231,9 +231,9 @@ class TransferRepository(
     )
 
     /**
-     * Converte un prezzo salvato nel record del file.
-     * @receiver PriceSnapshotEntity - prezzo.
-     * @return PriceRecord - record esportabile.
+     * Converts a saved price into the file record.
+     * @receiver PriceSnapshotEntity - price.
+     * @return PriceRecord - exportable record.
      */
     private fun PriceSnapshotEntity.toRecord() = PriceRecord(
         variantId = variantId, source = source, eur = eur, eurLow = eurLow, eurAvg30 = eurAvg30, usd = usd,

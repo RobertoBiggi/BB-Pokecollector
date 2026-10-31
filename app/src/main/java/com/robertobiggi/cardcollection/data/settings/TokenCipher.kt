@@ -11,25 +11,25 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Cifra e decifra un segreto (il token di CardTrader) con AES-GCM: IV casuale a ogni cifratura e controllo di
- * integrità, così un valore manomesso non si decifra. Il testo salvato è "v1.<IV>.<testo cifrato>" in Base64 URL.
- * La chiave arriva da fuori: sul telefono dall'Android Keystore ([KeystoreKeys]), nei test da una chiave software.
+ * Encrypts and decrypts a secret (the CardTrader token) with AES-GCM: random IV at every encryption and an
+ * integrity check, so a tampered value does not decrypt. The saved text is "v1.<IV>.<ciphertext>" in Base64 URL.
+ * The key comes from outside: on the phone from the Android Keystore ([KeystoreKeys]), in tests from a software key.
  *
- * @param key () -> SecretKey - chiave AES da usare; chiamata a ogni operazione (la chiave del Keystore non lascia mai il dispositivo).
- * @param context String - dato associato autenticato (AAD): un valore cifrato per un uso non si decifra per un altro.
+ * @param key () -> SecretKey - AES key to use; called at every operation (the Keystore key never leaves the device).
+ * @param context String - authenticated associated data (AAD): a value encrypted for one use does not decrypt for another.
  */
 class TokenCipher(private val key: () -> SecretKey, private val context: String = DEFAULT_CONTEXT) {
 
     /**
-     * Cifra un segreto.
-     * @param plain String - segreto in chiaro, non vuoto.
-     * @return String - testo da salvare ("v1.<IV>.<testo cifrato>").
-     * @throws GeneralSecurityException se il Keystore non è disponibile o la cifratura fallisce.
+     * Encrypts a secret.
+     * @param plain String - plain-text secret, not empty.
+     * @return String - text to save ("v1.<IV>.<ciphertext>").
+     * @throws GeneralSecurityException if the Keystore is not available or encryption fails.
      */
     fun encrypt(plain: String): String {
         require(plain.isNotEmpty()) { "Segreto vuoto" }
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        // Lo IV lo sceglie il provider (il Keystore lo impone): casuale a ogni cifratura.
+        // The IV is chosen by the provider (the Keystore enforces it): random at every encryption.
         cipher.init(Cipher.ENCRYPT_MODE, key())
         cipher.updateAAD(context.toByteArray(Charsets.UTF_8))
         val sealed = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
@@ -37,10 +37,10 @@ class TokenCipher(private val key: () -> SecretKey, private val context: String 
     }
 
     /**
-     * Decifra un segreto salvato con [encrypt].
-     * @param stored String - testo salvato.
-     * @return String? - segreto in chiaro, oppure null se il testo è malformato, manomesso o la chiave non è più quella
-     *         (es. dati ripristinati su un altro telefono, o chiave cancellata): l'utente dovrà reinserire il segreto.
+     * Decrypts a secret saved with [encrypt].
+     * @param stored String - saved text.
+     * @return String? - plain-text secret, or null if the text is malformed, tampered with or the key is no longer the same
+     *         (e.g. data restored on another phone, or deleted key): the user will have to enter the secret again.
      */
     fun decrypt(stored: String): String? {
         if (stored.length > MAX_STORED_LENGTH) return null
@@ -57,13 +57,13 @@ class TokenCipher(private val key: () -> SecretKey, private val context: String 
         } catch (e: GeneralSecurityException) {
             null
         } catch (e: IllegalArgumentException) {
-            // Base64 non valido.
+            // Invalid Base64.
             null
         }
     }
 
     companion object {
-        /** Contesto (AAD) del token di CardTrader. */
+        /** Context (AAD) of the CardTrader token. */
         const val DEFAULT_CONTEXT = "cardtrader_token"
 
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
@@ -72,7 +72,7 @@ class TokenCipher(private val key: () -> SecretKey, private val context: String 
         private const val TAG_BITS = 128
         private const val IV_BYTES = 12
 
-        /** Lunghezza massima del testo salvato accettata (un token CardTrader è lungo qualche centinaio di caratteri). */
+        /** Maximum length of the saved text accepted (a CardTrader token is a few hundred characters long). */
         private const val MAX_STORED_LENGTH = 8_192
 
         private val B64 = Base64.getUrlEncoder().withoutPadding()
@@ -80,18 +80,18 @@ class TokenCipher(private val key: () -> SecretKey, private val context: String 
     }
 }
 
-/** Chiavi dell'Android Keystore usate dall'app: generate sul telefono, non esportabili, non incluse in nessun backup. */
+/** Android Keystore keys used by the app: generated on the phone, not exportable, not included in any backup. */
 object KeystoreKeys {
     private const val PROVIDER = "AndroidKeyStore"
 
-    /** Alias della chiave che cifra il token di CardTrader. */
+    /** Alias of the key that encrypts the CardTrader token. */
     private const val CARDTRADER_ALIAS = "cardtrader_token_key"
 
     /**
-     * Chiave AES-256 per il token di CardTrader: la crea al primo uso, poi la rilegge dal Keystore. Non richiede lo
-     * sblocco del telefono, perché il controllo prezzi gira anche in background (es. alle 4:30).
-     * @return SecretKey - riferimento alla chiave nel Keystore (il materiale della chiave non esce mai dal Keystore).
-     * @throws GeneralSecurityException se il Keystore non è disponibile.
+     * AES-256 key for the CardTrader token: created on first use, then read again from the Keystore. It does not require
+     * unlocking the phone, because the price check also runs in the background (e.g. at 4:30).
+     * @return SecretKey - reference to the key in the Keystore (the key material never leaves the Keystore).
+     * @throws GeneralSecurityException if the Keystore is not available.
      */
     fun cardTraderKey(): SecretKey {
         val keyStore = KeyStore.getInstance(PROVIDER).apply { load(null) }

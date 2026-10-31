@@ -65,8 +65,8 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 import com.robertobiggi.cardcollection.ui.theme.StatusColors
 
 /**
- * Gestione della collezione aperta: ricerche, carte singole, carte tolte, catalogo ed export.
- * @param vm MainViewModel - stato e azioni.
+ * Management of the open collection: searches, single cards, removed cards, catalog and export.
+ * @param vm MainViewModel - state and actions.
  * @return Unit
  */
 @Composable

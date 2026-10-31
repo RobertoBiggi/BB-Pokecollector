@@ -31,7 +31,7 @@ class PriceChainTest {
     private val request = PriceRequest(Language.EN, "me03-032", VariantType.NORMAL, false)
     private fun quote(source: String) = PriceQuote(source, 1.0, null, null, 2.0, null, null, Confidence.HIGH)
 
-    /** Fonte di test che esegue in ordine le risposte programmate. */
+    /** Test source that runs the programmed responses in order. */
     private class Scripted(override val id: String, private val script: MutableList<() -> PriceQuote?>) : PriceProvider {
         override val displayName = id
         var calls = 0

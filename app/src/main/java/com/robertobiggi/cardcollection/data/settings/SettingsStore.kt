@@ -20,78 +20,76 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.security.GeneralSecurityException
 
-/** Prezzi che l'utente può mostrare o nascondere in tutta l'app. */
+/** Prices the user can show or hide throughout the app. */
 enum class PriceKind { CARDMARKET, TCGPLAYER, CARDTRADER }
 
 /**
- * Quali prezzi mostrare. Quelli nascosti vengono comunque scaricati: non compaiono nelle schede,
- * nelle griglie né nei totali.
+ * Which prices to show. Hidden ones are downloaded anyway: they do not appear in the cards,
+ * grids or totals.
  *
- * @property cardmarket prezzi in euro di Cardmarket (anche quelli inseriti a mano).
- * @property tcgplayer prezzi in dollari di TCGplayer.
- * @property cardTrader prezzo più basso di CardTrader.
+ * @property cardmarket Cardmarket prices in euros (also manually entered ones).
+ * @property tcgplayer TCGplayer prices in dollars.
+ * @property cardTrader lowest CardTrader price.
  */
 data class PriceVisibility(val cardmarket: Boolean = true, val tcgplayer: Boolean = true, val cardTrader: Boolean = true) {
-    /** True se nessun prezzo è nascosto. */
+    /** True if no price is hidden. */
     val showsAll: Boolean get() = cardmarket && tcgplayer && cardTrader
 
-    /** True se tutti i prezzi sono nascosti. */
+    /** True if all prices are hidden. */
     val showsNone: Boolean get() = !cardmarket && !tcgplayer && !cardTrader
 }
 
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 /**
- * Segreti dell'utente, cifrati ([TokenCipher]). File a parte (`datastore/secrets.preferences_pb`) escluso dal backup
- * Android: la chiave resta nel Keystore del telefono, quindi altrove non si decifrerebbe comunque.
+ * User secrets, encrypted ([TokenCipher]). Separate file (`datastore/secrets.preferences_pb`) excluded from the Android
+ * backup: the key stays in the phone's Keystore, so elsewhere it could not be decrypted anyway.
  */
 private val Context.secretsDataStore: DataStore<Preferences> by preferencesDataStore(name = "secrets")
 
 /**
- * Impostazioni persistenti dell'app. Unico dato personale: il token API di CardTrader, salvato solo sul telefono e cifrato
- * con una chiave dell'Android Keystore.
+ * Persistent settings of the app. Only personal data: the CardTrader API token, saved only on the phone and encrypted
+ * with an Android Keystore key.
  *
- * @param context contesto dell'applicazione.
- * @param cipher TokenCipher - cifratura del token (sul telefono con la chiave del Keystore).
+ * @param context application context.
+ * @param cipher TokenCipher - token encryption (on the phone with the Keystore key).
  */
 class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCipher(KeystoreKeys::cardTraderKey)) {
 
     private val store = context.applicationContext.settingsDataStore
     private val secrets = context.applicationContext.secretsDataStore
 
-    /** Indirizzo da cui scaricare il database delle carte (vedi [DEFAULT_CATALOG_URL]). */
+    /** Address from which to download the card database (see [DEFAULT_CATALOG_URL]). */
     val catalogUrl: Flow<String> = store.data.map { it[CATALOG_URL] ?: DEFAULT_CATALOG_URL }
 
     /**
-     * Salva l'indirizzo del database delle carte; un testo vuoto ripristina quello predefinito.
-     * @param url String - indirizzo HTTPS già controllato.
+     * Saves the address of the card database; an empty text restores the default.
+     * @param url String - HTTPS address already checked.
      * @return Unit
      */
     suspend fun setCatalogUrl(url: String) {
         store.edit { if (url.isEmpty() || url == DEFAULT_CATALOG_URL) it.remove(CATALOG_URL) else it[CATALOG_URL] = url }
     }
 
-    /** Ultimo aggiornamento del catalogo riuscito (0 = mai). */
+    /** Last successful catalog update (0 = never). */
     val lastCatalogSync: Flow<Long> = store.data.map { it[LAST_CATALOG_SYNC] ?: 0L }
 
     /**
-     * Token API di CardTrader inserito dall'utente (stringa vuota = CardTrader disattivato), decifrato. Finché il token
-     * salvato in chiaro dalle versioni precedenti non è stato cifrato ([migrateCardTraderToken]) vale quello. Se il
-     * token cifrato non si decifra (chiave del Keystore persa, es. dopo un ripristino) risulta assente e va reinserito.
+     * CardTrader API token entered by the user (empty string = CardTrader disabled), decrypted. If the
+     * encrypted token cannot be decrypted (Keystore key lost, e.g. after a restore) it appears absent and must be entered again.
      */
-    val cardTraderToken: Flow<String> = combine(store.data, secrets.data) { plain, secret ->
-        secret[CARDTRADER_TOKEN_ENCRYPTED]?.let { cipher.decrypt(it) } ?: plain[LEGACY_CARDTRADER_TOKEN].orEmpty()
+    val cardTraderToken: Flow<String> = secrets.data.map { secret ->
+        secret[CARDTRADER_TOKEN_ENCRYPTED]?.let { cipher.decrypt(it) }.orEmpty()
     }.distinctUntilChanged().flowOn(Dispatchers.IO)
 
     /**
-     * Salva il token API di CardTrader cifrato e toglie l'eventuale copia in chiaro delle versioni precedenti.
-     * @param token String - token già ripulito; vuoto per disattivare la fonte.
-     * @return Boolean - false se il Keystore non ha potuto cifrarlo: in quel caso non viene salvato niente (mai in chiaro).
+     * Saves the CardTrader API token encrypted.
+     * @param token String - already cleaned token; empty to disable the source.
+     * @return Boolean - false if the Keystore could not encrypt it: in that case nothing is saved (never in plain text).
      */
     suspend fun setCardTraderToken(token: String): Boolean = withContext(Dispatchers.IO) {
         if (token.isEmpty()) {
             secrets.edit { it.remove(CARDTRADER_TOKEN_ENCRYPTED) }
-            store.edit { it.remove(LEGACY_CARDTRADER_TOKEN) }
             return@withContext true
         }
         val sealed = try {
@@ -100,71 +98,56 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
             return@withContext false
         }
         secrets.edit { it[CARDTRADER_TOKEN_ENCRYPTED] = sealed }
-        store.edit { it.remove(LEGACY_CARDTRADER_TOKEN) }
         true
     }
 
-    /**
-     * Cifra il token salvato in chiaro dalle versioni precedenti e cancella la copia in chiaro. Da chiamare all'avvio;
-     * se il Keystore non risponde il token resta com'era e si riprova al prossimo avvio.
-     * @return Unit
-     */
-    suspend fun migrateCardTraderToken() {
-        val legacy = store.data.first()[LEGACY_CARDTRADER_TOKEN]?.takeIf { it.isNotEmpty() } ?: return
-        if (secrets.data.first()[CARDTRADER_TOKEN_ENCRYPTED] != null) {
-            store.edit { it.remove(LEGACY_CARDTRADER_TOKEN) }
-            return
-        }
-        setCardTraderToken(legacy)
-    }
-
-    /** True se le versioni 1st Edition contano tra le mancanti e nei totali (di default sì). */
+    /** True if 1st Edition versions count among the missing and in the totals (by default yes). */
     val countFirstEdition: Flow<Boolean> = store.data.map { it[COUNT_FIRST_EDITION] ?: true }
 
     /**
-     * Fa contare o no le versioni 1st Edition.
-     * @param counted Boolean - true per contarle.
+     * Makes the 1st Edition versions count or not.
+     * @param counted Boolean - true to count them.
      * @return Unit
      */
     suspend fun setCountFirstEdition(counted: Boolean) {
         store.edit { it[COUNT_FIRST_EDITION] = counted }
     }
 
-    /** True se il controllo giornaliero dei prezzi con gli avvisi è attivo (spento di default). */
+    /** True if the daily price check with alerts is on (off by default). */
     val priceAlertsEnabled: Flow<Boolean> = store.data.map { it[PRICE_ALERTS_ENABLED] ?: false }
 
     /**
-     * Attiva o spegne il controllo giornaliero dei prezzi con gli avvisi.
-     * @param enabled Boolean - true per attivarlo.
+     * Turns the daily price check with alerts on or off.
+     * @param enabled Boolean - true to turn it on.
      * @return Unit
      */
     suspend fun setPriceAlertsEnabled(enabled: Boolean) {
         store.edit { it[PRICE_ALERTS_ENABLED] = enabled }
     }
 
-    /** Variazione minima, in percentuale, per l'avviso "il prezzo sale o scende". */
+    /** Minimum change, in percent, for the "price rises or falls" alert. */
     val priceAlertChangePercent: Flow<Int> = store.data.map {
         (it[PRICE_ALERT_CHANGE_PERCENT] ?: PriceAlertRules.DEFAULT_CHANGE_PERCENT).coerceIn(PriceAlertRules.CHANGE_PERCENT_RANGE)
     }
 
     /**
-     * Imposta la variazione minima per l'avviso "il prezzo sale o scende".
-     * @param percent Int - percentuale, ricondotta a [PriceAlertRules.CHANGE_PERCENT_RANGE].
+     * Sets the minimum change for the "price rises or falls" alert.
+     * @param percent Int - percentage, brought back to [PriceAlertRules.CHANGE_PERCENT_RANGE].
      * @return Unit
      */
     suspend fun setPriceAlertChangePercent(percent: Int) {
         store.edit { it[PRICE_ALERT_CHANGE_PERCENT] = percent.coerceIn(PriceAlertRules.CHANGE_PERCENT_RANGE) }
     }
 
-    /** Prezzi mostrati nell'app (tutti di default). */
+    /** Prices shown in the app (all by default). */
     val priceVisibility: Flow<PriceVisibility> = store.data.map {
         PriceVisibility(it[SHOW_CARDMARKET] ?: true, it[SHOW_TCGPLAYER] ?: true, it[SHOW_CARDTRADER] ?: true)
     }
 
     /**
-     * Mostra o nasconde un tipo di prezzo.
-     * @param kind PriceKind - prezzo da cambiare.
-     * @param shown Boolean - true per mostrarlo.
+     * Shows or hides a type of price.
+     * @param kind PriceKind - price to change.
+     * @param shown Boolean - true to show it.
      * @return Unit
      */
     suspend fun setPriceShown(kind: PriceKind, shown: Boolean) {
@@ -177,8 +160,8 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
     }
 
     /**
-     * Registra la data dell'ultimo aggiornamento catalogo riuscito.
-     * @param timestamp Long - istante in millisecondi.
+     * Records the date of the last successful catalog update.
+     * @param timestamp Long - instant in milliseconds.
      * @return Unit
      */
     suspend fun setLastCatalogSync(timestamp: Long) {
@@ -186,12 +169,10 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
     }
 
     companion object {
-        /** Dove si trova il database delle carte pubblicato (release con tag fisso `catalog` del repository, separata dalle release dell'APK). */
+        /** Where the published card database is (release with fixed tag `catalog` of the repository, separate from the APK releases). */
         const val DEFAULT_CATALOG_URL = "https://github.com/RobertoBiggi/Card-collection/releases/download/catalog/cards.sqlite"
 
         private val CATALOG_URL = stringPreferencesKey("catalog_url")
-        /** Token in chiaro delle versioni precedenti: si legge solo per cifrarlo, poi viene cancellato. */
-        private val LEGACY_CARDTRADER_TOKEN = stringPreferencesKey("cardtrader_token")
         private val CARDTRADER_TOKEN_ENCRYPTED = stringPreferencesKey("cardtrader_token_v1")
         private val SHOW_CARDMARKET = booleanPreferencesKey("show_price_cardmarket")
         private val SHOW_TCGPLAYER = booleanPreferencesKey("show_price_tcgplayer")

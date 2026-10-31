@@ -9,8 +9,8 @@ import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.QueryKind
 
 /**
- * Collezione creata dall'utente (es. "Mawile"). Ogni collezione ha ricerche, carte e quantità proprie.
- * [language] è il valore di [CollectionLanguage]: lingua fissa delle ricerche ("en", "ja") oppure "mixed".
+ * Collection created by the user (e.g. "Mawile"). Each collection has its own searches, cards and quantities.
+ * [language] is the value of [CollectionLanguage]: fixed language of the searches ("en", "ja") or "mixed".
  */
 @Entity(tableName = "collection")
 data class CollectionEntity(
@@ -21,8 +21,8 @@ data class CollectionEntity(
 )
 
 /**
- * Ricerca di una collezione: per nome (es. "Mawile" in inglese) oppure set intero (es. "base1"), secondo [kind]
- * (valore di [QueryKind]: "name", "set_base", "set_master").
+ * Search of a collection: by name (e.g. "Mawile" in English) or entire set (e.g. "base1"), according to [kind]
+ * (value of [QueryKind]: "name", "set_base", "set_master").
  */
 @Entity(
     tableName = "tracked_query",
@@ -39,10 +39,10 @@ data class TrackedQueryEntity(
 )
 
 /**
- * Carta del database delle carte, condivisa tra tutte le collezioni. Il sync del catalogo aggiorna solo
- * questa tabella e card_variant: i dati dell'utente stanno in collection_entry.
- * [queryId] è un campo storico della versione 1 (prima ricerca che ha trovato la carta): l'appartenenza
- * alle collezioni è in collection_card.
+ * Card of the card database, shared among all collections. The catalog sync only updates
+ * this table and card_variant: user data lives in collection_entry.
+ * [queryId] is a historical field of version 1 (first search that found the card): membership
+ * in collections is in collection_card.
  */
 @Entity(tableName = "card", indices = [Index("queryId")])
 data class CardEntity(
@@ -66,25 +66,25 @@ data class CardEntity(
     val queryId: Long,
     val catalogUpdatedAt: Long,
     val dexId: Int? = null,
-    /** Non più usata: la condizione CardTrader segue quella della variante. La colonna resta perché esistono database già alla versione 4. */
+    /** No longer used: the CardTrader condition follows that of the variant. The column stays because databases already at version 4 exist. */
     val cardTraderCondition: String? = null,
-    /** Id prodotto Cardmarket, solo per le carte trovate nel catalogo Cardmarket. */
+    /** Cardmarket product id, only for cards found in the Cardmarket catalog. */
     val cardmarketId: Int? = null,
-    /** Id del blueprint CardTrader, noto dopo un aggiornamento prezzi che abbina la carta con certezza: serve al link diretto. */
+    /** CardTrader blueprint id, known after a price update that matches the card with certainty: used by the direct link. */
     val cardTraderBlueprintId: Int? = null,
-    /** Set della carta su Cardmarket (`idExpansion`): serve al link, che cerca la carta nel suo set. */
+    /** Cardmarket set of the card (`idExpansion`): used by the link, which searches the card in its set. */
     val cardmarketExpansionId: Int? = null,
-    /** Nome inglese della carta su Cardmarket: nel suo set si cerca con questo, non con il nome nella lingua della carta. */
+    /** English name of the card on Cardmarket: it is searched in its set with this, not with the name in the card's language. */
     val cardmarketName: String? = null,
-    /** Id prodotto Cardmarket indicato da TCGdex, per abbinare la carta su CardTrader quando il numero non basta. */
+    /** Cardmarket product id given by TCGdex, to match the card on CardTrader when the number is not enough. */
     val cardmarketProductHint: Int? = null,
-    /** Prodotto Cardmarket della carta, comunque trovato dal generatore del database delle carte: il prezzo si legge da lì. */
+    /** Cardmarket product of the card, however found by the card database generator: the price is read from there. */
     val cardmarketProduct: Int? = null,
-    /** Espansione CardTrader del set della carta: serve a trovare l'immagine del suo blueprint. */
+    /** CardTrader expansion of the card's set: used to find the image of its blueprint. */
     val cardTraderExpansionId: Int? = null,
 )
 
-/** Variante di stampa di una carta: ogni riga è uno slot. */
+/** Print variant of a card: each row is a slot. */
 @Entity(
     tableName = "card_variant",
     foreignKeys = [ForeignKey(entity = CardEntity::class, parentColumns = ["id"], childColumns = ["cardId"], onDelete = ForeignKey.CASCADE)],
@@ -94,19 +94,19 @@ data class CardVariantEntity(
     @PrimaryKey val id: String,
     val cardId: String,
     val type: String,
-    /** Prodotto Cardmarket della variante, solo per le stampe a parte (shadowless, jumbo…); le altre usano quello della carta. */
+    /** Cardmarket product of the variant, only for separate prints (shadowless, jumbo…); the others use that of the card. */
     val cardmarketId: Int? = null,
-    /** Timbro o prodotto che distingue più varianti dello stesso tipo (vedi [com.robertobiggi.cardcollection.core.model.CatalogVariant.print]). */
+    /** Stamp or product that tells apart several variants of the same type (see [com.robertobiggi.cardcollection.core.model.CatalogVariant.print]). */
     @ColumnInfo(defaultValue = "") val print: String = "",
-    /** Blueprint CardTrader della sola variante (oversize senza prodotto Cardmarket): da lì viene il prezzo. */
+    /** CardTrader blueprint of the variant alone (oversized card without a Cardmarket product): the price comes from there. */
     val cardTraderBlueprintId: Int? = null,
 )
 
 /**
- * Appartenenza di una carta a una collezione.
- * [queryId] è la ricerca che l'ha aggiunta (null se aggiunta a mano o importata): se la ricerca viene
- * disattivata la carta si nasconde, se viene eliminata il collegamento sparisce.
- * [hidden] vale true se l'utente l'ha tolta: il sync non la riaggiunge.
+ * Membership of a card in a collection.
+ * [queryId] is the search that added it (null if added by hand or imported): if the search is
+ * disabled the card is hidden, if it is deleted the link disappears.
+ * [hidden] is true if the user removed it: the sync does not add it back.
  */
 @Entity(
     tableName = "collection_card",
@@ -126,8 +126,8 @@ data class CollectionCardEntity(
 )
 
 /**
- * Dati dell'utente per una variante in una collezione: le quantità sono separate per collezione.
- * Non ha vincoli verso card_variant, così si può importare prima di scaricare il catalogo.
+ * User data for a variant in a collection: quantities are separate per collection.
+ * It has no constraints towards card_variant, so it can be imported before downloading the catalog.
  */
 @Entity(
     tableName = "collection_entry",
@@ -143,7 +143,7 @@ data class CollectionEntryEntity(
     val notes: String? = null,
 )
 
-/** Prezzo salvato per una variante (condiviso tra le collezioni); se ne tengono gli ultimi 10. */
+/** Price saved for a variant (shared among collections); the last 10 are kept. */
 @Entity(tableName = "price_snapshot", indices = [Index(value = ["variantId", "fetchedAt"])])
 data class PriceSnapshotEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -160,17 +160,17 @@ data class PriceSnapshotEntity(
 )
 
 /**
- * Avviso di prezzo su una variante, impostato dal dettaglio della carta. Lo controlla il lavoro giornaliero
- * ([com.robertobiggi.cardcollection.work.PriceAlertWorker]) se gli avvisi sono attivi nelle impostazioni.
- * @property variantId variante osservata.
- * @property notifyChanges true per un avviso quando il prezzo sale o scende oltre la soglia ([changePercent]).
- * @property targetEur prezzo in euro vicino o sotto cui avvisare; null se non impostato.
- * @property targetReached true se l'avviso del prezzo obiettivo è già partito e il prezzo non è ancora risalito.
- * @property baselines prezzi di riferimento per fonte (vedi [com.robertobiggi.cardcollection.core.price.PriceAlertRules.encodeBaselines]).
- * @property createdAt quando è stato creato o modificato l'ultima volta.
- * @property lastCheckedAt ultimo controllo giornaliero, null se mai controllato.
- * @property changePercent variazione minima scelta per questa variante, in percentuale; null = quella predefinita delle impostazioni
- *   (gli avvisi creati prima che si potesse scegliere).
+ * Price alert on a variant, set from the card detail. It is checked by the daily job
+ * ([com.robertobiggi.cardcollection.work.PriceAlertWorker]) if alerts are enabled in the settings.
+ * @property variantId variant being watched.
+ * @property notifyChanges true for an alert when the price rises or falls beyond the threshold ([changePercent]).
+ * @property targetEur price in euros near or below which to alert; null if not set.
+ * @property targetReached true if the target price alert has already been sent and the price has not risen again yet.
+ * @property baselines reference prices per source (see [com.robertobiggi.cardcollection.core.price.PriceAlertRules.encodeBaselines]).
+ * @property createdAt when it was created or last modified.
+ * @property lastCheckedAt last daily check, null if never checked.
+ * @property changePercent minimum change chosen for this variant, in percent; null = the default from the settings
+ *   (alerts created before the choice was possible).
  */
 @Entity(
     tableName = "price_alert",
@@ -188,8 +188,8 @@ data class PriceAlertEntity(
 )
 
 /**
- * Registro di un aggiornamento prezzi. [summary] contiene il motivo dell'interruzione
- * ([com.robertobiggi.cardcollection.data.repo.AbortReason]) oppure null; [collectionId] è null per i run della versione 1.
+ * Log of a price update. [summary] contains the reason for the interruption
+ * ([com.robertobiggi.cardcollection.data.repo.AbortReason]) or null; [collectionId] is null for version 1 runs.
  */
 @Entity(tableName = "price_run")
 data class PriceRunEntity(

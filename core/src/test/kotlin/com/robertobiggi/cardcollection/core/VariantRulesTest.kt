@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
-/** Regressioni emerse cercando "Omastar": varianti dedotte dai prezzi, Poké Ball/Master Ball, prezzi delle carte Cardmarket. */
+/** Regressions found while searching "Omastar": variants inferred from prices, Poké Ball/Master Ball, prices of Cardmarket cards. */
 class VariantRulesTest {
 
     @TempDir
@@ -63,7 +63,7 @@ class VariantRulesTest {
         assertEquals(2.0, VariantMapper.quote(VariantType.REVERSE, pricing, false, "TCGdex")!!.eur)
     }
 
-    /** Listino: la Poké Ball ha il prezzo nei campi "-holo" (trend base 0), la carta senza numero ha solo il trend base. */
+    /** Price list: the Poké Ball has its price in the "-holo" fields (base trend 0), the card without a number has only the base trend. */
     private val guideBody = """{"version":1,"createdAt":"2026-10-21T02:48:17+0200","priceGuides":[
         {"idProduct":837502,"idCategory":51,"avg":null,"low":0.1,"trend":0,"avg1":null,"avg7":null,"avg30":null,"avg-holo":0.63,"low-holo":0.1,"trend-holo":0.5,"avg1-holo":0.5,"avg7-holo":0.57,"avg30-holo":0.68},
         {"idProduct":548776,"idCategory":51,"avg":74.95,"low":29.99,"trend":47.79,"avg1":null,"avg7":null,"avg30":null,"avg-holo":null,"low-holo":null,"trend-holo":null,"avg1-holo":null,"avg7-holo":null,"avg30-holo":null}]}"""
@@ -84,7 +84,7 @@ class VariantRulesTest {
 
     @Test
     fun `una carta del catalogo Cardmarket si prezza dal suo prodotto, anche senza numero`() = runTest {
-        // Omanyte di Expansion Sheet: id "exsh-Cardmarket548776", nessun numero, nessun abbinamento per set e numero.
+        // Omanyte of Expansion Sheet: id "exsh-Cardmarket548776", no number, no match by set and number.
         val request = PriceRequest(Language.JA, "exsh-Cardmarket548776", VariantType.NORMAL, false, setId = "exsh", localId = "Cardmarket548776", cardmarketId = 548776)
         assertEquals(47.79, provider().fetch(request)!!.eur)
     }
@@ -113,13 +113,13 @@ class VariantRulesTest {
     @Test
     fun `un prodotto solo foil ha il prezzo nei campi holo e un trend a zero non nasconde la media`() {
         fun pricing(json: String) = PricingDto(cardmarket = JSON.decodeFromString(com.robertobiggi.cardcollection.core.price.CardmarketPricingDto.serializer(), json))
-        // Moltres del Special Battle Set: trend base 0, solo "-holo" pieni.
+        // Moltres of the Special Battle Set: base trend 0, only "-holo" filled.
         val foilOnly = pricing("""{"unit":"EUR","trend":0,"low":22.99,"trend-holo":30.15,"low-holo":22.99,"avg30-holo":33.84}""")
         assertEquals(30.15, VariantMapper.quote(VariantType.NORMAL, foilOnly, false, "Cardmarket")!!.eur)
         assertEquals(22.99, VariantMapper.quote(VariantType.NORMAL, foilOnly, false, "Cardmarket")!!.eurLow)
-        // Trend a 0 ma media valida: vale la media.
+        // Trend at 0 but valid average: the average counts.
         assertEquals(4.5, VariantMapper.quote(VariantType.NORMAL, pricing("""{"unit":"EUR","trend":0,"avg":4.5}"""), false, "Cardmarket")!!.eur)
-        // Con il prezzo base presente, quello holo resta della reverse.
+        // With the base price present, the holo one stays that of the reverse.
         val both = pricing("""{"unit":"EUR","trend":1.0,"trend-holo":2.0}""")
         assertEquals(1.0, VariantMapper.quote(VariantType.NORMAL, both, false, "Cardmarket")!!.eur)
         assertNull(VariantMapper.quote(VariantType.NORMAL, pricing("""{"unit":"EUR","trend":0}"""), false, "Cardmarket"))

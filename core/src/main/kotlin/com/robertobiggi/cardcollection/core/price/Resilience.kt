@@ -4,26 +4,26 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Sorgente del tempo corrente, sostituibile nei test. */
+/** Source of the current time, replaceable in tests. */
 fun interface Clock {
     /**
-     * Restituisce l'istante corrente.
-     * @return Long - millisecondi dall'epoch.
+     * Returns the current instant.
+     * @return Long - milliseconds since the epoch.
      */
     fun nowMs(): Long
 
     companion object {
-        /** Orologio di sistema. */
+        /** System clock. */
         val SYSTEM = Clock { System.currentTimeMillis() }
     }
 }
 
 /**
- * Limita la frequenza delle chiamate a una fonte: tra due chiamate passano almeno [minIntervalMs].
+ * Limits the call rate to a source: at least [minIntervalMs] passes between two calls.
  *
- * @param minIntervalMs intervallo minimo tra due chiamate, in millisecondi.
- * @param clock orologio usato per misurare il tempo.
- * @param sleeper funzione di attesa (sostituibile nei test).
+ * @param minIntervalMs minimum interval between two calls, in milliseconds.
+ * @param clock clock used to measure time.
+ * @param sleeper wait function (replaceable in tests).
  */
 class RateLimiter(
     private val minIntervalMs: Long,
@@ -34,7 +34,7 @@ class RateLimiter(
     private var lastCallAt: Long? = null
 
     /**
-     * Attende, se serve, finché la prossima chiamata è consentita, e la registra.
+     * Waits, if needed, until the next call is allowed, and records it.
      * @return Unit
      */
     suspend fun acquire() {
@@ -50,13 +50,13 @@ class RateLimiter(
 }
 
 /**
- * Circuit breaker: dopo [threshold] blocchi consecutivi (429/403) la fonte viene messa in pausa
- * per [cooldownMs], così l'app smette di insistere e non peggiora il blocco.
+ * Circuit breaker: after [threshold] consecutive blocks (429/403) the source is paused
+ * for [cooldownMs], so the app stops insisting and does not worsen the block.
  *
- * @param threshold numero di blocchi consecutivi che apre il circuito.
- * @param cooldownMs durata della pausa in millisecondi.
- * @param clock orologio usato per misurare il tempo.
- * @param initialOpenUntil fine di una pausa già in corso (letta dalle impostazioni salvate), 0 se nessuna.
+ * @param threshold number of consecutive blocks that opens the circuit.
+ * @param cooldownMs duration of the pause in milliseconds.
+ * @param clock clock used to measure time.
+ * @param initialOpenUntil end of a pause already in progress (read from the saved settings), 0 if none.
  */
 class CircuitBreaker(
     private val threshold: Int = 3,
@@ -64,20 +64,20 @@ class CircuitBreaker(
     private val clock: Clock = Clock.SYSTEM,
     initialOpenUntil: Long = 0L,
 ) {
-    /** Istante (ms) fino a cui la fonte resta in pausa; 0 se il circuito è chiuso. */
+    /** Instant (ms) until which the source stays paused; 0 if the circuit is closed. */
     var openUntil: Long = initialOpenUntil
         private set
 
     private var consecutiveFailures = 0
 
     /**
-     * Indica se la fonte è in pausa.
-     * @return Boolean - true se il circuito è aperto in questo istante.
+     * Tells whether the source is paused.
+     * @return Boolean - true if the circuit is open at this instant.
      */
     fun isOpen(): Boolean = clock.nowMs() < openUntil
 
     /**
-     * Registra una chiamata riuscita e azzera il conteggio dei blocchi.
+     * Records a successful call and resets the block count.
      * @return Unit
      */
     fun recordSuccess() {
@@ -85,8 +85,8 @@ class CircuitBreaker(
     }
 
     /**
-     * Registra un blocco della fonte; al raggiungimento della soglia apre il circuito.
-     * @return Boolean - true se questa chiamata ha aperto il circuito.
+     * Records a block of the source; when the threshold is reached it opens the circuit.
+     * @return Boolean - true if this call opened the circuit.
      */
     fun recordBlock(): Boolean {
         consecutiveFailures++

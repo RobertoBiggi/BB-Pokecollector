@@ -11,14 +11,14 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 
 /**
- * Cifratura del token CardTrader: stesso codice dell'app, con una chiave AES software al posto di quella dell'Android
- * Keystore (che sul JVM non c'è).
+ * CardTrader token encryption: same code as the app, with a software AES key instead of the Android
+ * Keystore one (which does not exist on the JVM).
  */
 class TokenCipherTest {
 
     /**
-     * Chiave AES-256 software, come quella che il Keystore crea sul telefono.
-     * @return SecretKey - chiave nuova.
+     * Software AES-256 key, like the one the Keystore creates on the phone.
+     * @return SecretKey - new key.
      */
     private fun newKey(): SecretKey = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
 

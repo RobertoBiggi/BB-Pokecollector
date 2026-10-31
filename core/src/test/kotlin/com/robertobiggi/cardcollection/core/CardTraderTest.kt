@@ -33,7 +33,7 @@ class CardTraderTest {
     private fun products(json: String): List<CtProductDto> =
         Http.JSON.decodeFromString(kotlinx.serialization.builtins.ListSerializer(CtProductDto.serializer()), json)
 
-    /** Omastar: un solo blueprint, annunci normal e reverse mischiati. */
+    /** Omastar: a single blueprint, normal and reverse listings mixed. */
     private val omastar = products(
         """[
           {"id":1,"price_cents":250,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Near Mint","pokemon_reverse":false,"pokemon_language":"en"}},
@@ -60,14 +60,14 @@ class CardTraderTest {
               {"id":3,"price_cents":90,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Near Mint","pokemon_reverse":false,"pokemon_rarity":"Promo","pokemon_language":"jp"}}
             ]""",
         )
-        // Annunci di due stampe: ognuna prende i suoi, e quelli con rarità ambigua (Promo) valgono per entrambe.
+        // Listings of two prints: each takes its own, and those with an ambiguous rarity (Promo) count for both.
         assertEquals(90L, CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", splitHolo = true)?.cents)
         assertEquals(90L, CardTraderPicker.lowest(listings, VariantType.HOLO, "jp", splitHolo = true)?.cents)
-        // Solo annunci Holo Rare (come Moltres SM9 018): la normal non ha prezzo, la holo sì.
+        // Only Holo Rare listings (like Moltres SM9 018): the normal has no price, the holo does.
         val onlyHolo = listings.filter { it.id == 1L }
         assertNull(CardTraderPicker.lowest(onlyHolo, VariantType.NORMAL, "jp", splitHolo = true))
         assertEquals(473L, CardTraderPicker.lowest(onlyHolo, VariantType.HOLO, "jp", splitHolo = true)?.cents)
-        // Senza splitHolo (la carta ha una sola stampa) nulla cambia.
+        // Without splitHolo (the card has a single print) nothing changes.
         assertEquals(473L, CardTraderPicker.lowest(onlyHolo, VariantType.NORMAL, "jp")?.cents)
     }
 
@@ -125,7 +125,7 @@ class CardTraderTest {
         assertEquals(714L, CardTraderPicker.lowest(firstEdition, VariantType.NORMAL, "jp", firstEditionFallback = true)?.cents)
         assertEquals(714L, CardTraderPicker.lowest(firstEdition, VariantType.HOLO, "jp", firstEditionFallback = true)?.cents)
         assertNull(CardTraderPicker.lowest(firstEdition, VariantType.W_PROMO, "jp", CtCondition.MINT, firstEditionFallback = true))
-        // Con annunci normali disponibili il ripiego non interviene.
+        // With normal listings available the fallback does not kick in.
         val mixed = firstEdition + products(
             """[{"id":3,"price_cents":1500,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Near Mint","first_edition":false,"pokemon_reverse":false,"pokemon_language":"jp"}}]""",
         )
@@ -142,15 +142,15 @@ class CardTraderTest {
               {"id":3,"price_cents":51,"price_currency":"EUR","quantity":1,"properties_hash":{"condition":"Poor","pokemon_language":"jp"}}
             ]""",
         )
-        // NM non c'è: il primo livello con annunci è Slightly Played, anche se più in basso c'è di meno.
+        // NM is missing: the first level with listings is Slightly Played, even if further down there is less.
         assertEquals(6064L, CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", CtCondition.NEAR_MINT, lowerCondition = true)?.cents)
-        // Un livello accetta anche le condizioni migliori: con Played valgono Slightly Played e Played.
+        // A level also accepts better conditions: with Played, Slightly Played and Played count.
         assertEquals(6064L, CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", CtCondition.MODERATELY_PLAYED, lowerCondition = true)?.cents)
         assertEquals(1005L, CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", CtCondition.PLAYED, lowerCondition = true)?.cents)
         assertEquals(51L, CardTraderPicker.lowest(listings.filter { it.id == 3L }, VariantType.NORMAL, "jp", CtCondition.NEAR_MINT, lowerCondition = true)?.cents)
-        // Senza la scelta di scendere, resta nessun prezzo.
+        // Without the choice to go down, there is no price.
         assertNull(CardTraderPicker.lowest(listings, VariantType.NORMAL, "jp", CtCondition.NEAR_MINT))
-        // Neanche in Poor: nessun prezzo.
+        // Not even in Poor: no price.
         assertNull(CardTraderPicker.lowest(emptyList(), VariantType.NORMAL, "jp", CtCondition.NEAR_MINT, lowerCondition = true))
     }
 

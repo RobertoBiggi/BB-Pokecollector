@@ -3,14 +3,14 @@ package com.robertobiggi.cardcollection.data.repo
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.data.local.CollectionEntryEntity
 
-/** Spostamento dei dati dell'utente da una variante a un'altra della stessa carta. */
+/** Moving of user data from one variant to another of the same card. */
 object EntryMerge {
     /**
-     * Sposta il dato di una variante su un'altra, sommando le copie se l'altra ha già un dato nella stessa collezione.
-     * @param from CollectionEntryEntity - dato da spostare.
-     * @param toVariantId String - variante di arrivo.
-     * @param existing CollectionEntryEntity? - dato già presente per la variante di arrivo nella stessa collezione, se c'è.
-     * @return CollectionEntryEntity - dato da salvare per la variante di arrivo.
+     * Moves the data of a variant to another, adding the copies if the other already has data in the same collection.
+     * @param from CollectionEntryEntity - data to move.
+     * @param toVariantId String - target variant.
+     * @param existing CollectionEntryEntity? - data already present for the target variant in the same collection, if any.
+     * @return CollectionEntryEntity - data to save for the target variant.
      */
     fun move(from: CollectionEntryEntity, toVariantId: String, existing: CollectionEntryEntity?): CollectionEntryEntity =
         if (existing == null) {
@@ -23,17 +23,17 @@ object EntryMerge {
             )
         }
 
-    /** Finiture della stessa stampa, intercambiabili quando il catalogo corregge un dato; le altre varianti sono prodotti diversi. */
+    /** Finishes of the same print, interchangeable when the catalog corrects a value; the other variants are different products. */
     private val FINISHES = listOf(VariantType.NORMAL, VariantType.HOLO, VariantType.REVERSE)
 
     /**
-     * Variante che sostituisce una non più elencata dal catalogo, qualunque sia la correzione. Vale per le finiture
-     * (normale, holo, reverse): se il catalogo ne elenca una sola le copie passano lì, altrimenti alla più vicina
-     * (la reverse alla holo, la holo alla normale, la normale alla holo).
-     * Le altre varianti (1ª edizione, promo, Poké Ball…) non si spostano: sono prodotti diversi.
-     * @param stale VariantType - variante non più elencata.
-     * @param listed List<VariantType> - varianti attuali della carta.
-     * @return VariantType? - variante di arrivo, oppure null se la variante esiste ancora o non c'è una sostituta.
+     * Variant that replaces one no longer listed by the catalog, whatever the correction. Applies to finishes
+     * (normal, holo, reverse): if the catalog lists only one the copies go there, otherwise to the closest
+     * (reverse to holo, holo to normal, normal to holo).
+     * Other variants (1st edition, promo, Poké Ball…) are not moved: they are different products.
+     * @param stale VariantType - variant no longer listed.
+     * @param listed List<VariantType> - current variants of the card.
+     * @return VariantType? - target variant, or null if the variant still exists or there is no replacement.
      */
     fun replacement(stale: VariantType, listed: List<VariantType>): VariantType? {
         if (stale in listed || stale !in FINISHES) return null

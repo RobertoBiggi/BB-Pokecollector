@@ -1,13 +1,13 @@
 package com.robertobiggi.cardcollection.core.stats
 
 /**
- * Dati minimi di uno slot (variante) per calcolare le statistiche.
+ * Minimal data of a slot (variant) to compute the statistics.
  *
- * @property wanted true se la variante è desiderata: conta come slot anche quando non la possiedi.
- * @property quantity copie possedute.
- * @property latestEur ultimo prezzo noto in euro, se presente.
- * @property latestUsd ultimo prezzo noto in dollari, se presente.
- * @property latestCardTrader ultimo prezzo CardTrader in euro, se presente.
+ * @property wanted true if the variant is wanted: it counts as a slot even when you do not own it.
+ * @property quantity copies owned.
+ * @property latestEur latest known price in euros, if present.
+ * @property latestUsd latest known price in dollars, if present.
+ * @property latestCardTrader latest CardTrader price in euros, if present.
  */
 data class SlotInput(
     val wanted: Boolean,
@@ -18,8 +18,8 @@ data class SlotInput(
 )
 
 /**
- * Riepilogo di un gruppo di slot. EUR e USD restano separati: nessuna conversione.
- * I campi `priced*` contano gli slot posseduti che hanno un prezzo di quella fonte, cioè quelli inclusi nel valore (su [owned]).
+ * Summary of a group of slots. EUR and USD stay separate: no conversion.
+ * The `priced*` fields count the owned slots that have a price from that source, i.e. those included in the value (out of [owned]).
  */
 data class StatsSummary(
     val slots: Int,
@@ -36,21 +36,21 @@ data class StatsSummary(
     val pricedCardTrader: Int = 0,
 ) {
     /**
-     * Percentuale di completamento.
-     * @return Int - slot posseduti su slot desiderati, da 0 a 100 (0 se non ci sono slot).
+     * Completion percentage.
+     * @return Int - owned slots over wanted slots, from 0 to 100 (0 if there are no slots).
      */
     fun completionPercent(): Int = if (slots == 0) 0 else (owned * 100 / slots)
 }
 
-/** Calcolo delle statistiche della collezione. */
+/** Computation of the collection statistics. */
 object CollectionStats {
 
     /**
-     * Calcola completamento, valore e costo dei mancanti.
-     * Uno slot è una variante desiderata oppure posseduta: una variante che hai conta sempre come
-     * completata, anche se hai tolto "la voglio". Le mancanti sono solo le desiderate con 0 copie.
-     * @param slots List<SlotInput> - varianti da considerare.
-     * @return StatsSummary - riepilogo.
+     * Computes completion, value and cost of the missing ones.
+     * A slot is a variant that is wanted or owned: a variant you have always counts as
+     * completed, even if you removed "I want it". The missing ones are only the wanted ones with 0 copies.
+     * @param slots List<SlotInput> - variants to consider.
+     * @return StatsSummary - summary.
      */
     fun compute(slots: List<SlotInput>): StatsSummary {
         var wanted = 0

@@ -6,24 +6,24 @@ import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
 
 /**
- * Richiesta di prezzo per una singola variante.
+ * Price request for a single variant.
  *
- * @property language lingua del catalogo della carta.
- * @property tcgdexId id TCGdex della carta.
- * @property variant variante richiesta.
- * @property cardHasNormalAndHolo true se la carta esiste sia normal sia holo.
- * @property cardHasFirstEdition true se TCGdex elenca anche la variante 1st Edition (allora CardTrader non la usa come ripiego per normal/holo).
- * @property name nome della carta nel catalogo (inglese per le carte inglesi e per quelle importate).
- * @property setId id TCGdex del set.
- * @property setName nome del set.
- * @property setCode sigla stampata del set, se c'è.
- * @property localId numero della carta nel set (es. "075").
- * @property dexId numero del Pokédex nazionale, null per Allenatori ed Energie.
- * @property cardTraderCondition condizione peggiore accettata per CardTrader (quella della variante), null = Near Mint.
- * @property cardmarketId id prodotto Cardmarket, se la carta viene dal catalogo Cardmarket: CardTrader la trova da questo, senza il numero.
- * @property cardmarketHint id prodotto Cardmarket indicato da TCGdex: serve solo ad abbinare la carta su CardTrader quando il numero non basta.
- * @property printProductId prodotto Cardmarket della stampa richiesta, se [variant] è una stampa a parte ([VariantType.isPrint]).
- * @property printFinish finitura (normale o holo) della stampa richiesta: serve a leggere il prezzo giusto del suo prodotto.
+ * @property language language of the card's catalog.
+ * @property tcgdexId TCGdex id of the card.
+ * @property variant requested variant.
+ * @property cardHasNormalAndHolo true if the card exists in both normal and holo.
+ * @property cardHasFirstEdition true if TCGdex also lists the 1st Edition variant (then CardTrader does not use it as a fallback for normal/holo).
+ * @property name name of the card in the catalog (English for English cards and for imported ones).
+ * @property setId TCGdex id of the set.
+ * @property setName name of the set.
+ * @property setCode printed code of the set, if any.
+ * @property localId number of the card in the set (e.g. "075").
+ * @property dexId national Pokédex number, null for Trainers and Energies.
+ * @property cardTraderCondition worst condition accepted for CardTrader (that of the variant), null = Near Mint.
+ * @property cardmarketId Cardmarket product id, if the card comes from the Cardmarket catalog: CardTrader finds it from this, without the number.
+ * @property cardmarketHint Cardmarket product id given by TCGdex: only used to match the card on CardTrader when the number is not enough.
+ * @property printProductId Cardmarket product of the requested print, if [variant] is a separate print ([VariantType.isPrint]).
+ * @property printFinish finish (normal or holo) of the requested print: needed to read the right price of its product.
  */
 data class PriceRequest(
     val language: Language,
@@ -43,22 +43,22 @@ data class PriceRequest(
     val printProductId: Int? = null,
     val printFinish: VariantType = VariantType.NORMAL,
     val cardTraderBlueprintId: Int? = null,
-    /** Blueprint CardTrader della sola variante (oversize senza prodotto Cardmarket): se c'è vale al posto di quello della carta. */
+    /** CardTrader blueprint of the variant alone (oversized card without a Cardmarket product): if present it is used instead of the card's. */
     val variantBlueprintId: Int? = null,
 )
 
-/** Fonte di prezzi. Le implementazioni lanciano le eccezioni di [com.robertobiggi.cardcollection.core.net]. */
+/** Price source. Implementations throw the exceptions of [com.robertobiggi.cardcollection.core.net]. */
 interface PriceProvider {
-    /** Identificativo stabile, usato per salvare lo stato del circuit breaker. */
+    /** Stable identifier, used to save the circuit breaker state. */
     val id: String
 
-    /** Nome mostrato all'utente. */
+    /** Name shown to the user. */
     val displayName: String
 
     /**
-     * Cerca il prezzo di una variante.
-     * @param request PriceRequest - carta e variante da cercare.
-     * @return PriceQuote? - prezzo trovato, oppure null se la fonte non ha dati per la variante.
+     * Looks up the price of a variant.
+     * @param request PriceRequest - card and variant to look up.
+     * @return PriceQuote? - price found, or null if the source has no data for the variant.
      */
     suspend fun fetch(request: PriceRequest): PriceQuote?
 }

@@ -4,7 +4,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-/** Validazioni degli input (utente e risposte remote) usate da tutta l'app. */
+/** Validation of inputs (user and remote responses) used across the app. */
 object Validators {
 
     private val QUERY_PATTERN = Regex("^[\\p{L}\\p{N} '.\\-&]{2,40}$")
@@ -12,33 +12,33 @@ object Validators {
     private val MANUAL_PRICE = Regex("^\\d{1,5}([.,]\\d{1,2})?$")
     private val UNSAFE_FILE_CHARS = Regex("[^a-z0-9_\\-]")
 
-    /** Host da cui è consentito scaricare le immagini delle carte. */
+    /** Hosts from which card images may be downloaded. */
     val ALLOWED_IMAGE_HOSTS = setOf("assets.tcgdex.net")
 
-    /** Host da cui è consentito scaricare le immagini di CardTrader ("cardtrader.com" rimanda a "www"). */
+    /** Hosts from which CardTrader images may be downloaded ("cardtrader.com" redirects to "www"). */
     val ALLOWED_CARDTRADER_IMAGE_HOSTS = setOf("www.cardtrader.com", "cardtrader.com")
 
-    /** Quantità massima di copie per variante. */
+    /** Maximum number of copies per variant. */
     const val MAX_QUANTITY = 999
 
-    /** Prezzo massimo accettato (EUR o USD): oltre è certamente un dato sbagliato. */
+    /** Maximum accepted price (EUR or USD): above it the value is certainly wrong. */
     const val MAX_PRICE = 1_000_000.0
 
     /**
-     * Controlla un testo di ricerca inserito dall'utente (es. "Mawile", "クチート").
-     * @param pattern String - testo da validare.
-     * @return Boolean - true se ha 2-40 caratteri tra lettere, cifre, spazio, apostrofo, punto, trattino e &.
+     * Checks a search text entered by the user (e.g. "Mawile", "クチート").
+     * @param pattern String - text to validate.
+     * @return Boolean - true if it has 2-40 characters among letters, digits, space, apostrophe, period, hyphen and &.
      */
     fun isValidQueryPattern(pattern: String): Boolean = QUERY_PATTERN.matches(pattern.trim())
 
-    /** Numero massimo di nomi in un elenco separato da virgole. */
+    /** Maximum number of names in a comma-separated list. */
     const val MAX_QUERY_PATTERNS = 20
 
     /**
-     * Scompone un elenco di nomi separati da virgole ("Moltres, Zapdos, Articuno"). Le voci vuote si ignorano e i doppioni
-     * (senza distinguere maiuscole) si tengono una volta sola.
-     * @param raw String - testo inserito.
-     * @return List<String>? - nomi, vuota se il testo è vuoto; null se una voce non è valida o ce ne sono più di [MAX_QUERY_PATTERNS].
+     * Splits a list of comma-separated names ("Moltres, Zapdos, Articuno"). Empty entries are ignored and duplicates
+     * (case-insensitive) are kept only once.
+     * @param raw String - text entered.
+     * @return List<String>? - names, empty if the text is empty; null if an entry is not valid or there are more than [MAX_QUERY_PATTERNS].
      */
     fun parseQueryPatterns(raw: String): List<String>? {
         val names = raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() }
@@ -47,16 +47,16 @@ object Validators {
     }
 
     /**
-     * Controlla un id ricevuto da TCGdex prima di usarlo in un URL o in un nome di file.
-     * @param id String - id di carta o set (es. "me02.5-144", "SM10a").
-     * @return Boolean - true se contiene solo caratteri sicuri e nessuna sequenza "..".
+     * Checks an id received from TCGdex before using it in a URL or a file name.
+     * @param id String - card or set id (e.g. "me02.5-144", "SM10a").
+     * @return Boolean - true if it contains only safe characters and no ".." sequence.
      */
     fun isValidRemoteId(id: String): Boolean = REMOTE_ID.matches(id) && !id.contains("..")
 
     /**
-     * Converte un prezzo inserito a mano (accetta virgola o punto come separatore decimale).
-     * @param input String - testo inserito, es. "2,50".
-     * @return Double? - prezzo arrotondato al centesimo, oppure null se non valido o non positivo.
+     * Converts a manually entered price (accepts comma or period as decimal separator).
+     * @param input String - text entered, e.g. "2,50".
+     * @return Double? - price rounded to the cent, or null if not valid or not positive.
      */
     fun parseManualPrice(input: String): Double? {
         val text = input.trim()
@@ -66,9 +66,9 @@ object Validators {
     }
 
     /**
-     * Riduce un testo qualsiasi a un segmento di nome file sicuro (niente separatori di percorso).
-     * @param input String - testo di partenza, es. "en:me02.5-144".
-     * @return String - segmento con soli caratteri [a-z0-9_-], lungo al massimo 80 caratteri e mai vuoto.
+     * Reduces any text to a safe file name segment (no path separators).
+     * @param input String - starting text, e.g. "en:me02.5-144".
+     * @return String - segment with only [a-z0-9_-] characters, at most 80 characters long and never empty.
      */
     fun safeFileSegment(input: String): String {
         val cleaned = input.lowercase().replace(UNSAFE_FILE_CHARS, "_").take(80)
@@ -76,9 +76,9 @@ object Validators {
     }
 
     /**
-     * Controlla che un URL di immagine sia HTTPS e appartenga a un host consentito.
-     * @param url String - URL da controllare.
-     * @return Boolean - true se l'URL è sicuro da scaricare.
+     * Checks that an image URL is HTTPS and belongs to an allowed host.
+     * @param url String - URL to check.
+     * @return Boolean - true if the URL is safe to download.
      */
     fun isAllowedImageUrl(url: String): Boolean {
         val parsed = url.toHttpUrlOrNull() ?: return false
@@ -86,9 +86,9 @@ object Validators {
     }
 
     /**
-     * Controlla l'URL di un'immagine di CardTrader.
-     * @param url String - indirizzo completo.
-     * @return Boolean - true se è HTTPS e l'host è in [ALLOWED_CARDTRADER_IMAGE_HOSTS].
+     * Checks the URL of a CardTrader image.
+     * @param url String - full address.
+     * @return Boolean - true if it is HTTPS and the host is in [ALLOWED_CARDTRADER_IMAGE_HOSTS].
      */
     fun isAllowedCardTraderImageUrl(url: String): Boolean {
         val parsed = url.toHttpUrlOrNull() ?: return false
@@ -96,9 +96,9 @@ object Validators {
     }
 
     /**
-     * Limita una quantità all'intervallo consentito.
-     * @param quantity Int - quantità richiesta.
-     * @return Int - quantità compresa tra 0 e [MAX_QUANTITY].
+     * Limits a quantity to the allowed range.
+     * @param quantity Int - requested quantity.
+     * @return Int - quantity between 0 and [MAX_QUANTITY].
      */
     fun clampQuantity(quantity: Int): Int = quantity.coerceIn(0, MAX_QUANTITY)
 }

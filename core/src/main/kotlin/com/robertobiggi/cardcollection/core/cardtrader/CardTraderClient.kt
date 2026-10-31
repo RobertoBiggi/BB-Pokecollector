@@ -16,13 +16,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
- * Client minimale per l'API CardTrader v2. Richiede il token personale dell'utente
- * (CardTrader → Impostazioni → API), inviato come Bearer.
+ * Minimal client for the CardTrader v2 API. Requires the user's personal token
+ * (CardTrader → Settings → API), sent as Bearer.
  *
- * @param http client OkHttp condiviso.
- * @param token token API dell'utente.
- * @param baseUrl radice dell'API; modificabile solo per i test con MockWebServer.
- * @param limiter limita la frequenza delle richieste; di default è condiviso da tutti i client, così più sync insieme restano sotto la soglia di CardTrader.
+ * @param http shared OkHttp client.
+ * @param token user's API token.
+ * @param baseUrl root of the API; changeable only for tests with MockWebServer.
+ * @param limiter limits the request rate; by default it is shared by all clients, so several syncs together stay below CardTrader's threshold.
  */
 class CardTraderClient(
     private val http: OkHttpClient,
@@ -33,32 +33,32 @@ class CardTraderClient(
     private val base: HttpUrl = baseUrl.toHttpUrl()
 
     /**
-     * Elenca i giochi supportati.
-     * @return List<CtGameDto> - giochi di CardTrader (la risposta li avvolge in `{"array": [...]}`).
+     * Lists the supported games.
+     * @return List<CtGameDto> - CardTrader games (the response wraps them in `{"array": [...]}`).
      */
     suspend fun games(): List<CtGameDto> =
         get(url("games"), CtGamesResponse.serializer()).array
 
     /**
-     * Elenca tutte le espansioni di tutti i giochi.
-     * @return List<CtExpansionDto> - espansioni.
+     * Lists all expansions of all games.
+     * @return List<CtExpansionDto> - expansions.
      */
     suspend fun expansions(): List<CtExpansionDto> =
         get(url("expansions"), ListSerializer(CtExpansionDto.serializer()), MAX_LIST_BYTES)
 
     /**
-     * Elenca i blueprint (le carte) di un'espansione.
-     * @param expansionId Int - id dell'espansione.
-     * @return List<CtBlueprintDto> - carte dell'espansione.
+     * Lists the blueprints (cards) of an expansion.
+     * @param expansionId Int - id of the expansion.
+     * @return List<CtBlueprintDto> - cards of the expansion.
      */
     suspend fun blueprints(expansionId: Int): List<CtBlueprintDto> =
         get(url("blueprints/export", "expansion_id" to expansionId.toString()), ListSerializer(CtBlueprintDto.serializer()), MAX_LIST_BYTES)
 
     /**
-     * Elenca gli annunci di un blueprint (i più economici per primi, al massimo 25).
-     * @param blueprintId Int - id del blueprint.
-     * @param language String? - codice lingua a due lettere, oppure null per tutte.
-     * @return List<CtProductDto> - annunci del blueprint.
+     * Lists the listings of a blueprint (cheapest first, at most 25).
+     * @param blueprintId Int - id of the blueprint.
+     * @param language String? - two-letter language code, or null for all.
+     * @return List<CtProductDto> - listings of the blueprint.
      */
     suspend fun products(blueprintId: Int, language: String?): List<CtProductDto> {
         val params = listOfNotNull("blueprint_id" to blueprintId.toString(), language?.let { "language" to it })
@@ -95,13 +95,13 @@ class CardTraderClient(
     companion object {
         const val DEFAULT_BASE_URL = "https://api.cardtrader.com/api/v2/"
 
-        /** Pausa minima tra due richieste a CardTrader, in ms: sotto la soglia oltre la quale l'IP viene bloccato. */
+        /** Minimum pause between two requests to CardTrader, in ms: below the threshold beyond which the IP is blocked. */
         const val MIN_INTERVAL_MS = 500L
 
-        /** Limitatore unico per tutto il processo, perché i client si creano in più punti e possono lavorare in parallelo. */
+        /** Single limiter for the whole process, because clients are created in several places and can work in parallel. */
         val SHARED_LIMITER = RateLimiter(MIN_INTERVAL_MS)
 
-        /** Dimensione massima per le liste di espansioni e blueprint (8 MB). */
+        /** Maximum size for the lists of expansions and blueprints (8 MB). */
         const val MAX_LIST_BYTES = 8L * 1024 * 1024
     }
 }
