@@ -50,7 +50,7 @@ Requisiti: Android 8.0 o successivo.
 
 ```bash
 ./gradlew -PcoreOnly :core:test           # test della logica (serve solo la JDK)
-./gradlew :app:testDebugUnitTest          # test dell'app, migrazioni comprese (serve l'Android SDK)
+./gradlew :app:testDebugUnitTest          # test dell'app (serve l'Android SDK)
 ./gradlew :app:assembleDebug              # APK di prova
 ```
 

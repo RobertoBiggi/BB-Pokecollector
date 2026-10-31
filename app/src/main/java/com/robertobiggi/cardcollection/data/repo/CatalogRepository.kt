@@ -122,7 +122,6 @@ class CatalogRepository(
      */
     suspend fun sync(collectionId: Long, progress: suspend (SyncProgress) -> Unit): SyncResult {
         if (store.info.value == null) return SyncResult(0, 0, 0, noCatalog = true)
-        remapRenamedCards(collectionId)
         val queries = dao.enabledQueriesOf(collectionId)
         val refreshed = HashSet<String>()
         var saved = 0
@@ -197,57 +196,6 @@ class CatalogRepository(
         if (others.isEmpty()) return
         val cards = store.use { cat -> others.mapNotNull { cat.card(it) } }.orEmpty()
         for (card in cards) saveCard(card, dao.getCard(card.id)?.queryId ?: 0)
-    }
-
-    /**
-     * Le carte salvate con un id che il database non ha più (le carte Cardmarket/CardTrader di prima del database SQLite avevano altri id)
-     * passano all'id nuovo, trovato dal prodotto Cardmarket o, se unico, da nome e numero stampato: così tornano ad avere blueprint,
-     * prodotto e immagini. Quantità, condizioni, prezzi, avvisi e appartenenza alle collezioni vengono spostati; senza una
-     * corrispondenza sicura la carta resta com'è.
-     * @param collectionId Long - collezione le cui carte si controllano (le altre collezioni che le contengono seguono).
-     * @return Unit
-     */
-    private suspend fun remapRenamedCards(collectionId: Long) {
-        val stored = dao.membershipsOf(collectionId).map { it.cardId }.distinct().mapNotNull { dao.getCard(it) }
-        if (stored.isEmpty()) return
-        val renamed = store.use { cat ->
-            stored.mapNotNull { old ->
-                val language = Language.fromCode(old.language) ?: return@mapNotNull null
-                if (cat.card(old.id) != null) return@mapNotNull null
-                val product = old.cardmarketProduct ?: old.cardmarketId
-                val byProduct = if (product != null) cat.cardsByProduct(language, product) else emptyList()
-                val sameName = if (byProduct.isEmpty()) cat.cardsNamed(language, old.name) else emptyList()
-                CardIdRemap.pick(old.localId, old.printedNumber, byProduct, sameName)?.let { old to it }
-            }
-        }.orEmpty()
-        for ((old, new) in renamed) moveCard(old, new)
-    }
-
-    /**
-     * Sposta i dati dell'utente di una carta sul nuovo id e toglie la riga vecchia.
-     * @param old CardEntity - carta salvata con l'id vecchio.
-     * @param new CatalogCard - la stessa carta nel database.
-     * @return Unit
-     */
-    private suspend fun moveCard(old: CardEntity, new: CatalogCard) {
-        db.withTransaction {
-            saveCard(new, old.queryId)
-            dao.fillImagePaths(new.id, old.imageLowPath, old.imageHighPath)
-            val user = db.collectionDao()
-            val prices = db.priceDao()
-            for (variant in dao.variantsOf(listOf(old.id))) {
-                val type = VariantType.fromName(variant.type) ?: continue
-                val to = Ids.variantId(new.id, type, variant.print)
-                dao.insertVariants(listOf(CardVariantEntity(to, new.id, variant.type, variant.cardmarketId, variant.print, variant.cardTraderBlueprintId)))
-                user.entriesOfVariant(variant.id).forEach { user.upsertEntry(EntryMerge.move(it, to, user.getEntry(it.collectionId, to))) }
-                user.deleteEntriesOfVariant(variant.id)
-                prices.moveSnapshots(variant.id, to)
-                prices.moveAlert(variant.id, to)
-            }
-            dao.membershipsOfCard(old.id).forEach { dao.insertMembership(it.copy(cardId = new.id)) }
-            prices.deleteAlertsOfCards(listOf(old.id))
-            dao.deleteCards(listOf(old.id))
-        }
     }
 
     /**
