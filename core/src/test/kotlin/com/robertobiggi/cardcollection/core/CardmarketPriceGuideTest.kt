@@ -26,7 +26,7 @@ class CardmarketPriceGuideTest {
 
     private lateinit var server: MockWebServer
 
-    /** Due prodotti nel formato reale del listino: il primo senza dati holo, il secondo con reverse holo. */
+    /** Two products in the real price list format: the first without holo data, the second with reverse holo. */
     private val body = """{"version":1,"createdAt":"2026-10-21T02:48:17+0200","priceGuides":[
         {"idProduct":765692,"idCategory":51,"avg":33.33,"low":25,"trend":20.68,"avg1":33.33,"avg7":15.73,"avg30":15.73,"avg-holo":null,"low-holo":null,"trend-holo":0,"avg1-holo":null,"avg7-holo":null,"avg30-holo":null},
         {"idProduct":271439,"idCategory":52,"avg":1.49,"low":0.15,"trend":2.79,"avg1":null,"avg7":null,"avg30":null,"avg-holo":3.1,"low-holo":2.5,"trend-holo":3.93,"avg1-holo":null,"avg7-holo":null,"avg30-holo":3.6}]}"""
@@ -97,7 +97,7 @@ class CardmarketPriceGuideTest {
         counting().lookup(765692)
         assertEquals(1, downloads)
         assertEquals(1, reads)
-        // File recente in cache: nessun avviso di scaricamento, ma la lettura (che richiede tempo) sì.
+        // Recent file in cache: no download notice, but the read (which takes time) yes.
         counting().lookup(765692)
         assertEquals(1, downloads)
         assertEquals(2, reads)

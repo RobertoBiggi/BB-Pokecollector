@@ -1,14 +1,14 @@
 package com.robertobiggi.cardcollection.core.cardtrader
 
-/** Indirizzi delle pagine di CardTrader (aperti nel browser, nessuna chiamata dall'app). */
+/** Addresses of the CardTrader pages (opened in the browser, no calls from the app). */
 object CardTraderLinks {
     private const val SITE = "https://www.cardtrader.com/it-IT"
 
     /**
-     * Pagina di una carta. CardTrader riconosce la carta dal numero del blueprint; il resto dell'indirizzo è il nome, solo per leggibilità.
-     * @param blueprintId Int - id del blueprint.
-     * @param name String - nome della carta.
-     * @return String - indirizzo della pagina.
+     * Page of a card. CardTrader recognizes the card by the blueprint number; the rest of the address is the name, only for readability.
+     * @param blueprintId Int - id of the blueprint.
+     * @param name String - name of the card.
+     * @return String - address of the page.
      */
     fun card(blueprintId: Int, name: String): String {
         val slug = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
@@ -16,9 +16,9 @@ object CardTraderLinks {
     }
 
     /**
-     * Ricerca per nome, per le carte di cui non si conosce il blueprint.
-     * @param encodedName String - nome già codificato per un indirizzo.
-     * @return String - indirizzo della ricerca.
+     * Search by name, for cards whose blueprint is unknown.
+     * @param encodedName String - name already encoded for an address.
+     * @return String - address of the search.
      */
     fun search(encodedName: String): String = "https://www.cardtrader.com/search?query=$encodedName"
 }

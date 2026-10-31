@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
-/** Gioco di CardTrader (`GET /games`). */
+/** CardTrader game (`GET /games`). */
 @Serializable
 data class CtGameDto(
     val id: Int,
@@ -12,11 +12,11 @@ data class CtGameDto(
     @SerialName("display_name") val displayName: String? = null,
 )
 
-/** Risposta di `GET /games`: l'elenco è dentro `array`. */
+/** Response of `GET /games`: the list is inside `array`. */
 @Serializable
 data class CtGamesResponse(val array: List<CtGameDto> = emptyList())
 
-/** Espansione di CardTrader (`GET /expansions`). */
+/** CardTrader expansion (`GET /expansions`). */
 @Serializable
 data class CtExpansionDto(
     val id: Int,
@@ -26,10 +26,10 @@ data class CtExpansionDto(
 )
 
 /**
- * Blueprint: la carta di un'espansione. CardTrader non crea un blueprint per rarità: normal e reverse
- * della stessa carta sono lo stesso blueprint, distinti solo dalle proprietà dei singoli annunci.
+ * Blueprint: the card of an expansion. CardTrader does not create a blueprint per rarity: normal and reverse
+ * of the same card are the same blueprint, distinguished only by the properties of the individual listings.
  *
- * @property fixedProperties proprietà fisse, tra cui `collector_number`.
+ * @property fixedProperties fixed properties, including `collector_number`.
  */
 @Serializable
 data class CtBlueprintDto(
@@ -42,18 +42,18 @@ data class CtBlueprintDto(
     val image: CtImageDto? = null,
 )
 
-/** Immagine di un blueprint: `show` è la versione media (circa 500 px di larghezza), `url` l'originale. Percorsi relativi al sito. */
+/** Image of a blueprint: `show` is the medium version (about 500 px wide), `url` the original. Paths relative to the site. */
 @Serializable
 data class CtImageDto(
     val url: String? = null,
     val show: CtImageSizeDto? = null,
 )
 
-/** Una dimensione dell'immagine di un blueprint. */
+/** A size of the image of a blueprint. */
 @Serializable
 data class CtImageSizeDto(val url: String? = null)
 
-/** Prezzo annidato di un annuncio. */
+/** Nested price of a listing. */
 @Serializable
 data class CtPriceDto(
     val cents: Long? = null,
@@ -61,9 +61,9 @@ data class CtPriceDto(
 )
 
 /**
- * Annuncio di un venditore (`GET /marketplace/products`).
+ * Listing from a seller (`GET /marketplace/products`).
  *
- * @property propertiesHash proprietà dell'annuncio: condizione, lingua, `pokemon_reverse`, prima edizione.
+ * @property propertiesHash properties of the listing: condition, language, `pokemon_reverse`, first edition.
  */
 @Serializable
 data class CtProductDto(

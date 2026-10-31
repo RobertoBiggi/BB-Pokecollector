@@ -13,13 +13,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Prezzo più basso tra gli annunci CardTrader (EUR) della variante richiesta.
- * Espansioni, blueprint e annunci vengono scaricati una volta sola per istanza:
- * crea una nuova istanza per ogni aggiornamento prezzi.
+ * Lowest price among the CardTrader listings (EUR) of the requested variant.
+ * Expansions, blueprints and listings are downloaded only once per instance:
+ * create a new instance for each price update.
  *
- * @param client client CardTrader con il token dell'utente.
- * @param worstCondition condizione peggiore accettata predefinita, se la carta non ne ha una sua.
- * @param ballVariants blueprint delle varianti Poké Ball e Master Ball.
+ * @param client CardTrader client with the user's token.
+ * @param worstCondition default worst accepted condition, if the card has none of its own.
+ * @param ballVariants blueprints of the Poké Ball and Master Ball variants.
  */
 class CardTraderPriceProvider(
     private val client: CardTraderClient,
@@ -34,14 +34,14 @@ class CardTraderPriceProvider(
     private val products = HashMap<Pair<Int, String?>, List<CtProductDto>>()
 
     /**
-     * Restituisce il prezzo più basso degli annunci della variante.
-     * @param request PriceRequest - carta e variante da cercare.
-     * @return PriceQuote? - prezzo in euro, oppure null se CardTrader non ha la carta o annunci per la variante.
+     * Returns the lowest price among the listings of the variant.
+     * @param request PriceRequest - card and variant to look up.
+     * @return PriceQuote? - price in euros, or null if CardTrader has no such card or no listings for the variant.
      */
     override suspend fun fetch(request: PriceRequest): PriceQuote? = mutex.withLock {
         val languageCode = languageParam(request.language)
-        // Il blueprint arriva dal database delle carte (già abbinato dal generatore); Poké Ball e Master Ball ne hanno uno a parte.
-        // Le stampe a parte hanno un blueprint solo se il database lo indica per la variante: quello della carta è della carta normale.
+        // The blueprint comes from the card database (already matched by the generator); Poké Ball and Master Ball have a separate one.
+        // Separate prints have a blueprint only if the database gives one for the variant: the card's one belongs to the normal card.
         val blueprint = when {
             request.variant.isBall -> ballVariants.blueprintId(request.setId, request.localId, request.variant)
             request.variant.isPrint -> request.variantBlueprintId
@@ -60,10 +60,10 @@ class CardTraderPriceProvider(
     }
 
     /**
-     * Indirizzo dell'immagine di un blueprint, nella versione media.
-     * @param expansionId Int - espansione CardTrader del set della carta.
-     * @param blueprintId Int - blueprint della carta.
-     * @return String? - URL completo, oppure null se il blueprint non c'è o non ha immagine.
+     * Address of the image of a blueprint, in the medium version.
+     * @param expansionId Int - CardTrader expansion of the card's set.
+     * @param blueprintId Int - blueprint of the card.
+     * @return String? - full URL, or null if the blueprint does not exist or has no image.
      */
     suspend fun imageUrl(expansionId: Int, blueprintId: Int): String? = mutex.withLock {
         blueprintsOf(expansionId).firstOrNull { it.id == blueprintId }?.let { imageOf(it) }
@@ -82,15 +82,15 @@ class CardTraderPriceProvider(
         products.getOrPut(blueprintId to languageCode) { client.products(blueprintId, languageCode) }
 
     /**
-     * Lingua con cui scartare gli annunci di altre lingue (es. coreano per una carta giapponese): sempre quella della carta.
-     * CardTrader scrive `jp` per il giapponese e `zh-TW` per il cinese tradizionale; il confronto è senza maiuscole.
+     * Language used to discard listings in other languages (e.g. Korean for a Japanese card): always the card's.
+     * CardTrader writes `jp` for Japanese and `zh-TW` for traditional Chinese; the comparison is case-insensitive.
      */
     private fun pickerLanguage(language: Language): String = when (language) {
         Language.JA -> "jp"
         else -> language.code
     }
 
-    /** Lingue per cui CardTrader accetta il filtro; le altre non vengono filtrate. */
+    /** Languages for which CardTrader accepts the filter; the others are not filtered. */
     private fun languageParam(language: Language): String? = when (language) {
         Language.EN, Language.IT, Language.FR, Language.DE, Language.ES, Language.PT -> language.code
         Language.JA -> "jp"

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Backup automatico Android (fino ad Android 11): database e impostazioni, non le immagini (si riscaricano) né il
-     token CardTrader (cifrato con una chiave del Keystore di questo telefono). -->
+<!-- Android automatic backup (up to Android 11): database and settings, not the images (downloaded again) nor the
+     CardTrader token (encrypted with a key from this phone's Keystore). -->
 <full-backup-content>
     <include domain="database" path="." />
     <include domain="sharedpref" path="." />

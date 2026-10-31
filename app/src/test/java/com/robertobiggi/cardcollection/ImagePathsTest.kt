@@ -5,8 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Regressione: dopo una reinstallazione il backup Android ripristina il database (con i percorsi delle immagini) ma non
- * le immagini. I percorsi senza file vanno dimenticati, altrimenti il sync non riscarica mai quelle immagini.
+ * Regression: after a reinstall the Android backup restores the database (with the image paths) but not
+ * the images. Paths without a file must be forgotten, otherwise the sync never downloads those images again.
  */
 class ImagePathsTest {
 

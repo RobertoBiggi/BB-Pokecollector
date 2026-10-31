@@ -3,23 +3,23 @@ package com.robertobiggi.cardcollection.core.cardmarket
 import com.robertobiggi.cardcollection.core.cardtrader.CtExpansionDto
 
 /**
- * Set Pokémon con il loro id Cardmarket (`idExpansion`), per trovare una carta nel catalogo Cardmarket senza
- * passare da CardTrader. L'elenco è incluso nell'app (`cardmarket-expansions.tsv`) e nasce dai blueprint CardTrader,
- * che indicano per ogni carta il prodotto Cardmarket: i set nuovi vi compaiono solo dopo un aggiornamento dell'app.
+ * Pokémon sets with their Cardmarket id (`idExpansion`), to find a card in the Cardmarket catalog without
+ * going through CardTrader. The list is included in the app (`cardmarket-expansions.tsv`) and comes from the CardTrader blueprints,
+ * which give the Cardmarket product for each card: new sets only appear there after an app update.
  *
- * @property expansions set nella forma usata dall'abbinatore CardTrader (id, sigla, nome).
- * @property cardmarketIdOf id Cardmarket del set, per id del set nell'elenco.
+ * @property expansions sets in the form used by the CardTrader matcher (id, code, name).
+ * @property cardmarketIdOf Cardmarket id of the set, by set id in the list.
  */
 class CardmarketExpansions(val expansions: List<CtExpansionDto>, private val cardmarketIdOf: Map<Int, Int>) {
     /**
-     * Id Cardmarket di un set dell'elenco.
-     * @param expansionId Int - id del set nell'elenco.
-     * @return Int? - `idExpansion` di Cardmarket, oppure null se sconosciuto.
+     * Cardmarket id of a set in the list.
+     * @param expansionId Int - id of the set in the list.
+     * @return Int? - Cardmarket `idExpansion`, or null if unknown.
      */
     fun cardmarketId(expansionId: Int): Int? = cardmarketIdOf[expansionId]
 
     companion object {
-        /** Elenco incluso nell'app, letto una sola volta. */
+        /** List included in the app, read only once. */
         val bundled: CardmarketExpansions by lazy {
             val stream = CardmarketExpansions::class.java.getResourceAsStream("cardmarket-expansions.tsv")
                 ?: return@lazy CardmarketExpansions(emptyList(), emptyMap())
@@ -27,9 +27,9 @@ class CardmarketExpansions(val expansions: List<CtExpansionDto>, private val car
         }
 
         /**
-         * Legge le righe "id TAB sigla TAB nome TAB idExpansion".
-         * @param lines List<String> - righe del file.
-         * @return CardmarketExpansions - set letti; le righe malformate sono ignorate.
+         * Reads the lines "id TAB code TAB name TAB idExpansion".
+         * @param lines List<String> - lines of the file.
+         * @return CardmarketExpansions - sets read; malformed lines are ignored.
          */
         fun parse(lines: List<String>): CardmarketExpansions {
             val expansions = ArrayList<CtExpansionDto>()

@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.first
 import com.robertobiggi.cardcollection.data.repo.SyncPhase
 import com.robertobiggi.cardcollection.data.repo.SyncProgress
 
-/** Chiavi dei dati di input, avanzamento e risultato dei worker (solo dati: i testi li compone la UI). */
+/** Keys of the input, progress and result data of the workers (data only: the UI composes the texts). */
 object WorkKeys {
     const val COLLECTION_ID = "collectionId"
     const val PHASE = "phase"
@@ -37,26 +37,26 @@ object WorkKeys {
 }
 
 /**
- * Porta il lavoro in primo piano con la sua notifica, così non viene interrotto dopo 10 minuti
- * (i lavori in background normali hanno quel limite). Se il sistema non lo consente, il lavoro
- * continua lo stesso in background.
- * @receiver CoroutineWorker - worker in esecuzione.
+ * Brings the job to the foreground with its notification, so it is not interrupted after 10 minutes
+ * (normal background jobs have that limit). If the system does not allow it, the job
+ * continues anyway in the background.
+ * @receiver CoroutineWorker - running worker.
  * @return Unit
  */
 private suspend fun CoroutineWorker.promoteToForeground() {
     try {
         setForeground(getForegroundInfo())
     } catch (e: IllegalStateException) {
-        // Android 12+ può rifiutare l'avvio in primo piano (es. app in background senza esenzione).
+        // Android 12+ may refuse to start in the foreground (e.g. app in the background without exemption).
     }
 }
 
-/** Scarica il catalogo delle ricerche attive di una collezione e le immagini. Avviato solo a mano. */
+/** Downloads the catalog of a collection's active searches and the images. Started by hand only. */
 class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     /**
-     * Esegue il sync del catalogo della collezione indicata nei dati di input, pubblicando l'avanzamento.
-     * @return Result - successo con i conteggi, fallimento se nessuna carta è stata salvata e ci sono stati errori.
+     * Runs the catalog sync of the collection given in the input data, publishing the progress.
+     * @return Result - success with the counts, failure if no card was saved and there were errors.
      */
     override suspend fun doWork(): Result {
         val collectionId = inputData.getLong(WorkKeys.COLLECTION_ID, -1L)
@@ -64,16 +64,16 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
         promoteToForeground()
         val container = (applicationContext as CardCollectionApp).container
         val result = container.catalog.sync(collectionId) { p -> publish(p) }
-        // Le immagini che TCGdex non ha si prendono da CardTrader (se c'è il token).
+        // Images that TCGdex does not have are taken from CardTrader (if there is the token).
         val cardTraderImages = container.prices.fillImagesFromCardTrader { p -> publish(p) }
         val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + cardTraderImages, WorkKeys.ERRORS to result.errors, WorkKeys.EMPTY_SETS to result.emptySets, WorkKeys.NO_CATALOG to result.noCatalog)
         return if (result.noCatalog || (result.cardsSaved == 0 && result.errors > 0)) Result.failure(data) else Result.success(data)
     }
 
     /**
-     * Pubblica l'avanzamento per la schermata e aggiorna la notifica (con il testo di cosa sta scaricando e di tentativi ed errori).
-     * Le immagini arrivano molte volte al secondo: la notifica si aggiorna al massimo una volta al secondo.
-     * @param p SyncProgress - avanzamento.
+     * Publishes the progress for the screen and updates the notification (with the text of what is being downloaded and of attempts and errors).
+     * Images arrive many times per second: the notification is updated at most once per second.
+     * @param p SyncProgress - progress.
      * @return Unit
      */
     private suspend fun publish(p: SyncProgress) {
@@ -97,8 +97,8 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
     }
 
     /**
-     * Notifica mostrata quando il lavoro gira come servizio in primo piano (Android 11 e precedenti).
-     * @return ForegroundInfo - notifica di avanzamento.
+     * Notification shown when the job runs as a foreground service (Android 11 and earlier).
+     * @return ForegroundInfo - progress notification.
      */
     override suspend fun getForegroundInfo(): ForegroundInfo = ForegroundInfo(
         NOTIFICATION_ID,
@@ -114,12 +114,12 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
     }
 }
 
-/** Aggiorna i prezzi delle varianti desiderate o possedute di una collezione. Avviato solo a mano. */
+/** Updates the prices of the wanted or owned variants of a collection. Started by hand only. */
 class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     /**
-     * Esegue l'aggiornamento prezzi della collezione indicata nei dati di input, pubblicando l'avanzamento.
-     * @return Result - successo con i conteggi (anche se interrotto: i prezzi salvati restano validi).
+     * Runs the price update of the collection given in the input data, publishing the progress.
+     * @return Result - success with the counts (even if interrupted: the saved prices stay valid).
      */
     override suspend fun doWork(): Result {
         val collectionId = inputData.getLong(WorkKeys.COLLECTION_ID, -1L)
@@ -135,8 +135,8 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
     }
 
     /**
-     * Notifica mostrata quando il lavoro gira come servizio in primo piano (Android 11 e precedenti).
-     * @return ForegroundInfo - notifica di avanzamento.
+     * Notification shown when the job runs as a foreground service (Android 11 and earlier).
+     * @return ForegroundInfo - progress notification.
      */
     override suspend fun getForegroundInfo(): ForegroundInfo = ForegroundInfo(
         NOTIFICATION_ID,
@@ -150,26 +150,26 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
 }
 
 /**
- * Coda del testo di avanzamento delle immagini: tentativi ripetuti, immagini non scaricate e ultimo errore. Vuota se non c'è niente da dire.
- * @param context Context - contesto per i testi tradotti.
- * @param retries Int - tentativi ripetuti finora.
- * @param failed Int - immagini non scaricate.
- * @param note String? - ultimo motivo di errore (es. "HTTP 429").
- * @return String - testo da accodare, già con il separatore.
+ * Tail of the image progress text: repeated attempts, images not downloaded and last error. Empty if there is nothing to say.
+ * @param context Context - context for the translated texts.
+ * @param retries Int - repeated attempts so far.
+ * @param failed Int - images not downloaded.
+ * @param note String? - last error reason (e.g. "HTTP 429").
+ * @return String - text to append, already with the separator.
  */
 fun issuesSuffix(context: Context, retries: Int, failed: Int, note: String?): String =
     if (retries == 0 && failed == 0) "" else "\n" + context.getString(R.string.job_images_issues, retries, failed, note ?: "-")
 
 /**
- * Controllo giornaliero degli avvisi di prezzo, poco dopo l'aggiornamento del listino Cardmarket. Aggiorna solo le
- * varianti con un avviso, mostra le notifiche e programma il controllo del giorno dopo. Se l'utente ha spento gli
- * avvisi non fa nulla e non si riprogramma.
+ * Daily check of price alerts, shortly after the Cardmarket price list update. Updates only the
+ * variants with an alert, shows the notifications and schedules the next day's check. If the user turned
+ * alerts off it does nothing and does not reschedule.
  */
 class PriceAlertWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     /**
-     * Esegue il controllo degli avvisi.
-     * @return Result - successo; un nuovo tentativo (al massimo [MAX_ATTEMPTS]) se la rete o il listino non rispondono.
+     * Runs the alert check.
+     * @return Result - success; a new attempt (at most [MAX_ATTEMPTS]) if the network or the price list do not respond.
      */
     override suspend fun doWork(): Result {
         val container = (applicationContext as CardCollectionApp).container
@@ -179,7 +179,7 @@ class PriceAlertWorker(context: Context, params: WorkerParameters) : CoroutineWo
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // Listino non scaricabile o risposta non valida: si riprova più tardi, poi si passa al giorno dopo.
+            // Price list not downloadable or invalid response: retry later, then move on to the next day.
             null
         }
         result?.notices?.forEach { Notifications.showPriceAlert(applicationContext, it) }

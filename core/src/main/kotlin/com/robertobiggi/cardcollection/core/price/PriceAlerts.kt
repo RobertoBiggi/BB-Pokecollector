@@ -5,14 +5,14 @@ import java.time.ZonedDateTime
 import kotlin.math.abs
 
 /**
- * Prezzo di una variante letto da una fonte in un aggiornamento.
+ * Price of a variant read from a source during an update.
  *
- * @property source fonte (es. "Cardmarket", "CardTrader", "TCGplayer").
- * @property currency valuta: [EUR] o [USD].
- * @property value prezzo, maggiore di zero.
+ * @property source source (e.g. "Cardmarket", "CardTrader", "TCGplayer").
+ * @property currency currency: [EUR] or [USD].
+ * @property value price, greater than zero.
  */
 data class PricePoint(val source: String, val currency: String, val value: Double) {
-    /** Chiave con cui si ricorda il prezzo di riferimento di questa fonte e valuta. */
+    /** Key under which the reference price of this source and currency is remembered. */
     val key: String get() = "$source|$currency"
 
     companion object {
@@ -22,84 +22,84 @@ data class PricePoint(val source: String, val currency: String, val value: Doubl
 }
 
 /**
- * Cosa vuole sapere l'utente di una variante.
+ * What the user wants to know about a variant.
  *
- * @property notifyChanges true per un avviso quando il prezzo sale o scende oltre la soglia.
- * @property targetEur prezzo in euro sotto cui (o vicino a cui) avvisare; null se non impostato.
+ * @property notifyChanges true for an alert when the price rises or falls beyond the threshold.
+ * @property targetEur price in euros below (or near) which to alert; null if not set.
  */
 data class AlertConfig(val notifyChanges: Boolean, val targetEur: Double?)
 
 /**
- * Stato salvato di un avviso tra un controllo e l'altro.
+ * Saved state of an alert between one check and the next.
  *
- * @property baselines prezzo di riferimento per fonte e valuta ([PricePoint.key]): l'ultimo per cui si è avvisato,
- *   o il primo visto. Le variazioni si misurano da qui, così quelle piccole di ogni giorno si sommano.
- * @property targetReached true se l'avviso del prezzo obiettivo è già partito e il prezzo non è ancora risalito.
+ * @property baselines reference price per source and currency ([PricePoint.key]): the last one an alert was sent for,
+ *   or the first seen. Changes are measured from here, so small daily ones add up.
+ * @property targetReached true if the target price alert has already been sent and the price has not risen again yet.
  */
 data class AlertState(val baselines: Map<String, Double> = emptyMap(), val targetReached: Boolean = false)
 
-/** Avviso da notificare. */
+/** Alert to notify. */
 sealed interface AlertEvent {
     /**
-     * Il prezzo di una fonte è salito o sceso oltre la soglia.
-     * @property point prezzo nuovo.
-     * @property previous prezzo di riferimento precedente.
+     * The price of a source has risen or fallen beyond the threshold.
+     * @property point new price.
+     * @property previous previous reference price.
      */
     data class Change(val point: PricePoint, val previous: Double) : AlertEvent {
-        /** Variazione in percentuale (positiva se sale). */
+        /** Percentage change (positive if it rises). */
         val percent: Double get() = (point.value - previous) / previous * 100.0
     }
 
     /**
-     * Il prezzo più basso in euro è arrivato vicino o sotto il prezzo obiettivo.
-     * @property point prezzo più basso in euro.
-     * @property target prezzo obiettivo.
+     * The lowest price in euros has come near or below the target price.
+     * @property point lowest price in euros.
+     * @property target target price.
      */
     data class TargetReached(val point: PricePoint, val target: Double) : AlertEvent
 }
 
 /**
- * Esito del controllo di un avviso.
- * @property events avvisi da notificare.
- * @property state stato da salvare per il prossimo controllo.
+ * Outcome of checking an alert.
+ * @property events alerts to notify.
+ * @property state state to save for the next check.
  */
 data class AlertEvaluation(val events: List<AlertEvent>, val state: AlertState)
 
-/** Regole degli avvisi di prezzo: cosa notificare e quando fare il controllo giornaliero. */
+/** Price alert rules: what to notify and when to run the daily check. */
 object PriceAlertRules {
 
-    /** Variazione minima predefinita per l'avviso "sale o scende", in percentuale. */
+    /** Default minimum change for the "rises or falls" alert, in percent. */
     const val DEFAULT_CHANGE_PERCENT = 5
 
-    /** Variazioni ammesse nelle impostazioni, in percentuale. */
+    /** Changes allowed in the settings, in percent. */
     val CHANGE_PERCENT_RANGE = 1..50
 
-    /** Margine sopra il prezzo obiettivo entro cui il prezzo è "simile" (5%: con 50 € avvisa da 52,50 € in giù). */
+    /** Margin above the target price within which the price is "similar" (5%: with 50 € it alerts from 52.50 € down). */
     const val TARGET_MARGIN = 0.05
 
-    /** Prezzo obiettivo massimo accettato, in euro. */
+    /** Maximum accepted target price, in euros. */
     const val MAX_TARGET_EUR = 1_000_000.0
 
     /**
-     * Ora del controllo giornaliero: il listino Cardmarket viene rigenerato verso le 3 di notte
-     * (`createdAt` reale "…T02:48:17+0200"), il controllo parte un'ora e mezza dopo.
+     * Time of the daily check: the Cardmarket price list is regenerated around 3 a.m.
+     * (real `createdAt` "…T02:48:17+0200"), the check starts an hour and a half later.
      */
     val DAILY_RUN_TIME: LocalTime = LocalTime.of(4, 30)
 
     /**
-     * Confronta i prezzi appena letti con lo stato salvato e decide cosa notificare.
-     * - Per ogni fonte e valuta: la prima volta il prezzo diventa il riferimento; poi, se gli avvisi di variazione sono
-     *   attivi e il prezzo si è spostato di almeno [changePercent] dal riferimento, parte un avviso e il riferimento
-     *   diventa il prezzo nuovo. Con gli avvisi di variazione spenti il riferimento segue il prezzo, così
-     *   attivarli dopo non fa partire variazioni vecchie.
-     * - Prezzo obiettivo: confrontato con il prezzo più basso in euro; l'avviso parte una volta sola quando il prezzo
-     *   entra nella zona (obiettivo + [TARGET_MARGIN]) e si riarma quando ne esce.
-     * Le fonti che in questo controllo non hanno dato un prezzo tengono il riferimento che avevano.
-     * @param config AlertConfig - cosa vuole sapere l'utente.
-     * @param state AlertState - stato salvato.
-     * @param points List<PricePoint> - prezzi letti in questo controllo (quelli non positivi sono ignorati).
-     * @param changePercent Int - variazione minima in percentuale per l'avviso "sale o scende".
-     * @return AlertEvaluation - avvisi da notificare e stato nuovo.
+     * Compares the prices just read with the saved state and decides what to notify.
+     * - For each source and currency: the first time the price becomes the reference; then, if change alerts are
+     *   on and the price has moved by at least [changePercent] from the reference, an alert is sent and the reference
+     *   becomes the new price. With change alerts off the reference follows the price, so
+     *   turning them on later does not trigger old changes.
+     * - Target price: compared with the lowest price in euros; the alert is sent only once when the price
+     *   enters the zone (target + [TARGET_MARGIN]) and is re-armed when it leaves it.
+     * Sources that gave no price in this check keep the reference they had.
+     * @param config AlertConfig - what the user wants to know.
+     * @param state AlertState - saved state.
+     * @param points List<PricePoint> - prices read in this check (non-positive ones are ignored).
+     * @param changePercent Int - minimum change in percent for the "rises or falls" alert.
+     * @return AlertEvaluation - alerts to notify and new state.
      */
     fun evaluate(config: AlertConfig, state: AlertState, points: List<PricePoint>, changePercent: Int): AlertEvaluation {
         val valid = points.filter { it.value > 0.0 && it.value.isFinite() }.distinctBy { it.key }
@@ -131,14 +131,14 @@ object PriceAlertRules {
     }
 
     /**
-     * Stato di un avviso appena creato o modificato dall'utente. Un avviso nuovo parte dai prezzi attuali. Uno modificato
-     * tiene i prezzi di riferimento che aveva (le variazioni continuano a sommarsi) e, se il prezzo obiettivo non è
-     * cambiato, anche il fatto che l'avviso dell'obiettivo è già partito: cambiare solo la soglia non deve rimandarlo.
-     * @param existing AlertState? - stato salvato, null se l'avviso è nuovo.
-     * @param existingTarget Double? - prezzo obiettivo salvato.
-     * @param newTarget Double? - prezzo obiettivo scelto adesso.
-     * @param current Map<String, Double> - prezzi attuali per [PricePoint.key].
-     * @return AlertState - stato da salvare.
+     * State of an alert just created or modified by the user. A new alert starts from the current prices. A modified one
+     * keeps the reference prices it had (changes keep adding up) and, if the target price has not
+     * changed, also the fact that the target alert has already been sent: changing only the threshold must not send it again.
+     * @param existing AlertState? - saved state, null if the alert is new.
+     * @param existingTarget Double? - saved target price.
+     * @param newTarget Double? - target price chosen now.
+     * @param current Map<String, Double> - current prices by [PricePoint.key].
+     * @return AlertState - state to save.
      */
     fun editedState(existing: AlertState?, existingTarget: Double?, newTarget: Double?, current: Map<String, Double>): AlertState {
         if (existing == null) return AlertState(current, targetReached = false)
@@ -146,11 +146,11 @@ object PriceAlertRules {
     }
 
     /**
-     * Prossimo controllo giornaliero: oggi a [DAILY_RUN_TIME] se non è ancora passato, altrimenti domani.
-     * Calcolato a ogni esecuzione, così resta all'ora giusta anche con il cambio dell'ora legale.
-     * @param now ZonedDateTime - adesso, nel fuso orario del telefono.
-     * @param time LocalTime - ora del controllo.
-     * @return ZonedDateTime - istante del prossimo controllo.
+     * Next daily check: today at [DAILY_RUN_TIME] if it has not passed yet, otherwise tomorrow.
+     * Computed at every run, so it stays at the right time even across daylight saving changes.
+     * @param now ZonedDateTime - now, in the phone's time zone.
+     * @param time LocalTime - time of the check.
+     * @return ZonedDateTime - instant of the next check.
      */
     fun nextRun(now: ZonedDateTime, time: LocalTime = DAILY_RUN_TIME): ZonedDateTime {
         val today = now.with(time).withSecond(0).withNano(0)
@@ -158,18 +158,18 @@ object PriceAlertRules {
     }
 
     /**
-     * Converte i prezzi di riferimento nel testo salvato nel database ("Cardmarket|EUR=12.5;CardTrader|EUR=11.0").
-     * @param baselines Map<String, Double> - prezzo di riferimento per [PricePoint.key].
-     * @return String - testo da salvare.
+     * Converts the reference prices into the text saved in the database ("Cardmarket|EUR=12.5;CardTrader|EUR=11.0").
+     * @param baselines Map<String, Double> - reference price by [PricePoint.key].
+     * @return String - text to save.
      */
     fun encodeBaselines(baselines: Map<String, Double>): String =
         baselines.entries.filter { it.value > 0.0 && it.value.isFinite() && isSafeKey(it.key) }
             .sortedBy { it.key }.joinToString(";") { "${it.key}=${it.value}" }
 
     /**
-     * Legge i prezzi di riferimento salvati con [encodeBaselines]; le parti malformate sono ignorate.
-     * @param text String? - testo salvato.
-     * @return Map<String, Double> - prezzo di riferimento per [PricePoint.key].
+     * Reads the reference prices saved with [encodeBaselines]; malformed parts are ignored.
+     * @param text String? - saved text.
+     * @return Map<String, Double> - reference price by [PricePoint.key].
      */
     fun decodeBaselines(text: String?): Map<String, Double> {
         if (text.isNullOrBlank() || text.length > MAX_ENCODED_LENGTH) return emptyMap()
@@ -181,9 +181,9 @@ object PriceAlertRules {
     }
 
     /**
-     * Controlla che una chiave sia "fonte|valuta" con caratteri innocui (niente separatori del formato salvato).
-     * @param key String - chiave da controllare.
-     * @return Boolean - true se valida.
+     * Checks that a key is "source|currency" with harmless characters (no separators of the saved format).
+     * @param key String - key to check.
+     * @return Boolean - true if valid.
      */
     private fun isSafeKey(key: String): Boolean = KEY.matches(key)
 

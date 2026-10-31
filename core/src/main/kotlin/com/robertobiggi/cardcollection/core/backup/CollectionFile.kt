@@ -25,13 +25,13 @@ import java.time.format.DateTimeParseException
 import java.util.Base64
 
 /**
- * Ricerca salvata nel file. [kind] è il valore di [QueryKind] ("name", "set_base", "set_master"):
- * assente nei file precedenti, che contengono solo ricerche per nome.
+ * Search saved in the file. [kind] is the value of [QueryKind] ("name", "set_base", "set_master"):
+ * absent in earlier files, which only contain searches by name.
  */
 @Serializable
 data class BackupQuery(val language: String, val pattern: String, val enabled: Boolean = true, val kind: String = QueryKind.NAME.code)
 
-/** Stato di una variante nella collezione. */
+/** State of a variant in the collection. */
 @Serializable
 data class BackupEntry(
     val variantId: String,
@@ -41,20 +41,20 @@ data class BackupEntry(
     val notes: String? = null,
 )
 
-/** Prezzo manuale nel formato dei backup della prima versione (schema 1). */
+/** Manual price in the format of first-version backups (schema 1). */
 @Serializable
 data class BackupManualPrice(val variantId: String, val eur: Double, val fetchedAt: Long)
 
 /**
- * Nome, lingua e ricerche della collezione esportata. [language] è il valore di [CollectionLanguage]
- * (assente nei file delle versioni precedenti: in quel caso si deduce dalle carte).
+ * Name, language and searches of the exported collection. [language] is the value of [CollectionLanguage]
+ * (absent in files from earlier versions: in that case it is inferred from the cards).
  */
 @Serializable
 data class CollectionInfo(val name: String? = null, val queries: List<BackupQuery> = emptyList(), val language: String? = null)
 
 /**
- * Carta del catalogo inclusa nel file, così l'import funziona anche offline.
- * [imageLow] e [imageHigh] sono le immagini in base64, presenti solo se esportate "con immagini".
+ * Catalog card included in the file, so the import also works offline.
+ * [imageLow] and [imageHigh] are the base64 images, present only if exported "with images".
  */
 @Serializable
 data class CardRecord(
@@ -80,7 +80,7 @@ data class CardRecord(
     val dexId: Int? = null,
 )
 
-/** Prezzo salvato (di mercato o manuale) incluso nel file. */
+/** Saved price (market or manual) included in the file. */
 @Serializable
 data class PriceRecord(
     val variantId: String,
@@ -92,11 +92,11 @@ data class PriceRecord(
     val usdLow: Double? = null,
     val sourceUpdatedAt: String? = null,
     val fetchedAt: Long = 0,
-    /** Un prezzo importato senza affidabilità dichiarata è "indicativo": non si sa a quale variante si riferisca. */
+    /** A price imported without a declared reliability is "indicative": it is unknown which variant it refers to. */
     val confidence: String = "LOW",
 )
 
-/** File di una singola collezione (schema 2), con o senza immagini. */
+/** File of a single collection (schema 2), with or without images. */
 @Serializable
 data class CollectionFileV2(
     val schema: Int = CollectionFiles.SCHEMA_COLLECTION,
@@ -110,8 +110,8 @@ data class CollectionFileV2(
 )
 
 /**
- * Contenitore permissivo usato in lettura: accetta sia lo schema 2 (collezione) sia lo schema 1
- * (backup della prima versione), che usano campi diversi.
+ * Permissive container used when reading: accepts both schema 2 (collection) and schema 1
+ * (first-version backup), which use different fields.
  */
 @Serializable
 private data class ImportEnvelope(
@@ -128,7 +128,7 @@ private data class ImportEnvelope(
     val manualPrices: List<BackupManualPrice> = emptyList(),
 )
 
-/** Carta pronta per l'import, con le immagini già decodificate e verificate. */
+/** Card ready for import, with images already decoded and verified. */
 class ImportedCard(
     val card: CatalogCard,
     val hidden: Boolean,
@@ -137,9 +137,9 @@ class ImportedCard(
 )
 
 /**
- * Collezione letta da file e ripulita dalle voci non valide.
- * [name] è null per i backup della prima versione, che non avevano un nome: lo sceglie l'app.
- * [language] è il valore di [CollectionLanguage], letto dal file oppure dedotto da ricerche e carte.
+ * Collection read from a file and cleaned of invalid entries.
+ * [name] is null for first-version backups, which had no name: the app chooses one.
+ * [language] is the value of [CollectionLanguage], read from the file or inferred from searches and cards.
  */
 class ImportedCollection(
     val name: String?,
@@ -150,22 +150,22 @@ class ImportedCollection(
     val prices: List<PriceRecord>,
 )
 
-/** Motivo per cui un file non può essere importato; la UI lo traduce in un messaggio. */
+/** Reason why a file cannot be imported; the UI translates it into a message. */
 enum class ImportError { TOO_LARGE, INVALID_JSON, NOT_THIS_APP, UNSUPPORTED_VERSION, TOO_MANY_ITEMS, READ_FAILED }
 
-/** Esito della lettura di un file di collezione. */
+/** Outcome of reading a collection file. */
 sealed interface CollectionImportResult {
-    /** File valido; [skipped] conta le voci scartate. */
+    /** Valid file; [skipped] counts the discarded entries. */
     class Ok(val collection: ImportedCollection, val skipped: Int) : CollectionImportResult
 
-    /** File non leggibile per il motivo [error]. */
+    /** File not readable for the reason [error]. */
     class Error(val error: ImportError) : CollectionImportResult
 }
 
-/** Quante immagini includere nell'export. */
+/** How many images to include in the export. */
 enum class ImageExport { NONE, LOW, LOW_AND_HIGH }
 
-/** Lettura e scrittura dei file di collezione. */
+/** Reading and writing of collection files. */
 @OptIn(ExperimentalSerializationApi::class)
 object CollectionFiles {
     const val APP_ID = "card-collection"
@@ -173,10 +173,10 @@ object CollectionFiles {
     const val SCHEMA_COLLECTION = 2
     const val TYPE_COLLECTION = "collection"
 
-    /** Dimensione massima di un file da importare (40 MB, immagini comprese). */
+    /** Maximum size of a file to import (40 MB, images included). */
     const val MAX_FILE_BYTES = 40L * 1024 * 1024
 
-    /** Dimensione massima di una singola immagine decodificata (3 MB). */
+    /** Maximum size of a single decoded image (3 MB). */
     const val MAX_IMAGE_BYTES = 3 * 1024 * 1024
 
     private const val MAX_CARDS = 5_000
@@ -185,10 +185,10 @@ object CollectionFiles {
     private const val MAX_QUERIES = 200
     private const val MAX_DEX_ID = 2_000
 
-    /** Data assegnata ai prezzi senza data quando nemmeno il file ne ha una: la più vecchia possibile. */
+    /** Date assigned to undated prices when not even the file has one: the oldest possible. */
     private const val UNDATED_PRICE_TIME = 1L
 
-    /** Caratteri di controllo e di direzione del testo (usabili per camuffare un nome). */
+    /** Control and text-direction characters (usable to disguise a name). */
     private val CONTROL_CHARS = Regex("[\\p{Cntrl}\\u202A-\\u202E\\u2066-\\u2069]")
 
     private val json = Json {
@@ -199,9 +199,9 @@ object CollectionFiles {
     }
 
     /**
-     * Scrive il file di una collezione in streaming.
-     * @param file CollectionFileV2 - contenuto da salvare.
-     * @param output OutputStream - destinazione (non viene chiusa).
+     * Writes the file of a collection as a stream.
+     * @param file CollectionFileV2 - content to save.
+     * @param output OutputStream - destination (not closed).
      * @return Unit
      */
     fun write(file: CollectionFileV2, output: OutputStream) {
@@ -209,16 +209,16 @@ object CollectionFiles {
     }
 
     /**
-     * Codifica un'immagine in base64 per l'export.
-     * @param bytes ByteArray - contenuto del file immagine.
-     * @return String - testo base64.
+     * Encodes an image as base64 for the export.
+     * @param bytes ByteArray - content of the image file.
+     * @return String - base64 text.
      */
     fun encodeImage(bytes: ByteArray): String = Base64.getEncoder().encodeToString(bytes)
 
     /**
-     * Legge e valida un file di collezione (schema 2) o un backup della prima versione (schema 1).
-     * @param input InputStream - contenuto del file (non viene chiuso).
-     * @return CollectionImportResult - collezione ripulita oppure errore con messaggio.
+     * Reads and validates a collection file (schema 2) or a first-version backup (schema 1).
+     * @param input InputStream - content of the file (not closed).
+     * @return CollectionImportResult - cleaned collection or error with message.
      */
     fun read(input: InputStream): CollectionImportResult {
         val envelope = try {
@@ -241,9 +241,9 @@ object CollectionFiles {
     }
 
     /**
-     * Valida un file di collezione schema 2.
-     * @param env ImportEnvelope - contenuto grezzo.
-     * @return CollectionImportResult - esito.
+     * Validates a schema 2 collection file.
+     * @param env ImportEnvelope - raw content.
+     * @return CollectionImportResult - outcome.
      */
     private fun readV2(env: ImportEnvelope): CollectionImportResult {
         val info = env.info ?: CollectionInfo()
@@ -255,7 +255,7 @@ object CollectionFiles {
         var skipped = 0
         val name = info.name?.let(::cleanName)
         val queries = validQueries(info.queries).also { skipped += info.queries.size - it.size }
-        // Varianti usate dalle voci, per le carte del file che non elencano le proprie.
+        // Variants used by the entries, for the cards in the file that do not list their own.
         val typesInEntries = env.entries.groupBy({ it.variantId.substringBefore('|') }, { it.variantId.substringAfter('|') })
         val cards = env.cards.mapNotNull { record ->
             toImportedCard(record, typesInEntries[record.id].orEmpty()).also { if (it == null) skipped++ }
@@ -263,8 +263,8 @@ object CollectionFiles {
         val cardIds = cards.map { it.card.id }.toSet()
         val variantIds = cards.flatMap { c -> c.card.variants.map { Ids.variantId(c.card.id, it.type, it.print) } }.toSet()
         val entries = validEntries(env.entries) { it in variantIds }.also { skipped += env.entries.size - it.size }
-        // I prezzi senza data prendono quella dell'export (o la più vecchia possibile): così non passano
-        // davanti ai prezzi più recenti e reimportare lo stesso file non crea doppioni.
+        // Undated prices take the export date (or the oldest possible): this way they do not get ahead
+        // of more recent prices and re-importing the same file does not create duplicates.
         val undatedTime = parseInstant(env.exportedAt) ?: UNDATED_PRICE_TIME
         val prices = env.prices.map { if (it.fetchedAt <= 0) it.copy(fetchedAt = undatedTime) else it }.filter { p ->
             validPrice(p, cardIds).also { if (!it) skipped++ }
@@ -275,10 +275,10 @@ object CollectionFiles {
     }
 
     /**
-     * Converte un backup della prima versione in una collezione da importare (senza catalogo:
-     * le carte arrivano al primo "Aggiorna catalogo").
-     * @param env ImportEnvelope - contenuto grezzo.
-     * @return CollectionImportResult - esito.
+     * Converts a first-version backup into a collection to import (without catalog:
+     * the cards arrive at the first "Update catalog").
+     * @param env ImportEnvelope - raw content.
+     * @return CollectionImportResult - outcome.
      */
     private fun readV1(env: ImportEnvelope): CollectionImportResult {
         if (env.queries.size + env.collection.size + env.manualPrices.size > MAX_ENTRIES) {
@@ -294,23 +294,23 @@ object CollectionFiles {
         return CollectionImportResult.Ok(ImportedCollection(null, language, queries, emptyList(), entries, prices), skipped)
     }
 
-    /** Fonte usata per i prezzi inseriti a mano. */
+    /** Source used for manually entered prices. */
     const val MANUAL_SOURCE = "Manuale"
 
-    /** Fonte assegnata ai prezzi importati senza indicazione della fonte. */
+    /** Source assigned to imported prices with no source indication. */
     const val IMPORTED_SOURCE = "Importato"
 
     /**
-     * Pulisce il nome di una collezione.
-     * @param raw String - nome inserito o letto da file.
-     * @return String? - nome senza caratteri di controllo, lungo 1-60 caratteri, oppure null se vuoto.
+     * Cleans the name of a collection.
+     * @param raw String - name entered or read from a file.
+     * @return String? - name without control characters, 1-60 characters long, or null if empty.
      */
     fun cleanName(raw: String): String? = raw.replace(CONTROL_CHARS, "").trim().take(60).ifEmpty { null }
 
     /**
-     * Converte una data ISO-8601 (es. "2026-10-19T10:00:00Z") in millisecondi.
-     * @param text String? - data letta dal file.
-     * @return Long? - millisecondi dal 1970, oppure null se assente o non valida.
+     * Converts an ISO-8601 date (e.g. "2026-10-19T10:00:00Z") to milliseconds.
+     * @param text String? - date read from the file.
+     * @return Long? - milliseconds since 1970, or null if absent or invalid.
      */
     private fun parseInstant(text: String?): Long? = try {
         text?.take(40)?.let { Instant.parse(it).toEpochMilli() }?.takeIf { it > 0 }
@@ -319,9 +319,9 @@ object CollectionFiles {
     }
 
     /**
-     * Tiene solo le ricerche valide e senza duplicati.
-     * @param queries List<BackupQuery> - ricerche lette da file.
-     * @return List<BackupQuery> - ricerche valide.
+     * Keeps only valid searches, without duplicates.
+     * @param queries List<BackupQuery> - searches read from the file.
+     * @return List<BackupQuery> - valid searches.
      */
     private fun validQueries(queries: List<BackupQuery>): List<BackupQuery> = queries
         .filter { q ->
@@ -332,10 +332,10 @@ object CollectionFiles {
         .distinctBy { it.language to it.pattern.lowercase() }
 
     /**
-     * Tiene solo le voci della collezione valide.
-     * @param entries List<BackupEntry> - voci lette da file.
-     * @param belongs (String) -> Boolean - true se la variante appartiene a una carta del file.
-     * @return List<BackupEntry> - voci valide, una per variante.
+     * Keeps only valid collection entries.
+     * @param entries List<BackupEntry> - entries read from the file.
+     * @param belongs (String) -> Boolean - true if the variant belongs to a card in the file.
+     * @return List<BackupEntry> - valid entries, one per variant.
      */
     private fun validEntries(entries: List<BackupEntry>, belongs: (String) -> Boolean): List<BackupEntry> {
         val conditions = Condition.entries.map { it.name }.toSet()
@@ -343,17 +343,17 @@ object CollectionFiles {
             Ids.isValidVariantId(it.variantId) && belongs(it.variantId) &&
                 it.quantity in 0..Validators.MAX_QUANTITY && (it.notes == null || it.notes.length <= 500)
         }.map { entry ->
-            // Condizione scritta in minuscolo o sconosciuta: si tiene la voce con la condizione di default.
+            // Condition written in lowercase or unknown: the entry is kept with the default condition.
             val condition = entry.condition.uppercase().takeIf { it in conditions } ?: Condition.NM.name
             if (condition == entry.condition) entry else entry.copy(condition = condition)
         }.distinctBy { it.variantId }
     }
 
     /**
-     * Controlla un prezzo letto da file.
-     * @param p PriceRecord - prezzo.
-     * @param cardIds Set<String> - carte presenti nel file.
-     * @return Boolean - true se il prezzo è valido e riferito a una carta del file.
+     * Checks a price read from a file.
+     * @param p PriceRecord - price.
+     * @param cardIds Set<String> - cards present in the file.
+     * @return Boolean - true if the price is valid and refers to a card in the file.
      */
     private fun validPrice(p: PriceRecord, cardIds: Set<String>): Boolean {
         fun ok(v: Double?) = v == null || (v.isFinite() && v >= 0 && v < Validators.MAX_PRICE)
@@ -365,11 +365,11 @@ object CollectionFiles {
     }
 
     /**
-     * Valida una carta letta da file e ne decodifica le immagini.
-     * @param r CardRecord - carta.
-     * @param typesInEntries List<String> - tipi di variante usati dalle voci della carta, usati se il
-     *        file non elenca le varianti (in mancanza di entrambi la carta ha solo la variante normale).
-     * @return ImportedCard? - carta pronta, oppure null se i dati essenziali non sono validi.
+     * Validates a card read from a file and decodes its images.
+     * @param r CardRecord - card.
+     * @param typesInEntries List<String> - variant types used by the entries of the card, used if the
+     *        file does not list the variants (if neither is present the card has only the normal variant).
+     * @return ImportedCard? - ready card, or null if the essential data is not valid.
      */
     private fun toImportedCard(r: CardRecord, typesInEntries: List<String>): ImportedCard? {
         val language = Language.fromCode(r.language) ?: return null
@@ -396,7 +396,7 @@ object CollectionFiles {
             releaseDate = r.releaseDate?.take(10),
             illustrator = r.illustrator?.take(80),
             imageBaseUrl = r.imageUrl?.takeIf { Validators.isAllowedImageUrl(it) },
-            // Il prodotto di una stampa a parte torna col prossimo aggiornamento del catalogo; quello delle altre stampe Cardmarket è il loro timbro.
+            // The product of a separate print comes back with the next catalog update; that of the other Cardmarket prints is their stamp.
             variants = variants.map { (type, print) -> CatalogVariant(type, print.toIntOrNull()?.takeIf { type == VariantType.CARDMARKET_PRINT }, print) },
             dexId = r.dexId?.takeIf { it in 1..MAX_DEX_ID },
         )
@@ -404,9 +404,9 @@ object CollectionFiles {
     }
 
     /**
-     * Decodifica un'immagine base64 accettando solo WebP, PNG o JPEG entro [MAX_IMAGE_BYTES].
-     * @param base64 String? - immagine codificata.
-     * @return ByteArray? - byte dell'immagine, oppure null se assente o non valida.
+     * Decodes a base64 image accepting only WebP, PNG or JPEG within [MAX_IMAGE_BYTES].
+     * @param base64 String? - encoded image.
+     * @return ByteArray? - bytes of the image, or null if absent or invalid.
      */
     fun decodeImage(base64: String?): ByteArray? {
         if (base64.isNullOrEmpty() || base64.length > MAX_IMAGE_BYTES / 3 * 4 + 8) return null
@@ -419,9 +419,9 @@ object CollectionFiles {
     }
 
     /**
-     * Riconosce il formato dell'immagine dai primi byte.
-     * @param b ByteArray - contenuto del file.
-     * @return Boolean - true per WebP, PNG o JPEG.
+     * Recognizes the image format from the first bytes.
+     * @param b ByteArray - content of the file.
+     * @return Boolean - true for WebP, PNG or JPEG.
      */
     private fun isSupportedImage(b: ByteArray): Boolean {
         val webp = b[0] == 'R'.code.toByte() && b[1] == 'I'.code.toByte() && b[2] == 'F'.code.toByte() && b[3] == 'F'.code.toByte() &&
@@ -432,21 +432,21 @@ object CollectionFiles {
     }
 }
 
-/** Il file supera la dimensione massima consentita. */
+/** The file exceeds the maximum allowed size. */
 class FileTooLargeException : IOException("File troppo grande")
 
 /**
- * Flusso che interrompe la lettura oltre [limit] byte, per non caricare file enormi in memoria.
- * @param input flusso originale.
- * @param limit numero massimo di byte leggibili.
+ * Stream that interrupts reading beyond [limit] bytes, to avoid loading huge files into memory.
+ * @param input original stream.
+ * @param limit maximum number of readable bytes.
  */
 private class LimitedInputStream(input: InputStream, private val limit: Long) : FilterInputStream(input) {
     private var count = 0L
 
     /**
-     * Legge un byte controllando il limite.
-     * @return Int - byte letto, oppure -1 a fine flusso.
-     * @throws FileTooLargeException se si supera il limite.
+     * Reads a byte checking the limit.
+     * @return Int - byte read, or -1 at end of stream.
+     * @throws FileTooLargeException if the limit is exceeded.
      */
     override fun read(): Int {
         val b = super.read()
@@ -455,12 +455,12 @@ private class LimitedInputStream(input: InputStream, private val limit: Long) : 
     }
 
     /**
-     * Legge un blocco di byte controllando il limite.
-     * @param b ByteArray - buffer di destinazione.
-     * @param off Int - posizione iniziale nel buffer.
-     * @param len Int - byte massimi da leggere.
-     * @return Int - byte letti, oppure -1 a fine flusso.
-     * @throws FileTooLargeException se si supera il limite.
+     * Reads a block of bytes checking the limit.
+     * @param b ByteArray - destination buffer.
+     * @param off Int - starting position in the buffer.
+     * @param len Int - maximum bytes to read.
+     * @return Int - bytes read, or -1 at end of stream.
+     * @throws FileTooLargeException if the limit is exceeded.
      */
     override fun read(b: ByteArray, off: Int, len: Int): Int {
         val n = super.read(b, off, len)
@@ -469,10 +469,10 @@ private class LimitedInputStream(input: InputStream, private val limit: Long) : 
     }
 
     /**
-     * Aggiorna il conteggio dei byte letti.
-     * @param n Long - byte appena letti.
+     * Updates the count of bytes read.
+     * @param n Long - bytes just read.
      * @return Unit
-     * @throws FileTooLargeException se si supera il limite.
+     * @throws FileTooLargeException if the limit is exceeded.
      */
     private fun check(n: Long) {
         count += n

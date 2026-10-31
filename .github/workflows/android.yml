@@ -1,5 +1,5 @@
-# Compila e testa l'app. Su ogni push su main pubblica anche una GitHub Release con l'APK firmato
-# con la chiave di release (secret del repo), che Obtainium usa per gli aggiornamenti.
+# Builds and tests the app. On every push to main it also publishes a GitHub Release with the APK signed
+# with the release key (repo secret), which Obtainium uses for updates.
 name: Android CI
 
 on:
@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: android-${{ github.ref }}
-  # Su main non si interrompe mai un run a metà, per non lasciare una release pubblicata a metà.
+  # On main a run is never interrupted halfway, to avoid leaving a half-published release.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # Il database delle carte entra nell'APK come asset: si prende dalla release "catalog" (se manca, l'APK si scarica il database da Impostazioni).
+      # The card database goes into the APK as an asset: it is taken from the "catalog" release (if missing, the APK downloads the database from Settings).
       - name: Database delle carte
         env:
           GH_TOKEN: ${{ github.token }}
@@ -44,7 +44,7 @@ jobs:
       - name: Numero di build
         run: echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
 
-      # assembleRelease senza chiave produce un APK non firmato: serve a verificare R8 a ogni push.
+      # assembleRelease without a key produces an unsigned APK: it serves to verify R8 on every push.
       - name: Test, lint e build
         run: >
           ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
@@ -56,12 +56,12 @@ jobs:
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           apk=$(ls app/build/outputs/apk/debug/*.apk)
           "$tools/aapt" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-debuggable)" || true
-          # Le build di prova usano il keystore di debug del repo.
+          # Test builds use the repo's debug keystore.
           expected="b66e03971fb82eef2a2af8bcd4b64ecec1cdbc3fb18569d9ad612ba9e26e9589"
           actual=$("$tools/apksigner" verify --print-certs "$apk" | grep -m1 "SHA-256 digest" | awk '{print $NF}')
           test "$actual" = "$expected"
           "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.robertobiggi.cardcollection'"
-          # La build release (minimizzata da R8) deve contenere i nomi dei Pokémon.
+          # The release build (minified by R8) must contain the Pokémon names.
           unzip -l app/build/outputs/apk/release/*.apk | grep -q "com/robertobiggi/cardcollection/core/model/pokemon-names.tsv"
 
       - name: Rinomina APK di prova
@@ -73,7 +73,7 @@ jobs:
           mkdir -p dist
           cp "$apk" "dist/card-collection-$version.apk"
 
-      # Solo per i push del repo: gli APK delle pull request di terzi non vengono pubblicati.
+      # Only for pushes to the repo: APKs of third-party pull requests are not published.
       - name: Pubblica APK di prova
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
@@ -127,7 +127,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         if: env.HAS_KEY == 'true'
 
-      # Il database delle carte entra nell'APK come asset: si prende dalla release "catalog" (se manca, l'APK si scarica il database da Impostazioni).
+      # The card database goes into the APK as an asset: it is taken from the "catalog" release (if missing, the APK downloads the database from Settings).
       - name: Database delle carte
         if: env.HAS_KEY == 'true'
         env:

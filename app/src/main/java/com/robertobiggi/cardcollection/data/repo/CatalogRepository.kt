@@ -32,79 +32,79 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
-/** Fase del sync del catalogo. */
+/** Phase of the catalog sync. */
 enum class SyncPhase { SEARCH, CARD, IMAGES, IMAGES_CARDTRADER }
 
 /**
- * Avanzamento del sync del catalogo.
- * @property label testo della ricerca o nome della carta in lavorazione (dati, non frasi).
+ * Progress of the catalog sync.
+ * @property label text of the search or name of the card being processed (data, not sentences).
  */
 data class SyncProgress(
     val phase: SyncPhase,
     val label: String,
     val done: Int,
     val total: Int,
-    /** Solo per le immagini: tentativi ripetuti, immagini non scaricate e ultimo motivo di errore (codice HTTP o tipo di errore di rete). */
+    /** Images only: repeated attempts, images not downloaded and last error reason (HTTP code or network error type). */
     val retries: Int = 0,
     val failed: Int = 0,
     val note: String? = null,
 )
 
 /**
- * Esito del sync del catalogo. [emptySets] conta i set (collezioni per set) di cui il database non ha le carte.
- * [noCatalog] è true se il database delle carte non è installato: non è stato fatto nulla.
+ * Outcome of the catalog sync. [emptySets] counts the sets (set collections) whose cards the database does not have.
+ * [noCatalog] is true if the card database is not installed: nothing was done.
  */
 data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int, val emptySets: Int = 0, val noCatalog: Boolean = false)
 
 /**
- * Set proponibile per una collezione per set.
- * @property id id del set (es. "base1", "SM10a").
- * @property name nome del set.
- * @property cards carte del set, dichiarate o nel database.
- * @property releaseDate data di uscita (ISO, es. "2003-07-18"), se nota.
+ * Set that can be offered for a set collection.
+ * @property id id of the set (e.g. "base1", "SM10a").
+ * @property name name of the set.
+ * @property cards cards of the set, declared or in the database.
+ * @property releaseDate release date (ISO, e.g. "2003-07-18"), if known.
  */
 data class SetChoice(val id: String, val name: String, val cards: Int?, val releaseDate: String? = null, val code: String? = null)
 
-/** Esito della lettura dell'elenco dei set. */
+/** Outcome of reading the list of sets. */
 sealed interface SetListResult {
-    /** Set disponibili, i più recenti per primi. */
+    /** Available sets, most recent first. */
     data class Found(val sets: List<SetChoice>) : SetListResult
 
-    /** Il database delle carte non è installato. */
+    /** The card database is not installed. */
     data object NoCatalog : SetListResult
 }
 
-/** Esito delle azioni sull'immagine di una carta. */
+/** Outcome of the actions on a card's image. */
 enum class ImageResult { DOWNLOADED, SAVED, NOT_AVAILABLE, NETWORK_ERROR, INVALID_IMAGE }
 
-/** Esito della ricerca di carte da aggiungere a mano. */
+/** Outcome of the search for cards to add by hand. */
 sealed interface SearchResult {
-    /** Carte trovate (lista eventualmente vuota). */
+    /** Cards found (possibly an empty list). */
     data class Found(val cards: List<CardBrief>) : SearchResult
 
-    /** Testo di ricerca non valido. */
+    /** Invalid search text. */
     data object InvalidQuery : SearchResult
 
-    /** Il database delle carte non è installato. */
+    /** The card database is not installed. */
     data object NoCatalog : SearchResult
 }
 
-/** Esito dell'aggiunta di una carta singola. */
+/** Outcome of adding a single card. */
 sealed interface AddCardResult {
-    /** Carta [name] aggiunta. */
+    /** Card [name] added. */
     data class Added(val name: String) : AddCardResult
 
-    /** La carta non si può aggiungere (id non valido o assente dal database). */
+    /** The card cannot be added (invalid id or absent from the database). */
     data object NotAllowed : AddCardResult
 
-    /** Il database delle carte non è installato. */
+    /** The card database is not installed. */
     data object NoCatalog : AddCardResult
 }
 
 /**
- * Porta nel database locale dell'app le carte delle ricerche di una collezione, leggendole dal database delle carte installato
- * ([CatalogStore]), e ne scarica le immagini. Non usa più nessun catalogo remoto per le carte.
- * Non modifica mai quantità, condizioni o slot desiderati dell'utente.
+ * Brings the cards of a collection's searches into the app's local database, reading them from the installed card database
+ * ([CatalogStore]), and downloads their images. It no longer uses any remote catalog for cards.
+ * It never changes the user's quantities, conditions or wanted slots.
  */
 class CatalogRepository(
     private val db: AppDatabase,
@@ -115,10 +115,10 @@ class CatalogRepository(
     private val dao = db.catalogDao()
 
     /**
-     * Esegue il sync delle ricerche attive di una collezione: legge le carte dal database delle carte, le salva e scarica le immagini.
-     * @param collectionId Long - collezione da aggiornare.
-     * @param progress suspend (SyncProgress) -> Unit - callback di avanzamento.
-     * @return SyncResult - carte e immagini salvate, errori incontrati.
+     * Runs the sync of the active searches of a collection: reads the cards from the card database, saves them and downloads the images.
+     * @param collectionId Long - collection to update.
+     * @param progress suspend (SyncProgress) -> Unit - progress callback.
+     * @return SyncResult - cards and images saved, errors encountered.
      */
     suspend fun sync(collectionId: Long, progress: suspend (SyncProgress) -> Unit): SyncResult {
         if (store.info.value == null) return SyncResult(0, 0, 0, noCatalog = true)
@@ -143,8 +143,8 @@ class CatalogRepository(
                 saved++
             }
         }
-        // Le carte trovate da una ricerca attiva e non più nel database (set tolti, correzioni) escono dalla collezione;
-        // restano quelle nascoste, aggiunte a mano o di ricerche disattivate.
+        // Cards found by an active search and no longer in the database (removed sets, corrections) leave the collection;
+        // the hidden ones, those added by hand or from disabled searches stay.
         val active = queries.map { it.id }.toSet()
         val stale = dao.membershipsOf(collectionId).filter { it.queryId in active && !it.hidden && it.cardId !in refreshed }.map { it.cardId }
         if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
@@ -156,11 +156,11 @@ class CatalogRepository(
     }
 
     /**
-     * Cerca nel database delle carte, per aggiungerle a mano a una collezione.
-     * Se il testo contiene un numero di carta (es. "M3 117/080") cerca per codice stampato, altrimenti per nome (anche in un'altra lingua).
-     * @param language Language - lingua del catalogo.
-     * @param text String - nome o codice da cercare.
-     * @return SearchResult - risultati, oppure il motivo del fallimento.
+     * Searches the card database, to add cards by hand to a collection.
+     * If the text contains a card number (e.g. "M3 117/080") it searches by printed code, otherwise by name (also in another language).
+     * @param language Language - catalog language.
+     * @param text String - name or code to search.
+     * @return SearchResult - results, or the reason for the failure.
      */
     suspend fun search(language: Language, text: String): SearchResult {
         val code = CardCodeSearch.parse(text)
@@ -175,9 +175,9 @@ class CatalogRepository(
     }
 
     /**
-     * Elenco dei set di una lingua da cui creare una collezione per set.
-     * @param language Language - lingua del catalogo.
-     * @return SetListResult - set trovati, oppure database assente.
+     * List of the sets of a language from which to create a set collection.
+     * @param language Language - catalog language.
+     * @return SetListResult - sets found, or database missing.
      */
     suspend fun setChoices(language: Language): SetListResult {
         val sets = store.use { it.sets(language) } ?: return SetListResult.NoCatalog
@@ -185,10 +185,10 @@ class CatalogRepository(
     }
 
     /**
-     * Aggiorna dal database le carte della collezione che nessuna ricerca ha aggiornato (aggiunte a mano, importate da un file,
-     * ricerche tolte), così ogni sync corregge i dati salvati da versioni precedenti, anche se possiedi copie.
-     * @param collectionId Long - collezione.
-     * @param refreshed Set<String> - id delle carte già aggiornate in questo sync.
+     * Updates from the database the cards of the collection that no search has updated (added by hand, imported from a file,
+     * removed searches), so every sync fixes the data saved by earlier versions, even if you own copies.
+     * @param collectionId Long - collection.
+     * @param refreshed Set<String> - ids of the cards already updated in this sync.
      * @return Unit
      */
     private suspend fun refreshOtherCards(collectionId: Long, refreshed: Set<String>) {
@@ -199,11 +199,11 @@ class CatalogRepository(
     }
 
     /**
-     * Aggiunge a mano una carta del database a una collezione (anche se nessuna ricerca la trova).
-     * @param collectionId Long - collezione.
-     * @param language Language - lingua del catalogo.
-     * @param tcgdexId String - id della carta (senza la lingua).
-     * @return AddCardResult - esito dell'aggiunta.
+     * Adds a card of the database to a collection by hand (even if no search finds it).
+     * @param collectionId Long - collection.
+     * @param language Language - catalog language.
+     * @param tcgdexId String - id of the card (without the language).
+     * @return AddCardResult - outcome of the addition.
      */
     suspend fun addSingleCard(collectionId: Long, language: Language, tcgdexId: String): AddCardResult {
         if (!Validators.isValidRemoteId(tcgdexId)) return AddCardResult.NotAllowed
@@ -216,9 +216,9 @@ class CatalogRepository(
     }
 
     /**
-     * Scarica l'immagine ufficiale di una carta (sostituisce quella scelta a mano).
-     * @param cardId String - id locale della carta.
-     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE se la carta non ha un'immagine ufficiale, NETWORK_ERROR.
+     * Downloads the official image of a card (replaces the manually chosen one).
+     * @param cardId String - local id of the card.
+     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE if the card has no official image, NETWORK_ERROR.
      */
     suspend fun downloadImage(cardId: String): ImageResult {
         val stored = dao.getCard(cardId) ?: return ImageResult.NOT_AVAILABLE
@@ -234,11 +234,11 @@ class CatalogRepository(
     }
 
     /**
-     * Usa come immagine della carta un'immagine scelta dall'utente. Resta finché non si scarica
-     * quella ufficiale; il sync del catalogo non la sostituisce.
-     * @param cardId String - id locale della carta.
-     * @param uri Uri - immagine scelta con il selettore di sistema.
-     * @return ImageResult - SAVED oppure INVALID_IMAGE.
+     * Uses an image chosen by the user as the card's image. It stays until the official one is
+     * downloaded; the catalog sync does not replace it.
+     * @param cardId String - local id of the card.
+     * @param uri Uri - image chosen with the system picker.
+     * @return ImageResult - SAVED or INVALID_IMAGE.
      */
     suspend fun setManualImage(cardId: String, uri: Uri): ImageResult {
         val card = dao.getCard(cardId) ?: return ImageResult.INVALID_IMAGE
@@ -250,11 +250,11 @@ class CatalogRepository(
     }
 
     /**
-     * Segna come "non la voglio" le varianti che il livello della collezione per set esclude. Le voci già presenti
-     * (quantità o scelte dell'utente) restano invariate.
-     * @param collectionId Long - collezione.
-     * @param card CatalogCard - carta appena salvata.
-     * @param kind QueryKind - set base o master set.
+     * Marks as "I don't want it" the variants that the set collection's level excludes. Entries already present
+     * (quantity or user choices) stay unchanged.
+     * @param collectionId Long - collection.
+     * @param card CatalogCard - card just saved.
+     * @param kind QueryKind - base set or master set.
      * @return Unit
      */
     private suspend fun applySetPolicy(collectionId: Long, card: CatalogCard, kind: QueryKind) {
@@ -266,9 +266,9 @@ class CatalogRepository(
     }
 
     /**
-     * Salva una carta del catalogo e le sue varianti, mantenendo i percorsi delle immagini già presenti.
-     * @param card CatalogCard - carta letta dal database delle carte.
-     * @param legacyQueryId Long - valore del campo storico queryId.
+     * Saves a catalog card and its variants, keeping the image paths already present.
+     * @param card CatalogCard - card read from the card database.
+     * @param legacyQueryId Long - value of the historical queryId field.
      * @return Unit
      */
     suspend fun saveCard(card: CatalogCard, legacyQueryId: Long) {
@@ -286,7 +286,7 @@ class CatalogRepository(
                     serieId = card.serieId,
                     serieName = card.serieName,
                     localId = card.localId,
-                    // Le carte importate da un file possono non avere numero e rarità: restano quelli già salvati.
+                    // Cards imported from a file may lack number and rarity: those already saved stay.
                     printedNumber = card.printedNumber.ifEmpty { existing?.printedNumber.orEmpty() },
                     rarity = card.rarity ?: existing?.rarity,
                     releaseDate = card.releaseDate,
@@ -319,11 +319,11 @@ class CatalogRepository(
     }
 
     /**
-     * Sposta le copie di ogni finitura che il catalogo non elenca più su quella che la sostituisce (vedi [EntryMerge.replacement]),
-     * così le correzioni del catalogo valgono anche per i dati salvati da versioni precedenti.
-     * Se la variante esiste ancora o manca quella di arrivo, non cambia nulla.
-     * @param cardId String - carta.
-     * @param types List<VariantType> - varianti attuali della carta.
+     * Moves the copies of each finish that the catalog no longer lists to the one that replaces it (see [EntryMerge.replacement]),
+     * so catalog corrections also apply to data saved by earlier versions.
+     * If the variant still exists or the target one is missing, nothing changes.
+     * @param cardId String - card.
+     * @param types List<VariantType> - current variants of the card.
      * @return Unit
      */
     private suspend fun moveStaleVariants(cardId: String, types: List<VariantType>) {
@@ -340,9 +340,9 @@ class CatalogRepository(
     }
 
     /**
-     * Scarica le immagini mancanti (bassa e alta qualità) per tutte le carte salvate.
-     * @param progress suspend (SyncProgress) -> Unit - callback di avanzamento.
-     * @return Int - numero di carte per cui è stata salvata almeno un'immagine nuova.
+     * Downloads the missing images (low and high quality) for all saved cards.
+     * @param progress suspend (SyncProgress) -> Unit - progress callback.
+     * @return Int - number of cards for which at least one new image was saved.
      */
     private suspend fun downloadMissingImages(progress: suspend (SyncProgress) -> Unit): Int {
         val missing = dao.cardsMissingImages().filter { it.imageUrl != null }
@@ -368,11 +368,11 @@ class CatalogRepository(
                         val high = card.imageHighPath ?: images.ensure(card.id, url, ImageStore.Quality.HIGH, onIssue)
                         lock.withLock {
                             if (low != card.imageLowPath || high != card.imageHighPath) {
-                                // Solo i percorsi mancanti: un altro lavoro (immagine scelta a mano, CardTrader) può averne salvato uno nel frattempo.
+                                // Only the missing paths: another job (manually chosen image, CardTrader) may have saved one in the meantime.
                                 dao.fillImagePaths(card.id, low, high)
                                 count++
                             }
-                            // 404: TCGdex non ha l'immagine di questa carta (succede per molti set giapponesi vecchi), non è un errore di rete.
+                            // 404: TCGdex does not have this card's image (happens for many old Japanese sets), it is not a network error.
                             if (low == null && high == null && notFound) dao.clearImageUrl(card.id)
                             else if (low == null || high == null) failed++
                         }
@@ -384,9 +384,9 @@ class CatalogRepository(
     }
 
     /**
-     * Dimentica i percorsi d'immagine il cui file non c'è più, così [downloadMissingImages] (e le immagini CardTrader) le
-     * riscaricano. Succede dopo una reinstallazione: il backup Android ripristina il database ma non le immagini.
-     * @return Int - numero di carte con almeno un percorso dimenticato.
+     * Forgets the image paths whose file is no longer there, so [downloadMissingImages] (and the CardTrader images) download
+     * them again. Happens after a reinstall: the Android backup restores the database but not the images.
+     * @return Int - number of cards with at least one forgotten path.
      */
     private suspend fun forgetMissingImageFiles(): Int = withContext(Dispatchers.IO) {
         var forgotten = 0
@@ -403,7 +403,7 @@ class CatalogRepository(
         const val PROGRESS_EVERY = 25
         const val HTTP_NOT_FOUND = "HTTP 404"
 
-        /** Immagini scaricate insieme: con una sola alla volta migliaia di carte richiedono ore. */
+        /** Images downloaded together: with only one at a time, thousands of cards take hours. */
         const val IMAGE_PARALLELISM = 4
     }
 }

@@ -23,9 +23,9 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
- * Contenitore delle dipendenze dell'app (DI manuale): crea una sola istanza di ogni servizio.
+ * Container of the app's dependencies (manual DI): creates a single instance of each service.
  *
- * @param context contesto dell'applicazione.
+ * @param context application context.
  */
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -37,7 +37,7 @@ class AppContainer(context: Context) {
         .addInterceptor { chain ->
             chain.proceed(chain.request().newBuilder().header("User-Agent", USER_AGENT).build())
         }
-        // Controlla ogni richiesta, redirect compresi: l'app parla solo con le immagini di TCGdex, Cardmarket (listino prezzi) e CardTrader.
+        // Checks every request, redirects included: the app only talks to the images of TCGdex, Cardmarket (price list) and CardTrader.
         .addNetworkInterceptor { chain ->
             val host = chain.request().url.host
             if (host !in ALLOWED_HOSTS) throw IOException("Host non consentito: $host")
@@ -45,12 +45,12 @@ class AppContainer(context: Context) {
         }
         .build()
 
-    /** Scope dell'applicazione per il lavoro condiviso tra le schermate. */
+    /** Application scope for work shared between screens. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val database: AppDatabase = AppDatabase.create(appContext)
     val settings = SettingsStore(appContext)
-    /** Client per scaricare il database delle carte: l'indirizzo lo sceglie l'utente (HTTPS), quindi non ha l'elenco degli host consentiti. */
+    /** Client to download the card database: the address is chosen by the user (HTTPS), so it has no list of allowed hosts. */
     private val downloadHttp = http.newBuilder().apply { networkInterceptors().clear() }.readTimeout(120, TimeUnit.SECONDS).callTimeout(0, TimeUnit.SECONDS).build()
     val catalogStore = CatalogStore(appContext, downloadHttp)
     val images = ImageStore(appContext, http)
@@ -62,14 +62,12 @@ class AppContainer(context: Context) {
     val work = WorkScheduler(appContext)
 
     init {
-        // Legge subito i nomi dei Pokémon, così la prima ricerca non blocca l'interfaccia.
+        // Reads the Pokémon names right away, so the first search does not block the UI.
         appScope.launch { PokemonNames.preload() }
         appScope.launch { catalogStore.load() }
-        // Toglie le carte rimaste da collezioni cancellate (il margine di un'ora evita quelle di un sync in corso).
+        // Removes cards left over from deleted collections (the one-hour margin avoids those of a sync in progress).
         appScope.launch { collection.purgeOrphanCards(System.currentTimeMillis() - ORPHAN_GRACE_MS) }
-        // Il token CardTrader salvato in chiaro dalle versioni precedenti viene cifrato e la copia in chiaro cancellata.
-        appScope.launch { settings.migrateCardTraderToken() }
-        // Riprogramma il controllo giornaliero degli avvisi se è stato perso (es. app chiusa forzatamente).
+        // Reschedules the daily alert check if it was lost (e.g. app force-stopped).
         appScope.launch { if (settings.priceAlertsEnabled.first()) work.schedulePriceAlerts() }
     }
 
@@ -77,7 +75,7 @@ class AppContainer(context: Context) {
         const val ORPHAN_GRACE_MS = 60 * 60 * 1000L
         const val USER_AGENT = "CardCollection-Android (uso personale)"
 
-        /** Host raggiungibili dall'app: immagini di TCGdex, listino prezzi di Cardmarket, API e immagini di CardTrader. */
+        /** Hosts reachable by the app: TCGdex images, Cardmarket price list, CardTrader API and images. */
         val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com") + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS
     }
 }

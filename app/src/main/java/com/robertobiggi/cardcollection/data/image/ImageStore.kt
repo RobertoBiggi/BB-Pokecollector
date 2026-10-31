@@ -18,12 +18,12 @@ import java.io.IOException
 import java.io.InputStream
 
 /**
- * Scarica e conserva in locale le immagini delle carte, così restano visibili offline.
+ * Downloads and keeps card images locally, so they stay visible offline.
  *
- * @param context contesto dell'applicazione.
- * @param http client OkHttp condiviso.
+ * @param context application context.
+ * @param http shared OkHttp client.
  */
-/** Tentativo di download fallito: [reason] è il codice HTTP o il tipo di errore di rete, [willRetry] dice se ne seguirà un altro. */
+/** Failed download attempt: [reason] is the HTTP code or the type of network error, [willRetry] says whether another will follow. */
 data class DownloadIssue(val reason: String, val willRetry: Boolean)
 
 class ImageStore(context: Context, private val http: OkHttpClient) {
@@ -33,15 +33,15 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     private val root: File = File(context.filesDir, "cards").apply { mkdirs() }
     private val rootPath: String = root.canonicalPath + File.separator
 
-    /** Qualità dell'immagine TCGdex: "low" per la griglia, "high" per il dettaglio. */
+    /** Quality of the TCGdex image: "low" for the grid, "high" for the detail. */
     enum class Quality(val suffix: String) { LOW("low"), HIGH("high") }
 
     /**
-     * Restituisce il file locale di un'immagine, verificando che resti dentro la cartella dell'app.
-     * @param cardId String - id locale della carta (es. "en:me01-094").
-     * @param quality Quality - qualità dell'immagine.
-     * @return File - percorso del file (può non esistere ancora).
-     * @throws SecurityException se il percorso calcolato esce dalla cartella delle immagini.
+     * Returns the local file of an image, checking that it stays inside the app's folder.
+     * @param cardId String - local id of the card (e.g. "en:me01-094").
+     * @param quality Quality - image quality.
+     * @return File - path of the file (may not exist yet).
+     * @throws SecurityException if the computed path leaves the images folder.
      */
     fun fileFor(cardId: String, quality: Quality): File {
         val file = File(root, "${Validators.safeFileSegment(cardId)}-${quality.suffix}.webp")
@@ -50,19 +50,19 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Scarica un'immagine se non è già presente.
-     * @param cardId String - id locale della carta.
-     * @param imageBaseUrl String - URL base TCGdex dell'immagine (senza qualità ed estensione).
-     * @param quality Quality - qualità da scaricare.
-     * @param onIssue (DownloadIssue) -> Unit - chiamata a ogni tentativo fallito, con il motivo e se si riprova.
-     * @return String? - percorso assoluto del file salvato, oppure null se l'URL non è consentito o il download fallisce.
+     * Downloads an image if it is not already present.
+     * @param cardId String - local id of the card.
+     * @param imageBaseUrl String - TCGdex base URL of the image (without quality and extension).
+     * @param quality Quality - quality to download.
+     * @param onIssue (DownloadIssue) -> Unit - called on every failed attempt, with the reason and whether it will retry.
+     * @return String? - absolute path of the saved file, or null if the URL is not allowed or the download fails.
      */
     suspend fun ensure(cardId: String, imageBaseUrl: String, quality: Quality, onIssue: (DownloadIssue) -> Unit = {}): String? = withContext(Dispatchers.IO) {
         val target = fileFor(cardId, quality)
         if (target.isFile && target.length() > 0) return@withContext target.absolutePath
         val url = "$imageBaseUrl/${quality.suffix}.webp"
         if (!Validators.isAllowedImageUrl(url)) return@withContext null
-        // Un blocco temporaneo (429, 5xx) o un timeout non deve lasciare la carta senza immagine: si riprova con attese crescenti.
+        // A temporary block (429, 5xx) or a timeout must not leave the card without an image: it retries with increasing waits.
         for (attempt in 1..DOWNLOAD_ATTEMPTS) {
             try {
                 download(url, target)
@@ -82,16 +82,16 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         null
     }
 
-    /** Risposta HTTP non riuscita; [retryAfterMs] è l'attesa chiesta dal server (intestazione Retry-After), al massimo [MAX_RETRY_AFTER_MS]. */
+    /** Unsuccessful HTTP response; [retryAfterMs] is the wait requested by the server (Retry-After header), at most [MAX_RETRY_AFTER_MS]. */
     private class HttpStatusException(val code: Int, val retryAfterMs: Long?) : IOException("HTTP $code") {
         val retryable: Boolean get() = code == 429 || code == 408 || code >= 500
     }
 
     /**
-     * Scarica l'immagine di una carta da CardTrader, la ricodifica in WebP e la salva in bassa e alta qualità.
-     * @param cardId String - id locale della carta.
-     * @param url String - indirizzo dell'immagine (host consentito, vedi [Validators.isAllowedCardTraderImageUrl]).
-     * @return Pair<String, String>? - percorsi (bassa, alta qualità), oppure null se l'URL non è consentito o il download o la ricodifica falliscono.
+     * Downloads the image of a card from CardTrader, re-encodes it as WebP and saves it in low and high quality.
+     * @param cardId String - local id of the card.
+     * @param url String - address of the image (allowed host, see [Validators.isAllowedCardTraderImageUrl]).
+     * @return Pair<String, String>? - paths (low, high quality), or null if the URL is not allowed or the download or re-encoding fails.
      */
     suspend fun saveFromCardTrader(cardId: String, url: String): Pair<String, String>? = withContext(Dispatchers.IO) {
         if (!Validators.isAllowedCardTraderImageUrl(url)) return@withContext null
@@ -108,11 +108,11 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Scarica un'immagine in memoria, controllando codice HTTP, tipo di contenuto e dimensione massima.
-     * @param url String - URL già validato.
-     * @param limit Long - byte massimi accettati.
-     * @return ByteArray? - contenuto, oppure null se supera il limite.
-     * @throws IOException se la risposta non è un'immagine.
+     * Downloads an image into memory, checking HTTP code, content type and maximum size.
+     * @param url String - already validated URL.
+     * @param limit Long - maximum bytes accepted.
+     * @return ByteArray? - content, or null if it exceeds the limit.
+     * @throws IOException if the response is not an image.
      */
     private fun downloadBytes(url: String, limit: Long): ByteArray? {
         val request = Request.Builder().url(url).get().build()
@@ -126,11 +126,11 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Salva un'immagine ricevuta da un file importato (già validata come WebP, PNG o JPEG).
-     * @param cardId String - id locale della carta.
-     * @param quality Quality - qualità dell'immagine.
-     * @param bytes ByteArray - contenuto dell'immagine.
-     * @return String? - percorso assoluto del file salvato, oppure null se il salvataggio fallisce.
+     * Saves an image received from an imported file (already validated as WebP, PNG or JPEG).
+     * @param cardId String - local id of the card.
+     * @param quality Quality - image quality.
+     * @param bytes ByteArray - content of the image.
+     * @return String? - absolute path of the saved file, or null if saving fails.
      */
     suspend fun write(cardId: String, quality: Quality, bytes: ByteArray): String? = withContext(Dispatchers.IO) {
         if (bytes.isEmpty() || bytes.size > MAX_BYTES) return@withContext null
@@ -150,11 +150,11 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Converte un'immagine scelta dall'utente (galleria o file) in una WebP ridimensionata.
-     * La ricodifica scarta i metadati (es. posizione GPS) e qualsiasi contenuto che non sia un'immagine.
-     * @param uri Uri - immagine scelta con il selettore di sistema.
-     * @return ByteArray? - immagine WebP con lato lungo al massimo [MANUAL_MAX_SIDE] px, oppure null
-     *         se il file non è leggibile, non è un'immagine o è troppo grande.
+     * Converts an image chosen by the user (gallery or file) into a resized WebP.
+     * Re-encoding drops the metadata (e.g. GPS position) and any content that is not an image.
+     * @param uri Uri - image chosen with the system picker.
+     * @return ByteArray? - WebP image with long side at most [MANUAL_MAX_SIDE] px, or null
+     *         if the file is not readable, is not an image or is too large.
      */
     suspend fun prepareManual(uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
         val raw = try {
@@ -168,10 +168,10 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Ricodifica un'immagine in WebP ridimensionata: scarta metadati e tutto ciò che non è un'immagine.
-     * @param raw ByteArray - immagine originale (JPEG, PNG, WebP…).
-     * @param maxSide Int - lato lungo massimo in pixel.
-     * @return ByteArray? - immagine WebP, oppure null se il contenuto non è decodificabile o il risultato supera [MAX_BYTES].
+     * Re-encodes an image as a resized WebP: drops metadata and anything that is not an image.
+     * @param raw ByteArray - original image (JPEG, PNG, WebP…).
+     * @param maxSide Int - maximum long side in pixels.
+     * @return ByteArray? - WebP image, or null if the content cannot be decoded or the result exceeds [MAX_BYTES].
      */
     private fun recode(raw: ByteArray, maxSide: Int): ByteArray? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -196,12 +196,12 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Salva l'immagine scelta dall'utente con un nome nuovo (così la UI non mostra la vecchia dalla
-     * cache) e cancella quella manuale precedente.
-     * @param cardId String - id locale della carta.
-     * @param bytes ByteArray - immagine preparata con [prepareManual].
-     * @param previous String? - percorso attuale dell'immagine della carta.
-     * @return String? - percorso assoluto del nuovo file, oppure null se il salvataggio fallisce.
+     * Saves the image chosen by the user with a new name (so the UI does not show the old one from the
+     * cache) and deletes the previous manual one.
+     * @param cardId String - local id of the card.
+     * @param bytes ByteArray - image prepared with [prepareManual].
+     * @param previous String? - current path of the card's image.
+     * @return String? - absolute path of the new file, or null if saving fails.
      */
     suspend fun writeManual(cardId: String, bytes: ByteArray, previous: String?): String? = withContext(Dispatchers.IO) {
         if (bytes.isEmpty() || bytes.size > MAX_BYTES) return@withContext null
@@ -218,8 +218,8 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Cancella un'immagine scelta a mano, solo se il percorso è dentro la cartella dell'app ed è un file manuale.
-     * @param path String? - percorso salvato nel database.
+     * Deletes a manually chosen image, only if the path is inside the app's folder and is a manual file.
+     * @param path String? - path saved in the database.
      * @return Unit
      */
     suspend fun deleteManual(path: String?) = withContext(Dispatchers.IO) {
@@ -229,8 +229,8 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Cancella le immagini salvate di carte che non servono più (anche quelle scelte a mano), solo dentro la cartella dell'app.
-     * @param paths Collection<String?> - percorsi salvati nel database.
+     * Deletes the saved images of cards that are no longer needed (also manually chosen ones), only inside the app's folder.
+     * @param paths Collection<String?> - paths saved in the database.
      * @return Unit
      */
     suspend fun deleteFiles(paths: Collection<String?>) = withContext(Dispatchers.IO) {
@@ -241,17 +241,17 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Indica se un percorso è un'immagine scelta a mano dall'utente.
-     * @param path String? - percorso salvato nel database.
-     * @return Boolean - true se è un file manuale.
+     * Tells whether a path is an image manually chosen by the user.
+     * @param path String? - path saved in the database.
+     * @return Boolean - true if it is a manual file.
      */
     fun isManual(path: String?): Boolean = path != null && File(path).name.contains(MANUAL_MARKER)
 
     /**
-     * Controlla che un percorso salvato nel database corrisponda davvero a un'immagine sul disco.
-     * Da chiamare fuori dal thread principale (accede al disco).
-     * @param path String? - percorso assoluto salvato nel database.
-     * @return Boolean - true se il file esiste, non è vuoto e sta nella cartella delle immagini dell'app.
+     * Checks that a path saved in the database really matches an image on disk.
+     * To be called off the main thread (accesses the disk).
+     * @param path String? - absolute path saved in the database.
+     * @return Boolean - true if the file exists, is not empty and is in the app's images folder.
      */
     fun isSaved(path: String?): Boolean {
         if (path == null) return false
@@ -264,9 +264,9 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Legge un'immagine salvata, solo se si trova nella cartella delle immagini dell'app.
-     * @param path String? - percorso assoluto salvato nel database.
-     * @return ByteArray? - contenuto del file, oppure null se assente, fuori cartella o troppo grande.
+     * Reads a saved image, only if it is in the app's images folder.
+     * @param path String? - absolute path saved in the database.
+     * @return ByteArray? - content of the file, or null if absent, outside the folder or too large.
      */
     suspend fun read(path: String?): ByteArray? = withContext(Dispatchers.IO) {
         if (path == null) return@withContext null
@@ -280,12 +280,12 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Scarica un file controllando codice HTTP, tipo di contenuto e dimensione massima,
-     * scrivendo prima su un file temporaneo e poi rinominandolo.
-     * @param url String - URL già validato.
-     * @param target File - destinazione finale.
+     * Downloads a file checking HTTP code, content type and maximum size,
+     * writing first to a temporary file and then renaming it.
+     * @param url String - already validated URL.
+     * @param target File - final destination.
      * @return Unit
-     * @throws IOException se la risposta non è un'immagine valida o supera [MAX_BYTES].
+     * @throws IOException if the response is not a valid image or exceeds [MAX_BYTES].
      */
     private fun download(url: String, target: File) {
         val request = Request.Builder().url(url).get().build()
@@ -315,17 +315,17 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
                 }
                 if (written == 0L || !tmp.renameTo(target)) throw IOException("Salvataggio non riuscito")
             } finally {
-                // Dopo un rename riuscito il file temporaneo non esiste più; negli altri casi va tolto.
+                // After a successful rename the temporary file no longer exists; in the other cases it must be removed.
                 tmp.delete()
             }
         }
     }
 
     /**
-     * Legge uno stream fino a un limite di byte.
-     * @param input InputStream - stream da leggere.
-     * @param limit Long - byte massimi accettati.
-     * @return ByteArray? - contenuto, oppure null se supera il limite.
+     * Reads a stream up to a byte limit.
+     * @param input InputStream - stream to read.
+     * @param limit Long - maximum bytes accepted.
+     * @return ByteArray? - content, or null if it exceeds the limit.
      */
     private fun readAtMost(input: InputStream, limit: Long): ByteArray? {
         val out = ByteArrayOutputStream()
@@ -342,33 +342,33 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Formato WebP per Android 8-10, dove WEBP_LOSSY non esiste ancora.
-     * @return Bitmap.CompressFormat - formato WebP storico.
+     * WebP format for Android 8-10, where WEBP_LOSSY does not exist yet.
+     * @return Bitmap.CompressFormat - legacy WebP format.
      */
     @Suppress("DEPRECATION")
     private fun legacyWebp(): Bitmap.CompressFormat = Bitmap.CompressFormat.WEBP
 
     companion object {
-        /** Dimensione massima di un'immagine (3 MB). */
+        /** Maximum size of an image (3 MB). */
         const val MAX_BYTES = 3L * 1024 * 1024
         private const val DOWNLOAD_ATTEMPTS = 4
         private const val ISSUE_MAX_CHARS = 80
         private const val RETRY_BASE_MS = 1_500L
         private const val MAX_RETRY_AFTER_MS = 15_000L
 
-        /** Dimensione massima del file scelto dall'utente prima della ricodifica (20 MB). */
+        /** Maximum size of the file chosen by the user before re-encoding (20 MB). */
         private const val MAX_PICKED_BYTES = 20L * 1024 * 1024
 
-        /** Lato lungo massimo dell'immagine scelta dall'utente , in pixel. */
+        /** Maximum long side of the image chosen by the user, in pixels. */
         private const val MANUAL_MAX_SIDE = 1200
 
         private const val MANUAL_QUALITY = 88
 
-        /** Lato lungo delle immagini scaricate da altre fonti: alta qualità per il dettaglio, bassa per la griglia. */
+        /** Long side of images downloaded from other sources: high quality for the detail, low for the grid. */
         private const val EXTERNAL_HIGH_SIDE = 900
         private const val EXTERNAL_LOW_SIDE = 400
 
-        /** Parte del nome che distingue le immagini scelte a mano. */
+        /** Part of the name that distinguishes manually chosen images. */
         private const val MANUAL_MARKER = "-manual-"
     }
 }

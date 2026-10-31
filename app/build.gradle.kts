@@ -15,25 +15,25 @@ android {
         applicationId = "com.robertobiggi.cardcollection"
         minSdk = 26
         targetSdk = 35
-        // In CI versionCode = numero di commit di main e versionName = "<appVersion>.<versionCode>",
-        // così ogni release ha un numero crescente senza modifiche a mano (vedi .github/workflows/android.yml).
+        // In CI versionCode = number of commits on main and versionName = "<appVersion>.<versionCode>",
+        // so every release gets an increasing number without manual edits (see .github/workflows/android.yml).
         val buildNumber = providers.gradleProperty("versionCode").orNull?.toIntOrNull() ?: 1
         versionCode = buildNumber
         versionName = "${providers.gradleProperty("appVersion").get()}.$buildNumber"
-        // Lingue dell'interfaccia: inglese (base) e italiano. Scarta le traduzioni delle librerie in altre lingue.
+        // UI languages: English (base) and Italian. Drops the libraries' translations in other languages.
         resourceConfigurations += listOf("en", "it")
     }
 
     signingConfigs {
-        // Keystore di debug fisso nel repo, con password pubbliche: le build di prova firmate così si aggiornano
-        // a vicenda (stesso id e stessa firma a ogni build), ma non possono sostituire la release firmata con la chiave vera.
+        // Debug keystore fixed in the repo, with public passwords: test builds signed this way update
+        // each other (same id and same signature on every build), but cannot replace the release signed with the real key.
         getByName("debug") {
             storeFile = file("signing/debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
-        // Chiave di release: arriva solo dai secret di GitHub Actions, mai dal repo.
+        // Release key: comes only from GitHub Actions secrets, never from the repo.
         val releaseKeystore = System.getenv("RELEASE_KEYSTORE_PATH")
         if (releaseKeystore != null) {
             create("release") {
@@ -47,7 +47,7 @@ android {
 
     buildTypes {
         release {
-            // Senza secret (build locali, pull request) l'APK release resta non firmato.
+            // Without secrets (local builds, pull requests) the release APK stays unsigned.
             signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -67,7 +67,7 @@ android {
     lint {
         abortOnError = true
         checkReleaseBuilds = false
-        // Le versioni delle dipendenze sono fissate di proposito (vedi gradle/libs.versions.toml).
+        // Dependency versions are pinned on purpose (see gradle/libs.versions.toml).
         disable += setOf("GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable", "OldTargetApi")
     }
 
@@ -79,9 +79,9 @@ android {
 
 }
 
-// Il database delle carte (cards.sqlite) entra nell'APK come asset, così l'app funziona subito senza scaricarlo. Non sta nel repo:
-// si prende da -PcatalogDb=<file>, da CATALOG_DB (in CI lo scarica la release "catalog") o dal repository del generatore accanto a questo.
-// Senza il file l'APK si compila lo stesso e il database si scarica da Impostazioni.
+// The card database (cards.sqlite) goes into the APK as an asset, so the app works right away without downloading it. It is not in the repo:
+// it is taken from -PcatalogDb=<file>, from CATALOG_DB (in CI the "catalog" release downloads it) or from the generator repository next to this one.
+// Without the file the APK still builds and the database is downloaded from Settings.
 abstract class PrepareCatalogAsset : DefaultTask() {
     @get:Input
     abstract val source: Property<String>
@@ -104,7 +104,7 @@ val prepareCatalogAsset = tasks.register<PrepareCatalogAsset>("prepareCatalogAss
         providers.gradleProperty("catalogDb").orElse(providers.environmentVariable("CATALOG_DB"))
             .orElse(rootDir.resolve("../Card-collector-db-gen/out/cards.sqlite").path),
     )
-    // Il contenuto del file può cambiare senza che cambi il percorso: si ricopia a ogni build (23 MB).
+    // The content of the file can change without its path changing: it is copied again on every build (23 MB).
     outputs.upToDateWhen { false }
 }
 

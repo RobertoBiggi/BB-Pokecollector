@@ -1,10 +1,10 @@
-# Stampa nei log una risposta reale di TCGdex o pokemontcg.io, per verificare le API quando si
-# sviluppa da un ambiente che non le raggiunge. Si avvia a mano da Actions indicando API e percorso,
-# es. "tcgdex" + "ja/cards/M3-117".
+# Prints in the logs a real response from TCGdex or pokemontcg.io, to verify the APIs when
+# developing from an environment that cannot reach them. Started by hand from Actions giving API and path,
+# e.g. "tcgdex" + "ja/cards/M3-117".
 name: API probe
 
 on:
-  # Un push che modifica questo file esegue le interrogazioni fisse dello step "Probe predefinito".
+  # A push that modifies this file runs the fixed queries of the "Probe predefinito" step.
   push:
     paths: [".github/workflows/tcgdex-probe.yml"]
   workflow_dispatch:
@@ -39,7 +39,7 @@ jobs:
             pokemontcg) base="https://api.pokemontcg.io/v2/" ;;
             *) echo "API non valida"; exit 1 ;;
           esac
-          # Solo caratteri sicuri per un percorso con query string.
+          # Only safe characters for a path with a query string.
           if ! [[ "$API_PATH" =~ ^[A-Za-z0-9._/?=\&%:,*-]{1,200}$ ]]; then echo "Percorso non valido"; exit 1; fi
           code=$(curl -sS --max-time 120 -o body.json -w "%{http_code} %{time_total}s" "$base$API_PATH" || echo "errore curl")
           echo "HTTP $code"

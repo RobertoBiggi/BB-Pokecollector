@@ -44,11 +44,11 @@ class SetCollectionTest {
 
     @Test
     fun `master set esclude le stampe a parte come la prima edizione`() {
-        // Pikachu del Set Base: normale, 1st Edition, Shadowless, Guance rosse, Pokétour '99, Jumbo e un timbro.
+        // Pikachu of the Base Set: normal, 1st Edition, Shadowless, Red cheeks, Pokétour '99, Jumbo and a stamp.
         val pikachu = listOf(NORMAL, FIRST_EDITION, SHADOWLESS, RED_CHEEK, POKETOUR_99, JUMBO, STAMPED, CARDMARKET_PRINT)
         assertEquals(setOf(FIRST_EDITION, SHADOWLESS, RED_CHEEK, POKETOUR_99, JUMBO, STAMPED, CARDMARKET_PRINT), SetCollectionPolicy.unwantedVariants(pikachu, QueryKind.SET_MASTER))
         assertEquals(pikachu.toSet() - NORMAL, SetCollectionPolicy.unwantedVariants(pikachu, QueryKind.SET_BASE))
-        // Carta che esiste solo come stampa a parte: resta uno slot.
+        // Card that exists only as a separate print: stays a slot.
         assertEquals(emptySet<Any>(), SetCollectionPolicy.unwantedVariants(listOf(JUMBO), QueryKind.SET_MASTER))
         assertEquals(emptySet<Any>(), SetCollectionPolicy.unwantedVariants(listOf(JUMBO), QueryKind.SET_BASE))
     }
@@ -57,7 +57,7 @@ class SetCollectionTest {
     fun `master set esclude solo la prima edizione`() {
         assertEquals(setOf(FIRST_EDITION), SetCollectionPolicy.unwantedVariants(listOf(FIRST_EDITION, NORMAL, HOLO), QueryKind.SET_MASTER))
         assertEquals(emptySet<Any>(), SetCollectionPolicy.unwantedVariants(listOf(NORMAL, REVERSE, POKE_BALL), QueryKind.SET_MASTER))
-        // Carta che esiste solo in 1st Edition: resta uno slot.
+        // Card that exists only in 1st Edition: stays a slot.
         assertEquals(emptySet<Any>(), SetCollectionPolicy.unwantedVariants(listOf(FIRST_EDITION), QueryKind.SET_MASTER))
         assertEquals(emptySet<Any>(), SetCollectionPolicy.unwantedVariants(listOf(FIRST_EDITION, NORMAL), QueryKind.NAME))
     }

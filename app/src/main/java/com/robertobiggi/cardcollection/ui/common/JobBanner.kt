@@ -16,10 +16,10 @@ import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.work.JobState
 
 /**
- * Fascia con l'avanzamento di un lavoro in background (catalogo o prezzi).
- * @param title String - nome del lavoro.
- * @param state JobState? - stato corrente; se non è in corso la fascia non viene mostrata.
- * @param prices Boolean - true per l'aggiornamento prezzi, false per il catalogo.
+ * Banner with the progress of a background job (catalog or prices).
+ * @param title String - name of the job.
+ * @param state JobState? - current state; if not running the banner is not shown.
+ * @param prices Boolean - true for the price update, false for the catalog.
  * @return Unit
  */
 @Composable

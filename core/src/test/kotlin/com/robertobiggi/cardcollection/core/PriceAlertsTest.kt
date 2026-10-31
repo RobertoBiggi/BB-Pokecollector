@@ -35,7 +35,7 @@ class PriceAlertsTest {
         assertEquals(listOf("Cardmarket", "CardTrader"), moved.map { it.point.source })
         assertEquals(6.0, moved[0].percent, 1e-9)
         assertTrue(moved[1].percent < 0)
-        // Il riferimento si sposta solo per le fonti che hanno avvisato.
+        // The reference moves only for the sources that sent an alert.
         assertEquals(mapOf("Cardmarket|EUR" to 10.6, "CardTrader|EUR" to 8.5, "TCGplayer|USD" to 12.0), result.state.baselines)
     }
 
@@ -48,7 +48,7 @@ class PriceAlertsTest {
             events += result.events
             state = result.state
         }
-        // +2%, +4%, poi +5% dal riferimento: un solo avviso, al terzo giorno.
+        // +2%, +4%, then +5% from the reference: a single alert, on the third day.
         assertEquals(1, events.size)
         assertEquals(10.5, (events.single() as AlertEvent.Change).point.value)
     }
@@ -64,18 +64,18 @@ class PriceAlertsTest {
     @Test
     fun `prezzo obiettivo con margine del 5 percento, una volta sola e poi si riarma`() {
         val target = AlertConfig(notifyChanges = false, targetEur = 50.0)
-        // 53 € è sopra 52,50 €: niente.
+        // 53 € is above 52.50 €: nothing.
         var result = PriceAlertRules.evaluate(target, AlertState(), listOf(cm(53.0)), 5)
         assertEquals(emptyList<AlertEvent>(), result.events)
         assertFalse(result.state.targetReached)
-        // 52,50 €: dentro la zona, avvisa.
+        // 52.50 €: inside the zone, alerts.
         result = PriceAlertRules.evaluate(target, result.state, listOf(cm(52.5)), 5)
         assertEquals(listOf(52.5), result.events.filterIsInstance<AlertEvent.TargetReached>().map { it.point.value })
         assertTrue(result.state.targetReached)
-        // Ancora sotto: non ripete l'avviso.
+        // Still below: does not repeat the alert.
         result = PriceAlertRules.evaluate(target, result.state, listOf(cm(48.0)), 5)
         assertEquals(emptyList<AlertEvent>(), result.events)
-        // Risale sopra la zona e poi riscende: avvisa di nuovo.
+        // Rises above the zone and then falls again: alerts again.
         result = PriceAlertRules.evaluate(target, result.state, listOf(cm(60.0)), 5)
         assertFalse(result.state.targetReached)
         result = PriceAlertRules.evaluate(target, result.state, listOf(cm(49.0)), 5)
@@ -102,7 +102,7 @@ class PriceAlertsTest {
     @Test
     fun `soglia fuori intervallo ricondotta ai limiti`() {
         val state = AlertState(mapOf("Cardmarket|EUR" to 10.0))
-        // 0% diventa 1%: 10,05 € (+0,5%) non avvisa, 10,10 € (+1%) sì.
+        // 0% becomes 1%: 10.05 € (+0.5%) does not alert, 10.10 € (+1%) does.
         assertEquals(0, PriceAlertRules.evaluate(changes, state, listOf(cm(10.05)), 0).events.size)
         assertEquals(1, PriceAlertRules.evaluate(changes, state, listOf(cm(10.10)), 0).events.size)
     }
@@ -116,7 +116,7 @@ class PriceAlertsTest {
         assertEquals(ZonedDateTime.of(2026, 10, 30, 4, 30, 0, 0, rome), PriceAlertRules.nextRun(afternoon))
         val exactly = ZonedDateTime.of(2026, 10, 29, 4, 30, 0, 0, rome)
         assertEquals(ZonedDateTime.of(2026, 10, 30, 4, 30, 0, 0, rome), PriceAlertRules.nextRun(exactly))
-        // Notte del 25 ottobre 2026: si torna all'ora solare, il controllo resta alle 4:30 locali.
+        // Night of 25 October 2026: back to standard time, the check stays at 4:30 local.
         val beforeDst = ZonedDateTime.of(2026, 10, 24, 20, 0, 0, 0, rome)
         assertEquals(4, PriceAlertRules.nextRun(beforeDst).hour)
         assertEquals(30, PriceAlertRules.nextRun(beforeDst).minute)
@@ -145,7 +145,7 @@ class PriceAlertsTest {
     fun `cambiare solo la soglia non rimanda l'avviso del prezzo obiettivo e tiene i riferimenti`() {
         val saved = AlertState(mapOf("Cardmarket|EUR" to 10.0), targetReached = true)
         val state = PriceAlertRules.editedState(saved, 50.0, 50.0, mapOf("Cardmarket|EUR" to 10.4, "CardTrader|EUR" to 9.0))
-        // Il riferimento di Cardmarket resta 10 (le variazioni si sommano); CardTrader, nuovo, parte dal prezzo attuale.
+        // The Cardmarket reference stays 10 (changes add up); CardTrader, new, starts from the current price.
         assertEquals(mapOf("Cardmarket|EUR" to 10.0, "CardTrader|EUR" to 9.0), state.baselines)
         assertTrue(state.targetReached)
     }

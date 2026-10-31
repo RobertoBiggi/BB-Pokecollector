@@ -4,10 +4,10 @@ import kotlinx.serialization.SerialName
 import com.robertobiggi.cardcollection.core.price.PricingDto
 import kotlinx.serialization.Serializable
 
-// DTO dell'API TCGdex v2, usati solo dai test per leggere le risposte salvate in resources/fixtures
-// (l'app non interroga più TCGdex per le carte).
+// DTOs of the TCGdex v2 API, used only by tests to read the responses saved in resources/fixtures
+// (the app no longer queries TCGdex for cards).
 
-/** Elemento della lista restituita da /cards?name=... */
+/** Element of the list returned by /cards?name=... */
 @Serializable
 data class CardBriefDto(
     val id: String,
@@ -16,7 +16,7 @@ data class CardBriefDto(
     val image: String? = null,
 )
 
-/** Dettaglio di una carta da /cards/{id}. */
+/** Detail of a card from /cards/{id}. */
 @Serializable
 data class CardDto(
     val id: String,
@@ -33,7 +33,7 @@ data class CardDto(
     val pricing: PricingDto? = null,
 )
 
-/** Riferimento al set contenuto nel dettaglio carta. */
+/** Reference to the set contained in the card detail. */
 @Serializable
 data class CardSetRefDto(
     val id: String,
@@ -41,14 +41,14 @@ data class CardSetRefDto(
     val cardCount: CardCountDto? = null,
 )
 
-/** Conteggio delle carte di un set: [official] è il numero stampato dopo la barra. */
+/** Card count of a set: [official] is the number printed after the slash. */
 @Serializable
 data class CardCountDto(
     val official: Int? = null,
     val total: Int? = null,
 )
 
-/** Varianti disponibili espresse come flag booleani (campo storico di TCGdex). */
+/** Available variants expressed as boolean flags (historical TCGdex field). */
 @Serializable
 data class VariantFlagsDto(
     val normal: Boolean = false,
@@ -59,8 +59,8 @@ data class VariantFlagsDto(
 )
 
 /**
- * Variante dettagliata con i prezzi specifici. [size] distingue le carte standard dalle jumbo, [subtype] la stampa
- * (unlimited, shadowless…), [stamp] i timbri (1st-edition, poketour-99…).
+ * Detailed variant with specific prices. [size] distinguishes standard cards from jumbo, [subtype] the print
+ * (unlimited, shadowless…), [stamp] the stamps (1st-edition, poketour-99…).
  */
 @Serializable
 data class VariantDetailDto(
@@ -71,15 +71,15 @@ data class VariantDetailDto(
     val thirdParty: ThirdPartyDto? = null,
     val pricing: PricingDto? = null,
 ) {
-    /** Id prodotto Cardmarket della variante, se TCGdex lo indica. */
+    /** Cardmarket product id of the variant, if TCGdex gives it. */
     val cardmarketId: Int? get() = thirdParty?.cardmarket ?: pricing?.cardmarket?.idProduct
 }
 
-/** Id dei prodotti della variante presso altri siti. */
+/** Ids of the variant's products at other sites. */
 @Serializable
 data class ThirdPartyDto(val cardmarket: Int? = null)
 
-/** Dettaglio di un set da /sets/{id}. */
+/** Detail of a set from /sets/{id}. */
 @Serializable
 data class SetDto(
     val id: String,
@@ -91,7 +91,7 @@ data class SetDto(
     val cards: List<CardBriefDto> = emptyList(),
 )
 
-/** Elemento sintetico della lista /sets (senza sigla né carte). [logo] contiene la serie nel percorso (es. ".../tcgp/A1/logo"). */
+/** Synthetic element of the /sets list (without code or cards). [logo] contains the series in the path (e.g. ".../tcgp/A1/logo"). */
 @Serializable
 data class SetBriefDto(
     val id: String,
@@ -100,7 +100,7 @@ data class SetBriefDto(
     val logo: String? = null,
 )
 
-/** Riferimento alla serie (era) di un set. */
+/** Reference to the series (era) of a set. */
 @Serializable
 data class SerieRefDto(
     val id: String,
@@ -108,8 +108,8 @@ data class SerieRefDto(
 )
 
 /**
- * Sigla del set: [official] è quella stampata sulle carte inglesi recenti (es. "POR"),
- * [localized] quella delle edizioni tradotte che ne hanno una propria (es. "PXY" in francese).
+ * Set code: [official] is the one printed on recent English cards (e.g. "POR"),
+ * [localized] that of translated editions that have their own (e.g. "PXY" in French).
  */
 @Serializable
 data class AbbreviationDto(

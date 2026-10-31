@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Palette della demo: grigio Acciaio e rosa Folletto, come i tipi di Mawile.
+// Demo palette: Steel gray and Fairy pink, like Mawile's types.
 private val Light = lightColorScheme(
     primary = Color(0xFFB0245D),
     onPrimary = Color.White,
@@ -41,19 +41,19 @@ private val Dark = darkColorScheme(
     outline = Color(0xFF2C3442),
 )
 
-/** Colori semantici per stato (posseduta, affidabilità). */
+/** Semantic colors by state (owned, reliability). */
 object StatusColors {
     val ok = Color(0xFF1D7F55)
     val warn = Color(0xFF9A6512)
     val bad = Color(0xFFB8372B)
 }
 
-/** Stile monospaziato per codici e prezzi. */
+/** Monospaced style for codes and prices. */
 val MonoStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp)
 
 /**
- * Tema dell'app, chiaro o scuro secondo il sistema.
- * @param content @Composable () -> Unit - contenuto da tematizzare.
+ * App theme, light or dark according to the system.
+ * @param content @Composable () -> Unit - content to theme.
  * @return Unit
  */
 @Composable

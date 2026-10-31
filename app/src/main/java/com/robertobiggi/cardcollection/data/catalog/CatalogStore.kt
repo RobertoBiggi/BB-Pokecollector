@@ -14,34 +14,34 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Database delle carte installato sul telefono.
- * @property generatedAt data di generazione del file (ISO-8601).
- * @property languages lingue contenute.
+ * Card database installed on the phone.
+ * @property generatedAt generation date of the file (ISO-8601).
+ * @property languages languages contained.
  */
 data class CatalogInfo(val generatedAt: String, val languages: Set<String>)
 
-/** Esito dello scaricamento del database delle carte. */
+/** Outcome of downloading the card database. */
 sealed interface CatalogDownloadResult {
-    /** Database installato. */
+    /** Database installed. */
     data class Installed(val info: CatalogInfo) : CatalogDownloadResult
 
-    /** Indirizzo non valido (serve HTTPS). */
+    /** Invalid address (HTTPS required). */
     data object InvalidUrl : CatalogDownloadResult
 
-    /** Rete assente, server non raggiungibile o file mancante. */
+    /** No network, server unreachable or file missing. */
     data object NetworkError : CatalogDownloadResult
 
-    /** Il file scaricato non è un database delle carte che l'app sa leggere. */
+    /** The downloaded file is not a card database the app can read. */
     data object InvalidFile : CatalogDownloadResult
 }
 
 /**
- * Tiene il file `cards.sqlite` nella memoria dell'app: parte da quello incluso nell'APK (asset), poi lo scarica da un indirizzo scelto
- * dall'utente, lo controlla e lo sostituisce in un colpo solo, così un download interrotto o sbagliato non toglie quello che funzionava.
- * Le letture passano da [use].
+ * Keeps the `cards.sqlite` file in the app's storage: starts from the one included in the APK (asset), then downloads it from an address chosen
+ * by the user, checks it and replaces it in one go, so an interrupted or wrong download does not remove what was working.
+ * Reads go through [use].
  *
- * @param context contesto dell'applicazione.
- * @param http client senza elenco di host consentiti: l'indirizzo lo sceglie l'utente (solo HTTPS).
+ * @param context application context.
+ * @param http client without a list of allowed hosts: the address is chosen by the user (HTTPS only).
  */
 class CatalogStore(context: Context, private val http: OkHttpClient) {
     private val appContext = context.applicationContext
@@ -52,19 +52,19 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
 
     private val _info = MutableStateFlow<CatalogInfo?>(null)
 
-    /** Il database installato, oppure null se manca (o non è valido). Si aggiorna dopo ogni installazione. */
+    /** The installed database, or null if missing (or not valid). Updated after every installation. */
     val info: StateFlow<CatalogInfo?> = _info
 
-    /** Installa il database incluso nell'APK se serve, poi legge le informazioni del file presente, all'avvio dell'app. */
+    /** Installs the database included in the APK if needed, then reads the information of the present file, at app start. */
     suspend fun load() {
         installBundled()
         _info.value = use { CatalogInfo(it.generatedAt, it.languages) }
     }
 
     /**
-     * Copia il database incluso nell'APK (asset [ASSET_NAME]) se manca, non è valido o è più vecchio di quello incluso. Quello scaricato
-     * più di recente resta. La copia avviene una volta per installazione dell'app: la scelta si ricorda in un file marcatore.
-     * Senza asset (APK compilato senza database) non fa nulla.
+     * Copies the database included in the APK (asset [ASSET_NAME]) if it is missing, not valid or older than the included one. The most recently
+     * downloaded one stays. The copy happens once per app installation: the choice is remembered in a marker file.
+     * Without an asset (APK built without a database) it does nothing.
      * @return Unit
      */
     private suspend fun installBundled() = withContext(Dispatchers.IO) {
@@ -109,9 +109,9 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Esegue una lettura sul database installato.
-     * @param block (CatalogDb) -> T - lettura; gira sul thread di I/O.
-     * @return T? - il risultato, oppure null se il database non c'è o non è valido.
+     * Runs a read on the installed database.
+     * @param block (CatalogDb) -> T - read; runs on the I/O thread.
+     * @return T? - the result, or null if the database does not exist or is not valid.
      */
     suspend fun <T> use(block: (CatalogDb) -> T): T? = withContext(Dispatchers.IO) {
         mutex.withLock {
@@ -129,10 +129,10 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Scarica il database da un indirizzo, lo controlla e lo installa al posto del precedente.
-     * @param url String - indirizzo HTTPS del file.
-     * @param progress suspend (Long, Long?) -> Unit - byte scaricati e totali (se il server li dichiara).
-     * @return CatalogDownloadResult - esito.
+     * Downloads the database from an address, checks it and installs it in place of the previous one.
+     * @param url String - HTTPS address of the file.
+     * @param progress suspend (Long, Long?) -> Unit - bytes downloaded and total (if the server declares them).
+     * @return CatalogDownloadResult - outcome.
      */
     suspend fun download(url: String, progress: suspend (Long, Long?) -> Unit = { _, _ -> }): CatalogDownloadResult = withContext(Dispatchers.IO) {
         if (!url.startsWith("https://")) return@withContext CatalogDownloadResult.InvalidUrl
@@ -182,7 +182,7 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
         }
     }
 
-    /** Le lingue del catalogo installato che l'app sa usare. */
+    /** The languages of the installed catalog that the app can use. */
     fun languages(): List<Language> = _info.value?.languages.orEmpty().mapNotNull { Language.fromCode(it) }
 
     private companion object {

@@ -39,28 +39,28 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.io.File
 
-/** Lavoro preparatorio dell'aggiornamento prezzi che richiede tempo e che viene mostrato all'utente. */
+/** Preparatory work of the price update that takes time and is shown to the user. */
 enum class PriceStep { DOWNLOAD_GUIDE, READ_GUIDE }
 
 /**
- * Avanzamento dell'aggiornamento prezzi: carta e variante in lavorazione, oppure (con [step]) un lavoro
- * preparatorio (scaricare o leggere il listino Cardmarket); in quel caso [variant] è null.
+ * Progress of the price update: card and variant being processed, or (with [step]) a preparatory
+ * job (downloading or reading the Cardmarket price list); in that case [variant] is null.
  */
 data class PriceProgress(val cardName: String, val variant: VariantType?, val done: Int, val total: Int, val step: PriceStep? = null)
 
-/** Motivo per cui un aggiornamento prezzi si è interrotto prima della fine. */
+/** Reason why a price update stopped before the end. */
 enum class AbortReason { SOURCE_PAUSED, OFFLINE }
 
-/** Esito dell'aggiornamento prezzi; [abort] è null se il run è arrivato in fondo. */
+/** Outcome of the price update; [abort] is null if the run reached the end. */
 data class PriceRunResult(val ok: Int, val fallback: Int, val failed: Int, val abort: AbortReason?)
 
 /**
- * Avviso di prezzo da notificare.
- * @property cardId carta.
- * @property collectionId collezione da aprire toccando la notifica, null se la carta non è in nessuna.
- * @property cardName nome della carta.
- * @property variantType tipo della variante, null se non riconosciuto.
- * @property event cosa è successo al prezzo.
+ * Price alert to notify.
+ * @property cardId card.
+ * @property collectionId collection to open by tapping the notification, null if the card is in none.
+ * @property cardName name of the card.
+ * @property variantType type of the variant, null if not recognized.
+ * @property event what happened to the price.
  */
 data class PriceAlertNotice(
     val cardId: String,
@@ -70,15 +70,15 @@ data class PriceAlertNotice(
     val event: AlertEvent,
 )
 
-/** Esito del controllo giornaliero degli avvisi; [abort] non è null se si è fermato prima della fine. */
+/** Outcome of the daily alert check; [abort] is not null if it stopped before the end. */
 data class AlertCheckResult(val notices: List<PriceAlertNotice>, val checked: Int, val abort: AbortReason?)
 
 /**
- * Aggiorna i prezzi delle varianti desiderate o possedute e salva l'ultimo risultato in locale.
- * Il prodotto Cardmarket e il blueprint CardTrader di ogni carta arrivano dal database delle carte: il prezzo in euro viene dal listino
- * pubblico di Cardmarket. Se l'utente ha inserito il token CardTrader, ogni variante ha anche il prezzo CardTrader, in una catena
- * separata: non sostituisce Cardmarket e i suoi errori non contano come errori dell'aggiornamento.
- * Se una variante non ha dati nuovi resta valido il prezzo salvato in precedenza.
+ * Updates the prices of the wanted or owned variants and saves the latest result locally.
+ * The Cardmarket product and CardTrader blueprint of each card come from the card database: the price in euros comes from the public
+ * Cardmarket price list. If the user entered the CardTrader token, each variant also gets the CardTrader price, in a
+ * separate chain: it does not replace Cardmarket and its errors do not count as errors of the update.
+ * If a variant has no new data the previously saved price stays valid.
  */
 class PriceRepository(
     private val db: AppDatabase,
@@ -90,10 +90,10 @@ class PriceRepository(
     private val priceDao = db.priceDao()
 
     /**
-     * Esegue l'aggiornamento prezzi delle carte visibili di una collezione.
-     * @param collectionId Long - collezione da aggiornare.
-     * @param progress suspend (PriceProgress) -> Unit - callback di avanzamento.
-     * @return PriceRunResult - conteggi ed eventuale motivo di interruzione.
+     * Runs the price update for the visible cards of a collection.
+     * @param collectionId Long - collection to update.
+     * @param progress suspend (PriceProgress) -> Unit - progress callback.
+     * @return PriceRunResult - counts and possible reason for the interruption.
      */
     suspend fun runPriceCheck(collectionId: Long, progress: suspend (PriceProgress) -> Unit): PriceRunResult {
         val startedAt = System.currentTimeMillis()
@@ -142,7 +142,7 @@ class PriceRepository(
             }
             completed = true
         } finally {
-            // Anche se il lavoro viene interrotto, il run non resta "in corso" per sempre.
+            // Even if the job is interrupted, the run does not stay "in progress" forever.
             withContext(NonCancellable) {
                 priceDao.updateRun(
                     PriceRunEntity(
@@ -164,10 +164,10 @@ class PriceRepository(
     }
 
     /**
-     * Aggiorna subito i prezzi di tutte le varianti di una sola carta, senza registrare un run.
-     * @param cardId String - id locale della carta.
-     * @return PriceRunResult - conteggi; [PriceRunResult.abort] vale SOURCE_PAUSED se il listino è in
-     *         pausa e OFFLINE se tutte le richieste sono fallite per la rete.
+     * Immediately updates the prices of all variants of a single card, without recording a run.
+     * @param cardId String - local id of the card.
+     * @return PriceRunResult - counts; [PriceRunResult.abort] is SOURCE_PAUSED if the price list is
+     *         paused and OFFLINE if all requests failed because of the network.
      */
     suspend fun checkCard(cardId: String, collectionId: Long?): PriceRunResult {
         val entries = collectionId?.let { db.collectionDao().entriesOf(it) }.orEmpty().associateBy { it.variantId }
@@ -197,17 +197,17 @@ class PriceRepository(
 
     private fun conditionOf(name: String?): Condition = Condition.entries.firstOrNull { it.name == name } ?: Condition.NM
 
-    /** Esito del controllo di una singola variante. */
+    /** Outcome of checking a single variant. */
     private enum class VariantCheck { OK, FAILED, NETWORK_ERROR, SKIPPED }
 
     /**
-     * Chiede il prezzo di una variante al listino Cardmarket (e a CardTrader, se c'è il token) e, se lo trova, lo salva.
-     * @param sources PriceSources - fonti dell'aggiornamento.
-     * @param card CardEntity - carta della variante.
-     * @param variant CardVariantEntity - variante da controllare.
-     * @param types List<String> - tipi di tutte le varianti della carta (per l'affidabilità del prezzo Cardmarket).
-     * @param condition Condition - condizione della copia nella collezione: CardTrader mostra il prezzo più basso di quella condizione o migliore.
-     * @return VariantCheck - esito; SKIPPED se lingua o tipo non sono riconosciuti.
+     * Asks the Cardmarket price list (and CardTrader, if there is a token) for the price of a variant and, if found, saves it.
+     * @param sources PriceSources - sources of the update.
+     * @param card CardEntity - card of the variant.
+     * @param variant CardVariantEntity - variant to check.
+     * @param types List<String> - types of all variants of the card (for the reliability of the Cardmarket price).
+     * @param condition Condition - condition of the copy in the collection: CardTrader shows the lowest price of that condition or better.
+     * @return VariantCheck - outcome; SKIPPED if language or type are not recognized.
      */
     private suspend fun checkVariant(sources: PriceSources, card: CardEntity, variant: CardVariantEntity, types: List<String>, condition: Condition): VariantCheck {
         val type = VariantType.fromName(variant.type) ?: return VariantCheck.SKIPPED
@@ -232,10 +232,10 @@ class PriceRepository(
             variantBlueprintId = variant.cardTraderBlueprintId,
         )
         val outcome = sources.cardmarketGuide.fetch(request)
-        // CardTrader non distingue le stampe a parte (shadowless, jumbo…), tranne quelle con un blueprint proprio (oversize senza prodotto Cardmarket).
+        // CardTrader does not tell separate prints apart (shadowless, jumbo…), except those with their own blueprint (oversized without a Cardmarket product).
         val cardTraderOutcome = if (type.isPrint && variant.cardTraderBlueprintId == null) null else sources.cardTrader?.fetch(request)
         val cardTraderSaved = cardTraderOutcome?.quote?.let { saveQuote(variant.id, it) } == true
-        // Normal e holo condividono il blueprint: se CardTrader ha una sola stampa, l'altra non ha prezzo e quello salvato prima era dell'altra.
+        // Normal and holo share the blueprint: if CardTrader has only one print, the other has no price and the previously saved one belonged to the other.
         if (cardTraderOutcome != null && cardTraderOutcome.quote == null && request.cardHasNormalAndHolo &&
             (type == VariantType.NORMAL || type == VariantType.HOLO) && cardTraderOutcome.steps.all { it.outcome == StepOutcome.NO_DATA }
         ) {
@@ -251,11 +251,11 @@ class PriceRepository(
     }
 
     /**
-     * Scarica da CardTrader l'immagine delle carte che il catalogo non ha (es. i set giapponesi senza immagini su TCGdex).
-     * Serve il token CardTrader e il blueprint della carta, che arriva dal database delle carte; senza, o con la rete assente,
-     * non fa nulla.
-     * @param progress suspend (SyncProgress) -> Unit - avanzamento, una volta per carta.
-     * @return Int - numero di carte a cui è stata aggiunta l'immagine.
+     * Downloads from CardTrader the image of the cards that the catalog does not have (e.g. Japanese sets without images on TCGdex).
+     * Needs the CardTrader token and the card's blueprint, which comes from the card database; without them, or with no network,
+     * it does nothing.
+     * @param progress suspend (SyncProgress) -> Unit - progress, once per card.
+     * @return Int - number of cards to which an image was added.
      */
     suspend fun fillImagesFromCardTrader(progress: suspend (SyncProgress) -> Unit = {}): Int {
         val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return 0
@@ -271,17 +271,17 @@ class PriceRepository(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Rete assente o risposta non valida: le altre carte possono andare a buon fine, e il prossimo aggiornamento riprova.
+                // No network or invalid response: the other cards may succeed, and the next update retries.
             }
         }
         return saved
     }
 
     /**
-     * Scarica da CardTrader l'immagine di una singola carta, anche se ne ha già una (quella scelta a mano viene sostituita).
-     * Serve il token CardTrader.
-     * @param cardId String - id locale della carta.
-     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE se manca il token o la carta non ha un blueprint, NETWORK_ERROR.
+     * Downloads from CardTrader the image of a single card, even if it already has one (the manually chosen one is replaced).
+     * Needs the CardTrader token.
+     * @param cardId String - local id of the card.
+     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE if the token is missing or the card has no blueprint, NETWORK_ERROR.
      */
     suspend fun downloadImageFromCardTrader(cardId: String): ImageResult {
         val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return ImageResult.NOT_AVAILABLE
@@ -295,7 +295,7 @@ class PriceRepository(
         }
     }
 
-    /** Cerca il blueprint della carta su CardTrader e ne salva l'immagine. @return Boolean - true se è stata salvata. */
+    /** Looks up the card's blueprint on CardTrader and saves its image. @return Boolean - true if it was saved. */
     private suspend fun saveCardTraderImage(provider: CardTraderPriceProvider, card: CardEntity): Boolean {
         val expansion = card.cardTraderExpansionId ?: return false
         val blueprint = card.cardTraderBlueprintId ?: return false
@@ -309,10 +309,10 @@ class PriceRepository(
     }
 
     /**
-     * Salva un prezzo trovato come ultimo snapshot della variante.
-     * @param variantId String - variante.
-     * @param quote PriceQuote - prezzo da salvare.
-     * @return Boolean - sempre true (comodo per concatenare).
+     * Saves a found price as the latest snapshot of the variant.
+     * @param variantId String - variant.
+     * @param quote PriceQuote - price to save.
+     * @return Boolean - always true (handy for chaining).
      */
     private suspend fun saveQuote(variantId: String, quote: PriceQuote): Boolean {
         priceDao.insertSnapshot(
@@ -333,13 +333,13 @@ class PriceRepository(
         return true
     }
 
-    /** Fonti dell'aggiornamento: il listino Cardmarket (sempre) e CardTrader (solo con il token). */
+    /** Sources of the update: the Cardmarket price list (always) and CardTrader (only with the token). */
     private class PriceSources(val cardTrader: PriceChain?, val cardmarketGuide: PriceChain)
 
     /**
-     * Crea le fonti di un aggiornamento prezzi.
-     * @param onStep suspend (PriceStep) -> Unit - chiamata quando sta per iniziare un lavoro preparatorio lungo.
-     * @return PriceSources - fonti pronte.
+     * Creates the sources of a price update.
+     * @param onStep suspend (PriceStep) -> Unit - called when a long preparatory job is about to start.
+     * @return PriceSources - sources ready.
      */
     private suspend fun priceSources(onStep: suspend (PriceStep) -> Unit): PriceSources {
         val token = settings.cardTraderToken.first()
@@ -354,20 +354,20 @@ class PriceRepository(
     }
 
     /**
-     * Osserva gli avvisi di prezzo, per variante.
-     * @return Flow<Map<String, PriceAlertEntity>> - avviso per id della variante.
+     * Observes the price alerts, per variant.
+     * @return Flow<Map<String, PriceAlertEntity>> - alert by variant id.
      */
     fun observeAlerts(): Flow<Map<String, PriceAlertEntity>> = priceDao.observeAlerts().map { list -> list.associateBy { it.variantId } }
 
     /**
-     * Crea o modifica l'avviso di prezzo di una variante; senza nessuna delle due opzioni lo toglie. Un avviso nuovo parte
-     * dai prezzi attuali, così il primo controllo misura le variazioni da quello che l'utente vede adesso; uno modificato
-     * tiene il suo stato (vedi [PriceAlertRules.editedState]).
-     * @param variantId String - variante.
-     * @param notifyChanges Boolean - true per l'avviso "sale o scende".
-     * @param changePercent Int - variazione minima per l'avviso "sale o scende", ricondotta a [PriceAlertRules.CHANGE_PERCENT_RANGE].
-     * @param targetEur Double? - prezzo obiettivo in euro (già validato), null se non impostato.
-     * @return Boolean - true se l'avviso è attivo, false se è stato tolto.
+     * Creates or modifies the price alert of a variant; with neither option it removes it. A new alert starts
+     * from the current prices, so the first check measures changes from what the user sees now; a modified one
+     * keeps its state (see [PriceAlertRules.editedState]).
+     * @param variantId String - variant.
+     * @param notifyChanges Boolean - true for the "rises or falls" alert.
+     * @param changePercent Int - minimum change for the "rises or falls" alert, brought back to [PriceAlertRules.CHANGE_PERCENT_RANGE].
+     * @param targetEur Double? - target price in euros (already validated), null if not set.
+     * @return Boolean - true if the alert is active, false if it was removed.
      */
     suspend fun saveAlert(variantId: String, notifyChanges: Boolean, changePercent: Int, targetEur: Double?): Boolean {
         val target = targetEur?.takeIf { it > 0.0 && it <= PriceAlertRules.MAX_TARGET_EUR && it.isFinite() }
@@ -399,17 +399,17 @@ class PriceRepository(
     }
 
     /**
-     * Toglie l'avviso di prezzo di una variante.
-     * @param variantId String - variante.
+     * Removes the price alert of a variant.
+     * @param variantId String - variant.
      * @return Unit
      */
     suspend fun deleteAlert(variantId: String) = priceDao.deleteAlert(variantId)
 
     /**
-     * Controllo giornaliero degli avvisi: aggiorna i prezzi delle sole varianti con un avviso (listino Cardmarket e,
-     * con il token, CardTrader), li confronta con lo stato salvato ([PriceAlertRules.evaluate]) e restituisce gli avvisi
-     * da notificare. Non registra un run: non è l'aggiornamento di una collezione.
-     * @return AlertCheckResult - avvisi da notificare, varianti controllate ed eventuale interruzione.
+     * Daily check of the alerts: updates the prices of only the variants with an alert (Cardmarket price list and,
+     * with the token, CardTrader), compares them with the saved state ([PriceAlertRules.evaluate]) and returns the alerts
+     * to notify. It does not record a run: it is not the update of a collection.
+     * @return AlertCheckResult - alerts to notify, variants checked and possible interruption.
      */
     suspend fun runAlertCheck(): AlertCheckResult {
         val alerts = priceDao.alerts()
@@ -430,7 +430,7 @@ class PriceRepository(
             }
             val startedAt = System.currentTimeMillis()
             val types = db.catalogDao().variantsOf(listOf(card.id)).map { it.type }
-            // Stessa condizione dell'aggiornamento della collezione: il prezzo CardTrader salvato è condiviso e non deve cambiare a seconda di chi l'ha scaricato.
+            // Same condition as the collection update: the saved CardTrader price is shared and must not change depending on who downloaded it.
             val condition = conditionOf(db.collectionDao().entriesOfVariant(variant.id).firstOrNull()?.condition)
             val check = checkVariant(sources, card, variant, types, condition)
             if (check == VariantCheck.NETWORK_ERROR) {
@@ -441,7 +441,7 @@ class PriceRepository(
             } else {
                 consecutiveNetworkErrors = 0
             }
-            // Solo i prezzi scaricati adesso: quelli vecchi o inseriti a mano non fanno partire avvisi.
+            // Only prices downloaded now: old or manually entered ones do not trigger alerts.
             val fresh = priceDao.snapshotsOf(listOf(variant.id)).filter { it.fetchedAt >= startedAt }
             val evaluation = PriceAlertRules.evaluate(
                 AlertConfig(alert.notifyChanges, alert.targetEur),
@@ -460,10 +460,10 @@ class PriceRepository(
     }
 
     /**
-     * Prezzi utilizzabili dagli avvisi: l'ultimo di ogni fonte, esclusi quelli inseriti a mano. Gli euro di CardTrader
-     * contano come CardTrader, gli altri come la loro fonte (listino Cardmarket); i dollari come TCGplayer.
-     * @param snapshots List<PriceSnapshotEntity> - prezzi salvati della variante.
-     * @return List<PricePoint> - un prezzo per fonte e valuta.
+     * Prices usable by alerts: the latest of each source, excluding manually entered ones. CardTrader euros
+     * count as CardTrader, the others as their source (Cardmarket price list); dollars as TCGplayer.
+     * @param snapshots List<PriceSnapshotEntity> - saved prices of the variant.
+     * @return List<PricePoint> - one price per source and currency.
      */
     private fun pointsOf(snapshots: List<PriceSnapshotEntity>): List<PricePoint> =
         snapshots.filter { it.source != CollectionFiles.MANUAL_SOURCE }.sortedByDescending { it.fetchedAt }.flatMap { s ->
@@ -474,9 +474,9 @@ class PriceRepository(
         }.distinctBy { it.key }
 
     /**
-     * Salva un prezzo inserito a mano dall'utente.
-     * @param variantId String - variante a cui associare il prezzo.
-     * @param eur Double - prezzo in euro già validato.
+     * Saves a price manually entered by the user.
+     * @param variantId String - variant to associate the price with.
+     * @param eur Double - price in euros already validated.
      * @return Unit
      */
     suspend fun addManualPrice(variantId: String, eur: Double) {
@@ -498,10 +498,10 @@ class PriceRepository(
     }
 
     companion object {
-        /** Snapshot conservati per variante. */
+        /** Snapshots kept per variant. */
         const val KEEP_SNAPSHOTS = 20
 
-        /** Aggiornamenti prezzi conservati nel registro di ogni collezione. */
+        /** Price updates kept in the log of each collection. */
         const val KEEP_RUNS = 10
         const val STATUS_RUNNING = "RUNNING"
         const val STATUS_DONE = "DONE"
@@ -512,7 +512,7 @@ class PriceRepository(
         private const val MAX_NETWORK_ERRORS = 5
         private const val SQL_CHUNK = 500
 
-        /** Nome con cui gli avvisi indicano i prezzi in dollari (TCGplayer), come nel dettaglio della carta. */
+        /** Name under which alerts refer to dollar prices (TCGplayer), as in the card detail. */
         const val TCGPLAYER_SOURCE = "TCGplayer"
     }
 }

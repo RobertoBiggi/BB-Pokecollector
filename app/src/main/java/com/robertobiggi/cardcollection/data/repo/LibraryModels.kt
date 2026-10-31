@@ -17,14 +17,14 @@ import com.robertobiggi.cardcollection.data.local.PriceSnapshotEntity
 import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
 
 /**
- * Variante pronta per la UI, con i dati dell'utente e gli ultimi prezzi.
+ * Variant ready for the UI, with the user's data and the latest prices.
  *
- * @property latestEur ultimo snapshot con un prezzo in euro.
- * @property latestUsd ultimo snapshot con un prezzo in dollari.
- * @property latestCardTrader ultimo snapshot CardTrader (tenuto separato da Cardmarket).
- * @property eurHistory prezzi in euro dal più vecchio al più recente (per la sparkline).
- * @property usdHistory prezzi in dollari dal più vecchio al più recente.
- * @property cardTraderHistory prezzi CardTrader dal più vecchio al più recente.
+ * @property latestEur latest snapshot with a price in euros.
+ * @property latestUsd latest snapshot with a price in dollars.
+ * @property latestCardTrader latest CardTrader snapshot (kept separate from Cardmarket).
+ * @property eurHistory prices in euros from oldest to most recent (for the sparkline).
+ * @property usdHistory prices in dollars from oldest to most recent.
+ * @property cardTraderHistory CardTrader prices from oldest to most recent.
  */
 data class VariantUi(
     val id: String,
@@ -42,58 +42,58 @@ data class VariantUi(
     val cardTraderHistory: List<Double> = emptyList(),
 ) {
     /**
-     * Converte la variante nell'input del calcolo statistiche.
-     * @return SlotInput - dati minimi per [com.robertobiggi.cardcollection.core.stats.CollectionStats].
+     * Converts the variant into the input of the statistics computation.
+     * @return SlotInput - minimal data for [com.robertobiggi.cardcollection.core.stats.CollectionStats].
      */
     fun toSlotInput(): SlotInput = SlotInput(wanted, quantity, latestEur?.eur, latestUsd?.usd, latestCardTrader?.eur)
 }
 
-/** Carta pronta per la UI con le sue varianti. */
+/** Card ready for the UI with its variants. */
 data class CardUi(
     val card: CardEntity,
     val variants: List<VariantUi>,
 ) {
     val language: Language get() = Language.fromCode(card.language) ?: Language.EN
 
-    /** Codice stampato in basso a sinistra, es. "M1L 046/063". */
+    /** Code printed at the bottom left, e.g. "M1L 046/063". */
     val printedCode: String get() = card.printedCode()
 
-    /** Slot della carta: varianti desiderate o possedute (stessa regola di [CollectionStats]). */
+    /** Slots of the card: wanted or owned variants (same rule as [CollectionStats]). */
     val slots: Int get() = variants.count { it.wanted || it.quantity > 0 }
 
-    /** Varianti possedute, con almeno una copia. */
+    /** Owned variants, with at least one copy. */
     val ownedSlots: Int get() = variants.count { it.quantity > 0 }
     val copies: Int get() = variants.sumOf { it.quantity }
 
-    /** Prezzo in euro più basso tra le varianti, usato in griglia ("da 0,30 €"). */
+    /** Lowest price in euros among the variants, used in the grid ("from 0,30 €"). */
     val minEur: Double? get() = variants.mapNotNull { it.latestEur?.eur }.minOrNull()
 
     /**
-     * Rarità da mostrare al posto di "Holo" nelle carte solo holo (Double Rare, Illustration Rare…), dove "Holo" non dice nulla.
-     * Resta "Holo" se la carta ha anche la versione normale, se la rarità manca, se è già una holo rare o se è una rarità
-     * semplice (Common, Uncommon, Rare), che non dice niente sulla stampa holo.
-     * @param variant VariantUi - variante della carta.
-     * @return String? - rarità, oppure null se si tiene il nome della variante.
+     * Rarity to show in place of "Holo" on holo-only cards (Double Rare, Illustration Rare…), where "Holo" says nothing.
+     * It stays "Holo" if the card also has the normal version, if the rarity is missing, if it is already a holo rare or if it is a
+     * plain rarity (Common, Uncommon, Rare), which says nothing about the holo print.
+     * @param variant VariantUi - variant of the card.
+     * @return String? - rarity, or null if the variant name is kept.
      */
     fun rarityLabelFor(variant: VariantUi): String? {
         if (variant.type != VariantType.HOLO || variants.any { it.type == VariantType.NORMAL }) return null
-        // "Fixed" è la "rarità" che CardTrader dà alle carte dei mazzi precostruiti: non dice niente sulla carta.
+        // "Fixed" is the "rarity" CardTrader gives to cards of preconstructed decks: it says nothing about the card.
         return card.rarity?.trim()?.takeIf { it.isNotEmpty() && !it.contains("holo", ignoreCase = true) && !it.equals("Fixed", ignoreCase = true) && it.lowercase() !in PLAIN_RARITIES }
     }
 
-    /** Percorso dell'immagine locale migliore per la griglia. */
+    /** Path of the best local image for the grid. */
     val thumbnailPath: String? get() = card.imageLowPath ?: card.imageHighPath
 
     companion object {
         private val PLAIN_RARITIES = setOf("common", "uncommon", "rare")
 
-        /** Ordine di uscita: data del set, poi set e numero (le carte senza data in fondo). */
+        /** Release order: set date, then set and number (cards without a date at the end). */
         val RELEASE_ORDER: Comparator<CardUi> =
             compareBy<CardUi>({ it.card.releaseDate ?: "9999" }, { it.card.setId }, { it.card.localId.padStart(4, '0') })
     }
 }
 
-/** Riepilogo di una collezione per l'elenco iniziale. */
+/** Summary of a collection for the initial list. */
 data class CollectionSummary(
     val collection: CollectionEntity,
     val cardCount: Int,
@@ -101,7 +101,7 @@ data class CollectionSummary(
     val coverPath: String?,
 )
 
-/** Fotografia delle tabelle osservate, da cui si ricavano libreria e riepiloghi di tutte le collezioni. */
+/** Snapshot of the observed tables, from which the library and summaries of all collections are derived. */
 data class DbState(
     val collections: List<CollectionEntity>,
     val memberships: List<CollectionCardEntity>,
@@ -111,20 +111,20 @@ data class DbState(
     val entries: List<CollectionEntryEntity>,
     val snapshots: List<PriceSnapshotEntity>,
     val runs: List<PriceRunEntity>,
-    /** False se le versioni 1st Edition non contano: senza una scelta dell'utente non sono volute. */
+    /** False if the 1st Edition versions do not count: without a user choice they are not wanted. */
     val countFirstEdition: Boolean = true,
 )
 
-/** Costruzione dei modelli UI a partire dalle tabelle del database. */
+/** Building of the UI models from the database tables. */
 object LibraryAssembler {
 
     /**
-     * Calcola quali carte sono visibili in una collezione: non nascoste e aggiunte a mano oppure
-     * da una ricerca attiva.
-     * @param collectionId Long - collezione.
-     * @param memberships List<CollectionCardEntity> - appartenenze di tutte le collezioni.
-     * @param queries List<TrackedQueryEntity> - ricerche di tutte le collezioni.
-     * @return Set<String> - id delle carte visibili.
+     * Computes which cards are visible in a collection: not hidden and added by hand or
+     * by an active search.
+     * @param collectionId Long - collection.
+     * @param memberships List<CollectionCardEntity> - memberships of all collections.
+     * @param queries List<TrackedQueryEntity> - searches of all collections.
+     * @return Set<String> - ids of the visible cards.
      */
     fun visibleCardIds(collectionId: Long, memberships: List<CollectionCardEntity>, queries: List<TrackedQueryEntity>): Set<String> {
         val enabled = queries.filter { it.enabled }.map { it.id }.toSet()
@@ -133,21 +133,21 @@ object LibraryAssembler {
     }
 
     /**
-     * Costruisce la libreria di una collezione dalla fotografia del database.
-     * @param state DbState - tabelle osservate.
-     * @param collectionId Long - collezione.
-     * @return List<CardUi> - carte visibili con varianti, quantità della collezione e prezzi.
+     * Builds the library of a collection from the database snapshot.
+     * @param state DbState - observed tables.
+     * @param collectionId Long - collection.
+     * @return List<CardUi> - visible cards with variants, collection quantities and prices.
      */
     fun libraryOf(state: DbState, collectionId: Long): List<CardUi> =
         libraryOf(state, collectionId, state.variants.groupBy { it.cardId }, state.snapshots.groupBy { it.variantId })
 
     /**
-     * Come [libraryOf], con varianti e prezzi già raggruppati (per non rifarlo a ogni collezione).
-     * @param state DbState - tabelle osservate.
-     * @param collectionId Long - collezione.
-     * @param variantsByCard Map<String, List<CardVariantEntity>> - varianti per carta.
-     * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prezzi per variante, dal più vecchio.
-     * @return List<CardUi> - carte visibili della collezione.
+     * Like [libraryOf], with variants and prices already grouped (to avoid redoing it for each collection).
+     * @param state DbState - observed tables.
+     * @param collectionId Long - collection.
+     * @param variantsByCard Map<String, List<CardVariantEntity>> - variants per card.
+     * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prices per variant, oldest first.
+     * @return List<CardUi> - visible cards of the collection.
      */
     private fun libraryOf(
         state: DbState,
@@ -166,9 +166,9 @@ object LibraryAssembler {
     }
 
     /**
-     * Riepiloghi di tutte le collezioni per l'elenco iniziale.
-     * @param state DbState - tabelle osservate.
-     * @return List<CollectionSummary> - una voce per collezione, in ordine di creazione.
+     * Summaries of all collections for the initial list.
+     * @param state DbState - observed tables.
+     * @return List<CollectionSummary> - one entry per collection, in creation order.
      */
     fun summaries(state: DbState): List<CollectionSummary> {
         val variantsByCard = state.variants.groupBy { it.cardId }
@@ -177,12 +177,12 @@ object LibraryAssembler {
     }
 
     /**
-     * Riepilogo di una collezione.
-     * @param state DbState - tabelle osservate.
-     * @param collection CollectionEntity - collezione.
-     * @param variantsByCard Map<String, List<CardVariantEntity>> - varianti per carta.
-     * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prezzi per variante.
-     * @return CollectionSummary - numero di carte, statistiche e copertina.
+     * Summary of a collection.
+     * @param state DbState - observed tables.
+     * @param collection CollectionEntity - collection.
+     * @param variantsByCard Map<String, List<CardVariantEntity>> - variants per card.
+     * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prices per variant.
+     * @return CollectionSummary - number of cards, statistics and cover.
      */
     private fun summaryOf(
         state: DbState,
@@ -202,19 +202,19 @@ object LibraryAssembler {
     }
 
     /**
-     * Statistiche di un insieme di carte.
-     * @param cards List<CardUi> - carte da considerare.
-     * @return StatsSummary - completamento, valore e mancanti.
+     * Statistics of a set of cards.
+     * @param cards List<CardUi> - cards to consider.
+     * @return StatsSummary - completion, value and missing ones.
      */
     fun statsOf(cards: List<CardUi>): StatsSummary = CollectionStats.compute(cards.flatMap { c -> c.variants.map { it.toSlotInput() } })
 
     /**
-     * Unisce carte, varianti, dati utente e prezzi.
-     * @param cards List<CardEntity> - carte tracciate.
-     * @param variants List<CardVariantEntity> - tutte le varianti.
-     * @param entries List<CollectionEntryEntity> - dati dell'utente.
-     * @param snapshots List<PriceSnapshotEntity> - prezzi ordinati dal più vecchio al più recente.
-     * @return List<CardUi> - carte con varianti ordinate secondo [VariantType].
+     * Joins cards, variants, user data and prices.
+     * @param cards List<CardEntity> - tracked cards.
+     * @param variants List<CardVariantEntity> - all variants.
+     * @param entries List<CollectionEntryEntity> - user data.
+     * @param snapshots List<PriceSnapshotEntity> - prices sorted from oldest to most recent.
+     * @return List<CardUi> - cards with variants sorted according to [VariantType].
      */
     fun assemble(
         cards: List<CardEntity>,
@@ -224,13 +224,13 @@ object LibraryAssembler {
     ): List<CardUi> = assembleGrouped(cards, variants.groupBy { it.cardId }, entries.associateBy { it.variantId }, snapshots.groupBy { it.variantId })
 
     /**
-     * Unisce carte, varianti, dati utente e prezzi già raggruppati.
-     * @param cards List<CardEntity> - carte tracciate.
-     * @param variantsByCard Map<String, List<CardVariantEntity>> - varianti per carta.
-     * @param entryById Map<String, CollectionEntryEntity> - dati dell'utente per variante.
-     * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prezzi per variante, dal più vecchio.
-     * @param countFirstEdition Boolean - se false, una 1st Edition senza scelta dell'utente non è voluta (non conta tra le mancanti).
-     * @return List<CardUi> - carte con varianti ordinate secondo [VariantType].
+     * Joins cards, variants, user data and already grouped prices.
+     * @param cards List<CardEntity> - tracked cards.
+     * @param variantsByCard Map<String, List<CardVariantEntity>> - variants per card.
+     * @param entryById Map<String, CollectionEntryEntity> - user data per variant.
+     * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prices per variant, oldest first.
+     * @param countFirstEdition Boolean - if false, a 1st Edition without a user choice is not wanted (does not count among the missing).
+     * @return List<CardUi> - cards with variants sorted according to [VariantType].
      */
     private fun assembleGrouped(
         cards: List<CardEntity>,
@@ -250,7 +250,7 @@ object LibraryAssembler {
                     print = v.print,
                     wanted = entry?.wanted ?: when (type) {
                         VariantType.FIRST_EDITION -> countFirstEdition
-                        // I timbri (tornei, prerelease…) sono tanti: si contano solo se l'utente li segna come voluti.
+                        // Stamps (tournaments, prereleases…) are many: they only count if the user marks them as wanted.
                         VariantType.STAMPED -> false
                         else -> true
                     },
@@ -270,13 +270,13 @@ object LibraryAssembler {
     }
 }
 
-/** CardTrader ha un prezzo proprio: non deve prendere il posto di quello Cardmarket. */
+/** CardTrader has its own price: it must not take the place of the Cardmarket one. */
 private fun PriceSnapshotEntity.isCardTrader(): Boolean = source == CardTraderPriceProvider.DISPLAY_NAME
 
 private val CARDMARKET_PLACEHOLDER = Regex("^Cardmarket\\d+$")
 
-/** Numero stampato, o "N/A" per le carte che Cardmarket elenca senza numero (anche se un database vecchio ci aveva messo "Cardmarket<id>"). */
+/** Printed number, or "N/A" for cards that Cardmarket lists without a number (even if an old database had put "Cardmarket<id>" there). */
 fun CardEntity.printedNumberOrNa(): String = printedNumber.takeIf { it.isNotBlank() && !CARDMARKET_PLACEHOLDER.matches(it) } ?: "N/A"
 
-/** Codice stampato in basso a sinistra, es. "M1L 046/063"; senza numero "N/A". */
+/** Code printed at the bottom left, e.g. "M1L 046/063"; without a number "N/A". */
 fun CardEntity.printedCode(): String = listOfNotNull(setCode, printedNumberOrNa()).joinToString(" ")

@@ -97,14 +97,14 @@ import com.robertobiggi.cardcollection.ui.common.Sparkline
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 import com.robertobiggi.cardcollection.ui.theme.StatusColors
 
-/** Un prezzo più vecchio di così viene segnalato come "vecchio". */
+/** A price older than this is flagged as "old". */
 private const val STALE_AFTER_MS = 30L * 24 * 60 * 60 * 1000
 
 /**
- * Dettaglio di una carta: immagine, dati, varianti con quantità, condizione e prezzi.
- * @param vm MainViewModel - stato e azioni.
- * @param cardId String - id locale della carta.
- * @param onBack () -> Unit - torna indietro.
+ * Detail of a card: image, data, variants with quantity, condition and prices.
+ * @param vm MainViewModel - state and actions.
+ * @param cardId String - local id of the card.
+ * @param onBack () -> Unit - goes back.
  * @return Unit
  */
 @Composable
@@ -196,9 +196,9 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
 }
 
 /**
- * Dialog di un'azione sulla carta: un indicatore mentre è in corso, poi l'esito con il pulsante per chiuderlo.
- * @param report CardActionReport - azione ed eventuale esito.
- * @param onDismiss () -> Unit - chiude il dialog (solo a esito disponibile).
+ * Dialog of an action on the card: an indicator while it is in progress, then the outcome with the button to close it.
+ * @param report CardActionReport - action and possible outcome.
+ * @param onDismiss () -> Unit - closes the dialog (only when the outcome is available).
  * @return Unit
  */
 @Composable
@@ -232,8 +232,8 @@ private fun CardActionDialog(report: CardActionReport, onDismiss: () -> Unit) {
 }
 
 /**
- * Immagine grande e metadati della carta.
- * @param card CardUi - carta.
+ * Large image and metadata of the card.
+ * @param card CardUi - card.
  * @return Unit
  */
 @Composable
@@ -253,11 +253,11 @@ private fun Header(card: CardUi) {
 }
 
 /**
- * Azioni sulla singola carta: aggiorna il prezzo, scarica l'immagine ufficiale o scegline una.
- * @param action CardAction? - azione in corso, null se nessuna.
- * @param onPrice () -> Unit - aggiorna i prezzi della carta.
- * @param onDownload () -> Unit - scarica l'immagine da TCGdex.
- * @param onPick () -> Unit - apre il selettore di immagini.
+ * Actions on a single card: update the price, download the official image or pick one.
+ * @param action CardAction? - action in progress, null if none.
+ * @param onPrice () -> Unit - updates the card's prices.
+ * @param onDownload () -> Unit - downloads the image from TCGdex.
+ * @param onPick () -> Unit - opens the image picker.
  * @return Unit
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -278,12 +278,12 @@ private fun CardActions(action: CardAction?, onPrice: () -> Unit, onDownload: ()
 }
 
 /**
- * Pulsante di un'azione sulla carta, con indicatore mentre è in corso.
- * @param label String - testo del pulsante.
- * @param icon ImageVector - icona.
- * @param running Boolean - true se l'azione è in corso.
- * @param enabled Boolean - false mentre è in corso un'altra azione.
- * @param onClick () -> Unit - avvia l'azione.
+ * Button of an action on the card, with an indicator while it is in progress.
+ * @param label String - text of the button.
+ * @param icon ImageVector - icon.
+ * @param running Boolean - true if the action is in progress.
+ * @param enabled Boolean - false while another action is in progress.
+ * @param onClick () -> Unit - starts the action.
  * @return Unit
  */
 @Composable
@@ -300,9 +300,9 @@ private fun ActionButton(label: String, icon: ImageVector, running: Boolean, ena
 }
 
 /**
- * Collegamenti alle ricerche su Cardmarket, TCGplayer e CardTrader (aperti nel browser, nessuna chiamata dall'app).
- * @param card CardUi - carta.
- * @param showCardTrader Boolean - true se i prezzi CardTrader sono attivi.
+ * Links to the searches on Cardmarket, TCGplayer and CardTrader (opened in the browser, no calls from the app).
+ * @param card CardUi - card.
+ * @param showCardTrader Boolean - true if CardTrader prices are on.
  * @return Unit
  */
 @Composable
@@ -329,37 +329,37 @@ private fun Links(card: CardUi, showCardTrader: Boolean) {
 }
 
 /**
- * Apre un link nel browser, senza chiudere l'app se sul telefono non c'è un browser.
- * @receiver UriHandler - gestore dei link di Compose.
- * @param url String - indirizzo da aprire (costruito dall'app, solo https).
+ * Opens a link in the browser, without closing the app if the phone has no browser.
+ * @receiver UriHandler - Compose link handler.
+ * @param url String - address to open (built by the app, https only).
  * @return Unit
  */
 private fun UriHandler.openSafely(url: String) {
     try {
         openUri(url)
     } catch (e: ActivityNotFoundException) {
-        // Nessuna app in grado di aprire il link: non c'è nulla da fare.
+        // No app able to open the link: nothing to do.
     } catch (e: IllegalArgumentException) {
-        // Compose segnala così i link che nessuna app gestisce su alcune versioni.
+        // This is how Compose signals links that no app handles on some versions.
     }
 }
 
 /**
- * Riquadro di una variante: slot, quantità, condizione e prezzi.
- * @param card CardUi - carta di appartenenza.
- * @param variant VariantUi - variante.
- * @param onQuantityChange (Int) -> Unit - copie da aggiungere o togliere (+1 / -1).
- * @param onCondition (Condition) -> Unit - nuova condizione.
- * @param onWanted (Boolean) -> Unit - nuovo stato "la voglio".
- * @param onManual () -> Unit - apre l'inserimento del prezzo manuale.
- * @param alert PriceAlertEntity? - avviso di prezzo della variante, null se non c'è.
- * @param alertsEnabled Boolean - true se il controllo giornaliero degli avvisi è attivo nelle impostazioni.
- * @param defaultPercent Int - variazione minima proposta ai nuovi avvisi, dalle impostazioni.
- * @param onSaveAlert (Boolean, Int, String) -> Boolean - salva l'avviso (sale o scende, soglia, prezzo obiettivo scritto); false se il prezzo non è valido.
- * @param onDeleteAlert () -> Unit - toglie l'avviso.
- * @param showCardmarket Boolean - false se l'utente ha nascosto i prezzi Cardmarket.
- * @param showTcgplayer Boolean - false se l'utente ha nascosto i prezzi TCGplayer.
- * @param showCardTrader Boolean - true se c'è il token CardTrader e il prezzo non è nascosto: mostra il riquadro accanto agli altri mercati.
+ * Tile of a variant: slot, quantity, condition and prices.
+ * @param card CardUi - card it belongs to.
+ * @param variant VariantUi - variant.
+ * @param onQuantityChange (Int) -> Unit - copies to add or remove (+1 / -1).
+ * @param onCondition (Condition) -> Unit - new condition.
+ * @param onWanted (Boolean) -> Unit - new "I want it" state.
+ * @param onManual () -> Unit - opens the manual price entry.
+ * @param alert PriceAlertEntity? - price alert of the variant, null if none.
+ * @param alertsEnabled Boolean - true if the daily alert check is on in the settings.
+ * @param defaultPercent Int - minimum change proposed for new alerts, from the settings.
+ * @param onSaveAlert (Boolean, Int, String) -> Boolean - saves the alert (rises or falls, threshold, written target price); false if the price is not valid.
+ * @param onDeleteAlert () -> Unit - removes the alert.
+ * @param showCardmarket Boolean - false if the user hid the Cardmarket prices.
+ * @param showTcgplayer Boolean - false if the user hid the TCGplayer prices.
+ * @param showCardTrader Boolean - true if there is a CardTrader token and the price is not hidden: shows the tile next to the other markets.
  * @return Unit
  */
 @Composable
@@ -449,7 +449,7 @@ private fun VariantCard(
             if (showCardTrader) {
                 variant.latestCardTrader?.let { SourceStatusRow(stringResource(R.string.price_source_date, Format.date(it.fetchedAt), "CardTrader"), it, variant.cardTraderHistory) }
             }
-            // Avviso di prezzo subito sotto i grafici: soglia di variazione e prezzo obiettivo di questa variante.
+            // Price alert right below the charts: change threshold and target price of this variant.
             PriceAlertPanel(alert, alertsEnabled, defaultPercent, onSaveAlert, onDeleteAlert)
             TextButton(onClick = onManual) { Text(stringResource(R.string.manual_price_button)) }
         }
@@ -457,28 +457,28 @@ private fun VariantCard(
 }
 
 /**
- * Riga con data e fonte dell'ultimo prezzo, affidabilità e andamento.
- * @param text String - data e fonte già formattate.
- * @param snapshot PriceSnapshotEntity? - ultimo prezzo della fonte, null se manca.
- * @param history List<Double> - prezzi della fonte dal più vecchio.
+ * Row with date and source of the latest price, reliability and trend.
+ * @param text String - date and source already formatted.
+ * @param snapshot PriceSnapshotEntity? - latest price of the source, null if missing.
+ * @param history List<Double> - prices of the source from the oldest.
  * @return Unit
  */
 @Composable
 private fun SourceStatusRow(text: String, snapshot: PriceSnapshotEntity?, history: List<Double>) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        // Il posto del grafico resta riservato anche quando manca, così l'etichetta sta sempre allineata a destra.
+        // The chart's place stays reserved even when it is missing, so the label is always right-aligned.
         Box(Modifier.width(72.dp).height(22.dp)) { Sparkline(history, Modifier.fillMaxSize()) }
         if (snapshot != null) ConfidenceChip(snapshot.confidence, System.currentTimeMillis() - snapshot.fetchedAt > STALE_AFTER_MS)
     }
 }
 
 /**
- * Riquadro con un prezzo.
- * @param label String - nome del mercato.
- * @param value String? - prezzo formattato, null se assente.
- * @param modifier Modifier - modificatore di layout.
- * @param emptyText String? - testo quando il prezzo manca (null = "nessun prezzo").
+ * Tile with a price.
+ * @param label String - name of the market.
+ * @param value String? - formatted price, null if absent.
+ * @param modifier Modifier - layout modifier.
+ * @param emptyText String? - text when the price is missing (null = "no price").
  * @return Unit
  */
 @Composable
@@ -492,10 +492,10 @@ private fun PriceBox(label: String, value: String?, modifier: Modifier = Modifie
 }
 
 /**
- * Finestra per inserire un prezzo manuale in euro.
- * @param variantLabel String - nome della variante.
- * @param onDismiss () -> Unit - chiude senza salvare.
- * @param onSave (String) -> Boolean - prova a salvare il testo; restituisce false se non valido.
+ * Dialog to enter a manual price in euros.
+ * @param variantLabel String - name of the variant.
+ * @param onDismiss () -> Unit - closes without saving.
+ * @param onSave (String) -> Boolean - tries to save the text; returns false if not valid.
  * @return Unit
  */
 @Composable
@@ -522,14 +522,14 @@ private fun ManualPriceDialog(variantLabel: String, onDismiss: () -> Unit, onSav
 }
 
 /**
- * Pannello dell'avviso di prezzo di una variante, sotto i grafici dei prezzi. Chiuso mostra un riassunto (soglia e prezzo
- * obiettivo); aperto fa scegliere se avvisare quando il prezzo sale o scende, di quanto (soglia di questa variante) e il
- * prezzo obiettivo in euro.
- * @param alert PriceAlertEntity? - avviso già impostato, null se non c'è.
- * @param alertsEnabled Boolean - true se il controllo giornaliero è attivo nelle impostazioni.
- * @param defaultPercent Int - soglia proposta a un avviso nuovo (o salvato prima che si potesse scegliere).
- * @param onSave (Boolean, Int, String) -> Boolean - salva (sale o scende, soglia, prezzo obiettivo scritto); false se il prezzo non è valido.
- * @param onDelete () -> Unit - toglie l'avviso.
+ * Price alert panel of a variant, below the price charts. Closed it shows a summary (threshold and target
+ * price); open it lets the user choose whether to alert when the price rises or falls, by how much (this variant's threshold) and the
+ * target price in euros.
+ * @param alert PriceAlertEntity? - alert already set, null if none.
+ * @param alertsEnabled Boolean - true if the daily check is on in the settings.
+ * @param defaultPercent Int - threshold proposed for a new alert (or one saved before the choice was possible).
+ * @param onSave (Boolean, Int, String) -> Boolean - saves (rises or falls, threshold, written target price); false if the price is not valid.
+ * @param onDelete () -> Unit - removes the alert.
  * @return Unit
  */
 @Composable
@@ -541,7 +541,7 @@ private fun PriceAlertPanel(
     onDelete: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
-    // I campi ripartono da quanto salvato ogni volta che l'avviso cambia (salvato, tolto o spostato dal sync).
+    // The fields restart from what is saved every time the alert changes (saved, removed or moved by the sync).
     var changes by remember(alert) { mutableStateOf(alert?.notifyChanges ?: true) }
     var percent by remember(alert, defaultPercent) { mutableIntStateOf(alert?.changePercent ?: defaultPercent) }
     var target by remember(alert) { mutableStateOf(alert?.targetEur?.let { String.format(Locale.getDefault(), "%.2f", it) }.orEmpty()) }
@@ -608,10 +608,10 @@ private fun PriceAlertPanel(
 }
 
 /**
- * Riassunto di un avviso di prezzo per il pannello chiuso.
- * @param alert PriceAlertEntity? - avviso, null se non c'è.
- * @param defaultPercent Int - soglia usata dagli avvisi salvati senza una soglia propria.
- * @return String - es. "±5% · sotto 50,00 €", oppure "Nessun avviso".
+ * Summary of a price alert for the closed panel.
+ * @param alert PriceAlertEntity? - alert, null if none.
+ * @param defaultPercent Int - threshold used by alerts saved without a threshold of their own.
+ * @return String - e.g. "±5% · below 50,00 €", or "No alert".
  */
 @Composable
 private fun alertSummary(alert: PriceAlertEntity?, defaultPercent: Int): String {
@@ -624,9 +624,9 @@ private fun alertSummary(alert: PriceAlertEntity?, defaultPercent: Int): String 
 }
 
 /**
- * Nome della fonte di un prezzo: i prezzi manuali e quelli importati hanno un'etichetta tradotta.
- * @param source String - fonte salvata nel database.
- * @return String - nome da mostrare.
+ * Name of the source of a price: manual and imported prices have a translated label.
+ * @param source String - source saved in the database.
+ * @return String - name to show.
  */
 @Composable
 private fun sourceLabel(source: String): String = when (source) {

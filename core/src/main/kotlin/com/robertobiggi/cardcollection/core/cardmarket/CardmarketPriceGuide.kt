@@ -13,17 +13,17 @@ import java.io.Reader
 import java.util.concurrent.TimeUnit
 
 /**
- * Listino prezzi Pokémon che Cardmarket pubblica ogni notte per chiunque (nessun accesso al sito né credenziali).
- * Il file (circa 15 MB) viene scaricato solo alla prima richiesta, conservato su disco per [maxAgeMs]
- * e letto a flusso: in memoria restano solo gli otto prezzi di ogni prodotto.
+ * Pokémon price list that Cardmarket publishes every night for anyone (no site access or credentials).
+ * The file (about 15 MB) is downloaded only on the first request, kept on disk for [maxAgeMs]
+ * and read as a stream: only the eight prices of each product stay in memory.
  *
- * @param http client OkHttp condiviso.
- * @param cacheFile file in cui conservare il listino scaricato.
- * @param url indirizzo del listino; modificabile solo per i test con MockWebServer.
- * @param maxAgeMs età massima del file in cache prima di riscaricarlo.
- * @param now orologio (sostituibile nei test).
- * @param onDownload chiamata subito prima di scaricare il file, per mostrarlo all'utente (non quando il file in cache è valido).
- * @param onRead chiamata subito prima di leggere il file (la lettura richiede qualche secondo).
+ * @param http shared OkHttp client.
+ * @param cacheFile file where the downloaded price list is kept.
+ * @param url address of the price list; changeable only for tests with MockWebServer.
+ * @param maxAgeMs maximum age of the cached file before downloading it again.
+ * @param now clock (replaceable in tests).
+ * @param onDownload called right before downloading the file, to show it to the user (not when the cached file is valid).
+ * @param onRead called right before reading the file (reading takes a few seconds).
  */
 class CardmarketPriceGuide(
     private val http: OkHttpClient,
@@ -38,21 +38,21 @@ class CardmarketPriceGuide(
     private var parsed: Parsed? = null
     private var failure: IOException? = null
 
-    /** Prezzi di un prodotto nell'ordine di [FIELDS]; NaN dove il listino non ha il dato. */
+    /** Prices of a product in the order of [FIELDS]; NaN where the price list has no value. */
     internal class Parsed(val createdAt: String?, val prices: Map<Int, DoubleArray>)
 
     /**
-     * Cerca i prezzi di un prodotto Cardmarket.
-     * @param productId Int - id prodotto Cardmarket (`idProduct`).
-     * @return CardmarketPricingDto? - prezzi in euro, oppure null se il prodotto non è nel listino.
-     * @throws IOException se il listino non è in cache e non si riesce a scaricarlo.
+     * Looks up the prices of a Cardmarket product.
+     * @param productId Int - Cardmarket product id (`idProduct`).
+     * @return CardmarketPricingDto? - prices in euros, or null if the product is not in the price list.
+     * @throws IOException if the price list is not cached and cannot be downloaded.
      */
     suspend fun lookup(productId: Int): CardmarketPricingDto? = mutex.withLock {
         failure?.let { throw it }
         val guide = parsed ?: try {
             load().also { parsed = it }
         } catch (e: IOException) {
-            // Un solo tentativo per istanza: offline, ogni carta riproverebbe il download.
+            // One attempt per instance: offline, every card would retry the download.
             failure = e
             throw e
         }
@@ -72,7 +72,7 @@ class CardmarketPriceGuide(
                 onDownload()
                 download()
             } catch (e: IOException) {
-                // Un listino vecchio è meglio di nessun listino.
+                // An old price list is better than no price list.
                 if (!cacheFile.exists()) throw e
             }
         }
@@ -108,16 +108,16 @@ class CardmarketPriceGuide(
     companion object {
         const val DEFAULT_URL = "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
 
-        /** Campi del listino letti, nell'ordine in cui stanno in [Parsed.prices]. */
+        /** Fields of the price list that are read, in the order they have in [Parsed.prices]. */
         private val FIELDS = listOf("avg", "low", "trend", "avg30", "avg-holo", "low-holo", "trend-holo", "avg30-holo")
         private const val MAX_BYTES = 60L * 1024 * 1024
         private const val BUFFER_SIZE = 64 * 1024
         private val CREATED_AT = Regex(""""createdAt"\s*:\s*"([^"]*)"""")
 
         /**
-         * Legge il listino a flusso: i prodotti sono oggetti piatti dentro `priceGuides`, senza oggetti annidati.
-         * @param reader Reader - contenuto del file.
-         * @return Parsed - data di creazione e prezzi per `idProduct`.
+         * Reads the price list as a stream: products are flat objects inside `priceGuides`, with no nested objects.
+         * @param reader Reader - content of the file.
+         * @return Parsed - creation date and prices by `idProduct`.
          */
         internal fun parse(reader: Reader): Parsed {
             val prices = HashMap<Int, DoubleArray>()

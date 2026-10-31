@@ -29,7 +29,7 @@ dependencyResolutionManagement {
 rootProject.name = "CardCollection"
 
 include(":core")
-// Con -PcoreOnly si compila e testa solo la logica Kotlin pura, senza Android SDK.
+// With -PcoreOnly only the pure Kotlin logic is built and tested, without the Android SDK.
 if (!providers.gradleProperty("coreOnly").isPresent) {
     include(":app")
 }

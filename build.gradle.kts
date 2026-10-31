@@ -1,1 +1,1 @@
-// I plugin sono dichiarati nei singoli moduli (vedi gradle.properties).
+// Plugins are declared in the individual modules (see gradle.properties).

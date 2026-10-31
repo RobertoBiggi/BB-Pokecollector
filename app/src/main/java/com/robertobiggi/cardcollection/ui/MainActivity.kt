@@ -55,30 +55,30 @@ import com.robertobiggi.cardcollection.ui.theme.CardCollectionTheme
 import kotlinx.coroutines.flow.first
 
 /**
- * Unica activity: ospita la navigazione Compose. Estende AppCompatActivity per applicare la lingua
- * scelta in Impostazioni anche sulle versioni di Android precedenti alla 13.
+ * Single activity: hosts the Compose navigation. Extends AppCompatActivity to apply the language
+ * chosen in Settings also on Android versions before 13.
  */
 class MainActivity : AppCompatActivity() {
 
-    /** Carta da aprire chiesta da una notifica (collezione e id), consumata dalla navigazione. */
+    /** Card to open requested by a notification (collection and id), consumed by the navigation. */
     private val cardRequest = mutableStateOf<CardRequest?>(null)
 
     /**
-     * Imposta il contenuto Compose a tutto schermo.
-     * @param savedInstanceState Bundle? - stato salvato.
+     * Sets the Compose content to full screen.
+     * @param savedInstanceState Bundle? - saved state.
      * @return Unit
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Dopo una rotazione l'intent è lo stesso: la carta è già stata aperta.
+        // After a rotation the intent is the same: the card has already been opened.
         if (savedInstanceState == null) cardRequest.value = cardRequestOf(intent)
         setContent { CardCollectionTheme { AppRoot(cardRequest) } }
     }
 
     /**
-     * Notifica toccata con l'app già aperta: apre la carta indicata.
-     * @param intent Intent - intent della notifica.
+     * Notification tapped with the app already open: opens the indicated card.
+     * @param intent Intent - intent of the notification.
      * @return Unit
      */
     override fun onNewIntent(intent: Intent) {
@@ -88,16 +88,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        /** Id della carta da aprire (avvisi di prezzo). */
+        /** Id of the card to open (price alerts). */
         const val EXTRA_CARD_ID = "com.robertobiggi.cardcollection.CARD_ID"
 
-        /** Collezione in cui aprire la carta. */
+        /** Collection in which to open the card. */
         const val EXTRA_COLLECTION_ID = "com.robertobiggi.cardcollection.COLLECTION_ID"
 
         /**
-         * Legge dall'intent la carta da aprire, con controlli sui valori (l'intent può arrivare da fuori).
-         * @param intent Intent? - intent ricevuto.
-         * @return CardRequest? - carta da aprire, oppure null se manca o non è valida.
+         * Reads from the intent the card to open, with checks on the values (the intent may come from outside).
+         * @param intent Intent? - intent received.
+         * @return CardRequest? - card to open, or null if missing or not valid.
          */
         private fun cardRequestOf(intent: Intent?): CardRequest? {
             val cardId = intent?.getStringExtra(EXTRA_CARD_ID)?.takeIf { it.isNotBlank() && it.length <= MAX_CARD_ID } ?: return null
@@ -109,10 +109,10 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
-/** Carta da aprire: [collectionId] è la collezione in cui mostrarla. */
+/** Card to open: [collectionId] is the collection in which to show it. */
 data class CardRequest(val collectionId: Long, val cardId: String)
 
-/** Schede della navigazione in basso dentro una collezione. */
+/** Bottom navigation tabs inside a collection. */
 private enum class Tab(val segment: String, @StringRes val labelRes: Int, val icon: ImageVector) {
     CARDS("cards", R.string.tab_cards, Icons.Filled.GridView),
     MISSING("missing", R.string.tab_missing, Icons.Filled.Star),
@@ -121,19 +121,19 @@ private enum class Tab(val segment: String, @StringRes val labelRes: Int, val ic
 }
 
 /**
- * Radice dell'interfaccia: elenco collezioni, schede della collezione aperta, snackbar.
- * @param cardRequest MutableState<CardRequest?> - carta da aprire chiesta da una notifica; viene azzerata dopo l'apertura.
+ * Root of the interface: list of collections, tabs of the open collection, snackbar.
+ * @param cardRequest MutableState<CardRequest?> - card to open requested by a notification; reset after opening.
  * @return Unit
  */
 @Composable
 private fun AppRoot(cardRequest: MutableState<CardRequest?>) {
     val vm: MainViewModel = viewModel(factory = MainViewModel.Factory)
     val nav = rememberNavController()
-    // Notifica di un avviso di prezzo: apre la carta nella sua collezione.
+    // Notification of a price alert: opens the card in its collection.
     val request = cardRequest.value
     LaunchedEffect(request) {
         if (request == null) return@LaunchedEffect
-        // Aspetta che il NavHost abbia impostato il grafo (prima navigare farebbe chiudere l'app).
+        // Waits for the NavHost to set the graph (navigating earlier would close the app).
         nav.currentBackStackEntryFlow.first()
         vm.open(request.collectionId)
         nav.navigate("c/${request.collectionId}/${Tab.CARDS.segment}") { popUpTo("home") }
@@ -206,8 +206,8 @@ private fun AppRoot(cardRequest: MutableState<CardRequest?>) {
 }
 
 /**
- * Chiede il permesso per le notifiche di avanzamento (Android 13+), una volta all'avvio.
- * Se l'utente rifiuta, gli aggiornamenti funzionano comunque senza notifica.
+ * Asks for the permission for progress notifications (Android 13+), once at startup.
+ * If the user refuses, updates work anyway without a notification.
  * @return Unit
  */
 @Composable

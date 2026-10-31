@@ -82,10 +82,10 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 import java.io.File
 
 /**
- * Elenco iniziale delle collezioni: apertura, creazione, rinomina, export, eliminazione e import.
- * @param vm MainViewModel - stato e azioni.
- * @param onOpen (Long) -> Unit - apre la collezione indicata.
- * @param onSettings () -> Unit - apre le impostazioni.
+ * Initial list of collections: open, create, rename, export, delete and import.
+ * @param vm MainViewModel - state and actions.
+ * @param onOpen (Long) -> Unit - opens the indicated collection.
+ * @param onSettings () -> Unit - opens the settings.
  * @return Unit
  */
 @Composable
@@ -227,14 +227,14 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
 }
 
 /**
- * Riga di una collezione con copertina, completamento e valore.
- * @param summary CollectionSummary - dati della collezione.
- * @param showEur Boolean - false se i prezzi Cardmarket sono nascosti: il valore non viene mostrato.
- * @param onClick () -> Unit - apre la collezione.
- * @param onRename () -> Unit - avvia la rinomina.
- * @param onSettings () -> Unit - apre le impostazioni (nome e lingue).
- * @param onExport () -> Unit - avvia l'export.
- * @param onDelete () -> Unit - avvia l'eliminazione.
+ * Row of a collection with cover, completion and value.
+ * @param summary CollectionSummary - data of the collection.
+ * @param showEur Boolean - false if Cardmarket prices are hidden: the value is not shown.
+ * @param onClick () -> Unit - opens the collection.
+ * @param onRename () -> Unit - starts the rename.
+ * @param onSettings () -> Unit - opens the settings (name and languages).
+ * @param onExport () -> Unit - starts the export.
+ * @param onDelete () -> Unit - starts the deletion.
  * @return Unit
  */
 @Composable
@@ -248,7 +248,7 @@ private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick:
                 contentAlignment = Alignment.Center,
             ) {
                 val cover = summary.coverPath
-                // Se il file manca, Coil segnala l'errore e si torna all'iniziale (niente accessi al disco qui).
+                // If the file is missing, Coil reports the error and it falls back to the initial (no disk access here).
                 var coverFailed by remember(cover) { mutableStateOf(false) }
                 if (cover != null && !coverFailed) {
                     AsyncImage(
@@ -301,18 +301,18 @@ private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick:
     }
 }
 
-/** Lunghezza massima del testo con i nomi da cercare (fino a 20 nomi separati da virgole). */
+/** Maximum length of the text with the names to search (up to 20 names separated by commas). */
 private const val CREATE_PATTERN_MAX = 400
 
 /**
- * Finestra di creazione di una collezione. Due modi:
- * - per Pokémon: nome, lingue (EN, JP o altre, anche insieme) e una prima ricerca facoltativa;
- * - per set: un set intero da scegliere nell'elenco, come set base o master set.
- * @param setPicker SetPickerState - elenco dei set per il modo "per set".
- * @param onLoadSets (Language, Boolean) -> Unit - chiede l'elenco dei set di una lingua.
- * @param onDismiss () -> Unit - chiude.
- * @param onCreate (String, List<Language>, String, (Int) -> Unit) -> Unit - crea per Pokémon; l'ultimo parametro mostra un errore (risorsa stringa).
- * @param onCreateSet (String, Language, SetChoice, QueryKind, (Int) -> Unit) -> Unit - crea per set; l'ultimo parametro mostra un errore.
+ * Dialog to create a collection. Two modes:
+ * - by Pokémon: name, languages (EN, JP or others, also together) and an optional first search;
+ * - by set: an entire set to pick from the list, as base set or master set.
+ * @param setPicker SetPickerState - list of sets for the "by set" mode.
+ * @param onLoadSets (Language, Boolean) -> Unit - asks for the list of sets of a language.
+ * @param onDismiss () -> Unit - closes.
+ * @param onCreate (String, List<Language>, String, (Int) -> Unit) -> Unit - creates by Pokémon; the last parameter shows an error (string resource).
+ * @param onCreateSet (String, Language, SetChoice, QueryKind, (Int) -> Unit) -> Unit - creates by set; the last parameter shows an error.
  * @return Unit
  */
 @Composable

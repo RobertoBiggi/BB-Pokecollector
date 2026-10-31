@@ -41,15 +41,15 @@ import com.robertobiggi.cardcollection.ui.common.Format
 import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 
 /**
- * Calcola il riepilogo di un gruppo di carte.
- * @param cards List<CardUi> - carte del gruppo.
- * @return StatsSummary - statistiche del gruppo.
+ * Computes the summary of a group of cards.
+ * @param cards List<CardUi> - cards of the group.
+ * @return StatsSummary - statistics of the group.
  */
 private fun summaryOf(cards: List<CardUi>): StatsSummary = LibraryAssembler.statsOf(cards)
 
 /**
- * Statistiche: completamento, valore della collezione, avanzamento per lingua e per serie.
- * @param vm MainViewModel - stato.
+ * Statistics: completion, collection value, progress by language and by series.
+ * @param vm MainViewModel - state.
  * @return Unit
  */
 @Composable
@@ -145,11 +145,11 @@ fun StatsScreen(vm: MainViewModel) {
 }
 
 /**
- * Riga del valore della collezione per una fonte, con quante varianti possedute hanno un prezzo.
- * @param label String - fonte del prezzo.
- * @param value String - valore totale già formattato.
- * @param priced Int - varianti possedute con un prezzo di questa fonte (incluse nel valore).
- * @param owned Int - varianti possedute in tutto.
+ * Row of the collection value for a source, with how many owned variants have a price.
+ * @param label String - source of the price.
+ * @param value String - total value already formatted.
+ * @param priced Int - owned variants with a price from this source (included in the value).
+ * @param owned Int - owned variants in total.
  * @return Unit
  */
 @Composable
@@ -168,11 +168,11 @@ private fun ValueRow(label: String, value: String, priced: Int, owned: Int) {
 }
 
 /**
- * Riquadro con un numero di sintesi.
- * @param label String - etichetta.
- * @param value String - valore.
- * @param hint String - nota sotto il valore.
- * @param modifier Modifier - modificatore di layout.
+ * Tile with a summary number.
+ * @param label String - label.
+ * @param value String - value.
+ * @param hint String - note below the value.
+ * @param modifier Modifier - layout modifier.
  * @return Unit
  */
 @Composable
@@ -187,9 +187,9 @@ private fun StatTile(label: String, value: String, hint: String, modifier: Modif
 }
 
 /**
- * Barre di completamento per gruppo.
- * @param title String - titolo della sezione.
- * @param groups List<Pair<String, StatsSummary>> - gruppi con le loro statistiche.
+ * Completion bars per group.
+ * @param title String - title of the section.
+ * @param groups List<Pair<String, StatsSummary>> - groups with their statistics.
  * @return Unit
  */
 @Composable

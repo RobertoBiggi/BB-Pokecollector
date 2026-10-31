@@ -10,21 +10,21 @@ import com.robertobiggi.cardcollection.core.price.TcgplayerPricingDto
 import com.robertobiggi.cardcollection.core.validation.Validators
 
 /**
- * Associa i prezzi Cardmarket e TCGplayer alla variante giusta.
+ * Associates Cardmarket and TCGplayer prices with the right variant.
  *
- * Cardmarket ha un solo prodotto per carta: i campi senza suffisso valgono per la versione base
- * (normal o holo rare), quelli "-holo" per la reverse holo. TCGplayer separa ogni variante.
+ * Cardmarket has a single product per card: the fields without suffix apply to the base version
+ * (normal or holo rare), the "-holo" ones to the reverse holo. TCGplayer separates each variant.
  */
 object VariantMapper {
 
     /**
-     * Calcola il prezzo di una variante a partire dai prezzi TCGdex.
-     * @param type VariantType - variante richiesta.
-     * @param pricing PricingDto? - prezzi della variante (o della carta, se mancano quelli per variante).
-     * @param cardHasNormalAndHolo Boolean - true se la carta esiste sia normal sia holo: in quel caso
-     *        il prezzo base Cardmarket non distingue le due e l'affidabilità scende.
-     * @param source String - nome della fonte da riportare nel risultato.
-     * @return PriceQuote? - prezzo trovato, oppure null se nessun mercato ha un valore per la variante.
+     * Computes the price of a variant from the TCGdex prices.
+     * @param type VariantType - requested variant.
+     * @param pricing PricingDto? - prices of the variant (or of the card, if the per-variant ones are missing).
+     * @param cardHasNormalAndHolo Boolean - true if the card exists in both normal and holo: in that case
+     *        the Cardmarket base price does not tell the two apart and the reliability drops.
+     * @param source String - name of the source to report in the result.
+     * @return PriceQuote? - price found, or null if no market has a value for the variant.
      */
     fun quote(
         type: VariantType,
@@ -53,26 +53,26 @@ object VariantMapper {
         )
     }
 
-    /** Valori Cardmarket scelti per una variante. */
+    /** Cardmarket values chosen for a variant. */
     private data class CmPick(val trend: Double, val low: Double?, val avg30: Double?, val confidence: Confidence)
 
     /**
-     * Sceglie i campi Cardmarket giusti per la variante.
-     * @param type VariantType - variante richiesta.
-     * @param cm CardmarketPricingDto? - prezzi Cardmarket.
-     * @param cardHasNormalAndHolo Boolean - vedi [quote].
-     * @return CmPick? - valori scelti, oppure null se il trend manca o non è positivo.
+     * Picks the right Cardmarket fields for the variant.
+     * @param type VariantType - requested variant.
+     * @param cm CardmarketPricingDto? - Cardmarket prices.
+     * @param cardHasNormalAndHolo Boolean - see [quote].
+     * @return CmPick? - values chosen, or null if the trend is missing or not positive.
      */
     private fun cardmarketFor(type: VariantType, cm: CardmarketPricingDto?, cardHasNormalAndHolo: Boolean): CmPick? {
         if (cm == null) return null
         if (cm.unit != null && cm.unit != "EUR") return null
         return when (type) {
-            // Prodotti a parte su Cardmarket: li prezza il listino con il loro id, non la scheda TCGdex della carta base.
+            // Separate products on Cardmarket: the price list prices them with their id, not the TCGdex entry of the base card.
             VariantType.POKE_BALL, VariantType.MASTER_BALL, VariantType.ENERGY_REVERSE -> null
             VariantType.REVERSE -> positive(cm.trendHolo ?: cm.avgHolo)?.let {
                 CmPick(it, positive(cm.lowHolo), positive(cm.avg30Holo), Confidence.HIGH)
             }
-            // Con normal e holo insieme Cardmarket quota la holo nei campi "-holo" e la normale in quelli base.
+            // With normal and holo together Cardmarket quotes the holo in the "-holo" fields and the normal in the base ones.
             VariantType.HOLO -> if (cardHasNormalAndHolo) holoPick(cm) ?: basePick(type, cm, true) else basePick(type, cm, false)
             else -> basePick(type, cm, cardHasNormalAndHolo)
         }
@@ -92,15 +92,15 @@ object VariantMapper {
             }
             CmPick(it, positive(cm.low), positive(cm.avg30), confidence)
         } ?: (positive(cm.trendHolo) ?: positive(cm.avgHolo))?.let {
-            // Prodotto solo foil (es. Moltres del Special Battle Set): Cardmarket mette il prezzo nei campi "-holo" e lascia vuoti quelli base.
+            // Foil-only product (e.g. Moltres of the Special Battle Set): Cardmarket puts the price in the "-holo" fields and leaves the base ones empty.
             CmPick(it, positive(cm.lowHolo), positive(cm.avg30Holo), Confidence.MEDIUM)
         }
 
     /**
-     * Sceglie la riga TCGplayer corrispondente alla variante.
-     * @param type VariantType - variante richiesta.
-     * @param tp TcgplayerPricingDto? - prezzi TCGplayer.
-     * @return TcgplayerPriceDto? - riga con almeno un prezzo positivo, oppure null.
+     * Picks the TCGplayer row matching the variant.
+     * @param type VariantType - requested variant.
+     * @param tp TcgplayerPricingDto? - TCGplayer prices.
+     * @return TcgplayerPriceDto? - row with at least one positive price, or null.
      */
     private fun tcgplayerFor(type: VariantType, tp: TcgplayerPricingDto?): TcgplayerPriceDto? {
         if (tp == null) return null
@@ -117,9 +117,9 @@ object VariantMapper {
     }
 
     /**
-     * Scarta i valori nulli, non finiti o non positivi (TCGdex usa 0 per "nessun dato").
-     * @param value Double? - valore da controllare.
-     * @return Double? - il valore se è un prezzo valido, altrimenti null.
+     * Discards null, non-finite or non-positive values (TCGdex uses 0 for "no data").
+     * @param value Double? - value to check.
+     * @return Double? - the value if it is a valid price, otherwise null.
      */
     private fun positive(value: Double?): Double? = value?.takeIf { it.isFinite() && it > 0.0 && it < Validators.MAX_PRICE }
 }

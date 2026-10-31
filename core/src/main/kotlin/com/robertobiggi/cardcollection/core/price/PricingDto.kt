@@ -3,9 +3,9 @@ package com.robertobiggi.cardcollection.core.price
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// Prezzi nel formato del listino Cardmarket e di TCGplayer (campi usati da VariantMapper).
+// Prices in the format of the Cardmarket price list and of TCGplayer (fields used by VariantMapper).
 
-/** Prezzi di una carta o variante. */
+/** Prices of a card or variant. */
 @Serializable
 data class PricingDto(
     val cardmarket: CardmarketPricingDto? = null,
@@ -13,8 +13,8 @@ data class PricingDto(
 )
 
 /**
- * Prezzi Cardmarket in euro. I campi "-holo" si riferiscono alla versione reverse holo del prodotto,
- * quelli senza suffisso alla versione base (normal per le comuni, holo per le rare holo).
+ * Cardmarket prices in euros. The "-holo" fields refer to the reverse holo version of the product,
+ * those without suffix to the base version (normal for commons, holo for holo rares).
  */
 @Serializable
 data class CardmarketPricingDto(
@@ -32,7 +32,7 @@ data class CardmarketPricingDto(
     @SerialName("avg30-holo") val avg30Holo: Double? = null,
 )
 
-/** Prezzi TCGplayer in dollari, separati per variante di stampa. */
+/** TCGplayer prices in dollars, separate per print variant. */
 @Serializable
 data class TcgplayerPricingDto(
     val updated: String? = null,
@@ -45,7 +45,7 @@ data class TcgplayerPricingDto(
     @SerialName("unlimitedHolofoil") val unlimitedHolofoil: TcgplayerPriceDto? = null,
 )
 
-/** Singola riga di prezzi TCGplayer. */
+/** Single row of TCGplayer prices. */
 @Serializable
 data class TcgplayerPriceDto(
     val lowPrice: Double? = null,

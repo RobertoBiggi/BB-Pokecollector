@@ -23,9 +23,9 @@ import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.core.backup.ImageExport
 
 /**
- * Finestra per scegliere quante immagini includere nel file esportato.
- * @param onDismiss () -> Unit - chiude senza esportare.
- * @param onConfirm (ImageExport) -> Unit - prosegue con la scelta fatta.
+ * Dialog to choose how many images to include in the exported file.
+ * @param onDismiss () -> Unit - closes without exporting.
+ * @param onConfirm (ImageExport) -> Unit - continues with the choice made.
  * @return Unit
  */
 @Composable
@@ -58,13 +58,13 @@ fun ExportDialog(onDismiss: () -> Unit, onConfirm: (ImageExport) -> Unit) {
 }
 
 /**
- * Finestra con un campo di testo (es. rinomina collezione).
- * @param title String - titolo.
- * @param initial String - valore iniziale.
- * @param label String - etichetta del campo.
- * @param error String? - errore da mostrare.
- * @param onDismiss () -> Unit - chiude senza salvare.
- * @param onConfirm (String) -> Unit - salva il testo.
+ * Dialog with a text field (e.g. rename collection).
+ * @param title String - title.
+ * @param initial String - initial value.
+ * @param label String - label of the field.
+ * @param error String? - error to show.
+ * @param onDismiss () -> Unit - closes without saving.
+ * @param onConfirm (String) -> Unit - saves the text.
  * @return Unit
  */
 @Composable
@@ -89,12 +89,12 @@ fun TextInputDialog(title: String, initial: String, label: String, error: String
 }
 
 /**
- * Finestra di conferma per azioni irreversibili.
- * @param title String - titolo.
- * @param text String - spiegazione.
- * @param confirmLabel String - testo del pulsante di conferma.
- * @param onDismiss () -> Unit - annulla.
- * @param onConfirm () -> Unit - conferma.
+ * Confirmation dialog for irreversible actions.
+ * @param title String - title.
+ * @param text String - explanation.
+ * @param confirmLabel String - text of the confirm button.
+ * @param onDismiss () -> Unit - cancels.
+ * @param onConfirm () -> Unit - confirms.
  * @return Unit
  */
 @Composable
@@ -110,9 +110,9 @@ fun ConfirmDialog(title: String, text: String, confirmLabel: String, onDismiss: 
 
 
 /**
- * Nome di file suggerito per l'export di una collezione.
- * @param name String - nome della collezione.
- * @return String - es. "mawile.json" (solo lettere, cifre e trattini).
+ * Suggested file name for exporting a collection.
+ * @param name String - name of the collection.
+ * @return String - e.g. "mawile.json" (only letters, digits and hyphens).
  */
 fun exportFileName(name: String): String {
     val slug = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40).ifEmpty { "card-collection" }

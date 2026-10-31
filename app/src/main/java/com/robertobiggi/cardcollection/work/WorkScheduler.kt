@@ -19,8 +19,8 @@ import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
 /**
- * Stato di un lavoro in background. [phase] e [label] descrivono l'elemento in lavorazione,
- * [output] contiene i conteggi finali (chiavi di [WorkKeys]); i testi li compone la UI.
+ * State of a background job. [phase] and [label] describe the item being processed,
+ * [output] contains the final counts (keys of [WorkKeys]); the UI composes the texts.
  */
 data class JobState(
     val running: Boolean,
@@ -37,10 +37,10 @@ data class JobState(
 )
 
 /**
- * Avvia e osserva i lavori manuali (catalogo e prezzi) di ogni collezione e programma il controllo giornaliero degli
- * avvisi di prezzo. Ogni lavoro è unico per collezione: un secondo tocco mentre il primo è in corso non avvia un duplicato.
+ * Starts and observes the manual jobs (catalog and prices) of each collection and schedules the daily check of the
+ * price alerts. Each job is unique per collection: a second tap while the first is running does not start a duplicate.
  *
- * @param context contesto dell'applicazione.
+ * @param context application context.
  */
 class WorkScheduler(context: Context) {
 
@@ -48,22 +48,22 @@ class WorkScheduler(context: Context) {
     private val network = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
     /**
-     * Stato del sync del catalogo di una collezione.
-     * @param collectionId Long - collezione.
-     * @return Flow<JobState?> - stato corrente, null se mai avviato.
+     * State of the catalog sync of a collection.
+     * @param collectionId Long - collection.
+     * @return Flow<JobState?> - current state, null if never started.
      */
     fun catalogState(collectionId: Long): Flow<JobState?> = observe(catalogName(collectionId))
 
     /**
-     * Stato dell'aggiornamento prezzi di una collezione.
-     * @param collectionId Long - collezione.
-     * @return Flow<JobState?> - stato corrente, null se mai avviato.
+     * State of the price update of a collection.
+     * @param collectionId Long - collection.
+     * @return Flow<JobState?> - current state, null if never started.
      */
     fun priceState(collectionId: Long): Flow<JobState?> = observe(priceName(collectionId))
 
     /**
-     * Avvia il sync del catalogo di una collezione, se non è già in corso.
-     * @param collectionId Long - collezione.
+     * Starts the catalog sync of a collection, if not already running.
+     * @param collectionId Long - collection.
      * @return Unit
      */
     fun startCatalogSync(collectionId: Long) {
@@ -76,8 +76,8 @@ class WorkScheduler(context: Context) {
     }
 
     /**
-     * Avvia l'aggiornamento prezzi di una collezione, se non è già in corso.
-     * @param collectionId Long - collezione.
+     * Starts the price update of a collection, if not already running.
+     * @param collectionId Long - collection.
      * @return Unit
      */
     fun startPriceCheck(collectionId: Long) {
@@ -90,8 +90,8 @@ class WorkScheduler(context: Context) {
     }
 
     /**
-     * Programma il controllo giornaliero degli avvisi di prezzo al prossimo [PriceAlertRules.DAILY_RUN_TIME], se non è
-     * già programmato. Sicuro da chiamare a ogni apertura dell'app e quando l'utente attiva gli avvisi.
+     * Schedules the daily price alert check at the next [PriceAlertRules.DAILY_RUN_TIME], if not
+     * already scheduled. Safe to call at every app opening and when the user enables alerts.
      * @return Unit
      */
     fun schedulePriceAlerts() {
@@ -99,8 +99,8 @@ class WorkScheduler(context: Context) {
     }
 
     /**
-     * Programma il controllo del giorno dopo, accodato a quello in corso (lo chiama il lavoro stesso alla fine):
-     * l'orario si ricalcola ogni volta, così resta alle 4:30 anche con il cambio dell'ora legale.
+     * Schedules the next day's check, queued after the current one (called by the job itself at the end):
+     * the time is recomputed every time, so it stays at 4:30 even across daylight saving changes.
      * @return Unit
      */
     fun scheduleNextPriceAlertCheck() {
@@ -108,7 +108,7 @@ class WorkScheduler(context: Context) {
     }
 
     /**
-     * Toglie il controllo giornaliero degli avvisi (l'utente li ha spenti).
+     * Removes the daily alert check (the user turned them off).
      * @return Unit
      */
     fun cancelPriceAlerts() {
@@ -116,8 +116,8 @@ class WorkScheduler(context: Context) {
     }
 
     /**
-     * Richiesta del controllo degli avvisi, ritardata fino al prossimo orario giornaliero; aspetta la rete.
-     * @return OneTimeWorkRequest - richiesta pronta.
+     * Request for the alert check, delayed until the next daily time; waits for the network.
+     * @return OneTimeWorkRequest - request ready.
      */
     private fun priceAlertRequest(): OneTimeWorkRequest {
         val now = ZonedDateTime.now()
@@ -130,9 +130,9 @@ class WorkScheduler(context: Context) {
     }
 
     /**
-     * Osserva un lavoro unico e lo converte in [JobState].
-     * @param name String - nome del lavoro unico.
-     * @return Flow<JobState?> - stato corrente, null se il lavoro non è mai stato avviato.
+     * Observes a unique job and converts it into [JobState].
+     * @param name String - name of the unique job.
+     * @return Flow<JobState?> - current state, null if the job was never started.
      */
     private fun observe(name: String): Flow<JobState?> =
         workManager.getWorkInfosForUniqueWorkFlow(name).map { infos ->
@@ -154,24 +154,24 @@ class WorkScheduler(context: Context) {
         }
 
     /**
-     * Nome del lavoro unico di sync catalogo.
-     * @param collectionId Long - collezione.
-     * @return String - nome del lavoro.
+     * Name of the unique catalog sync job.
+     * @param collectionId Long - collection.
+     * @return String - name of the job.
      */
     private fun catalogName(collectionId: Long) = "catalog-sync-$collectionId"
 
     /**
-     * Nome del lavoro unico di aggiornamento prezzi.
-     * @param collectionId Long - collezione.
-     * @return String - nome del lavoro.
+     * Name of the unique price update job.
+     * @param collectionId Long - collection.
+     * @return String - name of the job.
      */
     private fun priceName(collectionId: Long) = "price-check-$collectionId"
 
     private companion object {
-        /** Nome del lavoro unico del controllo giornaliero degli avvisi di prezzo. */
+        /** Name of the unique job for the daily price alert check. */
         const val PRICE_ALERTS = "price-alerts"
 
-        /** Attesa iniziale prima di riprovare il controllo degli avvisi (poi cresce). */
+        /** Initial wait before retrying the alert check (then it grows). */
         const val ALERT_RETRY_MINUTES = 15L
     }
 }
