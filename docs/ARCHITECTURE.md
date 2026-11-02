@@ -208,13 +208,13 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
 ## Build e verifica
 
 - `./gradlew -PcoreOnly :core:test`: test su fixture reali (mappatura, lingue, prezzi, catena con 429/403/circuit breaker, validatori, file JSON, ricerca per codice e per nome, statistiche).
-- `./gradlew :app:testDebugUnitTest`: assemblaggio e visibilità della libreria, filtri, migrazioni confrontate con gli schemi Room.
+- `./gradlew :app:testDebugUnitTest`: assemblaggio e visibilità della libreria, filtri, percorsi delle immagini, cifratura del token.
 - Il lint di Android blocca la build se una stringa manca in una delle due lingue.
 - **CI** (`.github/workflows/android.yml`), job `build` su ogni push e pull request:
   - test, lint, `assembleDebug` e `assembleRelease` (quest'ultimo non firmato, per verificare R8 e che i nomi dei Pokémon siano nell'APK);
   - pubblica l'APK di prova come artifact solo per i push del repo, mai per le pull request di terzi.
 - **Firma:**
-  - le build di prova usano il keystore di debug del repo (password pubbliche) con id `….debug`, quindi non possono sostituire l'app vera;
+  - le build di prova usano il keystore di debug del repo (password pubbliche): hanno lo stesso id dell'app ma una firma diversa, quindi non possono sostituire la release (serve disinstallare);
   - la release usa una chiave che esiste solo nei secret di GitHub.
 - **Versione:** `versionCode` è il numero di commit di `main` (`git rev-list --count HEAD`), `versionName` è `appVersion` (in `gradle.properties`) seguito da quel numero.
 - **Job `release`** (solo push su `main`):
@@ -222,6 +222,11 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
   - verifica l'impronta SHA-256 del certificato e che l'APK non sia debuggable;
   - pubblica la GitHub Release `v<versione>` con l'APK, che Obtainium usa per gli aggiornamenti.
 - Su `main` i run non vengono interrotti a metà, e le release sono in coda tra loro.
+- **Screenshot del README** (`.github/workflows/screenshots.yml`): si avvia a mano, oppure quando cambia il test su un branch diverso da `main`.
+  - Avvia un emulatore Android 14 (Pixel 6) e installa app e test strumentato (`app/src/androidTest/.../ReadmeScreenshots.kt`).
+  - Il test crea una collezione "Mawile" con catalogo, immagini e prezzi veri, segna come possedute circa due varianti su tre e salva un avviso di prezzo.
+  - Poi cattura le schermate principali in italiano, ridotte a 540 px di larghezza.
+  - Il workflow copia i PNG in `docs/screenshots` e li committa sullo stesso branch. Lo script `.github/scripts/readme-screenshots.sh` accetta solo i nomi attesi.
 
 ## Possibili evoluzioni
 
