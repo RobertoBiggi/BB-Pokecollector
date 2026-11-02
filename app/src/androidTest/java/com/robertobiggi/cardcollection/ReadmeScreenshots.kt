@@ -43,7 +43,7 @@ import kotlin.time.Duration.Companion.minutes
 
 /**
  * Takes the screenshots of the README on a real device or emulator: creates a "Mawile" collection with the real
- * catalog, images and prices (network needed), marks some cards as owned, then opens the main screens in Italian.
+ * catalog, images and prices (network needed), marks some cards as owned, then opens the main screens in English.
  * The PNG files end up in the app's files/screenshots, from where the workflow screenshots.yml copies them to docs/screenshots.
  * It is not part of the normal CI: it only runs from that workflow.
  */
@@ -57,8 +57,8 @@ class ReadmeScreenshots {
     private val container get() = app.container
     private val outDir = File(app.filesDir, "screenshots")
 
-    /** Italian resources, used to find buttons and tabs by their text until an activity is open. */
-    private val italian: Context = app.createConfigurationContext(Configuration(app.resources.configuration).apply { setLocale(Locale.ITALIAN) })
+    /** English resources, used to find buttons and tabs by their text until an activity is open. */
+    private val english: Context = app.createConfigurationContext(Configuration(app.resources.configuration).apply { setLocale(Locale.ENGLISH) })
 
     /** Resources of the open activity: the texts on screen are in its language. */
     private var activityResources: Resources? = null
@@ -77,7 +77,7 @@ class ReadmeScreenshots {
     @Test
     fun captureReadmeScreens() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("it"))
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
         }
         val seeded = runBlocking { withTimeout(20.minutes) { seed() } }
         outDir.deleteRecursively()
@@ -86,16 +86,16 @@ class ReadmeScreenshots {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activityResources = it.resources }
             settle()
-            shot("01-collezioni")
+            shot("01-collections")
             compose.onAllNodesWithText(COLLECTION_NAME).onFirst().performClick()
             settle()
-            shot("02-carte")
+            shot("02-cards")
             openTab(R.string.tab_missing)
-            shot("03-mancanti")
+            shot("03-missing")
             openTab(R.string.tab_stats)
-            shot("04-statistiche")
+            shot("04-stats")
             openTab(R.string.tab_manage)
-            shot("05-gestione")
+            shot("05-manage")
         }
 
         val detail = Intent(app, MainActivity::class.java)
@@ -104,14 +104,14 @@ class ReadmeScreenshots {
         ActivityScenario.launch<MainActivity>(detail).use { scenario ->
             scenario.onActivity { activityResources = it.resources }
             settle()
-            shot("06-dettaglio")
+            shot("06-card-detail")
             // The alert is on the last variant: right above the "remove from collection" button.
             compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText(text(R.string.remove_from_collection)))
             compose.onAllNodesWithText(text(R.string.alert_button)).onLast().performClick()
             settle()
             compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText(text(R.string.remove_from_collection)))
             settle()
-            shot("07-avviso-prezzo")
+            shot("07-price-alert")
         }
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -119,7 +119,7 @@ class ReadmeScreenshots {
             settle()
             compose.onNode(hasContentDescription(text(R.string.home_settings))).performClick()
             settle()
-            shot("08-impostazioni")
+            shot("08-settings")
         }
     }
 
@@ -174,11 +174,11 @@ class ReadmeScreenshots {
     }
 
     /**
-     * Text of a string resource in the language shown on screen (Italian before an activity is open).
+     * Text of a string resource in the language shown on screen (English before an activity is open).
      * @param id Int - string resource.
      * @return String - text.
      */
-    private fun text(id: Int): String = (activityResources ?: italian.resources).getString(id)
+    private fun text(id: Int): String = (activityResources ?: english.resources).getString(id)
 
     /**
      * Waits for the interface to be idle and for the images (loaded asynchronously by Coil) to appear.

@@ -225,7 +225,7 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
 - **Screenshot del README** (`.github/workflows/screenshots.yml`): si avvia a mano, oppure quando cambia il test su un branch diverso da `main`.
   - Avvia un emulatore Android 14 (Pixel 6) e installa app e test strumentato (`app/src/androidTest/.../ReadmeScreenshots.kt`).
   - Il test crea una collezione "Mawile" con catalogo, immagini e prezzi veri, segna come possedute circa due varianti su tre e salva un avviso di prezzo.
-  - Poi cattura le schermate principali in italiano, ridotte a 540 px di larghezza.
+  - Poi cattura le schermate principali in inglese, ridotte a 540 px di larghezza.
   - Il workflow copia i PNG in `docs/screenshots` e li committa sullo stesso branch. Lo script `.github/scripts/readme-screenshots.sh` accetta solo i nomi attesi.
 
 ## Possibili evoluzioni
