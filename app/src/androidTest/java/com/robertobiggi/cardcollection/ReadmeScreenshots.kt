@@ -3,6 +3,7 @@ package com.robertobiggi.cardcollection
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Bitmap
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -56,8 +57,11 @@ class ReadmeScreenshots {
     private val container get() = app.container
     private val outDir = File(app.filesDir, "screenshots")
 
-    /** Italian resources, used to find buttons and tabs by their text. */
+    /** Italian resources, used to find buttons and tabs by their text until an activity is open. */
     private val italian: Context = app.createConfigurationContext(Configuration(app.resources.configuration).apply { setLocale(Locale.ITALIAN) })
+
+    /** Resources of the open activity: the texts on screen are in its language. */
+    private var activityResources: Resources? = null
 
     /**
      * Collection prepared for the screenshots.
@@ -79,7 +83,8 @@ class ReadmeScreenshots {
         outDir.deleteRecursively()
         outDir.mkdirs()
 
-        ActivityScenario.launch(MainActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activityResources = it.resources }
             settle()
             shot("01-collezioni")
             compose.onAllNodesWithText(COLLECTION_NAME).onFirst().performClick()
@@ -96,7 +101,8 @@ class ReadmeScreenshots {
         val detail = Intent(app, MainActivity::class.java)
             .putExtra(MainActivity.EXTRA_CARD_ID, seeded.cardId)
             .putExtra(MainActivity.EXTRA_COLLECTION_ID, seeded.collectionId)
-        ActivityScenario.launch<MainActivity>(detail).use {
+        ActivityScenario.launch<MainActivity>(detail).use { scenario ->
+            scenario.onActivity { activityResources = it.resources }
             settle()
             shot("06-dettaglio")
             // The alert is on the last variant: right above the "remove from collection" button.
@@ -108,7 +114,8 @@ class ReadmeScreenshots {
             shot("07-avviso-prezzo")
         }
 
-        ActivityScenario.launch(MainActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activityResources = it.resources }
             settle()
             compose.onNode(hasContentDescription(text(R.string.home_settings))).performClick()
             settle()
@@ -167,11 +174,11 @@ class ReadmeScreenshots {
     }
 
     /**
-     * Italian text of a string resource.
+     * Text of a string resource in the language shown on screen (Italian before an activity is open).
      * @param id Int - string resource.
      * @return String - text.
      */
-    private fun text(id: Int): String = italian.getString(id)
+    private fun text(id: Int): String = (activityResources ?: italian.resources).getString(id)
 
     /**
      * Waits for the interface to be idle and for the images (loaded asynchronously by Coil) to appear.

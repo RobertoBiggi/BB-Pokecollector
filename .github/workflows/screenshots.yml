@@ -69,7 +69,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: bash .github/scripts/readme-screenshots.sh
 
+      # Also after a failed test: the screenshots taken until then help to see where it stopped.
       - name: Commit degli screenshot
+        if: ${{ !cancelled() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
