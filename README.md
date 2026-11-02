@@ -1,67 +1,255 @@
 # Card Collection
 
-App Android (Kotlin + Jetpack Compose) per tracciare la propria collezione di carte Pokémon e controllarne i prezzi. Funziona anche offline e l'interfaccia è in **italiano e inglese**.
-Ogni collezione traccia le carte che scegli, con ogni variante (normal, holo, reverse holo, 1st edition…): per esempio tutti i Mawile e Mega Mawile.
+An Android app to track your Pokémon card collection: which cards you own, in which variant and condition, which ones you are missing and what they are worth.
 
-## Cosa fa
+Cards and images are stored on your phone, so the app works offline. The network is only used to download images and prices, and only when you ask for it (or for price alerts, if you turn them on).
 
-- **Più collezioni:** all'avvio vedi l'elenco delle collezioni, ognuna con copertina, completamento e valore; toccandone una si apre con le schede Carte, Mancanti, Statistiche e Gestione. Ogni collezione ha ricerche, carte aggiunte a mano e quantità proprie; catalogo, immagini e prezzi sono condivisi.
-- **Import/export JSON:** esporti una collezione in un unico file, senza immagini oppure con immagini piccole o grandi incorporate, e la importi su un altro telefono anche offline. L'import crea sempre una nuova collezione. Sono accettati anche i backup della prima versione.
-- **Catalogo da TCGdex:** per ogni ricerca della collezione (es. `Mawile` in inglese, `クチート` in giapponese) scarica tutte le carte Pokémon che contengono quel nome. Le carte digitali di TCG Pocket e gli Allenatori vengono esclusi. Le immagini sono salvate sul telefono.
-- **Ricerca in ogni lingua:** nella griglia trovi una carta anche scrivendo il nome del Pokémon in un'altra lingua ("Omastar" trova オムスター), senza badare ad accenti, maiuscole e punteggiatura; l'hiragana vale come il katakana.
-- **Lingue delle carte:** inglese, italiano, francese, tedesco, spagnolo, portoghese e giapponese, con catalogo, immagini e prezzi completi. Cinese tradizionale, thailandese e indonesiano hanno dati limitati su TCGdex, e l'app lo segnala.
-- **Lingua della collezione:** EN o JP per una collezione in una sola lingua (le ricerche non la chiedono più), oppure Mista per scegliere la lingua a ogni ricerca e mescolare carte di lingue diverse.
-- **Lingua dell'app:** italiano o inglese, da Impostazioni, oppure quella di sistema.
-- **Slot per variante:** ogni variante è uno slot della collezione. Per ognuna segni quante copie hai e in che condizione; con "la voglio" decidi se conta tra le mancanti. Nella griglia il badge `1/2` indica le varianti che hai su quelle che vuoi o hai, e `×3` le copie totali.
-- **Azioni sulla carta:** dal dettaglio aggiorni il prezzo di quella sola carta, riscarichi l'immagine (da TCGdex o, se lì manca, da TCGplayer) oppure ne scegli una dalla galleria. L'immagine scelta viene ridimensionata e ricodificata in WebP, senza metadati.
-- **Codice stampato:** ogni carta mostra il codice in basso a sinistra, come sulla carta vera (es. `POR 032/088`, `M1L 046/063`). Puoi cercare e ordinare anche per codice.
-- **Aggiungi una carta per codice:** in Gestione → "Aggiungi una carta singola" puoi cercare nel database delle carte per nome oppure per codice stampato: `M3 117/080`, `117/080` (anche con parole in più come la rarità, es. `117/080 MUR`), `MEG 046/132` o l'id TCGdex `M3-117`. Il set si scrive con la sigla stampata sulla carta o con l'id di TCGdex (es. `ex8 107`).
-- **Prezzi su richiesta:** l'aggiornamento parte solo quando lo chiedi. Prende Cardmarket in EUR (disponibile anche per le carte JP) e TCGplayer in USD tramite TCGdex, senza mai contattare cardmarket.com. L'ultimo prezzo resta salvato in locale; puoi anche inserirne uno a mano.
-- **Prezzi CardTrader (facoltativi):** in Impostazioni incolli il tuo token API di CardTrader (resta solo sul telefono, cifrato con una chiave del Keystore di Android, e non finisce nel backup: dopo un ripristino va reinserito). Da quel momento ogni aggiornamento aggiunge a ogni variante il prezzo più basso in EUR, mostrato a parte e senza sostituire Cardmarket. CardTrader non ha una pagina per rarità: normal e reverse della stessa carta sono lo stesso prodotto, quindi gli annunci vengono filtrati per variante (`pokemon_reverse`, prima edizione), per lingua e per condizione: conta la condizione che hai impostato sulla variante, o una migliore (NM → Near Mint, LP → Slightly Played, MP → Moderately Played, HP → Played, DMG → qualsiasi); le carte gradate sono escluse e si prende il più basso.
-- **Avvisi di prezzo (facoltativi):** dal dettaglio di una carta apri il pannello "Avviso prezzo" sotto i grafici di una variante e scegli "avvisami se sale o scende" (con la soglia che vuoi per quella carta, es. 3% o 20%) e/o "avvisami quando arriva a X €". Con gli avvisi attivi (Impostazioni → Avvisi di prezzo, spenti di default) ogni mattina verso le 4:30, dopo l'aggiornamento del listino Cardmarket, l'app aggiorna solo le carte con un avviso e ti manda una notifica: quando un prezzo (Cardmarket, CardTrader o TCGplayer) cambia di almeno la soglia scelta (5% proposto, modificabile anche nelle impostazioni) dall'ultimo avviso, o quando il prezzo più basso in euro arriva entro il 5% dal tuo prezzo o sotto.
-- **Se la fonte blocca:** in caso di risposta 429 l'app riprova con attese crescenti. Dopo 3 blocchi di fila mette la fonte in pausa per 6 ore.
-- **Collezioni per set:** scegli un set (inglese o giapponese, anche vintage) e collezionalo come *set base* (una carta per slot) o *master set* (tutte le varianti: normale, holo, reverse, Poké Ball e Master Ball, senza distinguere la 1st Edition).
-- **Mancanti e statistiche:** costo stimato delle carte che mancano, percentuale di completamento, valore della collezione (EUR e USD separati), avanzamento per lingua e per serie.
+The app is available in English and Italian.
 
-## Installare e aggiornare l'app
+<p align="center">
+  <img src="docs/screenshots/02-cards.png" width="250" alt="Card grid of a collection">
+  &nbsp;
+  <img src="docs/screenshots/06-card-detail.png" width="250" alt="Card detail with variants and prices">
+  &nbsp;
+  <img src="docs/screenshots/04-stats.png" width="250" alt="Collection statistics">
+</p>
 
-L'app non è sul Play Store. A ogni push su `main` GitHub Actions pubblica una **Release** con l'APK firmato con la chiave di release (versione `0.6.N`, dove N cresce a ogni commit).
+## Highlights
 
-- **Con aggiornamenti automatici:** installa [Obtainium](https://github.com/ImranR98/Obtainium) e aggiungi l'indirizzo di questo repository: ti avvisa delle nuove release e le installa. Finché il repository è privato serve un token GitHub in sola lettura, da inserire nelle impostazioni della sorgente in Obtainium.
-- **A mano:** scarica `card-collection-<versione>.apk` dall'ultima Release e aprilo sul telefono, consentendo l'installazione da origini sconosciute.
+- **Multiple collections**: by Pokémon (e.g. every Mawile), by set (base set or master set), or with hand-picked cards.
+- **Every variant counts**: normal, holo, reverse holo, 1st Edition, Poké Ball, Master Ball… For each one you track copies and condition.
+- **Prices**:
+  - Cardmarket prices in euros;
+  - CardTrader prices too, if you have an account;
+  - prices you enter yourself.
+- **Price alerts**: get a notification when a card goes up or down, or when it reaches the price you want.
+- **Missing cards and statistics**: what you are missing, how much it costs to complete the collection, and what your cards are worth.
+- **Backup to a file**: export a collection, with images if you like, and import it on another phone.
+- **Cards in many languages**: English, Italian, French, German, Spanish, Portuguese, Japanese and more.
 
-Al primo avvio crea una collezione con una ricerca (es. "Mawile"), premi **Scarica catalogo** e poi **Prezzi**.
+## Installation
 
-Le build di prova di ogni push (artifact `card-collection-apk` in Actions, file `card-collection-<versione>.apk`) hanno lo stesso id e lo stesso nome dell'app vera e si aggiornano a vicenda, ma sono firmate con la chiave di debug: per passare da una build di prova alla release (o viceversa) serve disinstallare l'app, quindi esporta prima le collezioni.
+The app is not on the Play Store. Install it from the APK published in this repository's [Releases](../../releases). It needs Android 8.0 or later.
 
-**Passaggio dalle versioni fino alla 0.5.0** (firmate con la chiave di debug): Android non accetta l'aggiornamento a una firma diversa. Esporta ogni collezione in JSON con le immagini, disinstalla l'app, installa la release e reimporta. Serve solo una volta.
+**With automatic updates (recommended):**
+1. Install [Obtainium](https://github.com/ImranR98/Obtainium).
+2. Add this repository's address. Obtainium tells you about new versions and installs them.
+3. While the repository is private, you also need a read-only GitHub token, set in the source settings in Obtainium.
 
-Requisiti: Android 8.0 o successivo.
+**Manually:**
+1. Download `card-collection-<version>.apk` from the latest Release.
+2. Open it on your phone and allow installs from unknown sources.
 
-## Struttura
+The card database ships with the app: you can search and add cards right away, even offline.
 
-| Modulo | Contenuto |
+## Getting started
+
+1. Tap **New collection**, give it a name and type the Pokémon you want to follow (e.g. `Mawile`, or `Moltres, Zapdos`). The app finds every card of those Pokémon and downloads their images.
+2. Tap **Prices** to download up-to-date prices.
+3. Open a card and record the copies you own with **+** and **−**.
+
+From then on everything stays on your phone. Tap **Prices** again whenever you want an update.
+
+## Feature guide
+
+### Your collections
+
+<img src="docs/screenshots/01-collections.png" width="250" align="right" alt="List of collections">
+
+The start screen lists all your collections, each with its cover, completion percentage and value. Tap one to open it.
+
+From a collection's **⋮** menu you can:
+- rename it and choose its card languages;
+- export it to a JSON file;
+- delete it.
+
+The icon at the top **imports** a collection from a file.
+
+Each collection has its own cards and quantities. Images and prices are shared, so nothing is downloaded twice.
+
+<br clear="right">
+
+### Cards
+
+<img src="docs/screenshots/02-cards.png" width="250" align="right" alt="Card grid">
+
+The grid shows every card in the collection. Each card has its image, its printed code and its price. The printed code is the one at the bottom left of the real card, e.g. `POR 032/088`.
+
+- **Badges**: **`1/2`** is the number of variants you own out of those you want; **`×3`** is the total number of copies.
+- **Search** by name, code (e.g. `M1L 046`) or rarity.
+  - Names work in other languages too: "Omastar" also finds オムスター.
+  - Accents and capital letters don't matter.
+- **Filter** between all, owned and missing cards, and by language.
+- **Sort** by release date, price, code or name.
+- **Buttons at the top**: one updates the catalog (new cards and images), the other updates the prices. The work goes on even if you leave the app, with a progress notification.
+
+<br clear="right">
+
+### Card detail
+
+<img src="docs/screenshots/06-card-detail.png" width="250" align="right" alt="Card detail">
+
+Tap a card to see its large image and its details: set, series, rarity, language, release date and illustrator.
+
+Below are the **variants**. For each one you can:
+- record how many **copies** you own with **+** and **−**;
+- set the **condition**: NM, LP, MP, HP or DMG;
+- untick **"want it"** if you don't care about that variant, so it won't count as missing;
+- see its **prices** by source, with date and trend;
+- enter a **manual price** when no source has one.
+
+At the top of the page you can:
+- **update the price** of that card only;
+- **download the image** again;
+- **pick an image** from your gallery: handy for Japanese cards without an official picture. The picked image is resized and saved without metadata.
+
+The links open the card on Cardmarket and TCGplayer, and on CardTrader if you enabled it.
+
+<br clear="right">
+
+### Price alerts
+
+<img src="docs/screenshots/07-price-alert.png" width="250" align="right" alt="Price alert panel">
+
+Under the prices of each variant there is a **Price alert** panel. Ask the app to notify you:
+
+- **when the price goes up or down** by a percentage you choose for that card, from 1% to 50%;
+- **when the price reaches an amount** you set, e.g. "tell me when it gets to €20". The alert fires when the lowest euro price is within 5% of that amount, or below it.
+
+Turn on alerts once in **Settings → Price alerts**: they are off by default.
+
+Every morning at about 4:30, after Cardmarket updates its price list, the app checks only the cards that have an alert. If something changed you get a notification; tap it to open the card.
+
+<br clear="right">
+
+### Missing cards
+
+<img src="docs/screenshots/03-missing.png" width="250" align="right" alt="List of missing cards">
+
+Lists every variant you want but don't own yet, with the **estimated cost** to complete the collection (Cardmarket trend prices). It also tells you how many cards don't have a price yet.
+
+Variants marked as "not wanted" are not listed and don't count towards completion.
+
+<br clear="right">
+
+### Statistics
+
+<img src="docs/screenshots/04-stats.png" width="250" align="right" alt="Collection statistics">
+
+- **Completion**: variants you own out of those you want.
+- **Copies**: the total, duplicates included.
+- **Collection value**: euros and dollars are kept separate, with no currency conversion.
+- **Progress** by language and by series.
+- The **latest price updates**.
+
+<br clear="right">
+
+### Managing a collection
+
+<img src="docs/screenshots/05-manage.png" width="250" align="right" alt="Collection management">
+
+This is where you decide which cards belong to the collection.
+
+- **Searches**: each search adds every card of one Pokémon in one language (e.g. `Mawile` in English, `クチート` in Japanese).
+  - TCG Pocket cards and Trainers are left out.
+  - You can turn a search off without losing your quantities.
+- **Whole sets**: pick a set, vintage ones included, and collect it in one of two ways:
+  - **base set**: one card per number;
+  - **master set**: every variant (normal, holo, reverse, Poké Ball and Master Ball).
+- **Single cards**: for promos or cards no search finds. Search by name or by the code printed on the card:
+  - set code and number: `M3 117/080`, `DX 107`;
+  - number only: `117/080`;
+  - card id: `M3-117`, `ex8-107`.
+- **Removed cards**: cards you removed stay here, and you can add them back at any time.
+- **Export**: save the collection to a JSON file, with or without images.
+
+<br clear="right">
+
+### Settings
+
+<img src="docs/screenshots/08-settings.png" width="250" align="right" alt="Settings">
+
+- **App language**: English, Italian, or the phone's language.
+- **Card database**: shows the installed version and lets you update it.
+- **Price sources**: choose which prices to show. Hidden prices don't appear on cards or in totals.
+- **CardTrader** (optional): paste your API token (CardTrader → Settings → API). From then on every variant also shows the lowest CardTrader price.
+  - The price is filtered by variant, language and condition: your condition or a better one.
+  - Graded cards are excluded.
+- **Price alerts**: turn on the daily check and pick the default threshold for new alerts.
+- **1st Edition**: choose whether 1st Edition cards count as missing and in the totals.
+
+<br clear="right">
+
+### Backup and moving to a new phone
+
+Each collection exports to a single JSON file with cards, quantities, conditions and prices. You choose whether to include images: none, small ones, or small and large ones.
+
+On the other phone, import the file from the collection list, even without a network connection. Importing always creates a new collection and never touches the ones you already have. Backups from the first version of the app are accepted too.
+
+## Privacy and security
+
+- **No account and no server**: your data stays on your phone.
+- **Cardmarket prices come from the official price list**: Cardmarket publishes it every night. The app downloads that file and never opens cardmarket.com, so there are no anti-bot blocks.
+- **Few addresses contacted**: TCGdex images, the Cardmarket price list and, only if you turn it on, CardTrader. Nothing else.
+- **Encrypted CardTrader token**: it is encrypted with an Android Keystore key that never leaves the phone. The token is left out of Android backups, so after a restore or on a new phone you need to enter it again.
+
+## FAQ
+
+**A card has no image.**
+Open the card and tap "Download image". The app looks on TCGdex and then on CardTrader. If neither has one, pick an image from your gallery.
+
+**A card has no price.**
+Not every card is sold on Cardmarket; this is common with Japanese promos. Turn on CardTrader, or enter a manual price from the card detail.
+
+**I don't get alerts.**
+Check three things:
+- the daily check is on in Settings;
+- the app is allowed to send notifications in Android's settings;
+- the card has a saved alert (the bell in its panel is filled in).
+
+**Switching between a test build and a release.**
+Test builds (the `card-collection-apk` artifact in Actions) are signed with a different key than releases, so Android won't install one over the other.
+1. Export your collections first.
+2. Uninstall the app.
+3. Install the other build.
+4. Import the collections again.
+
+The same applies when upgrading from versions up to 0.5.0.
+
+---
+
+## For developers
+
+| Module | Contents |
 |---|---|
-| `core/` | Kotlin/JVM puro, senza testi per l'utente: client TCGdex, normalizzazione del catalogo, mappatura prezzi per variante, catena di fonti con rate limiter e circuit breaker, validatori, formato JSON delle collezioni, statistiche. Testato con fixture reali. |
-| `app/` | Android: Room, WorkManager, archivio immagini, UI Compose, import/export tramite Storage Access Framework. I testi sono in `res/values` (inglese) e `res/values-it` (italiano). |
-| `docs/` | Piano di architettura (`ARCHITECTURE.md`). |
-
-## Sviluppo
+| `core/` | Pure Kotlin/JVM, no user-facing text. Includes: Cardmarket price list, CardTrader client, per-variant price mapping, source chain with rate limiter and circuit breaker, alert rules, validators, collection JSON format, statistics. |
+| `app/` | Android. Includes: card database (SQLite bundled in the APK), Room, WorkManager, image store, Compose UI, import/export through the Storage Access Framework. Strings are in `res/values` (English) and `res/values-it` (Italian). |
+| `docs/` | Architecture notes (`ARCHITECTURE.md`, in Italian) and README screenshots. |
 
 ```bash
-./gradlew -PcoreOnly :core:test           # test della logica (serve solo la JDK)
-./gradlew :app:testDebugUnitTest          # test dell'app (serve l'Android SDK)
-./gradlew :app:assembleDebug              # APK di prova
+./gradlew -PcoreOnly :core:test           # logic tests (JDK only)
+./gradlew :app:testDebugUnitTest          # app tests (needs the Android SDK)
+./gradlew :app:assembleDebug              # test APK
 ```
 
-**Release:** la CI firma la build release con i secret `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` e `RELEASE_KEY_PASSWORD` e controlla l'impronta del certificato prima di pubblicare. Senza secret la build release resta non firmata e la Release non viene creata. La chiave non va mai messa nel repository: se va persa, l'app installata non si può più aggiornare.
+- **Card database**: `cards.sqlite` is built by a separate repository and published in the `catalog` release. CI downloads it and bundles it in the APK.
+- **Releases**: every push to `main` publishes a Release whose APK is signed with the release key.
+  - The version is `0.6.N`, where N grows with every commit.
+  - Signing uses the secrets `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD`.
+  - CI checks the certificate fingerprint before publishing.
+  - Never commit the key: if it is lost, installed apps can no longer be updated.
+- **README screenshots**: the `README screenshots` workflow (`.github/workflows/screenshots.yml`) starts an emulator and runs the `ReadmeScreenshots` test.
+  - The test builds a Mawile collection with real data and saves the screens to `docs/screenshots`.
+  - To refresh them, run the workflow manually from Actions.
 
-Il workflow manuale `.github/workflows/tcgdex-probe.yml` stampa una risposta reale di TCGdex (es. `ja/cards/M3-117`), utile per verificare l'API da un ambiente che non la raggiunge.
+## License
 
-## Licenza
+The code is released under the [MIT](LICENSE) license. Third-party data included or downloaded (TCGdex, PokeAPI, card images) remains subject to its own licenses and trademarks.
 
-Il codice è distribuito con licenza [MIT](LICENSE). I dati di terze parti inclusi o scaricati (TCGdex, PokeAPI, immagini delle carte) restano soggetti alle rispettive licenze e marchi, indicati qui sotto.
+## Credits
 
-## Crediti
+- **Catalog and images**: [TCGdex](https://tcgdex.dev).
+- **Prices**: [Cardmarket](https://www.cardmarket.com) (public price list) and [CardTrader](https://www.cardtrader.com).
+- **Pokémon names in multiple languages**: [PokeAPI](https://pokeapi.co), BSD-3-Clause license.
 
-Catalogo, immagini e prezzi (Cardmarket e TCGplayer) arrivano da [TCGdex](https://tcgdex.dev). I nomi dei Pokémon in più lingue vengono da [PokeAPI](https://pokeapi.co) (licenza BSD-3-Clause). Pokémon e i nomi dei Pokémon sono marchi di Nintendo, Creatures e GAME FREAK; questa app non è affiliata né approvata da The Pokémon Company.
+Pokémon and Pokémon character names are trademarks of Nintendo, Creatures and GAME FREAK. This app is not affiliated with or endorsed by The Pokémon Company.
