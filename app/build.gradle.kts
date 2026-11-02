@@ -22,6 +22,8 @@ android {
         versionName = "${providers.gradleProperty("appVersion").get()}.$buildNumber"
         // UI languages: English (base) and Italian. Drops the libraries' translations in other languages.
         resourceConfigurations += listOf("en", "it")
+        // Only used by the screenshots of the README (app/src/androidTest, workflow screenshots.yml).
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -147,4 +149,9 @@ dependencies {
 
     testImplementation(libs.junit4)
     testImplementation(libs.sqlite.jdbc)
+
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
 }
