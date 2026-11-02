@@ -8,9 +8,11 @@ import android.graphics.Bitmap
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
@@ -21,6 +23,7 @@ import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.core.os.LocaleListCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -29,6 +32,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.CreateResult
+import com.robertobiggi.cardcollection.data.settings.PriceKind
 import com.robertobiggi.cardcollection.ui.MainActivity
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -43,7 +47,8 @@ import kotlin.time.Duration.Companion.minutes
 
 /**
  * Takes the screenshots of the README on a real device or emulator: creates a "Mawile" collection with the real
- * catalog, images and prices (network needed), marks some cards as owned, then opens the main screens in English.
+ * catalog, images and prices (network needed), marks some cards as owned and hides the price sources without data,
+ * then opens the main screens in English.
  * The PNG files end up in the app's files/screenshots, from where the workflow screenshots.yml copies them to docs/screenshots.
  * It is not part of the normal CI: it only runs from that workflow.
  */
@@ -107,7 +112,9 @@ class ReadmeScreenshots {
             shot("06-card-detail")
             // The alert is on the last variant: right above the "remove from collection" button.
             compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText(text(R.string.remove_from_collection)))
-            compose.onAllNodesWithText(text(R.string.alert_button)).onLast().performClick()
+            // Semantic click instead of a touch: deterministic even right after scrolling.
+            compose.onAllNodes(hasText(text(R.string.alert_button)) and hasClickAction()).onLast()
+                .performSemanticsAction(SemanticsActions.OnClick)
             settle()
             compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText(text(R.string.remove_from_collection)))
             settle()
@@ -149,6 +156,9 @@ class ReadmeScreenshots {
         val shown = library.filter { it.card.imageHighPath != null || it.card.imageLowPath != null }
             .maxByOrNull { bestEur(it) } ?: library.first()
         container.settings.setPriceAlertsEnabled(true)
+        // Without a CardTrader token and without dollar prices those boxes would only say "no price".
+        container.settings.setPriceShown(PriceKind.TCGPLAYER, false)
+        container.settings.setPriceShown(PriceKind.CARDTRADER, false)
         val variant = shown.variants.last()
         val target = bestEur(shown).takeIf { it > 0 }?.let { (it * 0.8).toInt().coerceAtLeast(1).toDouble() }
         container.prices.saveAlert(variant.id, notifyChanges = true, changePercent = 10, targetEur = target)
