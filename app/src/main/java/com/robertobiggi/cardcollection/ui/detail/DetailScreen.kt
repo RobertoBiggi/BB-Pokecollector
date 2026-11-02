@@ -70,6 +70,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -540,7 +541,8 @@ private fun PriceAlertPanel(
     onSave: (Boolean, Int, String) -> Boolean,
     onDelete: () -> Unit,
 ) {
-    var open by remember { mutableStateOf(false) }
+    // Survives rotation and other activity recreations, like the scroll position of the list.
+    var open by rememberSaveable { mutableStateOf(false) }
     // The fields restart from what is saved every time the alert changes (saved, removed or moved by the sync).
     var changes by remember(alert) { mutableStateOf(alert?.notifyChanges ?: true) }
     var percent by remember(alert, defaultPercent) { mutableIntStateOf(alert?.changePercent ?: defaultPercent) }

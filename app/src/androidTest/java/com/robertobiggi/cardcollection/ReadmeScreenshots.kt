@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Bitmap
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
@@ -24,11 +23,9 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.core.os.LocaleListCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.CreateResult
@@ -81,9 +78,6 @@ class ReadmeScreenshots {
      */
     @Test
     fun captureReadmeScreens() {
-        InstrumentationRegistry.getInstrumentation().runOnMainSync {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
-        }
         val seeded = runBlocking { withTimeout(20.minutes) { seed() } }
         outDir.deleteRecursively()
         outDir.mkdirs()
