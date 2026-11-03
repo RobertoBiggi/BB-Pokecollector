@@ -105,7 +105,7 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
 
     /**
      * The cards matching a name: if the text is the name of one or more Pokémon (in any language)
-     * the cards of those Pokémon, otherwise the cards whose name contains the text.
+     * the cards of those Pokémon, otherwise the cards whose name (or English name) contains the text.
      * @param language Language - catalog language.
      * @param text String - searched text.
      * @return List<CatalogCard> - cards found.
@@ -113,7 +113,12 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
     fun cardsByName(language: Language, text: String): List<CatalogCard> {
         val dex = PokemonNames.dexIdsMatching(text)
         if (dex.isNotEmpty()) return cardsOfPokemon(language, dex)
-        return query("WHERE s.language = ? AND c.name LIKE ? ESCAPE '\\'", arrayOf(language.code, "%" + like(text) + "%"))
+        val pattern = "%" + like(text) + "%"
+        // Also the English name, so "Unidentified Fossil" finds the Japanese or German cards (なぞの化石, Unbekanntes Fossil).
+        if (hasNameEn) {
+            return query("WHERE s.language = ? AND (c.name LIKE ? ESCAPE '\\' OR c.nameEn LIKE ? ESCAPE '\\')", arrayOf(language.code, pattern, pattern))
+        }
+        return query("WHERE s.language = ? AND c.name LIKE ? ESCAPE '\\'", arrayOf(language.code, pattern))
     }
 
     /**
