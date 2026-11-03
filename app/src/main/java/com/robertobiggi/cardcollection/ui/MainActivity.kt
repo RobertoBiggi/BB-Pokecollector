@@ -164,10 +164,11 @@ private fun AppRoot(cardRequest: MutableState<CardRequest?>) {
                         NavigationBarItem(
                             selected = tab == t,
                             onClick = {
+                                // No saveState/restoreState: the tab routes share one pattern across collections, so the
+                                // restored entry could belong to a previously opened collection (wrong stats/cards).
                                 nav.navigate("c/$currentCid/${t.segment}") {
-                                    popUpTo("c/{cid}/${Tab.CARDS.segment}") { saveState = true }
+                                    popUpTo("c/{cid}/${Tab.CARDS.segment}")
                                     launchSingleTop = true
-                                    restoreState = true
                                 }
                             },
                             icon = { Icon(t.icon, contentDescription = null) },
