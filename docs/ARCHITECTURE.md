@@ -222,7 +222,7 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
   - verifica l'impronta SHA-256 del certificato e che l'APK non sia debuggable;
   - pubblica la GitHub Release `v<versione>` con l'APK, che Obtainium usa per gli aggiornamenti.
 - Su `main` i run non vengono interrotti a metà, e le release sono in coda tra loro.
-- **Screenshot del README** (`.github/workflows/screenshots.yml`): si avvia a mano, oppure quando cambia il test su un branch diverso da `main`.
+- **Screenshot del README e della guida utente** (`docs/USER_GUIDE.md`) (`.github/workflows/screenshots.yml`): si avvia a mano, oppure quando cambia il test su un branch diverso da `main`.
   - Avvia un emulatore Android 14 (Pixel 6) e installa app e test strumentato (`app/src/androidTest/.../ReadmeScreenshots.kt`).
   - Il test crea una collezione "Mawile" con catalogo, immagini e prezzi veri, segna come possedute circa due varianti su tre e salva un avviso di prezzo.
   - Poi cattura le schermate principali in inglese, ridotte a 540 px di larghezza.
