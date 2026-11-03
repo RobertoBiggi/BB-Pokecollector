@@ -76,10 +76,11 @@ jobs:
       # Only for pushes to the repo: APKs of third-party pull requests are not published.
       - name: Pubblica APK di prova
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: card-collection-apk
+          # archive: false uploads the single .apk as-is (no zip); the artifact takes the file's name.
           path: dist/*.apk
+          archive: false
           if-no-files-found: error
           retention-days: 14
 
