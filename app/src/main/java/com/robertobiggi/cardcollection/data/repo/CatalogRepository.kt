@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 /** Phase of the catalog sync. */
-enum class SyncPhase { SEARCH, CARD, IMAGES, IMAGES_CARDTRADER }
+enum class SyncPhase { SEARCH, CARD, IMAGES, IMAGES_OTHER }
 
 /**
  * Progress of the catalog sync.
@@ -149,8 +149,9 @@ class CatalogRepository(
         val stale = dao.membershipsOf(collectionId).filter { it.queryId in active && !it.hidden && it.cardId !in refreshed }.map { it.cardId }
         if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
         refreshOtherCards(collectionId, refreshed)
-        forgetMissingImageFiles()
-        val imagesSaved = downloadMissingImages(progress)
+        // Images only for this collection's cards: updating one collection must not download (or touch) those of the others.
+        forgetMissingImageFiles(dao.visibleCardsOf(collectionId))
+        val imagesSaved = downloadMissingImages(dao.visibleCardsOf(collectionId), progress)
         settings.setLastCatalogSync(System.currentTimeMillis())
         return SyncResult(saved, imagesSaved, 0, emptySets)
     }
@@ -211,26 +212,8 @@ class CatalogRepository(
         if (card == null) return if (store.info.value == null) AddCardResult.NoCatalog else AddCardResult.NotAllowed
         saveCard(card, legacyQueryId = 0)
         if (dao.insertMembership(CollectionCardEntity(collectionId, card.id, null)) == -1L) dao.makeManual(collectionId, card.id)
-        downloadMissingImages { }
+        downloadMissingImages(listOfNotNull(dao.getCard(card.id))) { }
         return AddCardResult.Added(card.name)
-    }
-
-    /**
-     * Downloads the official image of a card (replaces the manually chosen one).
-     * @param cardId String - local id of the card.
-     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE if the card has no official image, NETWORK_ERROR.
-     */
-    suspend fun downloadImage(cardId: String): ImageResult {
-        val stored = dao.getCard(cardId) ?: return ImageResult.NOT_AVAILABLE
-        val url = stored.imageUrl ?: return ImageResult.NOT_AVAILABLE
-        val low = images.ensure(cardId, url, ImageStore.Quality.LOW)
-        val high = images.ensure(cardId, url, ImageStore.Quality.HIGH)
-        if (low == null && high == null) return ImageResult.NETWORK_ERROR
-        val current = dao.getCard(cardId)
-        if (images.isManual(current?.imageHighPath)) images.deleteManual(current?.imageHighPath)
-        if (images.isManual(current?.imageLowPath)) images.deleteManual(current?.imageLowPath)
-        dao.setImagePaths(cardId, low ?: high, high ?: low)
-        return ImageResult.DOWNLOADED
     }
 
     /**
@@ -344,8 +327,8 @@ class CatalogRepository(
      * @param progress suspend (SyncProgress) -> Unit - progress callback.
      * @return Int - number of cards for which at least one new image was saved.
      */
-    private suspend fun downloadMissingImages(progress: suspend (SyncProgress) -> Unit): Int {
-        val missing = dao.cardsMissingImages().filter { it.imageUrl != null }
+    private suspend fun downloadMissingImages(cards: List<CardEntity>, progress: suspend (SyncProgress) -> Unit): Int {
+        val missing = cards.filter { it.imageUrl != null && (it.imageLowPath == null || it.imageHighPath == null) }
         val lock = Mutex()
         val semaphore = Semaphore(IMAGE_PARALLELISM)
         var count = 0
@@ -388,9 +371,9 @@ class CatalogRepository(
      * them again. Happens after a reinstall: the Android backup restores the database but not the images.
      * @return Int - number of cards with at least one forgotten path.
      */
-    private suspend fun forgetMissingImageFiles(): Int = withContext(Dispatchers.IO) {
+    private suspend fun forgetMissingImageFiles(cards: List<CardEntity>): Int = withContext(Dispatchers.IO) {
         var forgotten = 0
-        for (card in dao.cardsWithImagePaths()) {
+        for (card in cards.filter { it.imageLowPath != null || it.imageHighPath != null }) {
             val missing = ImagePaths.missing(card.imageLowPath, card.imageHighPath, images::isSaved)
             missing.forEach { dao.forgetImagePath(card.id, it) }
             if (missing.isNotEmpty()) forgotten++

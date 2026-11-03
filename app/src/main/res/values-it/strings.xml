@@ -96,7 +96,9 @@
     <string name="job_images">scarico immagine %1$d/%2$d · %3$s</string>
     <string name="job_images_issues">tentativi ripetuti %1$d · non scaricate %2$d · ultimo errore: %3$s</string>
     <string name="notification_images_title">Scarico le immagini</string>
-    <string name="job_images_cardtrader">CardTrader: scarico immagine %1$d/%2$d · %3$s</string>
+    <string name="image_source_label">Immagine: %1$s</string>
+    <string name="image_source_manual">scelta da te</string>
+    <string name="job_images_other">altre fonti: scarico immagine %1$d/%2$d · %3$s</string>
     <string name="job_download_guide">scarico il listino prezzi Cardmarket…</string>
     <string name="job_read_guide">leggo il listino prezzi Cardmarket…</string>
     <string name="catalog_done">%1$d carte aggiornate, %2$d immagini scaricate</string>
