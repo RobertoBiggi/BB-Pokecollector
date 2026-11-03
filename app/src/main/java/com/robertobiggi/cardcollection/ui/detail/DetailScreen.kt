@@ -3,6 +3,7 @@
 package com.robertobiggi.cardcollection.ui.detail
 
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
+import com.robertobiggi.cardcollection.ui.common.imageSourceLabel
 import com.robertobiggi.cardcollection.ui.common.labelRes
 import com.robertobiggi.cardcollection.ui.common.variantLabel
 import com.robertobiggi.cardcollection.R
@@ -239,7 +240,11 @@ private fun CardActionDialog(report: CardActionReport, onDismiss: () -> Unit) {
 @Composable
 private fun Header(card: CardUi) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        CardImage(card, card.card.imageHighPath ?: card.card.imageLowPath, Modifier.width(160.dp))
+        val imagePath = card.card.imageHighPath ?: card.card.imageLowPath
+        Column(Modifier.width(160.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            CardImage(card, imagePath, Modifier.fillMaxWidth())
+            imageSourceLabel(imagePath)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
         Column(Modifier.weight(1f)) {
             MetaRow(stringResource(R.string.meta_code), card.printedCode, mono = true)
             MetaRow(stringResource(R.string.meta_set), card.card.setName)
