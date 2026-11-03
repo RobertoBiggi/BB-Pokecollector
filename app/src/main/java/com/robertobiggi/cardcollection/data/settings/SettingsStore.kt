@@ -21,22 +21,21 @@ import kotlinx.coroutines.withContext
 import java.security.GeneralSecurityException
 
 /** Prices the user can show or hide throughout the app. */
-enum class PriceKind { CARDMARKET, TCGPLAYER, CARDTRADER }
+enum class PriceKind { CARDMARKET, CARDTRADER }
 
 /**
  * Which prices to show. Hidden ones are downloaded anyway: they do not appear in the cards,
  * grids or totals.
  *
  * @property cardmarket Cardmarket prices in euros (also manually entered ones).
- * @property tcgplayer TCGplayer prices in dollars.
  * @property cardTrader lowest CardTrader price.
  */
-data class PriceVisibility(val cardmarket: Boolean = true, val tcgplayer: Boolean = true, val cardTrader: Boolean = true) {
+data class PriceVisibility(val cardmarket: Boolean = true, val cardTrader: Boolean = true) {
     /** True if no price is hidden. */
-    val showsAll: Boolean get() = cardmarket && tcgplayer && cardTrader
+    val showsAll: Boolean get() = cardmarket && cardTrader
 
     /** True if all prices are hidden. */
-    val showsNone: Boolean get() = !cardmarket && !tcgplayer && !cardTrader
+    val showsNone: Boolean get() = !cardmarket && !cardTrader
 }
 
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -141,7 +140,7 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
 
     /** Prices shown in the app (all by default). */
     val priceVisibility: Flow<PriceVisibility> = store.data.map {
-        PriceVisibility(it[SHOW_CARDMARKET] ?: true, it[SHOW_TCGPLAYER] ?: true, it[SHOW_CARDTRADER] ?: true)
+        PriceVisibility(it[SHOW_CARDMARKET] ?: true, it[SHOW_CARDTRADER] ?: true)
     }
 
     /**
@@ -153,7 +152,6 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
     suspend fun setPriceShown(kind: PriceKind, shown: Boolean) {
         val key = when (kind) {
             PriceKind.CARDMARKET -> SHOW_CARDMARKET
-            PriceKind.TCGPLAYER -> SHOW_TCGPLAYER
             PriceKind.CARDTRADER -> SHOW_CARDTRADER
         }
         store.edit { it[key] = shown }
@@ -175,7 +173,6 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
         private val CATALOG_URL = stringPreferencesKey("catalog_url")
         private val CARDTRADER_TOKEN_ENCRYPTED = stringPreferencesKey("cardtrader_token_v1")
         private val SHOW_CARDMARKET = booleanPreferencesKey("show_price_cardmarket")
-        private val SHOW_TCGPLAYER = booleanPreferencesKey("show_price_tcgplayer")
         private val COUNT_FIRST_EDITION = booleanPreferencesKey("count_first_edition")
         private val SHOW_CARDTRADER = booleanPreferencesKey("show_price_cardtrader")
         private val LAST_CATALOG_SYNC = longPreferencesKey("last_catalog_sync")
