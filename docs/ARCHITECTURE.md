@@ -55,19 +55,21 @@ Le carte non si scaricano più da un'API: l'app legge un file SQLite (`cards.sql
 
 | Lingua | Stato |
 |---|---|
-| EN, IT, FR, DE, ES, PT | catalogo, immagini e prezzi Cardmarket; TCGplayer solo per EN |
+| EN, IT, FR, DE, ES, PT | catalogo, immagini e prezzi Cardmarket |
 | JA | catalogo e prezzi Cardmarket; molte carte senza immagine |
 | ZH-TW, TH, ID | poche carte, quasi senza immagini né prezzi (segnalate nella UI) |
 | KO, ZH-CN, NL, PL, RU | escluse: ricerche vuote o quasi |
 
 ### Mappatura prezzi per variante
 
-| Variante | Cardmarket (EUR) | TCGplayer (USD) |
-|---|---|---|
-| Normal | `trend` | `normal.marketPrice` |
-| Holo | `trend` (affidabilità media se esiste anche la normal) | `holofoil` |
-| Reverse | `trend-holo` | `reverse-holofoil` |
-| 1st Edition | `trend` (affidabilità bassa) | `1stEditionHolofoil` / `1stEditionNormal` |
+| Variante | Cardmarket (EUR) |
+|---|---|
+| Normal | `trend` |
+| Holo | `trend` (affidabilità media se esiste anche la normal) |
+| Reverse | `trend-holo` |
+| 1st Edition | `trend` (affidabilità bassa) |
+
+I prezzi TCGplayer in dollari non vengono più scaricati (nessuna fonte dopo il passaggio al database delle carte). Di TCGplayer resta solo il link alla ricerca nel dettaglio. Le colonne `usd`/`usdLow` di `price_snapshot` e dei file JSON restano, per compatibilità con i dati e i backup vecchi, ma l'app non le mostra né le usa negli avvisi o nelle statistiche.
 
 TCGdex usa `0` per "nessun dato": i valori nulli o pari a zero vengono scartati.
 
@@ -190,7 +192,7 @@ Oltre alle ricerche per nome, una collezione può contenere un **set intero**: s
    - Dal dettaglio della carta, pannello "Avviso prezzo" sotto i grafici di ogni variante: "avvisami se sale o scende" con la soglia di quella variante (1-50%, proposta quella delle impostazioni) e/o "avvisami quando arriva a X €". Salvando, i prezzi di riferimento partono da quelli attuali.
    - `PriceAlertWorker` gira ogni giorno alle 4:30 locali (`PriceAlertRules.DAILY_RUN_TIME`): il listino Cardmarket viene rigenerato verso le 3 (`createdAt` reale "…T02:48+0200"). È un lavoro unico (`price-alerts`) che alla fine accoda il controllo del giorno dopo con l'orario ricalcolato, così resta alle 4:30 anche con l'ora legale; all'apertura dell'app viene riprogrammato se manca. Aspetta la rete; se la rete o il listino non rispondono riprova fino a 3 volte, poi passa al giorno dopo.
    - Aggiorna solo le varianti con un avviso (`PriceRepository.runAlertCheck`, stessa catena dell'aggiornamento manuale: listino Cardmarket e, con il token, CardTrader) e confronta i prezzi appena scaricati con lo stato salvato (`PriceAlertRules.evaluate`, core, testato in `PriceAlertsTest`):
-     - **sale o scende:** per ogni fonte (Cardmarket €, CardTrader €, TCGplayer $) quando il prezzo si sposta di almeno la soglia dell'avviso (scelta nel pannello; gli avvisi senza una soglia propria usano quella delle impostazioni, 5% di default) rispetto al prezzo dell'ultimo avviso, così le piccole variazioni di ogni giorno si sommano;
+     - **sale o scende:** per ogni fonte (Cardmarket €, CardTrader €) quando il prezzo si sposta di almeno la soglia dell'avviso (scelta nel pannello; gli avvisi senza una soglia propria usano quella delle impostazioni, 5% di default) rispetto al prezzo dell'ultimo avviso, così le piccole variazioni di ogni giorno si sommano;
      - **prezzo obiettivo:** quando il prezzo più basso in euro (Cardmarket o CardTrader) scende entro il 5% sopra l'obiettivo o sotto (`TARGET_MARGIN`); una volta sola, e si riarma quando il prezzo risale.
    - Le notifiche vanno sul canale "Avvisi prezzo" (separato da quello silenzioso degli aggiornamenti) e aprono il dettaglio della carta. I prezzi inseriti a mano non fanno partire avvisi. Gli avvisi non sono inclusi nei file JSON delle collezioni.
 6. **Offline:** la UI legge solo da Room e le immagini dai file locali.

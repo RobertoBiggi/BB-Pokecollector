@@ -6,19 +6,17 @@ package com.robertobiggi.cardcollection.core.stats
  * @property wanted true if the variant is wanted: it counts as a slot even when you do not own it.
  * @property quantity copies owned.
  * @property latestEur latest known price in euros, if present.
- * @property latestUsd latest known price in dollars, if present.
  * @property latestCardTrader latest CardTrader price in euros, if present.
  */
 data class SlotInput(
     val wanted: Boolean,
     val quantity: Int,
     val latestEur: Double?,
-    val latestUsd: Double?,
     val latestCardTrader: Double? = null,
 )
 
 /**
- * Summary of a group of slots. EUR and USD stay separate: no conversion.
+ * Summary of a group of slots.
  * The `priced*` fields count the owned slots that have a price from that source, i.e. those included in the value (out of [owned]).
  */
 data class StatsSummary(
@@ -26,13 +24,11 @@ data class StatsSummary(
     val owned: Int,
     val copies: Int,
     val valueEur: Double,
-    val valueUsd: Double,
     val missing: Int,
     val missingEur: Double,
     val missingWithoutPrice: Int,
     val valueCardTrader: Double = 0.0,
     val pricedEur: Int = 0,
-    val pricedUsd: Int = 0,
     val pricedCardTrader: Int = 0,
 ) {
     /**
@@ -57,23 +53,19 @@ object CollectionStats {
         var owned = 0
         var copies = 0
         var valueEur = 0.0
-        var valueUsd = 0.0
         var missing = 0
         var missingEur = 0.0
         var missingWithoutPrice = 0
         var valueCardTrader = 0.0
         var pricedEur = 0
-        var pricedUsd = 0
         var pricedCardTrader = 0
         for (slot in slots) {
             val quantity = slot.quantity.coerceAtLeast(0)
             copies += quantity
             slot.latestEur?.let { valueEur += it * quantity }
-            slot.latestUsd?.let { valueUsd += it * quantity }
             slot.latestCardTrader?.let { valueCardTrader += it * quantity }
             if (quantity > 0) {
                 if (slot.latestEur != null) pricedEur++
-                if (slot.latestUsd != null) pricedUsd++
                 if (slot.latestCardTrader != null) pricedCardTrader++
             }
             if (!slot.wanted && quantity == 0) continue
@@ -85,6 +77,6 @@ object CollectionStats {
                 if (slot.latestEur != null) missingEur += slot.latestEur else missingWithoutPrice++
             }
         }
-        return StatsSummary(wanted, owned, copies, valueEur, valueUsd, missing, missingEur, missingWithoutPrice, valueCardTrader, pricedEur, pricedUsd, pricedCardTrader)
+        return StatsSummary(wanted, owned, copies, valueEur, missing, missingEur, missingWithoutPrice, valueCardTrader, pricedEur, pricedCardTrader)
     }
 }

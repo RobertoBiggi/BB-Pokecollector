@@ -20,10 +20,8 @@ import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
  * Variant ready for the UI, with the user's data and the latest prices.
  *
  * @property latestEur latest snapshot with a price in euros.
- * @property latestUsd latest snapshot with a price in dollars.
  * @property latestCardTrader latest CardTrader snapshot (kept separate from Cardmarket).
  * @property eurHistory prices in euros from oldest to most recent (for the sparkline).
- * @property usdHistory prices in dollars from oldest to most recent.
  * @property cardTraderHistory CardTrader prices from oldest to most recent.
  */
 data class VariantUi(
@@ -34,18 +32,16 @@ data class VariantUi(
     val quantity: Int,
     val condition: Condition,
     val latestEur: PriceSnapshotEntity?,
-    val latestUsd: PriceSnapshotEntity?,
     val latestCardTrader: PriceSnapshotEntity? = null,
     val lastSnapshot: PriceSnapshotEntity?,
     val eurHistory: List<Double>,
-    val usdHistory: List<Double> = emptyList(),
     val cardTraderHistory: List<Double> = emptyList(),
 ) {
     /**
      * Converts the variant into the input of the statistics computation.
      * @return SlotInput - minimal data for [com.robertobiggi.cardcollection.core.stats.CollectionStats].
      */
-    fun toSlotInput(): SlotInput = SlotInput(wanted, quantity, latestEur?.eur, latestUsd?.usd, latestCardTrader?.eur)
+    fun toSlotInput(): SlotInput = SlotInput(wanted, quantity, latestEur?.eur, latestCardTrader?.eur)
 }
 
 /** Card ready for the UI with its variants. */
@@ -257,11 +253,9 @@ object LibraryAssembler {
                     quantity = entry?.quantity ?: 0,
                     condition = Condition.entries.firstOrNull { it.name == entry?.condition } ?: Condition.NM,
                     latestEur = snaps.lastOrNull { it.eur != null && !it.isCardTrader() },
-                    latestUsd = snaps.lastOrNull { it.usd != null },
                     latestCardTrader = snaps.lastOrNull { it.eur != null && it.isCardTrader() },
                     lastSnapshot = snaps.lastOrNull { !it.isCardTrader() } ?: snaps.lastOrNull(),
                     eurHistory = snaps.filter { !it.isCardTrader() }.mapNotNull { it.eur },
-                    usdHistory = snaps.mapNotNull { it.usd },
                     cardTraderHistory = snaps.filter { it.isCardTrader() }.mapNotNull { it.eur },
                 )
             }.sortedWith(compareBy({ it.type.ordinal }, { it.print }))

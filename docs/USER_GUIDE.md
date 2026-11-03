@@ -29,8 +29,7 @@ The app is not on the Play Store. It needs Android 8.0 or later.
 
 1. Install [Obtainium](https://github.com/ImranR98/Obtainium).
 2. In Obtainium, add the address of this repository.
-3. While the repository is private, open the source settings in Obtainium and enter a read-only GitHub token.
-4. Obtainium tells you about new versions and installs them.
+3. Obtainium tells you about new versions and installs them.
 
 **Manually**
 
@@ -130,7 +129,7 @@ Tap a card to open its detail: the large image, then its code, set, series, rari
 - **Update price**: refreshes the prices of this card only.
 - **Download image**: tries the image sources one after another: TCGdex, CardTrader (if you set a token), Pokellector, Bill's Archive. The detail shows which source the image comes from.
 - **Choose image**: pick a picture from your gallery, handy for cards that no source has. It is resized and saved without metadata, and stays until you download an official one.
-- **Cardmarket / TCGplayer / CardTrader**: open the card on those websites.
+- **Cardmarket / TCGplayer / CardTrader**: open the card on those websites. TCGplayer is only a link: the app doesn't download its prices.
 
 **Variants**
 
@@ -225,7 +224,7 @@ Tap a row to open the card. Variants without "want it" are not listed.
 The **Stats** tab shows:
 
 - **Completion**: variants you own out of those you want.
-- **Collection value** per price source. Euros and dollars stay separate and are never converted. It also says how many owned variants have a price.
+- **Collection value** per price source (Cardmarket and, if enabled, CardTrader), with how many owned variants have a price.
 - **Copies** (duplicates included) and the **cost of the missing** cards.
 - **Progress by language** and **by series**.
 - The **latest price updates**, with how many prices were found.

@@ -175,9 +175,6 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                     PriceSwitch(stringResource(R.string.price_cardmarket), stringResource(R.string.source_cardmarket_text), visibility.cardmarket) {
                         vm.setPriceShown(PriceKind.CARDMARKET, it)
                     }
-                    PriceSwitch(stringResource(R.string.price_tcgplayer), stringResource(R.string.source_tcgplayer_text), visibility.tcgplayer) {
-                        vm.setPriceShown(PriceKind.TCGPLAYER, it)
-                    }
                     PriceSwitch(stringResource(R.string.settings_cardtrader), stringResource(R.string.source_cardtrader_text), visibility.cardTrader) {
                         vm.setPriceShown(PriceKind.CARDTRADER, it)
                     }

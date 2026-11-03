@@ -117,7 +117,7 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
             .distinctUntilChanged().flowOn(Dispatchers.Default)
 
     /**
-     * Removes from the snapshot the prices the user has hidden: CardTrader disappears entirely, euros and dollars
+     * Removes from the snapshot the prices the user has hidden: CardTrader disappears entirely, euros
      * are zeroed in the prices that contain them. Manually entered prices count as Cardmarket.
      * @param visibility PriceVisibility - prices to show.
      * @return DbState - snapshot with only the visible prices.
@@ -128,7 +128,6 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
             if (snap.source == CardTraderPriceProvider.DISPLAY_NAME) return@mapNotNull snap.takeIf { visibility.cardTrader }
             var shown = snap
             if (!visibility.cardmarket) shown = shown.copy(eur = null, eurLow = null, eurAvg30 = null)
-            if (!visibility.tcgplayer) shown = shown.copy(usd = null, usdLow = null)
             shown
         }
         return copy(snapshots = visible)
