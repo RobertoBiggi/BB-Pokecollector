@@ -401,16 +401,13 @@ class PriceRepository(
 
     /**
      * Prices usable by alerts: the latest of each source, excluding manually entered ones. CardTrader euros
-     * count as CardTrader, the others as their source (Cardmarket price list); dollars as TCGplayer.
+     * count as CardTrader, the others as their source (Cardmarket price list).
      * @param snapshots List<PriceSnapshotEntity> - saved prices of the variant.
      * @return List<PricePoint> - one price per source and currency.
      */
     private fun pointsOf(snapshots: List<PriceSnapshotEntity>): List<PricePoint> =
         snapshots.filter { it.source != CollectionFiles.MANUAL_SOURCE }.sortedByDescending { it.fetchedAt }.flatMap { s ->
-            listOfNotNull(
-                s.eur?.let { PricePoint(s.source, PricePoint.EUR, it) },
-                s.usd?.let { PricePoint(TCGPLAYER_SOURCE, PricePoint.USD, it) },
-            )
+            listOfNotNull(s.eur?.let { PricePoint(s.source, PricePoint.EUR, it) })
         }.distinctBy { it.key }
 
     /**
@@ -451,8 +448,5 @@ class PriceRepository(
         private const val GUIDE_FILE = "cardmarket-price-guide.json"
         private const val MAX_NETWORK_ERRORS = 5
         private const val SQL_CHUNK = 500
-
-        /** Name under which alerts refer to dollar prices (TCGplayer), as in the card detail. */
-        const val TCGPLAYER_SOURCE = "TCGplayer"
     }
 }

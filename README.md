@@ -22,7 +22,7 @@ An offline-first Android app to track your Pokémon card collection: every varia
 
 ## Install
 
-Requires Android 8.0 or later. Download the APK from the latest [Release](../../releases), or add this repository to [Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates. While the repository is private, Obtainium needs a read-only GitHub token.
+Requires Android 8.0 or later. Download the APK from the latest [Release](../../releases), or add this repository to [Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates.
 
 ## Development
 
