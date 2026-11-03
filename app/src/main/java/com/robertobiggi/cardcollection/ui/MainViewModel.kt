@@ -617,18 +617,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Downloads the official image of a card from TCGdex; if TCGdex does not have it (or does not respond) and there is a CardTrader token, it takes it from there.
+     * Downloads the image of a card from the first source that has one: TCGdex, CardTrader (with a token), then the other sites whose paths are
+     * in the card database. Sources with nothing for the card are skipped; if one fails, the next is tried.
      * @param cardId String - card.
      * @return Unit
      */
     fun downloadCardImage(cardId: String) = runCardAction(CardAction.DOWNLOAD_IMAGE) {
-        var result = container.catalog.downloadImage(cardId)
-        if (result == ImageResult.NOT_AVAILABLE || result == ImageResult.NETWORK_ERROR) {
-            val fromCardTrader = container.prices.downloadImageFromCardTrader(cardId)
-            // Without a token or a match the TCGdex outcome stays, which explains better why it is missing.
-            if (fromCardTrader == ImageResult.DOWNLOADED) result = fromCardTrader
-        }
-        report(result.messageRes())
+        report(container.imageDownloader.download(cardId).messageRes())
     }
 
     /**

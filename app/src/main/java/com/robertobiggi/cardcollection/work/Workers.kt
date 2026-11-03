@@ -9,6 +9,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.robertobiggi.cardcollection.CardCollectionApp
 import com.robertobiggi.cardcollection.R
+import com.robertobiggi.cardcollection.data.imagesource.TcgdexImageSource
 import com.robertobiggi.cardcollection.data.repo.AbortReason
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
@@ -64,9 +65,10 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
         promoteToForeground()
         val container = (applicationContext as CardCollectionApp).container
         val result = container.catalog.sync(collectionId) { p -> publish(p) }
-        // Images that TCGdex does not have are taken from CardTrader (if there is the token).
-        val cardTraderImages = container.prices.fillImagesFromCardTrader { p -> publish(p) }
-        val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + cardTraderImages, WorkKeys.ERRORS to result.errors, WorkKeys.EMPTY_SETS to result.emptySets, WorkKeys.NO_CATALOG to result.noCatalog)
+        // The cards still without an image (TCGdex does not have it, or failed) go through the other sources in order: CardTrader (with a token),
+        // then the sites whose paths are in the card database. Sources with nothing for a card are skipped.
+        val otherImages = container.imageDownloader.fillMissing(collectionId, alreadyTried = setOf(TcgdexImageSource.ID)) { p -> publish(p) }
+        val data = workDataOf(WorkKeys.CARDS to result.cardsSaved, WorkKeys.IMAGES to result.imagesSaved + otherImages, WorkKeys.ERRORS to result.errors, WorkKeys.EMPTY_SETS to result.emptySets, WorkKeys.NO_CATALOG to result.noCatalog)
         return if (result.noCatalog || (result.cardsSaved == 0 && result.errors > 0)) Result.failure(data) else Result.success(data)
     }
 
@@ -84,11 +86,12 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
             ),
         )
         val now = System.currentTimeMillis()
-        if (p.phase != SyncPhase.IMAGES && p.phase != SyncPhase.IMAGES_CARDTRADER || now - lastNotified < NOTIFY_EVERY_MS) return
+        if (p.phase !in IMAGE_PHASES || now - lastNotified < NOTIFY_EVERY_MS) return
         lastNotified = now
         val context = applicationContext
         val text = context.getString(
-            if (p.phase == SyncPhase.IMAGES) R.string.job_images else R.string.job_images_cardtrader, p.done + 1, p.total, p.label,
+            if (p.phase == SyncPhase.IMAGES) R.string.job_images else R.string.job_images_other,
+            p.done + 1, p.total, p.label,
         ) + issuesSuffix(context, p.retries, p.failed, p.note)
         context.getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID,
@@ -111,6 +114,7 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
     private companion object {
         const val NOTIFICATION_ID = 1001
         const val NOTIFY_EVERY_MS = 1_000L
+        val IMAGE_PHASES = setOf(SyncPhase.IMAGES, SyncPhase.IMAGES_OTHER)
     }
 }
 

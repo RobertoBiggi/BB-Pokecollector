@@ -22,7 +22,6 @@ import com.robertobiggi.cardcollection.core.price.PriceRequest
 import com.robertobiggi.cardcollection.core.price.ProviderSlot
 import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.price.StepOutcome
-import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.CardVariantEntity
@@ -85,7 +84,6 @@ class PriceRepository(
     private val http: OkHttpClient,
     private val settings: SettingsStore,
     private val cacheDir: File,
-    private val images: ImageStore,
 ) {
     private val priceDao = db.priceDao()
 
@@ -248,64 +246,6 @@ class PriceRepository(
         }
         if (cardTraderSaved) return VariantCheck.OK
         return if (outcome.steps.any { it.outcome == StepOutcome.NETWORK_ERROR }) VariantCheck.NETWORK_ERROR else VariantCheck.FAILED
-    }
-
-    /**
-     * Downloads from CardTrader the image of the cards that the catalog does not have (e.g. Japanese sets without images on TCGdex).
-     * Needs the CardTrader token and the card's blueprint, which comes from the card database; without them, or with no network,
-     * it does nothing.
-     * @param progress suspend (SyncProgress) -> Unit - progress, once per card.
-     * @return Int - number of cards to which an image was added.
-     */
-    suspend fun fillImagesFromCardTrader(progress: suspend (SyncProgress) -> Unit = {}): Int {
-        val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return 0
-        val missing = db.catalogDao().cardsWithoutImage().filter { it.cardTraderBlueprintId != null && it.cardTraderExpansionId != null }
-        val provider = CardTraderPriceProvider(CardTraderClient(http, token))
-        val limiter = RateLimiter(REQUEST_INTERVAL_MS)
-        var saved = 0
-        for ((index, stored) in missing.withIndex()) {
-            try {
-                progress(SyncProgress(SyncPhase.IMAGES_CARDTRADER, stored.name, index, missing.size))
-                limiter.acquire()
-                if (saveCardTraderImage(provider, stored)) saved++
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // No network or invalid response: the other cards may succeed, and the next update retries.
-            }
-        }
-        return saved
-    }
-
-    /**
-     * Downloads from CardTrader the image of a single card, even if it already has one (the manually chosen one is replaced).
-     * Needs the CardTrader token.
-     * @param cardId String - local id of the card.
-     * @return ImageResult - DOWNLOADED, NOT_AVAILABLE if the token is missing or the card has no blueprint, NETWORK_ERROR.
-     */
-    suspend fun downloadImageFromCardTrader(cardId: String): ImageResult {
-        val token = settings.cardTraderToken.first().takeIf { it.isNotEmpty() } ?: return ImageResult.NOT_AVAILABLE
-        val stored = db.catalogDao().getCard(cardId) ?: return ImageResult.NOT_AVAILABLE
-        return try {
-            if (saveCardTraderImage(CardTraderPriceProvider(CardTraderClient(http, token)), stored)) ImageResult.DOWNLOADED else ImageResult.NOT_AVAILABLE
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            ImageResult.NETWORK_ERROR
-        }
-    }
-
-    /** Looks up the card's blueprint on CardTrader and saves its image. @return Boolean - true if it was saved. */
-    private suspend fun saveCardTraderImage(provider: CardTraderPriceProvider, card: CardEntity): Boolean {
-        val expansion = card.cardTraderExpansionId ?: return false
-        val blueprint = card.cardTraderBlueprintId ?: return false
-        val url = provider.imageUrl(expansion, blueprint) ?: return false
-        val (low, high) = images.saveFromCardTrader(card.id, url) ?: return false
-        val current = db.catalogDao().getCard(card.id)
-        if (images.isManual(current?.imageHighPath)) images.deleteManual(current?.imageHighPath)
-        if (images.isManual(current?.imageLowPath) && current?.imageLowPath != current?.imageHighPath) images.deleteManual(current?.imageLowPath)
-        db.catalogDao().setImagePaths(card.id, low, high)
-        return true
     }
 
     /**

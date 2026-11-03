@@ -1,11 +1,16 @@
 package com.robertobiggi.cardcollection
 
 import android.content.Context
+import com.robertobiggi.cardcollection.core.image.CatalogImageSources
 import com.robertobiggi.cardcollection.core.model.PokemonNames
 import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.catalog.CatalogStore
 import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.AppDatabase
+import com.robertobiggi.cardcollection.data.imagesource.CardTraderImageSource
+import com.robertobiggi.cardcollection.data.imagesource.CatalogColumnImageSource
+import com.robertobiggi.cardcollection.data.imagesource.ImageDownloader
+import com.robertobiggi.cardcollection.data.imagesource.TcgdexImageSource
 import com.robertobiggi.cardcollection.data.repo.CatalogRepository
 import com.robertobiggi.cardcollection.data.repo.CollectionRepository
 import com.robertobiggi.cardcollection.data.repo.PriceRepository
@@ -37,7 +42,7 @@ class AppContainer(context: Context) {
         .addInterceptor { chain ->
             chain.proceed(chain.request().newBuilder().header("User-Agent", USER_AGENT).build())
         }
-        // Checks every request, redirects included: the app only talks to the images of TCGdex, Cardmarket (price list) and CardTrader.
+        // Checks every request, redirects included: the app only talks to the images of TCGdex, Cardmarket (price list), CardTrader and the other image sources.
         .addNetworkInterceptor { chain ->
             val host = chain.request().url.host
             if (host !in ALLOWED_HOSTS) throw IOException("Host non consentito: $host")
@@ -57,7 +62,12 @@ class AppContainer(context: Context) {
 
     val collection = CollectionRepository(database, appScope, settings, images)
     val catalog = CatalogRepository(database, catalogStore, images, settings)
-    val prices = PriceRepository(database, http, settings, appContext.cacheDir, images)
+    val prices = PriceRepository(database, http, settings, appContext.cacheDir)
+    /** Image sources in order of preference: the first that has an image for a card, and downloads it, wins. */
+    val imageDownloader = ImageDownloader(
+        database, images,
+        listOf(TcgdexImageSource(images), CardTraderImageSource(http, settings, images)) + CatalogImageSources.ALL.map { CatalogColumnImageSource(it, catalogStore, images) },
+    )
     val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
     val work = WorkScheduler(appContext)
 
@@ -75,7 +85,8 @@ class AppContainer(context: Context) {
         const val ORPHAN_GRACE_MS = 60 * 60 * 1000L
         const val USER_AGENT = "CardCollection-Android (uso personale)"
 
-        /** Hosts reachable by the app: TCGdex images, Cardmarket price list, CardTrader API and images. */
-        val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com") + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS
+        /** Hosts reachable by the app: TCGdex images, Cardmarket price list, CardTrader API and images, the other image sources. */
+        val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com") + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS +
+            CatalogImageSources.hosts
     }
 }
