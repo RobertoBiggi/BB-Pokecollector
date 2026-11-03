@@ -6,8 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.core.backup.ImportError
+import com.robertobiggi.cardcollection.core.image.CatalogImageSources
+import com.robertobiggi.cardcollection.core.image.ImageFileNames
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
+import com.robertobiggi.cardcollection.data.image.ImageStore
 import com.robertobiggi.cardcollection.data.local.PriceRunEntity
 import com.robertobiggi.cardcollection.data.repo.AbortReason
 import com.robertobiggi.cardcollection.data.repo.CardUi
@@ -191,9 +194,27 @@ fun jobProgressText(state: JobState, prices: Boolean): String {
     return when (SyncPhase.entries.firstOrNull { it.name == state.phase }) {
         SyncPhase.SEARCH -> stringResource(R.string.job_search, label)
         SyncPhase.IMAGES -> stringResource(R.string.job_images, state.done + 1, state.total, label)
-        SyncPhase.IMAGES_CARDTRADER -> stringResource(R.string.job_images_cardtrader, state.done + 1, state.total, label)
+        SyncPhase.IMAGES_OTHER -> stringResource(R.string.job_images_other, state.done + 1, state.total, label)
         else -> stringResource(R.string.job_item, label, state.done + 1, state.total)
     }
+}
+
+/**
+ * Where the image shown for a card comes from, read from the name of its file, e.g. "Image: Pokellector". Null when the name does not say
+ * (images saved by earlier versions or imported from a backup) or the card has no image.
+ * @param path String? - path of the image file.
+ * @return String? - the text to show.
+ */
+@Composable
+fun imageSourceLabel(path: String?): String? {
+    val id = path?.let { ImageFileNames.sourceOf(it.substringAfterLast('/')) } ?: return null
+    val name = when (id) {
+        ImageFileNames.MANUAL -> stringResource(R.string.image_source_manual)
+        ImageStore.TCGDEX_SOURCE -> "TCGdex"
+        ImageStore.CARDTRADER_SOURCE -> "CardTrader"
+        else -> CatalogImageSources.ALL.firstOrNull { it.id == id }?.displayName ?: return null
+    }
+    return stringResource(R.string.image_source_label, name)
 }
 
 /**

@@ -99,7 +99,9 @@
     <string name="job_images">downloading image %1$d/%2$d · %3$s</string>
     <string name="job_images_issues">retries %1$d · failed %2$d · last error: %3$s</string>
     <string name="notification_images_title">Downloading images</string>
-    <string name="job_images_cardtrader">CardTrader: downloading image %1$d/%2$d · %3$s</string>
+    <string name="image_source_label">Image: %1$s</string>
+    <string name="image_source_manual">chosen by you</string>
+    <string name="job_images_other">other sources: downloading image %1$d/%2$d · %3$s</string>
     <string name="job_download_guide">downloading Cardmarket price list…</string>
     <string name="job_read_guide">reading Cardmarket price list…</string>
     <string name="job_price_item" translatable="false">%1$s · %2$s</string>

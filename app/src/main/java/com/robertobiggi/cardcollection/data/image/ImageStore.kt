@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import com.robertobiggi.cardcollection.core.image.ImageFileNames
 import com.robertobiggi.cardcollection.core.validation.Validators
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -40,11 +41,12 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
      * Returns the local file of an image, checking that it stays inside the app's folder.
      * @param cardId String - local id of the card (e.g. "en:me01-094").
      * @param quality Quality - image quality.
+     * @param source String? - id of the source the image comes from; it goes in the file name (see [ImageFileNames]).
      * @return File - path of the file (may not exist yet).
      * @throws SecurityException if the computed path leaves the images folder.
      */
-    fun fileFor(cardId: String, quality: Quality): File {
-        val file = File(root, "${Validators.safeFileSegment(cardId)}-${quality.suffix}.webp")
+    fun fileFor(cardId: String, quality: Quality, source: String? = null): File {
+        val file = File(root, ImageFileNames.of(Validators.safeFileSegment(cardId), quality.suffix, source))
         if (!file.canonicalPath.startsWith(rootPath)) throw SecurityException("Percorso immagine non valido")
         return file
     }
@@ -58,7 +60,7 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
      * @return String? - absolute path of the saved file, or null if the URL is not allowed or the download fails.
      */
     suspend fun ensure(cardId: String, imageBaseUrl: String, quality: Quality, onIssue: (DownloadIssue) -> Unit = {}): String? = withContext(Dispatchers.IO) {
-        val target = fileFor(cardId, quality)
+        val target = fileFor(cardId, quality, TCGDEX_SOURCE)
         if (target.isFile && target.length() > 0) return@withContext target.absolutePath
         val url = "$imageBaseUrl/${quality.suffix}.webp"
         if (!Validators.isAllowedImageUrl(url)) return@withContext null
@@ -93,8 +95,19 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
      * @param url String - address of the image (allowed host, see [Validators.isAllowedCardTraderImageUrl]).
      * @return Pair<String, String>? - paths (low, high quality), or null if the URL is not allowed or the download or re-encoding fails.
      */
-    suspend fun saveFromCardTrader(cardId: String, url: String): Pair<String, String>? = withContext(Dispatchers.IO) {
-        if (!Validators.isAllowedCardTraderImageUrl(url)) return@withContext null
+    suspend fun saveFromCardTrader(cardId: String, url: String): Pair<String, String>? =
+        saveFromExternal(cardId, url, CARDTRADER_SOURCE, Validators::isAllowedCardTraderImageUrl)
+
+    /**
+     * Downloads the image of a card from an external source, re-encodes it as WebP and saves it in low and high quality.
+     * @param cardId String - local id of the card.
+     * @param url String - address of the image.
+     * @param source String - id of the source, written in the file names so the app can say where the image comes from.
+     * @param isAllowed (String) -> Boolean - tells whether the address is on the source's allowed host (checked before any request).
+     * @return Pair<String, String>? - paths (low, high quality), or null if the URL is not allowed or the download or re-encoding fails.
+     */
+    suspend fun saveFromExternal(cardId: String, url: String, source: String, isAllowed: (String) -> Boolean): Pair<String, String>? = withContext(Dispatchers.IO) {
+        if (!isAllowed(url)) return@withContext null
         val raw = try {
             downloadBytes(url, MAX_PICKED_BYTES)
         } catch (e: IOException) {
@@ -102,8 +115,8 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         } ?: return@withContext null
         val high = recode(raw, EXTERNAL_HIGH_SIDE) ?: return@withContext null
         val low = recode(raw, EXTERNAL_LOW_SIDE) ?: return@withContext null
-        val highPath = write(cardId, Quality.HIGH, high) ?: return@withContext null
-        val lowPath = write(cardId, Quality.LOW, low) ?: return@withContext null
+        val highPath = write(cardId, Quality.HIGH, high, source) ?: return@withContext null
+        val lowPath = write(cardId, Quality.LOW, low, source) ?: return@withContext null
         lowPath to highPath
     }
 
@@ -130,11 +143,12 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
      * @param cardId String - local id of the card.
      * @param quality Quality - image quality.
      * @param bytes ByteArray - content of the image.
+     * @param source String? - id of the source for the file name, or null when unknown (imported from a file).
      * @return String? - absolute path of the saved file, or null if saving fails.
      */
-    suspend fun write(cardId: String, quality: Quality, bytes: ByteArray): String? = withContext(Dispatchers.IO) {
+    suspend fun write(cardId: String, quality: Quality, bytes: ByteArray, source: String? = null): String? = withContext(Dispatchers.IO) {
         if (bytes.isEmpty() || bytes.size > MAX_BYTES) return@withContext null
-        val target = fileFor(cardId, quality)
+        val target = fileFor(cardId, quality, source)
         val tmp = File(target.parentFile, target.name + ".tmp")
         try {
             tmp.writeBytes(bytes)
@@ -205,7 +219,7 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
      */
     suspend fun writeManual(cardId: String, bytes: ByteArray, previous: String?): String? = withContext(Dispatchers.IO) {
         if (bytes.isEmpty() || bytes.size > MAX_BYTES) return@withContext null
-        val target = File(root, "${Validators.safeFileSegment(cardId)}$MANUAL_MARKER${System.currentTimeMillis()}.webp")
+        val target = File(root, "${Validators.safeFileSegment(cardId)}$MANUAL_MARKER${System.currentTimeMillis()}.webp")  // read back by ImageFileNames.sourceOf
         if (!target.canonicalPath.startsWith(rootPath)) throw SecurityException("Percorso immagine non valido")
         try {
             target.writeBytes(bytes)
@@ -367,6 +381,10 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
         /** Long side of images downloaded from other sources: high quality for the detail, low for the grid. */
         private const val EXTERNAL_HIGH_SIDE = 900
         private const val EXTERNAL_LOW_SIDE = 400
+
+        /** Ids of the two sources that are not in the card database (the others are the ids of the `CatalogImageSource`s). */
+        const val TCGDEX_SOURCE = "tcgdex"
+        const val CARDTRADER_SOURCE = "cardtrader"
 
         /** Part of the name that distinguishes manually chosen images. */
         private const val MANUAL_MARKER = "-manual-"

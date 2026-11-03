@@ -172,13 +172,6 @@ interface CatalogDao {
     suspend fun visibleCardsOf(collectionId: Long): List<CardEntity>
 
     /**
-     * Lists the cards with an image URL but without all images saved.
-     * @return List<CardEntity> - cards to complete.
-     */
-    @Query("SELECT * FROM card WHERE imageUrl IS NOT NULL AND (imageLowPath IS NULL OR imageHighPath IS NULL)")
-    suspend fun cardsMissingImages(): List<CardEntity>
-
-    /**
      * Removes the image URL from a card that TCGdex does not have (404 response), only if it has no other images: this way the card moves
      * to the other sources (CardTrader) instead of staying forever "with an image to download".
      * @param id String - row id.
@@ -186,13 +179,6 @@ interface CatalogDao {
      */
     @Query("UPDATE card SET imageUrl = NULL WHERE id = :id AND imageLowPath IS NULL AND imageHighPath IS NULL")
     suspend fun clearImageUrl(id: String)
-
-    /**
-     * Lists the English and Japanese cards without an image URL or saved images (or manually chosen ones).
-     * @return List<CardEntity> - cards for which another source can be tried.
-     */
-    @Query("SELECT * FROM card WHERE imageUrl IS NULL AND imageLowPath IS NULL AND imageHighPath IS NULL AND language IN ('en', 'ja')")
-    suspend fun cardsWithoutImage(): List<CardEntity>
 
     /**
      * Inserts or updates a catalog card.
@@ -233,13 +219,6 @@ interface CatalogDao {
             "imageHighPath = CASE WHEN imageHighPath = :path THEN NULL ELSE imageHighPath END WHERE id = :id",
     )
     suspend fun forgetImagePath(id: String, path: String)
-
-    /**
-     * Lists the cards with at least one saved image path.
-     * @return List<CardEntity> - cards to check.
-     */
-    @Query("SELECT * FROM card WHERE imageLowPath IS NOT NULL OR imageHighPath IS NOT NULL")
-    suspend fun cardsWithImagePaths(): List<CardEntity>
 
     /**
      * Sets the Pokédex number of a card only if it is not known yet.

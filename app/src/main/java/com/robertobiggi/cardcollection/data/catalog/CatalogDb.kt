@@ -2,6 +2,7 @@ package com.robertobiggi.cardcollection.data.catalog
 
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
+import com.robertobiggi.cardcollection.core.image.CatalogImageSource
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.CatalogVariant
 import com.robertobiggi.cardcollection.core.model.Language
@@ -34,11 +35,30 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
 
     private val variantTypes: Map<Int, VariantType> = readEnum("variantType").mapNotNull { (code, name) -> VariantType.fromName(name)?.let { code to it } }.toMap()
 
-    /** True if the database has the `card.nameEn` column (files generated earlier do not have it: they stay valid and show the original names). */
-    private val hasNameEn: Boolean = db.rawQuery("PRAGMA table_info(card)", null).use { c ->
-        var found = false
-        while (c.moveToNext()) if (c.getString(1) == "nameEn") found = true
-        found
+    /** Columns of the `card` table: those added after the first version (nameEn, image paths) may be missing from files generated earlier, which stay valid. */
+    private val cardColumns: Set<String> = db.rawQuery("PRAGMA table_info(card)", null).use { c ->
+        buildSet { while (c.moveToNext()) add(c.getString(1)) }
+    }
+
+    /** True if the database has the `card.nameEn` column (it shows the original names otherwise). */
+    private val hasNameEn: Boolean = "nameEn" in cardColumns
+
+    /**
+     * Paths of the images that an image source has for some cards, from the source's column of the database.
+     * @param source CatalogImageSource - image source.
+     * @param cardIds Collection<String> - local ids of the cards.
+     * @return Map<String, String> - path by card id, only for the cards the source has; empty if this file has no column for the source.
+     */
+    fun imagePaths(source: CatalogImageSource, cardIds: Collection<String>): Map<String, String> {
+        if (source.column !in cardColumns) return emptyMap()
+        val found = HashMap<String, String>()
+        for (chunk in cardIds.chunked(SQL_CHUNK)) {
+            db.rawQuery(
+                "SELECT id, ${source.column} FROM card WHERE ${source.column} IS NOT NULL AND id IN (${chunk.joinToString(",") { "?" }})",
+                chunk.toTypedArray(),
+            ).use { c -> while (c.moveToNext()) found[c.getString(0)] = c.getString(1) }
+        }
+        return found
     }
 
     private fun readEnum(kind: String): Map<Int, String> =
