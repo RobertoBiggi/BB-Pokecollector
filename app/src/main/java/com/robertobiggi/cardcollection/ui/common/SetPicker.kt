@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.ui.common
 
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -82,7 +84,7 @@ fun SetPickerDialog(
     onDismiss: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    var sortIndex by rememberSaveable { mutableStateOf(SetSort.NEWEST.ordinal) }
+    var sortIndex by rememberSaveable { mutableIntStateOf(SetSort.NEWEST.ordinal) }
     val sort = SetSort.entries[sortIndex]
     LaunchedEffect(Unit) { onLanguage(state.language, false) }
     val needle = PokemonNames.normalize(query)
@@ -129,7 +131,7 @@ fun SetPickerDialog(
                                 val details = buildList {
                                     add(set.code ?: set.id)
                                     set.releaseDate?.take(YEAR_LENGTH)?.let { add(it) }
-                                    set.cards?.let { add(stringResource(R.string.set_pick_cards, it)) }
+                                    set.cards?.let { add(pluralStringResource(R.plurals.set_pick_cards, it, it)) }
                                 }
                                 Text(details.joinToString(" · "), style = MonoStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

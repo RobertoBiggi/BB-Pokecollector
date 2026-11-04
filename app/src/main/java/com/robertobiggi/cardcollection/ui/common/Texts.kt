@@ -1,5 +1,7 @@
 package com.robertobiggi.cardcollection.ui.common
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.annotation.PluralsRes
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
@@ -25,16 +27,36 @@ import com.robertobiggi.cardcollection.work.WorkKeys
 
 /**
  * Text to show to the user, resolved in the current language only at display time.
- * @property id string resource.
- * @property args format arguments.
+ * Created with a string resource (`UiText(R.string.x, args)`) or a plural one ([UiText.plural]).
+ * @param resolver (Context) -> String - builds the text with the resources of the context.
  */
-class UiText(@StringRes val id: Int, vararg val args: Any) {
+class UiText private constructor(private val resolver: (Context) -> String) {
+
+    /**
+     * Text from a string resource.
+     * @param id Int - string resource.
+     * @param args Any - format arguments.
+     */
+    constructor(@StringRes id: Int, vararg args: Any) : this({ context: Context -> context.getString(id, *args) })
+
     /**
      * Resolves the text with the context's resources (which follow the chosen language).
      * @param context Context - context of an activity.
      * @return String - translated text.
      */
-    fun resolve(context: Context): String = context.getString(id, *args)
+    fun resolve(context: Context): String = resolver(context)
+
+    companion object {
+        /**
+         * Text from a plural resource: the form ("1 card", "2 cards") is chosen by [quantity] in the current language.
+         * @param id Int - plural resource.
+         * @param quantity Int - number that decides the form.
+         * @param args Any - format arguments (usually starting with [quantity]).
+         * @return UiText - text to resolve at display time.
+         */
+        fun plural(@PluralsRes id: Int, quantity: Int, vararg args: Any): UiText =
+            UiText { context: Context -> context.resources.getQuantityString(id, quantity, *args) }
+    }
 }
 
 /**
@@ -231,7 +253,7 @@ fun catalogResultText(state: JobState?): String? {
     if (state.output[WorkKeys.NO_CATALOG] == true) return stringResource(R.string.msg_no_catalog)
     val emptySets = state.output[WorkKeys.EMPTY_SETS] as? Int ?: 0
     val done = if (errors > 0) stringResource(R.string.catalog_done_errors, cards, images, errors) else stringResource(R.string.catalog_done, cards, images)
-    return if (emptySets > 0) done + " " + stringResource(R.string.catalog_empty_sets, emptySets) else done
+    return if (emptySets > 0) done + " " + pluralStringResource(R.plurals.catalog_empty_sets, emptySets, emptySets) else done
 }
 
 /**

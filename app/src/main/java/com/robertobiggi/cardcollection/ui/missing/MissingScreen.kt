@@ -2,6 +2,7 @@
 
 package com.robertobiggi.cardcollection.ui.missing
 
+import androidx.compose.ui.res.pluralStringResource
 import com.robertobiggi.cardcollection.ui.common.shortLabel
 import com.robertobiggi.cardcollection.ui.common.variantLabel
 import com.robertobiggi.cardcollection.R
@@ -76,12 +77,12 @@ fun MissingScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
                         Text(stringResource(R.string.missing_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(stringResource(R.string.missing_count, stats.missing), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                        Text(pluralStringResource(R.plurals.missing_count, stats.missing, stats.missing), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                         if (visibility.cardmarket) {
                             Text(stringResource(R.string.missing_cost, Format.eur(stats.missingEur)), style = MaterialTheme.typography.bodySmall)
                         }
                         if (visibility.cardmarket && stats.missingWithoutPrice > 0) {
-                            Text(stringResource(R.string.missing_without_price, stats.missingWithoutPrice), style = MaterialTheme.typography.bodySmall)
+                            Text(pluralStringResource(R.plurals.missing_without_price, stats.missingWithoutPrice, stats.missingWithoutPrice), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }

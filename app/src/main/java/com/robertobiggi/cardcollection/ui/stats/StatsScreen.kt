@@ -2,6 +2,7 @@
 
 package com.robertobiggi.cardcollection.ui.stats
 
+import androidx.compose.ui.res.pluralStringResource
 import com.robertobiggi.cardcollection.ui.common.shortLabel
 import com.robertobiggi.cardcollection.ui.common.runSummaryText
 import com.robertobiggi.cardcollection.ui.common.labelRes
@@ -111,7 +112,7 @@ fun StatsScreen(vm: MainViewModel) {
                     StatTile(
                         stringResource(R.string.stats_missing),
                         if (visibility.cardmarket) Format.eur(total.missingEur) else "${total.missing}",
-                        if (visibility.cardmarket) stringResource(R.string.missing_count, total.missing) else stringResource(R.string.stats_missing_hint),
+                        if (visibility.cardmarket) pluralStringResource(R.plurals.missing_count, total.missing, total.missing) else stringResource(R.string.stats_missing_hint),
                         Modifier.weight(1f),
                     )
                 }
