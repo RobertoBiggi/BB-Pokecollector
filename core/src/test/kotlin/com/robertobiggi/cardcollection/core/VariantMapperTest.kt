@@ -18,11 +18,9 @@ class VariantMapperTest {
         val c = card("en_card_ex2-9.json")
         val holo = VariantMapper.quote(VariantType.HOLO, c.pricing, cardHasNormalAndHolo = false, source = "TCGdex")!!
         assertEquals(16.37, holo.eur)
-        assertEquals(65.0, holo.usd)
         assertEquals(Confidence.HIGH, holo.confidence)
         val reverse = VariantMapper.quote(VariantType.REVERSE, c.pricing, false, "TCGdex")!!
         assertEquals(41.31, reverse.eur)
-        assertEquals(60.74, reverse.usd)
         assertEquals(7.98, reverse.eurLow)
     }
 
@@ -31,10 +29,8 @@ class VariantMapperTest {
         val c = card("en_card_me03-032.json")
         val normal = VariantMapper.quote(VariantType.NORMAL, c.variantsDetailed!![0].pricing, false, "TCGdex")!!
         assertEquals(0.03, normal.eur)
-        assertEquals(0.11, normal.usd)
         val reverse = VariantMapper.quote(VariantType.REVERSE, c.variantsDetailed!![1].pricing, false, "TCGdex")!!
         assertEquals(0.09, reverse.eur)
-        assertEquals(0.2, reverse.usd)
     }
 
     @Test
@@ -42,7 +38,6 @@ class VariantMapperTest {
         val c = card("ja_card_MC-754.json")
         val normal = VariantMapper.quote(VariantType.NORMAL, c.variantsDetailed!![0].pricing, false, "TCGdex")!!
         assertEquals(18.01, normal.eur)
-        assertNull(normal.usd)
         assertNull(VariantMapper.quote(VariantType.REVERSE, c.variantsDetailed!![0].pricing, false, "TCGdex"))
     }
 

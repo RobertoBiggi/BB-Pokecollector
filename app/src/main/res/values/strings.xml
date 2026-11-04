@@ -316,6 +316,12 @@
     <string name="alert_disabled_hint">Alerts are off: turn them on in Settings → Price alerts.</string>
     <string name="alert_delete">Remove alert</string>
     <string name="msg_alert_saved">Price alert saved.</string>
+    <string name="settings_alerts_check_now">Check now</string>
+    <string name="settings_alerts_check_now_hint">Updates the prices of the cards with an alert right away and sends the notifications, as the morning check does.</string>
+    <string name="msg_alert_check_done">Check done: cards checked %1$d, alerts sent %2$d.</string>
+    <string name="msg_alert_check_blocked">Check done: cards checked %1$d, alerts %2$d, but the app\'s notifications are blocked in Android settings.</string>
+    <string name="msg_alert_check_no_alerts">No card has an alert: set one from the card detail.</string>
+    <string name="msg_alert_check_failed">Check failed: the price list could not be downloaded. Try again later.</string>
     <string name="msg_alert_removed">Price alert removed.</string>
     <string name="alert_changes_switch">Alert me if it goes up or down</string>
     <string name="alert_percent_label">By at least</string>

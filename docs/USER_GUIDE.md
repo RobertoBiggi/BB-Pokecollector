@@ -199,6 +199,7 @@ Tap **Save**. The bell turns red and the panel shows a summary, e.g. "±10% · a
 - Price changes are measured from the price of the last alert, so small daily moves add up. Each source is checked separately.
 - The target-price alert fires once. It is armed again when the price goes back above the target.
 - Tap a notification to open the card.
+- **Check now** (in **Settings → Price alerts**) runs the same check right away. It is handy to try the notifications. A message tells you how many cards were checked and how many alerts were sent.
 
 <br clear="right">
 
@@ -277,7 +278,7 @@ Open Settings from the gear icon on the start screen.
 - **App language**: system default, Italian or English.
 - **Card database**: shows when the installed database was built and which card languages it has. **Update** downloads a newer one.
 - **Count 1st Editions**: when off, 1st Edition variants don't count as missing or in the totals. Copies you own are always counted.
-- **Price alerts**: the daily check (see [section 7](#7-price-alerts)) and the default threshold for new alerts. A warning appears if Android blocks the app's notifications.
+- **Price alerts**: the daily check (see [section 7](#7-price-alerts)), the default threshold for new alerts, and **Check now** to run the check right away. A warning appears if Android blocks the app's notifications.
 - **Price sources**: choose which prices to show. Hidden prices disappear from cards, grids and totals, but are still downloaded, so turning them back on restores them.
 - **CardTrader**: paste your API token, found on CardTrader under *Settings → API*. From then on, price updates also fetch CardTrader prices, and CardTrader becomes an image source.
 
@@ -326,6 +327,8 @@ Not every card is sold on Cardmarket; this is common for Japanese promos. Set a 
 - Android allows the app's notifications;
 - the card has a saved alert (red bell in its panel);
 - the price really moved by the chosen percentage since the last alert.
+
+Tap **Check now** in Settings to run the check right away. The message tells you how many cards were checked and how many alerts were sent.
 
 **Prices or images don't download.**
 Check your connection. Cards and prices you already have stay available offline. Jobs started while offline wait for the connection.

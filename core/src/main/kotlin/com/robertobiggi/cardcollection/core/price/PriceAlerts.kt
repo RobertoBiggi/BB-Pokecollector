@@ -7,8 +7,8 @@ import kotlin.math.abs
 /**
  * Price of a variant read from a source during an update.
  *
- * @property source source (e.g. "Cardmarket", "CardTrader", "TCGplayer").
- * @property currency currency: [EUR] or [USD].
+ * @property source source (e.g. "Cardmarket", "CardTrader").
+ * @property currency currency: [EUR] (the only one with a price source today).
  * @property value price, greater than zero.
  */
 data class PricePoint(val source: String, val currency: String, val value: Double) {
@@ -17,7 +17,6 @@ data class PricePoint(val source: String, val currency: String, val value: Doubl
 
     companion object {
         const val EUR = "EUR"
-        const val USD = "USD"
     }
 }
 
