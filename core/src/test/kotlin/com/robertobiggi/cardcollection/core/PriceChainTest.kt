@@ -29,7 +29,7 @@ class PriceChainTest {
     private val sleeper: suspend (Long) -> Unit = { sleeps += it; now += it }
 
     private val request = PriceRequest(Language.EN, "me03-032", VariantType.NORMAL, false)
-    private fun quote(source: String) = PriceQuote(source, 1.0, null, null, 2.0, null, null, Confidence.HIGH)
+    private fun quote(source: String) = PriceQuote(source, 1.0, null, null, null, Confidence.HIGH)
 
     /** Test source that runs the programmed responses in order. */
     private class Scripted(override val id: String, private val script: MutableList<() -> PriceQuote?>) : PriceProvider {
@@ -72,31 +72,7 @@ class PriceChainTest {
     }
 
     @Test
-    fun `seconda fonte completa il prezzo mancante senza contare come fallback`() = runTest {
-        val a = Scripted("a", mutableListOf({ PriceQuote("TCGdex", 3.0, 2.0, null, null, null, "2026", Confidence.HIGH) }))
-        val b = Scripted("b", mutableListOf({ PriceQuote("TCGplayer", null, null, null, 4.5, 4.0, null, Confidence.MEDIUM) }))
-        val out = PriceChain(listOf(slot(a), slot(b)), sleeper = sleeper).fetch(request)
-        val q = out.quote!!
-        assertEquals("TCGdex + TCGplayer", q.source)
-        assertEquals(3.0, q.eur)
-        assertEquals(4.5, q.usd)
-        assertEquals(4.0, q.usdLow)
-        assertEquals(Confidence.HIGH, q.confidence)
-        assertFalse(out.usedFallback)
-    }
-
-    @Test
-    fun `prezzo parziale resta valido se la seconda fonte non ha dati`() = runTest {
-        val a = Scripted("a", mutableListOf({ PriceQuote("TCGdex", 3.0, null, null, null, null, null, Confidence.HIGH) }))
-        val b = Scripted("b", mutableListOf({ null }))
-        val out = PriceChain(listOf(slot(a), slot(b)), sleeper = sleeper).fetch(request)
-        assertEquals("TCGdex", out.quote?.source)
-        assertEquals(listOf(StepOutcome.OK, StepOutcome.NO_DATA), out.steps.map { it.outcome })
-        assertFalse(out.usedFallback)
-    }
-
-    @Test
-    fun `prezzo completo non interroga la seconda fonte`() = runTest {
+    fun `prezzo trovato non interroga la seconda fonte`() = runTest {
         val a = Scripted("a", mutableListOf({ quote("a") }))
         val b = Scripted("b", mutableListOf({ quote("b") }))
         PriceChain(listOf(slot(a), slot(b)), sleeper = sleeper).fetch(request)

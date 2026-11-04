@@ -25,8 +25,7 @@ data class ChainStep(val providerId: String, val outcome: StepOutcome)
  *
  * @property quote price found, or null.
  * @property steps attempts made, in order.
- * @property usedFallback true if the price arrived after a retry or from a non-primary source
- *           (merely completing with a second source does not count).
+ * @property usedFallback true if the price arrived after a retry or from a non-primary source.
  */
 data class ChainOutcome(val quote: PriceQuote?, val steps: List<ChainStep>, val usedFallback: Boolean)
 
@@ -69,8 +68,6 @@ class PriceChain(
     suspend fun fetch(request: PriceRequest): ChainOutcome {
         val steps = mutableListOf<ChainStep>()
         var retried = false
-        var found: PriceQuote? = null
-        var firstIndex = -1
         for ((index, slot) in slots.withIndex()) {
             val id = slot.provider.id
             if (slot.breaker.isOpen()) {
@@ -85,15 +82,7 @@ class PriceChain(
                     slot.breaker.recordSuccess()
                     if (quote != null && quote.hasAnyPrice()) {
                         steps += ChainStep(id, StepOutcome.OK)
-                        val current = found
-                        if (current == null) {
-                            found = quote
-                            firstIndex = index
-                        } else {
-                            found = current.complementedBy(quote)
-                        }
-                        if (found.isComplete()) return ChainOutcome(found, steps, usedFallback = firstIndex > 0 || retried)
-                        break
+                        return ChainOutcome(quote, steps, usedFallback = index > 0 || retried)
                     }
                     steps += ChainStep(id, StepOutcome.NO_DATA)
                     break
@@ -135,6 +124,6 @@ class PriceChain(
                 }
             }
         }
-        return ChainOutcome(found, steps, usedFallback = found != null && (firstIndex > 0 || retried))
+        return ChainOutcome(null, steps, usedFallback = false)
     }
 }

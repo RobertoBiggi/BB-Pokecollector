@@ -5,20 +5,18 @@ import com.robertobiggi.cardcollection.core.model.PriceQuote
 import com.robertobiggi.cardcollection.core.model.VariantType
 import com.robertobiggi.cardcollection.core.price.CardmarketPricingDto
 import com.robertobiggi.cardcollection.core.price.PricingDto
-import com.robertobiggi.cardcollection.core.price.TcgplayerPriceDto
-import com.robertobiggi.cardcollection.core.price.TcgplayerPricingDto
 import com.robertobiggi.cardcollection.core.validation.Validators
 
 /**
- * Associates Cardmarket and TCGplayer prices with the right variant.
+ * Associates Cardmarket prices with the right variant.
  *
  * Cardmarket has a single product per card: the fields without suffix apply to the base version
- * (normal or holo rare), the "-holo" ones to the reverse holo. TCGplayer separates each variant.
+ * (normal or holo rare), the "-holo" ones to the reverse holo.
  */
 object VariantMapper {
 
     /**
-     * Computes the price of a variant from the TCGdex prices.
+     * Computes the price of a variant from the Cardmarket prices.
      * @param type VariantType - requested variant.
      * @param pricing PricingDto? - prices of the variant (or of the card, if the per-variant ones are missing).
      * @param cardHasNormalAndHolo Boolean - true if the card exists in both normal and holo: in that case
@@ -33,23 +31,14 @@ object VariantMapper {
         source: String,
     ): PriceQuote? {
         if (pricing == null) return null
-        val cm = cardmarketFor(type, pricing.cardmarket, cardHasNormalAndHolo)
-        val tp = tcgplayerFor(type, pricing.tcgplayer)
-        if (cm == null && tp == null) return null
-        val confidence = when {
-            cm != null -> cm.confidence
-            type == VariantType.W_PROMO -> Confidence.MEDIUM
-            else -> Confidence.HIGH
-        }
+        val cm = cardmarketFor(type, pricing.cardmarket, cardHasNormalAndHolo) ?: return null
         return PriceQuote(
             source = source,
-            eur = cm?.trend,
-            eurLow = cm?.low,
-            eurAvg30 = cm?.avg30,
-            usd = tp?.let { positive(it.marketPrice) ?: positive(it.midPrice) },
-            usdLow = tp?.let { positive(it.lowPrice) },
-            sourceUpdatedAt = pricing.cardmarket?.updated ?: pricing.tcgplayer?.updated,
-            confidence = confidence,
+            eur = cm.trend,
+            eurLow = cm.low,
+            eurAvg30 = cm.avg30,
+            sourceUpdatedAt = pricing.cardmarket?.updated,
+            confidence = cm.confidence,
         )
     }
 
@@ -97,27 +86,7 @@ object VariantMapper {
         }
 
     /**
-     * Picks the TCGplayer row matching the variant.
-     * @param type VariantType - requested variant.
-     * @param tp TcgplayerPricingDto? - TCGplayer prices.
-     * @return TcgplayerPriceDto? - row with at least one positive price, or null.
-     */
-    private fun tcgplayerFor(type: VariantType, tp: TcgplayerPricingDto?): TcgplayerPriceDto? {
-        if (tp == null) return null
-        if (tp.unit != null && tp.unit != "USD") return null
-        val row = when (type) {
-            VariantType.NORMAL -> tp.normal
-            VariantType.HOLO -> tp.holofoil ?: tp.unlimitedHolofoil
-            VariantType.REVERSE -> tp.reverseHolofoil
-            VariantType.FIRST_EDITION -> tp.firstEditionHolofoil ?: tp.firstEditionNormal
-            VariantType.W_PROMO -> tp.holofoil ?: tp.normal
-            VariantType.POKE_BALL, VariantType.MASTER_BALL, VariantType.ENERGY_REVERSE, VariantType.SHADOWLESS, VariantType.RED_CHEEK, VariantType.POKETOUR_99, VariantType.JUMBO, VariantType.STAMPED, VariantType.CARDMARKET_PRINT -> null
-        }
-        return row?.takeIf { positive(it.marketPrice) != null || positive(it.midPrice) != null }
-    }
-
-    /**
-     * Discards null, non-finite or non-positive values (TCGdex uses 0 for "no data").
+     * Discards null, non-finite or non-positive values (0 means "no data").
      * @param value Double? - value to check.
      * @return Double? - the value if it is a valid price, otherwise null.
      */

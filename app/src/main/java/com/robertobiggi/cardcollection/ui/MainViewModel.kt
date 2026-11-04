@@ -1,5 +1,8 @@
 package com.robertobiggi.cardcollection.ui
 
+import kotlinx.coroutines.CancellationException
+import com.robertobiggi.cardcollection.work.Notifications
+import android.content.Context
 import com.robertobiggi.cardcollection.core.price.PriceAlertRules
 import com.robertobiggi.cardcollection.data.local.PriceAlertEntity
 import android.net.Uri
@@ -523,6 +526,46 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             container.settings.setPriceAlertsEnabled(enabled)
             if (enabled) container.work.schedulePriceAlerts() else container.work.cancelPriceAlerts()
+        }
+    }
+
+    private val _alertCheckRunning = MutableStateFlow(false)
+
+    /** True while the alert check started with "Check now" is running. */
+    val alertCheckRunning: StateFlow<Boolean> = _alertCheckRunning.asStateFlow()
+
+    /**
+     * Runs the price alert check right away, as the daily one does: updates the prices of the cards with an alert, sends
+     * the notifications and says how it went (handy to try the alerts without waiting for the night).
+     * @param appContext Context - application context, to show the notifications.
+     * @return Unit
+     */
+    fun checkPriceAlertsNow(appContext: Context) {
+        if (_alertCheckRunning.value) return
+        _alertCheckRunning.value = true
+        viewModelScope.launch {
+            try {
+                val result = try {
+                    container.prices.runAlertCheck()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Price list not downloadable or invalid response.
+                    null
+                }
+                result?.notices?.forEach { Notifications.showPriceAlert(appContext, it) }
+                when {
+                    result == null -> say(R.string.msg_alert_check_failed)
+                    result.checked == 0 && result.abort == null -> say(R.string.msg_alert_check_no_alerts)
+                    result.abort == AbortReason.OFFLINE -> say(R.string.abort_offline)
+                    result.abort == AbortReason.SOURCE_PAUSED -> say(R.string.abort_source_paused)
+                    result.notices.isNotEmpty() && !Notifications.canNotify(appContext) ->
+                        say(R.string.msg_alert_check_blocked, result.checked, result.notices.size)
+                    else -> say(R.string.msg_alert_check_done, result.checked, result.notices.size)
+                }
+            } finally {
+                _alertCheckRunning.value = false
+            }
         }
     }
 

@@ -3,13 +3,12 @@ package com.robertobiggi.cardcollection.core.price
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// Prices in the format of the Cardmarket price list and of TCGplayer (fields used by VariantMapper).
+// Prices in the format of the Cardmarket price list (fields used by VariantMapper).
 
 /** Prices of a card or variant. */
 @Serializable
 data class PricingDto(
     val cardmarket: CardmarketPricingDto? = null,
-    val tcgplayer: TcgplayerPricingDto? = null,
 )
 
 /**
@@ -30,26 +29,4 @@ data class CardmarketPricingDto(
     @SerialName("low-holo") val lowHolo: Double? = null,
     @SerialName("trend-holo") val trendHolo: Double? = null,
     @SerialName("avg30-holo") val avg30Holo: Double? = null,
-)
-
-/** TCGplayer prices in dollars, separate per print variant. */
-@Serializable
-data class TcgplayerPricingDto(
-    val updated: String? = null,
-    val unit: String? = null,
-    val normal: TcgplayerPriceDto? = null,
-    val holofoil: TcgplayerPriceDto? = null,
-    @SerialName("reverse-holofoil") val reverseHolofoil: TcgplayerPriceDto? = null,
-    @SerialName("1stEditionHolofoil") val firstEditionHolofoil: TcgplayerPriceDto? = null,
-    @SerialName("1stEditionNormal") val firstEditionNormal: TcgplayerPriceDto? = null,
-    @SerialName("unlimitedHolofoil") val unlimitedHolofoil: TcgplayerPriceDto? = null,
-)
-
-/** Single row of TCGplayer prices. */
-@Serializable
-data class TcgplayerPriceDto(
-    val lowPrice: Double? = null,
-    val midPrice: Double? = null,
-    val highPrice: Double? = null,
-    val marketPrice: Double? = null,
 )

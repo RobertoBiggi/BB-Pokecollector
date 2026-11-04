@@ -50,6 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
          */
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, NAME)
+                .addMigrations(*Migrations.ALL)
                 .build()
     }
 }
