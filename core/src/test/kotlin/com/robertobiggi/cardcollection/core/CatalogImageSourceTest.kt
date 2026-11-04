@@ -24,6 +24,14 @@ class CatalogImageSourceTest {
     }
 
     @Test
+    fun `rebuilds a Pokoin address from the saved path`() {
+        assertEquals(
+            "https://cdn.pokoin.com/card-images/656670_bulbasaur_homepage.webp",
+            CatalogImageSources.POKOIN.urlOf("card-images/656670_bulbasaur_homepage"),
+        )
+    }
+
+    @Test
     fun `refuses paths that could leave the source's folder or break the address`() {
         val source = CatalogImageSources.POKELLECTOR
         for (bad in listOf("", "../x", "a/../b", "/abs", "a//b", "a b", "a?x=1", "a#f", "http://evil/x", "a\\b", "x".repeat(201))) {
@@ -49,7 +57,8 @@ class CatalogImageSourceTest {
 
     @Test
     fun `hosts of all the sources are listed for the app's network filter`() {
-        assertEquals(setOf("den-cards.pokellector.com", "bills-archive.nyc3.cdn.digitaloceanspaces.com"), CatalogImageSources.hosts)
-        assertEquals(listOf("pokellector", "billsarchive"), CatalogImageSources.ALL.map { it.id })
+        assertEquals(setOf("cdn.pokoin.com", "den-cards.pokellector.com", "bills-archive.nyc3.cdn.digitaloceanspaces.com"), CatalogImageSources.hosts)
+        assertEquals(listOf("pokoin", "pokellector", "billsarchive"), CatalogImageSources.ALL.map { it.id })
+        assertEquals(listOf("pokoin"), CatalogImageSources.BEFORE_CARDTRADER.map { it.id })
     }
 }

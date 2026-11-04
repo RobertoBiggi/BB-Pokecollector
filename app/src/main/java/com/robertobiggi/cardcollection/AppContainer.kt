@@ -66,7 +66,8 @@ class AppContainer(context: Context) {
     /** Image sources in order of preference: the first that has an image for a card, and downloads it, wins. */
     val imageDownloader = ImageDownloader(
         database, images,
-        listOf(TcgdexImageSource(images), CardTraderImageSource(http, settings, images)) + CatalogImageSources.ALL.map { CatalogColumnImageSource(it, catalogStore, images) },
+        listOf(TcgdexImageSource(images)) + CatalogImageSources.BEFORE_CARDTRADER.map { CatalogColumnImageSource(it, catalogStore, images) } +
+            CardTraderImageSource(http, settings, images) + CatalogImageSources.AFTER_CARDTRADER.map { CatalogColumnImageSource(it, catalogStore, images) },
     )
     val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
     val work = WorkScheduler(appContext)

@@ -62,8 +62,17 @@ object CatalogImageSources {
         "billsarchive", "billsarchive", "https://bills-archive.nyc3.cdn.digitaloceanspaces.com/tcgdex_cards_jp/", ".webp", "Bill's Archive",
     )
 
+    /** pokoin.com: English and Japanese sets, 480 px wide WebP (the generator saves only cards it matched with no doubt). */
+    val POKOIN = CatalogImageSource("pokoin", "pokoin", "https://cdn.pokoin.com/", ".webp", "Pokoin")
+
+    /** Sources tried right after TCGdex and before CardTrader (which needs a token and an API call per card). */
+    val BEFORE_CARDTRADER: List<CatalogImageSource> = listOf(POKOIN)
+
+    /** Sources tried after CardTrader. */
+    val AFTER_CARDTRADER: List<CatalogImageSource> = listOf(POKELLECTOR, BILLS_ARCHIVE)
+
     /** Every source, in the order they are tried (the first with an image that downloads wins). */
-    val ALL: List<CatalogImageSource> = listOf(POKELLECTOR, BILLS_ARCHIVE)
+    val ALL: List<CatalogImageSource> = BEFORE_CARDTRADER + AFTER_CARDTRADER
 
     /** Hosts the app may reach to download images from these sources. */
     val hosts: Set<String> = ALL.map { it.host }.toSet()
