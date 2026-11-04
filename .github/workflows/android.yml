@@ -50,6 +50,17 @@ jobs:
           ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
           -PversionCode="$BUILD_NUMBER" --stacktrace --console=plain
 
+      # Room rewrites app/schemas while compiling: a difference means the database schema changed without a new version,
+      # or the new version's file was not committed (see data/local/Migrations.kt).
+      - name: Schema del database committato
+        run: |
+          changes=$(git status --porcelain -- app/schemas)
+          if [ -n "$changes" ]; then
+            echo "$changes"
+            echo "::error::Lo schema del database è cambiato: aumenta version in AppDatabase, aggiungi la migrazione in Migrations.kt e committa il file in app/schemas."
+            exit 1
+          fi
+
       - name: Verifica firma e pacchetto dell'APK debug
         run: |
           set -euo pipefail

@@ -105,11 +105,11 @@ object Notifications {
     }
 
     /**
-     * Formats the price of an alert in its currency.
+     * Formats the price of an alert (always in euros: Cardmarket or CardTrader).
      * @param point PricePoint - price.
      * @return String - formatted amount.
      */
-    private fun money(point: PricePoint): String = if (point.currency == PricePoint.USD) Format.usd(point.value) else Format.eur(point.value)
+    private fun money(point: PricePoint): String = Format.eur(point.value)
 
     /**
      * Builds the notification of a running job, with indeterminate progress.

@@ -143,7 +143,10 @@ data class CollectionEntryEntity(
     val notes: String? = null,
 )
 
-/** Price saved for a variant (shared among collections); the last 10 are kept. */
+/**
+ * Price saved for a variant (shared among collections); the last 10 are kept.
+ * [usd] and [usdLow] (old TCGplayer prices) are no longer written or shown: they stay for old data and backups.
+ */
 @Entity(tableName = "price_snapshot", indices = [Index(value = ["variantId", "fetchedAt"])])
 data class PriceSnapshotEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
