@@ -2,6 +2,7 @@
 
 package com.robertobiggi.cardcollection.ui.collection
 
+import androidx.compose.ui.res.pluralStringResource
 import com.robertobiggi.cardcollection.ui.common.shortLabel
 import com.robertobiggi.cardcollection.R
 import androidx.compose.ui.res.stringResource
@@ -128,7 +129,7 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
     if (confirmRemove) {
         AlertDialog(
             onDismissRequest = { confirmRemove = false },
-            title = { Text(stringResource(R.string.remove_selected_title, selected.size)) },
+            title = { Text(pluralStringResource(R.plurals.remove_selected_title, selected.size, selected.size)) },
             text = { Text(stringResource(R.string.remove_selected_text)) },
             confirmButton = {
                 TextButton(onClick = {
@@ -145,7 +146,7 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
         TopAppBar(
             title = {
                 if (selecting) {
-                    Text(stringResource(R.string.selected_count, selected.size))
+                    Text(pluralStringResource(R.plurals.selected_count, selected.size, selected.size))
                 } else Column {
                     Text(name ?: stringResource(R.string.collection_default_title), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(lastUpdateText(runs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -318,7 +319,7 @@ private fun Filters(filter: CollectionFilter, count: Int, languages: List<Langua
             }
         }
         Text(
-            stringResource(R.string.cards_count_hint, count),
+            pluralStringResource(R.plurals.cards_count_hint, count, count),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

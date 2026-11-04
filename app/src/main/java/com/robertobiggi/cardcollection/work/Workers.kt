@@ -2,6 +2,8 @@ package com.robertobiggi.cardcollection.work
 
 import android.app.NotificationManager
 import android.content.Context
+import android.app.Notification
+import android.os.Build
 import android.content.pm.ServiceInfo
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -103,11 +105,8 @@ class CatalogSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
      * Notification shown when the job runs as a foreground service (Android 11 and earlier).
      * @return ForegroundInfo - progress notification.
      */
-    override suspend fun getForegroundInfo(): ForegroundInfo = ForegroundInfo(
-        NOTIFICATION_ID,
-        Notifications.progress(applicationContext, applicationContext.getString(R.string.notification_catalog_title)),
-        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-    )
+    override suspend fun getForegroundInfo(): ForegroundInfo =
+        foregroundInfo(NOTIFICATION_ID, Notifications.progress(applicationContext, applicationContext.getString(R.string.notification_catalog_title)))
 
     private var lastNotified = 0L
 
@@ -142,11 +141,8 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
      * Notification shown when the job runs as a foreground service (Android 11 and earlier).
      * @return ForegroundInfo - progress notification.
      */
-    override suspend fun getForegroundInfo(): ForegroundInfo = ForegroundInfo(
-        NOTIFICATION_ID,
-        Notifications.progress(applicationContext, applicationContext.getString(R.string.notification_prices_title)),
-        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-    )
+    override suspend fun getForegroundInfo(): ForegroundInfo =
+        foregroundInfo(NOTIFICATION_ID, Notifications.progress(applicationContext, applicationContext.getString(R.string.notification_prices_title)))
 
     private companion object {
         const val NOTIFICATION_ID = 1002
@@ -198,3 +194,15 @@ class PriceAlertWorker(context: Context, params: WorkerParameters) : CoroutineWo
     }
 }
 
+/**
+ * Foreground service information for a long job: from Android 10 it declares the "data sync" type, which earlier versions do not know.
+ * @param id Int - id of the progress notification.
+ * @param notification Notification - progress notification.
+ * @return ForegroundInfo - information for WorkManager.
+ */
+private fun foregroundInfo(id: Int, notification: Notification): ForegroundInfo =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        ForegroundInfo(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+    } else {
+        ForegroundInfo(id, notification)
+    }
