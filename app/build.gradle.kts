@@ -71,9 +71,8 @@ android {
         checkReleaseBuilds = false
         // Dependency versions are pinned on purpose (see gradle/libs.versions.toml).
         disable += setOf("GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable", "OldTargetApi")
-        // Prints every issue (warnings included) in the build output, so CI logs show them.
+        // Text report with every issue, warnings included (build/reports/lint-results-debug.txt): CI prints it in the log.
         textReport = true
-        textOutput = file("stdout")
     }
 
     packaging {
