@@ -303,6 +303,12 @@
     <string name="alert_disabled_hint">Gli avvisi sono spenti: attivali in Impostazioni → Avvisi di prezzo.</string>
     <string name="alert_delete">Togli avviso</string>
     <string name="msg_alert_saved">Avviso di prezzo salvato.</string>
+    <string name="settings_alerts_check_now">Controlla ora</string>
+    <string name="settings_alerts_check_now_hint">Aggiorna subito i prezzi delle carte con un avviso e manda le notifiche, come il controllo della mattina.</string>
+    <string name="msg_alert_check_done">Controllo fatto: carte controllate %1$d, avvisi inviati %2$d.</string>
+    <string name="msg_alert_check_blocked">Controllo fatto: carte controllate %1$d, avvisi %2$d, ma le notifiche dell\'app sono bloccate nelle impostazioni di Android.</string>
+    <string name="msg_alert_check_no_alerts">Nessuna carta ha un avviso: impostalo dal dettaglio di una carta.</string>
+    <string name="msg_alert_check_failed">Controllo non riuscito: il listino prezzi non si scarica. Riprova più tardi.</string>
     <string name="msg_alert_removed">Avviso di prezzo tolto.</string>
     <string name="alert_changes_switch">Avvisami se sale o scende</string>
     <string name="alert_percent_label">Di almeno</string>

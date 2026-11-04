@@ -186,12 +186,10 @@ data class CatalogCard(
 /**
  * Price found for a variant.
  *
- * @property source name of the source (e.g. "TCGdex").
- * @property eur Cardmarket reference price in euros (trend), null if absent.
- * @property eurLow Cardmarket lowest price in euros, null if absent.
- * @property eurAvg30 Cardmarket 30-day average, null if absent.
- * @property usd TCGplayer reference price in dollars (market), null if absent.
- * @property usdLow TCGplayer lowest price in dollars, null if absent.
+ * @property source name of the source (e.g. "Cardmarket").
+ * @property eur reference price in euros (Cardmarket trend, lowest CardTrader listing), null if absent.
+ * @property eurLow lowest price in euros, null if absent.
+ * @property eurAvg30 30-day average in euros, null if absent.
  * @property sourceUpdatedAt update date declared by the source (ISO-8601), if present.
  */
 data class PriceQuote(
@@ -199,42 +197,14 @@ data class PriceQuote(
     val eur: Double?,
     val eurLow: Double?,
     val eurAvg30: Double?,
-    val usd: Double?,
-    val usdLow: Double?,
     val sourceUpdatedAt: String?,
     val confidence: Confidence,
 ) {
     /**
-     * Tells whether the price contains at least one usable value.
-     * @return Boolean - true if a euro or dollar price is present.
+     * Tells whether the price contains a usable value.
+     * @return Boolean - true if the euro price is present.
      */
-    fun hasAnyPrice(): Boolean = eur != null || usd != null
-
-    /**
-     * Tells whether the price has both the euro and the dollar value.
-     * @return Boolean - true if there is no need to look for more on other sources.
-     */
-    fun isComplete(): Boolean = eur != null && usd != null
-
-    /**
-     * Fills in missing values with those of another source, without touching those already present.
-     * @param other PriceQuote - price from a later source.
-     * @return PriceQuote - combined price; the source becomes "first + second" if the other added something.
-     */
-    fun complementedBy(other: PriceQuote): PriceQuote {
-        val addEur = eur == null && other.eur != null
-        val addUsd = usd == null && other.usd != null
-        if (!addEur && !addUsd) return this
-        return copy(
-            source = "$source + ${other.source}",
-            eur = if (addEur) other.eur else eur,
-            eurLow = if (addEur) other.eurLow else eurLow,
-            eurAvg30 = if (addEur) other.eurAvg30 else eurAvg30,
-            usd = if (addUsd) other.usd else usd,
-            usdLow = if (addUsd) other.usdLow else usdLow,
-            sourceUpdatedAt = sourceUpdatedAt ?: other.sourceUpdatedAt,
-        )
-    }
+    fun hasAnyPrice(): Boolean = eur != null
 }
 
 /** Local identifiers of cards and variants. */

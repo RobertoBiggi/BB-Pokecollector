@@ -262,8 +262,9 @@ class PriceRepository(
                 eur = quote.eur,
                 eurLow = quote.eurLow,
                 eurAvg30 = quote.eurAvg30,
-                usd = quote.usd,
-                usdLow = quote.usdLow,
+                // Dollar prices (TCGplayer) no longer have a source: the columns stay only for old data and backups.
+                usd = null,
+                usdLow = null,
                 sourceUpdatedAt = quote.sourceUpdatedAt,
                 fetchedAt = System.currentTimeMillis(),
                 confidence = quote.confidence.name,

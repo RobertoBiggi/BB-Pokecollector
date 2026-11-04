@@ -21,7 +21,7 @@ object Validators {
     /** Maximum number of copies per variant. */
     const val MAX_QUANTITY = 999
 
-    /** Maximum accepted price (EUR or USD): above it the value is certainly wrong. */
+    /** Maximum accepted price: above it the value is certainly wrong. */
     const val MAX_PRICE = 1_000_000.0
 
     /**

@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -71,6 +74,7 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val catalogInfo by vm.catalogInfo.collectAsStateWithLifecycle()
     val savedUrl by vm.catalogUrl.collectAsStateWithLifecycle()
     val download by vm.catalogDownload.collectAsStateWithLifecycle()
+    val alertCheckRunning by vm.alertCheckRunning.collectAsStateWithLifecycle()
     var urlInput by remember(savedUrl) { mutableStateOf(savedUrl) }
     val lastSync by vm.lastCatalogSync.collectAsStateWithLifecycle()
     val savedToken by vm.cardTraderToken.collectAsStateWithLifecycle()
@@ -167,6 +171,14 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                             Text(stringResource(R.string.settings_alerts_no_permission), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                         }
                     }
+                    // Runs the check right away, without waiting for the night: also useful to try the notifications.
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(onClick = { vm.checkPriceAlertsNow(context.applicationContext) }, enabled = !alertCheckRunning) {
+                            Text(stringResource(R.string.settings_alerts_check_now))
+                        }
+                        if (alertCheckRunning) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
+                    }
+                    Text(stringResource(R.string.settings_alerts_check_now_hint), style = MaterialTheme.typography.bodySmall)
                 }
             }
             item {

@@ -56,7 +56,7 @@ class CardTraderPriceProvider(
         ) ?: return null
         if (pick.currency != "EUR") return null
         val eur = pick.cents / 100.0
-        PriceQuote(DISPLAY_NAME, eur, eur, null, null, null, null, Confidence.HIGH)
+        PriceQuote(DISPLAY_NAME, eur, eur, null, null, Confidence.HIGH)
     }
 
     /**
