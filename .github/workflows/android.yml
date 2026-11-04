@@ -50,6 +50,11 @@ jobs:
           ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
           -PversionCode="$BUILD_NUMBER" --stacktrace --console=plain
 
+      # Lint warnings do not stop the build on their own: printing the report keeps them visible in the log.
+      - name: Report del lint
+        if: ${{ !cancelled() }}
+        run: cat app/build/reports/lint-results-debug.txt || echo "Report del lint assente"
+
       # Room rewrites app/schemas while compiling: a difference means the database schema changed without a new version,
       # or the new version's file was not committed (see data/local/Migrations.kt).
       - name: Schema del database committato
