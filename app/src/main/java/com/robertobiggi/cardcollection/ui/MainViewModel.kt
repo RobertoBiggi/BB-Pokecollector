@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.ui
 
+import androidx.annotation.PluralsRes
 import kotlinx.coroutines.CancellationException
 import com.robertobiggi.cardcollection.work.Notifications
 import android.content.Context
@@ -197,6 +198,17 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         _cardReport.value = _cardReport.value?.copy(message = UiText(id, *args))
     }
 
+    /**
+     * Like [report], with a plural text.
+     * @param id Int - plural resource.
+     * @param quantity Int - number that decides the form.
+     * @param args Any - format arguments.
+     * @return Unit
+     */
+    private fun reportPlural(@PluralsRes id: Int, quantity: Int, vararg args: Any) {
+        _cardReport.value = _cardReport.value?.copy(message = UiText.plural(id, quantity, *args))
+    }
+
     private val _messages = MutableSharedFlow<UiText>(extraBufferCapacity = 4)
 
     /** Short messages to show in a snackbar, translated at display time. */
@@ -210,6 +222,17 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      */
     private fun say(@StringRes id: Int, vararg args: Any) {
         _messages.tryEmit(UiText(id, *args))
+    }
+
+    /**
+     * Queues a plural message for the snackbar ("1 card", "2 cards").
+     * @param id Int - plural resource.
+     * @param quantity Int - number that decides the form.
+     * @param args Any - format arguments.
+     * @return Unit
+     */
+    private fun sayPlural(@PluralsRes id: Int, quantity: Int, vararg args: Any) {
+        _messages.tryEmit(UiText.plural(id, quantity, *args))
     }
 
     /**
@@ -458,7 +481,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             say(R.string.msg_exporting)
             when (val result = container.transfer.export(collectionId, uri, images)) {
                 is ExportResult.Done ->
-                    if (images == ImageExport.NONE) say(R.string.msg_exported, result.cards) else say(R.string.msg_exported_images, result.cards, result.withImages)
+                    if (images == ImageExport.NONE) {
+                        sayPlural(R.plurals.msg_exported, result.cards, result.cards)
+                    } else {
+                        sayPlural(R.plurals.msg_exported_images, result.cards, result.cards, result.withImages)
+                    }
                 is ExportResult.Failed -> say(result.error.messageRes())
             }
         }
@@ -476,7 +503,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             when (val result = container.transfer.import(uri, defaultName)) {
                 is ImportOutcome.Done -> {
                     if (result.cards == 0) say(R.string.msg_imported_no_cards, result.name) else say(R.string.msg_imported, result.name, result.cards, result.images)
-                    if (result.skipped > 0) say(R.string.msg_import_skipped, result.skipped)
+                    if (result.skipped > 0) sayPlural(R.plurals.msg_import_skipped, result.skipped, result.skipped)
                 }
                 is ImportOutcome.Invalid -> say(result.error.messageRes())
                 is ImportOutcome.Failed -> say(result.error.messageRes())
@@ -653,7 +680,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         val found = result.ok + result.fallback
         when {
             result.abort == AbortReason.SOURCE_PAUSED -> report(R.string.abort_source_paused)
-            found > 0 -> report(R.string.msg_card_price_updated, found)
+            found > 0 -> reportPlural(R.plurals.msg_card_price_updated, found, found)
             result.abort == AbortReason.OFFLINE -> report(R.string.msg_network_error)
             else -> report(R.string.msg_card_price_none)
         }
@@ -787,7 +814,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      */
     fun hideCards(cardIds: Set<String>) = withSelected { id ->
         cardIds.forEach { container.collection.hideCard(id, it) }
-        say(R.string.msg_cards_removed, cardIds.size)
+        sayPlural(R.plurals.msg_cards_removed, cardIds.size, cardIds.size)
     }
 
     /**

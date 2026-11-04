@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Testi in inglese (lingua di base). Ogni chiave traducibile va aggiunta anche in values-it/strings.xml. -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">Card Collection</string>
     <string name="notification_channel_name">Updates</string>
     <string name="notification_channel_description">Catalog and price progress</string>
@@ -53,7 +53,10 @@
     <string name="home_settings">Settings</string>
     <string name="home_new">New collection</string>
     <string name="home_empty">No collections yet. Create one with \"New collection\" or import a JSON file from the icon at the top.</string>
-    <string name="home_cards_variants">%1$d cards · %2$d/%3$d variants</string>
+    <plurals name="home_cards_variants">
+        <item quantity="one">%1$d card · %2$d/%3$d variants</item>
+        <item quantity="other">%1$d cards · %2$d/%3$d variants</item>
+    </plurals>
     <string name="home_complete">%1$d%% complete</string>
     <string name="home_export_json">Export JSON</string>
     <string name="rename_title">Rename collection</string>
@@ -87,7 +90,10 @@
     <string name="sort_price">Price</string>
     <string name="sort_code">Code</string>
     <string name="sort_name">Name</string>
-    <string name="cards_count_hint">%1$d cards · the badge shows the variants you own out of the ones you want or own, ×N the copies</string>
+    <plurals name="cards_count_hint">
+        <item quantity="one">%1$d card · the badge shows the variants you own out of the ones you want or own, ×N the copies</item>
+        <item quantity="other">%1$d cards · the badge shows the variants you own out of the ones you want or own, ×N the copies</item>
+    </plurals>
     <string name="price_from">from %1$s</string>
     <string name="job_catalog">Catalog</string>
     <string name="job_prices">Prices</string>
@@ -105,9 +111,9 @@
     <string name="job_download_guide">downloading Cardmarket price list…</string>
     <string name="job_read_guide">reading Cardmarket price list…</string>
     <string name="job_price_item" translatable="false">%1$s · %2$s</string>
-    <string name="catalog_done">%1$d cards updated, %2$d images downloaded</string>
-    <string name="catalog_done_errors">%1$d cards updated, %2$d images downloaded · %3$d problems</string>
-    <string name="prices_done">%1$d prices fetched, %2$d after a retry, %3$d not found</string>
+    <string name="catalog_done">Cards updated: %1$d · images downloaded: %2$d</string>
+    <string name="catalog_done_errors">Cards updated: %1$d · images downloaded: %2$d · problems: %3$d</string>
+    <string name="prices_done">Prices fetched: %1$d · after a retry: %2$d · not found: %3$d</string>
     <string name="abort_source_paused">Cardmarket blocked too many requests: try again later.</string>
     <string name="abort_offline">No connection: the prices already saved are still valid.</string>
     <string name="run_in_progress">In progress…</string>
@@ -132,7 +138,10 @@
     <string name="state_missing">Missing</string>
     <string name="state_not_wanted">Not wanted</string>
     <string name="state_owned">Owned</string>
-    <string name="state_duplicates">%1$d duplicates</string>
+    <plurals name="state_duplicates">
+        <item quantity="one">%1$d duplicate</item>
+        <item quantity="other">%1$d duplicates</item>
+    </plurals>
     <string name="price_cardmarket" translatable="false">Cardmarket · trend</string>
     <string name="price_cardtrader" translatable="false">CardTrader · lowest</string>
     <string name="no_price">no price</string>
@@ -151,9 +160,15 @@
     <string name="image_unavailable">Image not available</string>
     <string name="missing_title">Missing · %1$s</string>
     <string name="missing_label">You are missing</string>
-    <string name="missing_count">%1$d variants</string>
+    <plurals name="missing_count">
+        <item quantity="one">%1$d variant</item>
+        <item quantity="other">%1$d variants</item>
+    </plurals>
     <string name="missing_cost">Estimated cost %1$s (Cardmarket trend)</string>
-    <string name="missing_without_price">%1$d without a price</string>
+    <plurals name="missing_without_price">
+        <item quantity="one">%1$d without a price</item>
+        <item quantity="other">%1$d without a price</item>
+    </plurals>
     <string name="missing_download_first">Download the catalog first from the Cards tab.</string>
     <string name="missing_complete">Collection complete!</string>
     <string name="missing_hint">Variants marked as \"not wanted\" are not listed here and don\'t count towards completion.</string>
@@ -180,7 +195,7 @@
     <string name="search_tcgdex">Name or code, e.g. M3 117/080 or DX 107</string>
     <string name="add_card_cd">Add %1$s</string>
     <string name="card_added_cd">Added: %1$s</string>
-    <string name="add_single_hint">Useful for cards that no search finds (e.g. promos or cards with a different name). You can type the code printed at the bottom left: set and number (M3 117/080), just the number (117/080) or the card id (M3-117). Extra words such as the rarity are ignored.</string>
+    <string name="add_single_hint" tools:ignore="TypographyDashes">Useful for cards that no search finds (e.g. promos or cards with a different name). You can type the code printed at the bottom left: set and number (M3 117/080), just the number (117/080) or the card id (M3-117). Extra words such as the rarity are ignored.</string>
     <string name="removed_cards">Removed cards (%1$d)</string>
     <string name="export_section">Export</string>
     <string name="export_section_text">Save this collection to a JSON file with cards, quantities and prices, with or without images. Import it from the collections list, even on another phone and offline.</string>
@@ -206,12 +221,21 @@
     <string name="msg_manual_price_saved">Manual price saved.</string>
     <string name="msg_collection_deleted">Collection deleted.</string>
     <string name="msg_exporting">Exporting…</string>
-    <string name="msg_exported">Collection exported: %1$d cards.</string>
-    <string name="msg_exported_images">Collection exported: %1$d cards, %2$d with an image.</string>
+    <plurals name="msg_exported">
+        <item quantity="one">Collection exported: %1$d card.</item>
+        <item quantity="other">Collection exported: %1$d cards.</item>
+    </plurals>
+    <plurals name="msg_exported_images">
+        <item quantity="one">Collection exported: %1$d card, %2$d with an image.</item>
+        <item quantity="other">Collection exported: %1$d cards, %2$d with an image.</item>
+    </plurals>
     <string name="msg_importing">Importing…</string>
-    <string name="msg_imported">Collection \"%1$s\" imported: %2$d cards, %3$d images.</string>
+    <string name="msg_imported">Collection \"%1$s\" imported. Cards: %2$d · images: %3$d.</string>
     <string name="msg_imported_no_cards">Collection \"%1$s\" imported. Tap \"Update catalog\" to download the cards.</string>
-    <string name="msg_import_skipped">%1$d invalid entries ignored.</string>
+    <plurals name="msg_import_skipped">
+        <item quantity="one">%1$d invalid entry ignored.</item>
+        <item quantity="other">%1$d invalid entries ignored.</item>
+    </plurals>
     <string name="msg_search_added">Search added: tap \"Update catalog\" to download the cards.</string>
     <string name="msg_adding_card">Adding %1$s…</string>
     <string name="msg_card_added">%1$s added to the collection.</string>
@@ -241,7 +265,10 @@
     <string name="action_ok">OK</string>
     <string name="action_pick_image">Choose image</string>
     <string name="card_actions_hint">The price is updated for this card only. If the card has no official image (common for Japanese cards) the app looks for it on CardTrader; otherwise you can pick one from your gallery, which stays until you download the official one.</string>
-    <string name="msg_card_price_updated">Prices fetched (%1$d variants).</string>
+    <plurals name="msg_card_price_updated">
+        <item quantity="one">Prices fetched (%1$d variant).</item>
+        <item quantity="other">Prices fetched (%1$d variants).</item>
+    </plurals>
     <string name="msg_card_price_none">No price found for this card.</string>
     <string name="msg_image_downloaded">Image downloaded.</string>
     <string name="msg_image_saved">Image saved.</string>
@@ -252,11 +279,14 @@
     <string name="source_cardmarket_text">EUR prices (including ones you enter by hand).</string>
     <string name="source_cardtrader_text">Lowest EUR listing per variant; needs the API token below.</string>
     <string name="stats_value">Collection value</string>
-    <string name="stats_priced">%1$d / %2$d owned variants with a price</string>
+    <string name="stats_priced">Owned variants with a price: %1$d / %2$d</string>
     <string name="stats_missing_hint">variants you want but don\'t own</string>
     <string name="set_pick_title">Choose a set</string>
     <string name="set_pick_search">Set name or code (e.g. ex8 or DX)</string>
-    <string name="set_pick_cards">%1$d cards</string>
+    <plurals name="set_pick_cards">
+        <item quantity="one">%1$d card</item>
+        <item quantity="other">%1$d cards</item>
+    </plurals>
     <string name="set_pick_none">No sets found.</string>
     <string name="collection_settings_title">Collection settings</string>
     <string name="collection_settings_languages">Languages</string>
@@ -282,13 +312,25 @@
     <string name="add_set_title">Add a whole set</string>
     <string name="add_set">Add set</string>
     <string name="msg_set_added">Set %1$s added: downloading its cards.</string>
-    <string name="catalog_empty_sets">%1$d sets have no cards in the card database.</string>
-    <string name="selected_count">%1$d selected</string>
+    <plurals name="catalog_empty_sets">
+        <item quantity="one">%1$d set has no cards in the card database.</item>
+        <item quantity="other">%1$d sets have no cards in the card database.</item>
+    </plurals>
+    <plurals name="selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
     <string name="select_all">Select all</string>
-    <string name="remove_selected_title">Remove %1$d cards?</string>
+    <plurals name="remove_selected_title">
+        <item quantity="one">Remove %1$d card?</item>
+        <item quantity="other">Remove %1$d cards?</item>
+    </plurals>
     <string name="remove_selected_text">They leave the collection, and the sync will not add them back. You can restore them from Manage.</string>
     <string name="remove_selected_confirm">Remove</string>
-    <string name="msg_cards_removed">%1$d cards removed from the collection. You can restore them from Manage.</string>
+    <plurals name="msg_cards_removed">
+        <item quantity="one">%1$d card removed from the collection. You can restore it from Manage.</item>
+        <item quantity="other">%1$d cards removed from the collection. You can restore them from Manage.</item>
+    </plurals>
     <string name="settings_catalog">Card database</string>
     <string name="settings_catalog_text">All cards come from a database file (SQLite) downloaded once and kept on this phone: searches and collections work offline. Prices and images are still downloaded when you ask.</string>
     <string name="settings_catalog_installed">Installed: generated on %1$s · languages: %2$s</string>

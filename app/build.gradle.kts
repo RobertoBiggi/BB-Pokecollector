@@ -68,9 +68,13 @@ android {
 
     lint {
         abortOnError = true
+        // Warnings stop the build too: fix them, or silence one case with tools:ignore / @Suppress and a reason.
+        warningsAsErrors = true
         checkReleaseBuilds = false
         // Dependency versions are pinned on purpose (see gradle/libs.versions.toml).
         disable += setOf("GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable", "OldTargetApi")
+        // Text report with every issue, printed in the build output (so the CI log shows them).
+        textReport = true
     }
 
     packaging {

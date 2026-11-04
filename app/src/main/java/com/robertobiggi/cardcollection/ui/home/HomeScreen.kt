@@ -2,6 +2,7 @@
 
 package com.robertobiggi.cardcollection.ui.home
 
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.FilterChip
 import com.robertobiggi.cardcollection.ui.common.SetPickerDialog
@@ -278,7 +279,7 @@ private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick:
                     )
                 }
                 Text(
-                    stringResource(R.string.home_cards_variants, summary.cardCount, s.owned, s.slots),
+                    pluralStringResource(R.plurals.home_cards_variants, summary.cardCount, summary.cardCount, s.owned, s.slots),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

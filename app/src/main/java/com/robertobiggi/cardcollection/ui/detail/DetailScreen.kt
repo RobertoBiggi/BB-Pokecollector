@@ -2,6 +2,7 @@
 
 package com.robertobiggi.cardcollection.ui.detail
 
+import androidx.compose.ui.res.pluralStringResource
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.ui.common.imageSourceLabel
 import com.robertobiggi.cardcollection.ui.common.labelRes
@@ -417,7 +418,7 @@ private fun VariantCard(
                         variant.quantity == 0 && variant.wanted -> stringResource(R.string.state_missing)
                         variant.quantity == 0 -> stringResource(R.string.state_not_wanted)
                         variant.quantity == 1 -> stringResource(R.string.state_owned)
-                        else -> stringResource(R.string.state_duplicates, variant.quantity - 1)
+                        else -> pluralStringResource(R.plurals.state_duplicates, variant.quantity - 1, variant.quantity - 1)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
