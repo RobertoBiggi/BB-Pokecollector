@@ -146,17 +146,15 @@ class CatalogRepository(
                 saved++
             }
         }
-        // Cards found by an active search and no longer in the database (removed sets, corrections) leave the collection if the user has
-        // nothing on them; the others stay, marked as removed by the update (the screen lists them at the end). The hidden ones, those added
-        // by hand or from disabled searches stay.
+        // Cards found by an active search and no longer in the database (removed sets, corrections, changed ids) stay in the collection, marked as
+        // removed by the update: the screen lists them in a section at the end, with or without user data, so nothing disappears unnoticed. The
+        // hidden ones and those from disabled searches stay as they are.
         val active = queries.map { it.id }.toSet()
         val stale = dao.membershipsOf(collectionId).filter { it.queryId in active && !it.hidden && it.cardId !in refreshed }.map { it.cardId }
-        if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
-        val keptStale = if (stale.isEmpty()) emptyList() else dao.membershipsOf(collectionId).map { it.cardId }.filter { it in stale.toSet() }
         val missingOthers = refreshOtherCards(collectionId, refreshed)
         db.withTransaction {
             dao.clearRemoved(collectionId)
-            (keptStale + missingOthers).distinct().chunked(MARK_CHUNK).forEach { dao.markRemoved(collectionId, it) }
+            (stale + missingOthers).distinct().chunked(MARK_CHUNK).forEach { dao.markRemoved(collectionId, it) }
         }
         // Images only for this collection's cards: updating one collection must not download (or touch) those of the others.
         forgetMissingImageFiles(dao.visibleCardsOf(collectionId))

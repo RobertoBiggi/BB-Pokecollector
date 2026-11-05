@@ -364,19 +364,6 @@ interface CatalogDao {
     suspend fun setHidden(collectionId: Long, cardId: String, hidden: Boolean)
 
     /**
-     * Removes from a collection the cards found by a search that the catalog no longer lists, if they have no copies, notes and are not wanted.
-     * @param collectionId Long - collection.
-     * @param cardIds List<String> - cards to remove.
-     * @return Unit
-     */
-    @Query(
-        "DELETE FROM collection_card WHERE collectionId = :collectionId AND queryId IS NOT NULL AND cardId IN (:cardIds) AND cardId NOT IN " +
-            "(SELECT v.cardId FROM card_variant v JOIN collection_entry e ON e.variantId = v.id " +
-            "WHERE e.collectionId = :collectionId AND (e.quantity > 0 OR e.notes IS NOT NULL OR e.wanted = 1))",
-    )
-    suspend fun dropStaleMemberships(collectionId: Long, cardIds: List<String>)
-
-    /**
      * Clears the "no longer in the card database" mark of all the memberships of a collection.
      * @param collectionId Long - collection.
      * @return Unit

@@ -117,8 +117,8 @@ data class CardVariantEntity(
  * [queryId] is the search that added it (null if added by hand or imported): if the search is
  * disabled the card is hidden, if it is deleted the link disappears.
  * [hidden] is true if the user removed it: the sync does not add it back.
- * [removed] is true if a card database update no longer lists the card but the collection keeps it because it has user data (copies, notes,
- * wanted slots): the screen shows these cards in a separate section at the end.
+ * [removed] is true if a card database update no longer lists the card (removed, replaced, id changed): the collection keeps it, with whatever data
+ * the user had on it, and the screen shows these cards in a separate section at the end.
  */
 @Entity(
     tableName = "collection_card",

@@ -75,7 +75,7 @@
     <string name="all_collections">Tutte le collezioni</string>
     <string name="home_needs_update">Da aggiornare</string>
     <string name="removed_by_update_title">Non più nel database delle carte</string>
-    <string name="removed_by_update_text">Il database delle carte è stato aggiornato e non elenca più queste carte. Hai ancora copie, note o carte da avere, quindi restano qui. Puoi toglierle dalla collezione, oppure lasciarle finché la carta non torna.</string>
+    <string name="removed_by_update_text">Il database delle carte è stato aggiornato e non elenca più queste carte: sono state tolte, sostituite o hanno cambiato id. Restano qui perché non sparisca nulla senza che te ne accorga, con le copie e le note che avevi, e non contano tra quelle che mancano. Togli quelle che non ti servono (tocco lungo), oppure lasciale.</string>
     <string name="update_catalog">Aggiorna catalogo</string>
     <string name="prices_button">Prezzi</string>
     <string name="prices_never">Prezzi mai aggiornati</string>

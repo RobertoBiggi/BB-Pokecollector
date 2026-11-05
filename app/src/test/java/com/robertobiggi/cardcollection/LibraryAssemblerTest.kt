@@ -138,10 +138,13 @@ class LibraryAssemblerTest {
             ),
             queries = queries,
             cards = listOf(card("en:me03-032", "Mawile", "POR"), card("en:ex2-9", "Mawile", null, "ex2", "Sandstorm", "9", "9/100")),
-            variants = emptyList(), entries = emptyList(), snapshots = emptyList(), runs = emptyList(),
+            variants = listOf(CardVariantEntity("en:me03-032|NORMAL", "en:me03-032", "NORMAL"), CardVariantEntity("en:ex2-9|HOLO", "en:ex2-9", "HOLO")),
+            entries = emptyList(), snapshots = emptyList(), runs = emptyList(),
         )
         val library = LibraryAssembler.libraryOf(state, 1)
         assertEquals(mapOf("en:me03-032" to false, "en:ex2-9" to true), library.associate { it.card.id to it.removedByUpdate })
+        // Una carta tolta dal database senza copie non conta tra quelle che mancano; quella normale si.
+        assertEquals(mapOf("en:me03-032" to 1, "en:ex2-9" to 0), library.associate { it.card.id to it.slots })
     }
 
     @Test

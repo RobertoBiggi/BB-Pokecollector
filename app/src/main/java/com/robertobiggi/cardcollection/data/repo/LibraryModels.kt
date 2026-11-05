@@ -249,7 +249,8 @@ object LibraryAssembler {
                     id = v.id,
                     type = type,
                     print = v.print,
-                    wanted = entry?.wanted ?: when (type) {
+                    // A card the database no longer lists is not missing: only its copies count.
+                    wanted = if (card.id in removedIds) false else entry?.wanted ?: when (type) {
                         VariantType.FIRST_EDITION -> countFirstEdition
                         // Stamps (tournaments, prereleases…) are many: they only count if the user marks them as wanted.
                         VariantType.STAMPED -> false
