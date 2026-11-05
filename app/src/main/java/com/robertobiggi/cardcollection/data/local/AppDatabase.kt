@@ -18,7 +18,7 @@ import androidx.room.RoomDatabase
         PriceRunEntity::class,
         PriceAlertEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -136,6 +136,11 @@ data class CollectionCardEntity(
     val queryId: Long?,
     val hidden: Boolean = false,
     @ColumnInfo(defaultValue = "0") val removed: Boolean = false,
+    /**
+     * Why a [removed] card is no longer in the database: `replaced:<id>` if another card with the same name and number replaces it (its id changed),
+     * null if it is simply not there any more.
+     */
+    val removedNote: String? = null,
 )
 
 /**

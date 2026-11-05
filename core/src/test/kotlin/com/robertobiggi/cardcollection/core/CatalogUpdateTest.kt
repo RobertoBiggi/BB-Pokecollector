@@ -42,4 +42,26 @@ class CatalogUpdateTest {
         assertEquals("https://t/x|card-images/1_a||", CatalogUpdate.imageKey("https://t/x", listOf("card-images/1_a", null, null)))
         assertEquals("||p", CatalogUpdate.imageKey(null, listOf(null, "p")))
     }
+
+    @Test
+    fun `due carte con id diverso per la maiuscola sono la stessa carta`() {
+        assertEquals(CatalogUpdate.replacementKey("ja", "Gible", "078"), CatalogUpdate.replacementKey("ja", "gible", "078"))
+        assertEquals(CatalogUpdate.replacementKey("ja", "Mew ex", "007"), CatalogUpdate.replacementKey("ja", "Mew-ex", "007"))
+        assertFalse(CatalogUpdate.replacementKey("ja", "Gible", "078") == CatalogUpdate.replacementKey("en", "Gible", "078"))
+    }
+
+    @Test
+    fun `la carta che sostituisce e l'unica con lo stesso nome e numero e un id diverso`() {
+        assertEquals("ja:EBB-078", CatalogUpdate.replacementOf("ja:ebb-078", listOf("ja:EBB-078")))
+        assertEquals(null, CatalogUpdate.replacementOf("ja:ebb-078", emptyList()))
+        assertEquals(null, CatalogUpdate.replacementOf("ja:ebb-078", listOf("ja:EBB-078", "ja:xx-078")))
+        assertEquals(null, CatalogUpdate.replacementOf("ja:ebb-078", listOf("ja:ebb-078")))
+    }
+
+    @Test
+    fun `la nota di una carta tolta dice da chi e sostituita`() {
+        assertEquals("ja:EBB-078", CatalogUpdate.replacedId(CatalogUpdate.REPLACED_PREFIX + "ja:EBB-078"))
+        assertEquals(null, CatalogUpdate.replacedId(null))
+        assertEquals(null, CatalogUpdate.replacedId(CatalogUpdate.REPLACED_PREFIX))
+    }
 }

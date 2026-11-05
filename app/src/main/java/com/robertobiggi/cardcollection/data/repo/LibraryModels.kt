@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.data.repo
 
+import com.robertobiggi.cardcollection.core.model.CatalogUpdate
 import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.VariantType
@@ -50,6 +51,8 @@ data class CardUi(
     val variants: List<VariantUi>,
     /** True if a card database update no longer lists the card but the collection keeps it (it has data of the user): shown in a section at the end. */
     val removedByUpdate: Boolean = false,
+    /** Why it was removed: id of the card that replaces it (its id changed), or null if the database simply no longer has it. */
+    val replacedBy: String? = null,
 ) {
     val language: Language get() = Language.fromCode(card.language) ?: Language.EN
 
@@ -160,7 +163,7 @@ object LibraryAssembler {
             entryById = state.entries.filter { it.collectionId == collectionId }.associateBy { it.variantId },
             snapsByVariant = snapsByVariant,
             countFirstEdition = state.countFirstEdition,
-            removedIds = state.memberships.filter { it.collectionId == collectionId && it.removed }.map { it.cardId }.toSet(),
+            removed = state.memberships.filter { it.collectionId == collectionId && it.removed }.associate { it.cardId to CatalogUpdate.replacedId(it.removedNote) },
         )
     }
 
@@ -229,7 +232,7 @@ object LibraryAssembler {
      * @param entryById Map<String, CollectionEntryEntity> - user data per variant.
      * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prices per variant, oldest first.
      * @param countFirstEdition Boolean - if false, a 1st Edition without a user choice is not wanted (does not count among the missing).
-     * @param removedIds Set<String> - cards that a database update no longer lists but the collection keeps.
+     * @param removed Map<String, String?> - cards that a database update no longer lists but the collection keeps, with the id of the card that replaces each (or null).
      * @return List<CardUi> - cards with variants sorted according to [VariantType].
      */
     private fun assembleGrouped(
@@ -238,7 +241,7 @@ object LibraryAssembler {
         entryById: Map<String, CollectionEntryEntity>,
         snapsByVariant: Map<String, List<PriceSnapshotEntity>>,
         countFirstEdition: Boolean = true,
-        removedIds: Set<String> = emptySet(),
+        removed: Map<String, String?> = emptyMap(),
     ): List<CardUi> {
         return cards.map { card ->
             val list = variantsByCard[card.id].orEmpty().mapNotNull { v ->
@@ -250,7 +253,7 @@ object LibraryAssembler {
                     type = type,
                     print = v.print,
                     // A card the database no longer lists is not missing: only its copies count.
-                    wanted = if (card.id in removedIds) false else entry?.wanted ?: when (type) {
+                    wanted = if (card.id in removed) false else entry?.wanted ?: when (type) {
                         VariantType.FIRST_EDITION -> countFirstEdition
                         // Stamps (tournaments, prereleases…) are many: they only count if the user marks them as wanted.
                         VariantType.STAMPED -> false
@@ -265,7 +268,7 @@ object LibraryAssembler {
                     cardTraderHistory = snaps.filter { it.isCardTrader() }.mapNotNull { it.eur },
                 )
             }.sortedWith(compareBy({ it.type.ordinal }, { it.print }))
-            CardUi(card, list, removedByUpdate = card.id in removedIds)
+            CardUi(card, list, removedByUpdate = card.id in removed, replacedBy = removed[card.id])
         }
     }
 }

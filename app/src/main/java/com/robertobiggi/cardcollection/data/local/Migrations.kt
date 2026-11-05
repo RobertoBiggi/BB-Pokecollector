@@ -28,6 +28,13 @@ object Migrations {
         }
     }
 
+    /** 18 → 19: `collection_card.removedNote`, the reason a card is in the "no longer in the card database" section. */
+    private val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE collection_card ADD COLUMN removedNote TEXT")
+        }
+    }
+
     /** All migrations, passed to the database builder. */
-    val ALL: Array<Migration> = arrayOf(MIGRATION_17_18)
+    val ALL: Array<Migration> = arrayOf(MIGRATION_17_18, MIGRATION_18_19)
 }

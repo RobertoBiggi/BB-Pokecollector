@@ -368,17 +368,18 @@ interface CatalogDao {
      * @param collectionId Long - collection.
      * @return Unit
      */
-    @Query("UPDATE collection_card SET removed = 0 WHERE collectionId = :collectionId AND removed = 1")
+    @Query("UPDATE collection_card SET removed = 0, removedNote = NULL WHERE collectionId = :collectionId AND removed = 1")
     suspend fun clearRemoved(collectionId: Long)
 
     /**
-     * Sets the "no longer in the card database" mark on the cards a database update stopped listing but the collection keeps (they have user data).
+     * Marks a card a database update stopped listing but the collection keeps.
      * @param collectionId Long - collection.
-     * @param cardIds List<String> - cards to mark (a few hundred at most per call).
+     * @param cardId String - card.
+     * @param note String? - why (see [CollectionCardEntity.removedNote]).
      * @return Unit
      */
-    @Query("UPDATE collection_card SET removed = 1 WHERE collectionId = :collectionId AND cardId IN (:cardIds)")
-    suspend fun markRemoved(collectionId: Long, cardIds: List<String>)
+    @Query("UPDATE collection_card SET removed = 1, removedNote = :note WHERE collectionId = :collectionId AND cardId = :cardId")
+    suspend fun markRemoved(collectionId: Long, cardId: String, note: String?)
 
     /**
      * Makes a card visible as added by hand (no longer depends on a search).

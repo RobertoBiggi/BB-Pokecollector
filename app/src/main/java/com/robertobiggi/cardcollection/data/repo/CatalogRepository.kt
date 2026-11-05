@@ -126,6 +126,7 @@ class CatalogRepository(
         val version = store.info.value?.generatedAt ?: return SyncResult(0, 0, 0, noCatalog = true)
         val queries = dao.enabledQueriesOf(collectionId)
         val refreshed = HashSet<String>()
+        val byKey = HashMap<String, MutableList<String>>()
         var saved = 0
         var emptySets = 0
         for ((index, query) in queries.withIndex()) {
@@ -141,6 +142,7 @@ class CatalogRepository(
                 if (i % PROGRESS_EVERY == 0) progress(SyncProgress(SyncPhase.CARD, card.name, i, cards.size))
                 saveCard(card, legacyQueryId = query.id, fresh = true, imageKey = keys[card.id])
                 refreshed += card.id
+                byKey.getOrPut(CatalogUpdate.replacementKey(card.language.code, card.name, card.localId)) { mutableListOf() } += card.id
                 dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                 if (kind.isSet) applySetPolicy(collectionId, card, kind)
                 saved++
@@ -154,7 +156,7 @@ class CatalogRepository(
         val missingOthers = refreshOtherCards(collectionId, refreshed)
         db.withTransaction {
             dao.clearRemoved(collectionId)
-            (stale + missingOthers).distinct().chunked(MARK_CHUNK).forEach { dao.markRemoved(collectionId, it) }
+            for (id in (stale + missingOthers).distinct()) dao.markRemoved(collectionId, id, removedNote(id, byKey))
         }
         // Images only for this collection's cards: updating one collection must not download (or touch) those of the others.
         forgetMissingImageFiles(dao.visibleCardsOf(collectionId))
@@ -162,6 +164,18 @@ class CatalogRepository(
         dao.setCatalogVersion(collectionId, version)
         settings.setLastCatalogSync(System.currentTimeMillis())
         return SyncResult(saved, imagesSaved, 0, emptySets)
+    }
+
+    /**
+     * Why a card is no longer in the database: another card with the same name and number replaces it (its id changed), or nothing does.
+     * @param cardId String - id of the card the database no longer lists.
+     * @param byKey Map<String, List<String>> - ids of the cards found in this update, by [CatalogUpdate.replacementKey].
+     * @return String? - `replaced:<id>` or null.
+     */
+    private suspend fun removedNote(cardId: String, byKey: Map<String, List<String>>): String? {
+        val card = dao.getCard(cardId) ?: return null
+        val replacement = CatalogUpdate.replacementOf(cardId, byKey[CatalogUpdate.replacementKey(card.language, card.name, card.localId)].orEmpty()) ?: return null
+        return CatalogUpdate.REPLACED_PREFIX + replacement
     }
 
     /**
@@ -416,7 +430,6 @@ class CatalogRepository(
     private companion object {
         const val MAX_SEARCH_RESULTS = 60
         const val PROGRESS_EVERY = 25
-        const val MARK_CHUNK = 500
         const val HTTP_NOT_FOUND = "HTTP 404"
 
         /** Images downloaded together: with only one at a time, thousands of cards take hours. */

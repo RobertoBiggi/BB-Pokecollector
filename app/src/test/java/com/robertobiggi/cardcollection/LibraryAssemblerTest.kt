@@ -132,7 +132,7 @@ class LibraryAssemblerTest {
             collections = listOf(com.robertobiggi.cardcollection.data.local.CollectionEntity(1, "Mawile", 0)),
             memberships = listOf(
                 com.robertobiggi.cardcollection.data.local.CollectionCardEntity(1, "en:me03-032", 1),
-                com.robertobiggi.cardcollection.data.local.CollectionCardEntity(1, "en:ex2-9", 1, removed = true),
+                com.robertobiggi.cardcollection.data.local.CollectionCardEntity(1, "en:ex2-9", 1, removed = true, removedNote = "replaced:en:ex2-09"),
                 // La stessa carta in un'altra collezione non la segna qui.
                 com.robertobiggi.cardcollection.data.local.CollectionCardEntity(2, "en:me03-032", null, removed = true),
             ),
@@ -143,6 +143,7 @@ class LibraryAssemblerTest {
         )
         val library = LibraryAssembler.libraryOf(state, 1)
         assertEquals(mapOf("en:me03-032" to false, "en:ex2-9" to true), library.associate { it.card.id to it.removedByUpdate })
+        assertEquals(mapOf("en:me03-032" to null, "en:ex2-9" to "en:ex2-09"), library.associate { it.card.id to it.replacedBy })
         // Una carta tolta dal database senza copie non conta tra quelle che mancano; quella normale si.
         assertEquals(mapOf("en:me03-032" to 1, "en:ex2-9" to 0), library.associate { it.card.id to it.slots })
     }

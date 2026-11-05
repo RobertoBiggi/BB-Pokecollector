@@ -29,4 +29,33 @@ object CatalogUpdate {
      * @return String - key to store and compare.
      */
     fun imageKey(tcgdexUrl: String?, sitePaths: List<String?>): String = (listOf(tcgdexUrl) + sitePaths).joinToString("|") { it.orEmpty() }
+
+    /** Prefix of the note of a removed card that another card replaces: followed by the id of the replacement. */
+    const val REPLACED_PREFIX = "replaced:"
+
+    /**
+     * Key that tells whether two cards with different ids are the same card (the id of a set changed, for example from `ebb` to `EBB` when two
+     * sets were merged): language, name and number in the set, without case or punctuation.
+     * @param language String - card language.
+     * @param name String - card name.
+     * @param localId String - number of the card in its set.
+     * @return String - comparison key.
+     */
+    fun replacementKey(language: String, name: String, localId: String): String =
+        listOf(language, name, localId).joinToString("|") { part -> part.lowercase().filter { it.isLetterOrDigit() } }
+
+    /**
+     * The card that replaces a removed one: the only card of the new database with the same [replacementKey] and a different id.
+     * @param removedId String - id of the card the database no longer lists.
+     * @param candidates List<String> - ids of the cards of the new database with the same key.
+     * @return String? - id of the replacement, null if there is none or it is ambiguous.
+     */
+    fun replacementOf(removedId: String, candidates: List<String>): String? = candidates.filter { it != removedId }.singleOrNull()
+
+    /**
+     * Id of the replacement written in the note of a removed card.
+     * @param note String? - note saved with the card.
+     * @return String? - id of the card that replaces it, null if the note says nothing about a replacement.
+     */
+    fun replacedId(note: String?): String? = note?.takeIf { it.startsWith(REPLACED_PREFIX) }?.removePrefix(REPLACED_PREFIX)?.ifEmpty { null }
 }

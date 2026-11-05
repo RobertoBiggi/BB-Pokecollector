@@ -220,8 +220,10 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
                         item(span = { GridItemSpan(maxLineSpan) }) { RemovedByUpdateHeader(removedCards.size) }
                         items(removedCards, key = { it.card.id }) { card ->
                             val id = card.card.id
+                            val replacement = card.replacedBy?.let { rid -> cards.firstOrNull { it.card.id == rid }?.printedCode ?: rid }
                             CardTile(
                                 card,
+                                removedLabel = stringResource(if (replacement != null) R.string.removed_replaced_by else R.string.removed_gone, replacement.orEmpty()),
                                 selected = id in selected,
                                 onClick = { if (selecting) selected = if (id in selected) selected - id else selected + id else onOpen(id) },
                                 onLongClick = { selected = if (id in selected) selected - id else selected + id },
@@ -367,10 +369,11 @@ private fun Filters(filter: CollectionFilter, count: Int, languages: List<Langua
  * @param selected Boolean - true if the card is in the multiple selection.
  * @param onClick () -> Unit - opens the detail, or in selection adds or removes it.
  * @param onLongClick () -> Unit - starts the selection or adds or removes the card.
+ * @param removedLabel String? - why the card is in the section of the cards a database update no longer lists, shown on the tile; null for the others.
  * @return Unit
  */
 @Composable
-private fun CardTile(card: CardUi, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun CardTile(card: CardUi, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit, removedLabel: String? = null) {
     Card(
         modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
         colors = if (selected) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors(),
@@ -378,6 +381,7 @@ private fun CardTile(card: CardUi, selected: Boolean, onClick: () -> Unit, onLon
         Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             CardImage(card, card.thumbnailPath, Modifier.fillMaxWidth())
             Text(card.card.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (removedLabel != null) Text(removedLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(card.printedCode, style = MonoStyle)
             Text(
                 listOfNotNull(card.card.rarity, card.language.shortLabel()).joinToString(" · "),
