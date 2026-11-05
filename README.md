@@ -4,8 +4,9 @@ An offline-first Android app to track your Pokémon card collection: every varia
 
 <p align="center">
   <img src="docs/badges/cards.svg" alt="Cards in the database">
-  <img src="docs/badges/tcg-no-image.svg" alt="TCG (English) cards without image">
-  <img src="docs/badges/ocg-no-image.svg" alt="OCG (Japanese) cards without image">
+  <img src="docs/badges/tcg-images.svg" alt="TCG cards (all languages except Japanese, Korean and Chinese) with image">
+  <img src="docs/badges/ocg-images.svg" alt="OCG cards (Japanese and Korean) with image">
+  <img src="docs/badges/chinese-images.svg" alt="Chinese cards with image">
 </p>
 
 <p align="center">
