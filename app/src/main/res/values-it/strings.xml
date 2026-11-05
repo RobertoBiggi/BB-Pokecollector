@@ -73,6 +73,9 @@
     <string name="export_high">Con immagini piccole e grandi · file più pesante</string>
     <string name="collection_default_title">Collezione</string>
     <string name="all_collections">Tutte le collezioni</string>
+    <string name="home_needs_update">Da aggiornare</string>
+    <string name="removed_by_update_title">Non più nel database delle carte</string>
+    <string name="removed_by_update_text">Il database delle carte è stato aggiornato e non elenca più queste carte. Hai ancora copie, note o carte da avere, quindi restano qui. Puoi toglierle dalla collezione, oppure lasciarle finché la carta non torna.</string>
     <string name="update_catalog">Aggiorna catalogo</string>
     <string name="prices_button">Prezzi</string>
     <string name="prices_never">Prezzi mai aggiornati</string>

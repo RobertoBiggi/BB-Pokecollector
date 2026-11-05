@@ -39,6 +39,10 @@ The app is not on the Play Store. It needs Android 8.0 or later.
 
 The card database ships with the app, so you can search and add cards right away, even offline.
 
+**After an app update.** When an update brings a newer card database, every collection shows **Needs update** on the home list. Each one updates by itself the first time you open it: the app reads its cards again from the database, from scratch, so cards that were added, removed or corrected there are applied. Your copies, conditions, notes, wanted slots, removed cards and the cards you added by hand are kept exactly as before. Images that were already downloaded stay unless the database now points to a different source for that card.
+
+If a card you have copies of (or notes, or a wanted slot) is no longer in the database, it is not lost: it moves to a section at the end of the collection, under a divider, called **No longer in the card database**. You can remove it from there or leave it in case it comes back.
+
 > **Test builds and releases.** Test builds (the `card-collection-apk` artifact in GitHub Actions) are signed with a different key than releases, so Android won't install one over the other. To switch, export your collections, uninstall the app, install the other build and import them again. The same applies to versions up to 0.5.0.
 
 ## 2. Your first collection
@@ -244,7 +248,7 @@ The **Manage** tab decides which cards belong to the collection.
 - TCG Pocket cards and Trainers are left out.
 - The switch turns a search off: its cards are hidden, but your quantities are kept.
 - The bin icon deletes the search.
-- **Update catalog** applies the searches again and downloads missing images.
+- **Update catalog** applies the searches again, from scratch, and downloads missing images (it also starts by itself after an app update that changes the card database: see [section 1](#1-installing-and-updating)).
 
 **Whole sets**
 

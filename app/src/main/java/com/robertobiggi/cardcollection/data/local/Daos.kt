@@ -69,6 +69,15 @@ interface CatalogDao {
     suspend fun setCollectionLanguage(id: Long, language: String)
 
     /**
+     * Records the card database a collection was last updated from.
+     * @param id Long - row id.
+     * @param version String? - `generatedAt` of that database, null to force a new update.
+     * @return Unit
+     */
+    @Query("UPDATE collection SET catalogVersion = :version WHERE id = :id")
+    suspend fun setCatalogVersion(id: Long, version: String?)
+
+    /**
      * Deletes a collection; searches, memberships and quantities are deleted in cascade.
      * @param id Long - row id.
      * @return Unit
@@ -199,6 +208,24 @@ interface CatalogDao {
     suspend fun setImagePaths(id: String, low: String?, high: String?)
 
     /**
+     * Drops the downloaded images of a card (they are downloaded again) and records the image sources they now have to come from.
+     * @param id String - card.
+     * @param imageKey String - image sources in the card database now.
+     * @return Unit
+     */
+    @Query("UPDATE card SET imageLowPath = NULL, imageHighPath = NULL, imageKey = :imageKey WHERE id = :id")
+    suspend fun resetImages(id: String, imageKey: String)
+
+    /**
+     * Records the image sources of a card in the card database (without touching the images).
+     * @param id String - card.
+     * @param imageKey String - image sources in the card database now.
+     * @return Unit
+     */
+    @Query("UPDATE card SET imageKey = :imageKey WHERE id = :id")
+    suspend fun setImageKey(id: String, imageKey: String)
+
+    /**
      * Fills in the missing image paths without touching those already saved (even by another job in the meantime).
      * @param id String - row id.
      * @param low String? - path of the small image just downloaded.
@@ -252,6 +279,16 @@ interface CatalogDao {
      */
     @Query("UPDATE card_variant SET cardTraderBlueprintId = :blueprintId WHERE id = :variantId")
     suspend fun setVariantBlueprint(variantId: String, blueprintId: Int)
+
+    /**
+     * Sets the Cardmarket product and the CardTrader blueprint of a variant exactly as the card database has them, also when one is missing
+     * (update from scratch: a value the database no longer has is dropped).
+     * @param variantId String - id of the variant.
+     * @param cardmarketId Int? - Cardmarket product, or null.
+     * @param blueprintId Int? - CardTrader blueprint, or null.
+     */
+    @Query("UPDATE card_variant SET cardmarketId = :cardmarketId, cardTraderBlueprintId = :blueprintId WHERE id = :variantId")
+    suspend fun setVariantRefs(variantId: String, cardmarketId: Int?, blueprintId: Int?)
 
     /**
      * Removes the variants that the catalog no longer lists (e.g. a wrongly inferred reverse holo), except those of which the user
@@ -338,6 +375,23 @@ interface CatalogDao {
             "WHERE e.collectionId = :collectionId AND (e.quantity > 0 OR e.notes IS NOT NULL OR e.wanted = 1))",
     )
     suspend fun dropStaleMemberships(collectionId: Long, cardIds: List<String>)
+
+    /**
+     * Clears the "no longer in the card database" mark of all the memberships of a collection.
+     * @param collectionId Long - collection.
+     * @return Unit
+     */
+    @Query("UPDATE collection_card SET removed = 0 WHERE collectionId = :collectionId AND removed = 1")
+    suspend fun clearRemoved(collectionId: Long)
+
+    /**
+     * Sets the "no longer in the card database" mark on the cards a database update stopped listing but the collection keeps (they have user data).
+     * @param collectionId Long - collection.
+     * @param cardIds List<String> - cards to mark (a few hundred at most per call).
+     * @return Unit
+     */
+    @Query("UPDATE collection_card SET removed = 1 WHERE collectionId = :collectionId AND cardId IN (:cardIds)")
+    suspend fun markRemoved(collectionId: Long, cardIds: List<String>)
 
     /**
      * Makes a card visible as added by hand (no longer depends on a search).

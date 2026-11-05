@@ -39,6 +39,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -120,6 +122,12 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
     val name by vm.collectionName.collectAsStateWithLifecycle()
     val cards = library
     val visible by vm.visibleCards.collectAsStateWithLifecycle()
+    val needsUpdate by vm.needsCatalogUpdate.collectAsStateWithLifecycle()
+    // A collection that needs the update (new app or database) starts it by itself as soon as it opens.
+    LaunchedEffect(needsUpdate) { if (needsUpdate) vm.updateIfNeeded() }
+    // Cards a database update no longer lists, kept because they have user data: a separate section at the end.
+    val removedCards = visible.filter { it.removedByUpdate }
+    val shownCards = visible.filterNot { it.removedByUpdate }
     // Multiple selection: opens with a long press on a card and closes with the X or the back button.
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var confirmRemove by remember { mutableStateOf(false) }
@@ -197,9 +205,9 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
                     modifier = Modifier.fillMaxWidth().weight(1f),
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        Filters(filter, visible.size, cards.map { it.language }.distinct().sortedBy { it.ordinal }, vm::updateFilter)
+                        Filters(filter, shownCards.size, cards.map { it.language }.distinct().sortedBy { it.ordinal }, vm::updateFilter)
                     }
-                    items(visible, key = { it.card.id }) { card ->
+                    items(shownCards, key = { it.card.id }) { card ->
                         val id = card.card.id
                         CardTile(
                             card,
@@ -208,9 +216,36 @@ fun CollectionScreen(vm: MainViewModel, onOpen: (String) -> Unit, onHome: () -> 
                             onLongClick = { selected = if (id in selected) selected - id else selected + id },
                         )
                     }
+                    if (removedCards.isNotEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }) { RemovedByUpdateHeader(removedCards.size) }
+                        items(removedCards, key = { it.card.id }) { card ->
+                            val id = card.card.id
+                            CardTile(
+                                card,
+                                selected = id in selected,
+                                onClick = { if (selecting) selected = if (id in selected) selected - id else selected + id else onOpen(id) },
+                                onLongClick = { selected = if (id in selected) selected - id else selected + id },
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * Header of the section at the end of the collection with the cards a database update no longer lists: a divider, the title with the count and
+ * the explanation of why they are there.
+ * @param count Int - cards in the section.
+ * @return Unit
+ */
+@Composable
+private fun RemovedByUpdateHeader(count: Int) {
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        HorizontalDivider()
+        Text(stringResource(R.string.removed_by_update_title) + " ($count)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.removed_by_update_text), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

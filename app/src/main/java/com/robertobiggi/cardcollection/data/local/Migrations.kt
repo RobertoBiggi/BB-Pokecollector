@@ -1,6 +1,7 @@
 package com.robertobiggi.cardcollection.data.local
 
 import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * Migrations of the local database, from the oldest supported version to the current one.
@@ -15,6 +16,18 @@ import androidx.room.migration.Migration
  * Versions older than 17 are not supported (their schemas and migrations were removed on purpose).
  */
 object Migrations {
-    /** All migrations, passed to the database builder. Empty while 17 is the only version. */
-    val ALL: Array<Migration> = emptyArray()
+    /**
+     * 17 → 18: update of the collections from the card database. `collection.catalogVersion` (null = never updated, so the first open updates it),
+     * `collection_card.removed` (card kept after a database update no longer lists it) and `card.imageKey` (image sources at the last update).
+     */
+    private val MIGRATION_17_18 = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE collection ADD COLUMN catalogVersion TEXT")
+            db.execSQL("ALTER TABLE collection_card ADD COLUMN removed INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE card ADD COLUMN imageKey TEXT")
+        }
+    }
+
+    /** All migrations, passed to the database builder. */
+    val ALL: Array<Migration> = arrayOf(MIGRATION_17_18)
 }

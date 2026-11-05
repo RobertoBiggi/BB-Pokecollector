@@ -73,6 +73,9 @@
     <string name="export_high">With small and large images · larger file</string>
     <string name="collection_default_title">Collection</string>
     <string name="all_collections">All collections</string>
+    <string name="home_needs_update">Needs update</string>
+    <string name="removed_by_update_title">No longer in the card database</string>
+    <string name="removed_by_update_text">The card database was updated and no longer lists these cards. You still have copies, notes or wanted slots on them, so they are kept here. You can remove them from the collection, or leave them until the card comes back.</string>
     <string name="update_catalog">Update catalog</string>
     <string name="prices_button">Prices</string>
     <string name="prices_never">Prices never updated</string>

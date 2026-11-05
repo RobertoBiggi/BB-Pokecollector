@@ -126,6 +126,25 @@ class LibraryAssemblerTest {
     }
 
     @Test
+    fun `le carte tolte da un aggiornamento del database restano visibili e segnate`() {
+        val queries = listOf(com.robertobiggi.cardcollection.data.local.TrackedQueryEntity(1, 1, "en", "Mawile", true))
+        val state = com.robertobiggi.cardcollection.data.repo.DbState(
+            collections = listOf(com.robertobiggi.cardcollection.data.local.CollectionEntity(1, "Mawile", 0)),
+            memberships = listOf(
+                com.robertobiggi.cardcollection.data.local.CollectionCardEntity(1, "en:me03-032", 1),
+                com.robertobiggi.cardcollection.data.local.CollectionCardEntity(1, "en:ex2-9", 1, removed = true),
+                // La stessa carta in un'altra collezione non la segna qui.
+                com.robertobiggi.cardcollection.data.local.CollectionCardEntity(2, "en:me03-032", null, removed = true),
+            ),
+            queries = queries,
+            cards = listOf(card("en:me03-032", "Mawile", "POR"), card("en:ex2-9", "Mawile", null, "ex2", "Sandstorm", "9", "9/100")),
+            variants = emptyList(), entries = emptyList(), snapshots = emptyList(), runs = emptyList(),
+        )
+        val library = LibraryAssembler.libraryOf(state, 1)
+        assertEquals(mapOf("en:me03-032" to false, "en:ex2-9" to true), library.associate { it.card.id to it.removedByUpdate })
+    }
+
+    @Test
     fun `filtro mancanti e ricerca per codice`() {
         val a = LibraryAssembler.assemble(
             listOf(card("en:me03-032", "Mawile", "POR"), card("en:ex2-9", "Mawile", null, "ex2", "Sandstorm", "9", "9/100")),

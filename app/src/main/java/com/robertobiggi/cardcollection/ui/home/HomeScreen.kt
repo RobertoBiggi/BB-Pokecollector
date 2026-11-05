@@ -28,12 +28,14 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.MoreVert
@@ -68,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.robertobiggi.cardcollection.core.backup.ImageExport
+import com.robertobiggi.cardcollection.core.model.CatalogUpdate
 import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.CollectionSettings
@@ -93,6 +96,7 @@ import java.io.File
 fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit) {
     val summaries by vm.summaries.collectAsStateWithLifecycle()
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
+    val catalogInfo by vm.catalogInfo.collectAsStateWithLifecycle()
     val defaultImportName = stringResource(R.string.import_default_name)
     var creating by rememberSaveable { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<CollectionSummary?>(null) }
@@ -150,6 +154,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
                     CollectionRow(
                         summary = summary,
                         showEur = visibility.cardmarket,
+                        needsUpdate = CatalogUpdate.needsUpdate(summary.collection.catalogVersion, catalogInfo?.generatedAt),
                         onClick = { onOpen(summary.collection.id) },
                         onRename = { renameError = null; renaming = summary },
                         onSettings = { settingsError = null; vm.loadCollectionSettings(summary.collection.id) { loaded -> settingsOf = loaded?.let { summary.collection.id to it } } },
@@ -231,6 +236,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
  * Row of a collection with cover, completion and value.
  * @param summary CollectionSummary - data of the collection.
  * @param showEur Boolean - false if Cardmarket prices are hidden: the value is not shown.
+ * @param needsUpdate Boolean - true if the collection must be updated from the installed card database: shows the sign (it updates when opened).
  * @param onClick () -> Unit - opens the collection.
  * @param onRename () -> Unit - starts the rename.
  * @param onSettings () -> Unit - opens the settings (name and languages).
@@ -239,7 +245,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
  * @return Unit
  */
 @Composable
-private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick: () -> Unit, onRename: () -> Unit, onSettings: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
+private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, needsUpdate: Boolean, onClick: () -> Unit, onRename: () -> Unit, onSettings: () -> Unit, onExport: () -> Unit, onDelete: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val s = summary.stats
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
@@ -277,6 +283,12 @@ private fun CollectionRow(summary: CollectionSummary, showEur: Boolean, onClick:
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (needsUpdate) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                            Text(stringResource(R.string.home_needs_update), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                 }
                 Text(
                     pluralStringResource(R.plurals.home_cards_variants, summary.cardCount, summary.cardCount, s.owned, s.slots),

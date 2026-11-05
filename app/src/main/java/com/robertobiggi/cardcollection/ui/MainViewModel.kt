@@ -19,6 +19,7 @@ import com.robertobiggi.cardcollection.CardCollectionApp
 import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.core.backup.ImageExport
 import com.robertobiggi.cardcollection.core.model.Condition
+import com.robertobiggi.cardcollection.core.model.CatalogUpdate
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.SetListResult
 import com.robertobiggi.cardcollection.data.repo.SetChoice
@@ -137,6 +138,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     /** Language of the open collection: value of CollectionLanguage, null until loaded. */
     val collectionLanguage: StateFlow<String?> = perCollection { container.collection.language(it) }.stateInVm(null)
     val library: StateFlow<List<CardUi>?> = perCollection { container.collection.library(it) }.stateInVm(null)
+
+    /** Card database the open collection was last updated from, null if never. */
+    private val collectionCatalogVersion: StateFlow<String?> = perCollection { container.collection.catalogVersion(it) }.stateInVm(null)
     val queries: StateFlow<List<TrackedQueryEntity>> = perCollection(emptyList()) { container.collection.queries(it) }.stateInVm(emptyList())
     val hiddenCards: StateFlow<List<CardEntity>> = perCollection(emptyList()) { container.collection.hiddenCards(it) }.stateInVm(emptyList())
     val runs: StateFlow<List<PriceRunEntity>> = perCollection(emptyList()) { container.collection.runs(it) }.stateInVm(emptyList())
@@ -145,6 +149,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     /** Installed card database, null if missing. */
     val catalogInfo: StateFlow<CatalogInfo?> = container.catalogStore.info
+
+    /** True if the open collection must be updated from the installed card database (after an app update that brings a newer one, for example). */
+    val needsCatalogUpdate: StateFlow<Boolean> = combine(selected, collectionCatalogVersion, catalogInfo) { id, version, info ->
+        id != null && CatalogUpdate.needsUpdate(version, info?.generatedAt)
+    }.stateInVm(false)
 
     val catalogUrl: StateFlow<String> = container.settings.catalogUrl.stateInVm(SettingsStore.DEFAULT_CATALOG_URL)
 
@@ -290,6 +299,15 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      */
     fun updateFilter(change: (CollectionFilter) -> CollectionFilter) {
         _filter.value = change(_filter.value).let { it.copy(query = it.query.take(40)) }
+    }
+
+    /**
+     * Starts the update of the open collection by itself if it needs it (called when the collection opens or the installed database changes).
+     * The work is unique per collection: if it is already running nothing starts twice.
+     * @return Unit
+     */
+    fun updateIfNeeded() {
+        if (needsCatalogUpdate.value) startCatalogSync()
     }
 
     /**

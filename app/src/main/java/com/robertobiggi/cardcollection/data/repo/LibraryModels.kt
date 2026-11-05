@@ -48,6 +48,8 @@ data class VariantUi(
 data class CardUi(
     val card: CardEntity,
     val variants: List<VariantUi>,
+    /** True if a card database update no longer lists the card but the collection keeps it (it has data of the user): shown in a section at the end. */
+    val removedByUpdate: Boolean = false,
 ) {
     val language: Language get() = Language.fromCode(card.language) ?: Language.EN
 
@@ -158,6 +160,7 @@ object LibraryAssembler {
             entryById = state.entries.filter { it.collectionId == collectionId }.associateBy { it.variantId },
             snapsByVariant = snapsByVariant,
             countFirstEdition = state.countFirstEdition,
+            removedIds = state.memberships.filter { it.collectionId == collectionId && it.removed }.map { it.cardId }.toSet(),
         )
     }
 
@@ -226,6 +229,7 @@ object LibraryAssembler {
      * @param entryById Map<String, CollectionEntryEntity> - user data per variant.
      * @param snapsByVariant Map<String, List<PriceSnapshotEntity>> - prices per variant, oldest first.
      * @param countFirstEdition Boolean - if false, a 1st Edition without a user choice is not wanted (does not count among the missing).
+     * @param removedIds Set<String> - cards that a database update no longer lists but the collection keeps.
      * @return List<CardUi> - cards with variants sorted according to [VariantType].
      */
     private fun assembleGrouped(
@@ -234,6 +238,7 @@ object LibraryAssembler {
         entryById: Map<String, CollectionEntryEntity>,
         snapsByVariant: Map<String, List<PriceSnapshotEntity>>,
         countFirstEdition: Boolean = true,
+        removedIds: Set<String> = emptySet(),
     ): List<CardUi> {
         return cards.map { card ->
             val list = variantsByCard[card.id].orEmpty().mapNotNull { v ->
@@ -259,7 +264,7 @@ object LibraryAssembler {
                     cardTraderHistory = snaps.filter { it.isCardTrader() }.mapNotNull { it.eur },
                 )
             }.sortedWith(compareBy({ it.type.ordinal }, { it.print }))
-            CardUi(card, list)
+            CardUi(card, list, removedByUpdate = card.id in removedIds)
         }
     }
 }

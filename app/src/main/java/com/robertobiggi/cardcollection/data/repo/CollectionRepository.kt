@@ -182,6 +182,13 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     fun language(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.language }
 
     /**
+     * Card database a collection was last updated from.
+     * @param collectionId Long - collection.
+     * @return Flow<String?> - `generatedAt` of that database, or null if never updated (or the collection no longer exists).
+     */
+    fun catalogVersion(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.catalogVersion }
+
+    /**
      * Creates a collection, with an optional first search.
      * @param rawName String - name entered by the user.
      * @param languages Collection<Language> - languages of the first search: one search per language. The language of the

@@ -18,6 +18,11 @@ data class CollectionEntity(
     val name: String,
     val createdAt: Long,
     @ColumnInfo(defaultValue = CollectionLanguage.MIXED) val language: String = CollectionLanguage.MIXED,
+    /**
+     * `generatedAt` of the card database this collection was last updated from, or null if never ([CatalogUpdate.needsUpdate] compares it with the
+     * installed one: when they differ, the collection is updated from scratch).
+     */
+    val catalogVersion: String? = null,
 )
 
 /**
@@ -82,6 +87,11 @@ data class CardEntity(
     val cardmarketProduct: Int? = null,
     /** CardTrader expansion of the card's set: used to find the image of its blueprint. */
     val cardTraderExpansionId: Int? = null,
+    /**
+     * Image sources of the card in the card database at the last update (TCGdex address and the paths of the other sites, as text): if the new
+     * database changes them, the downloaded images are dropped and downloaded again. Null if never recorded (images already downloaded stay).
+     */
+    val imageKey: String? = null,
 )
 
 /** Print variant of a card: each row is a slot. */
@@ -107,6 +117,8 @@ data class CardVariantEntity(
  * [queryId] is the search that added it (null if added by hand or imported): if the search is
  * disabled the card is hidden, if it is deleted the link disappears.
  * [hidden] is true if the user removed it: the sync does not add it back.
+ * [removed] is true if a card database update no longer lists the card but the collection keeps it because it has user data (copies, notes,
+ * wanted slots): the screen shows these cards in a separate section at the end.
  */
 @Entity(
     tableName = "collection_card",
@@ -123,6 +135,7 @@ data class CollectionCardEntity(
     val cardId: String,
     val queryId: Long?,
     val hidden: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val removed: Boolean = false,
 )
 
 /**

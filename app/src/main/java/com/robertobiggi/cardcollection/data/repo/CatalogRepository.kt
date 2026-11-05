@@ -2,7 +2,9 @@ package com.robertobiggi.cardcollection.data.repo
 
 import android.net.Uri
 import androidx.room.withTransaction
+import com.robertobiggi.cardcollection.core.image.CatalogImageSources
 import com.robertobiggi.cardcollection.core.model.CatalogCard
+import com.robertobiggi.cardcollection.core.model.CatalogUpdate
 import com.robertobiggi.cardcollection.core.model.Ids
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.core.model.QueryKind
@@ -121,7 +123,7 @@ class CatalogRepository(
      * @return SyncResult - cards and images saved, errors encountered.
      */
     suspend fun sync(collectionId: Long, progress: suspend (SyncProgress) -> Unit): SyncResult {
-        if (store.info.value == null) return SyncResult(0, 0, 0, noCatalog = true)
+        val version = store.info.value?.generatedAt ?: return SyncResult(0, 0, 0, noCatalog = true)
         val queries = dao.enabledQueriesOf(collectionId)
         val refreshed = HashSet<String>()
         var saved = 0
@@ -134,26 +136,45 @@ class CatalogRepository(
                 if (kind.isSet) cat.cardsOfSet(language, query.pattern.trim()) else cat.cardsByName(language, query.pattern.trim())
             } ?: return SyncResult(saved, 0, 0, noCatalog = true)
             if (kind.isSet && cards.isEmpty()) emptySets++
+            val keys = imageKeys(cards)
             for ((i, card) in cards.withIndex()) {
                 if (i % PROGRESS_EVERY == 0) progress(SyncProgress(SyncPhase.CARD, card.name, i, cards.size))
-                saveCard(card, legacyQueryId = query.id)
+                saveCard(card, legacyQueryId = query.id, fresh = true, imageKey = keys[card.id])
                 refreshed += card.id
                 dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
                 if (kind.isSet) applySetPolicy(collectionId, card, kind)
                 saved++
             }
         }
-        // Cards found by an active search and no longer in the database (removed sets, corrections) leave the collection;
-        // the hidden ones, those added by hand or from disabled searches stay.
+        // Cards found by an active search and no longer in the database (removed sets, corrections) leave the collection if the user has
+        // nothing on them; the others stay, marked as removed by the update (the screen lists them at the end). The hidden ones, those added
+        // by hand or from disabled searches stay.
         val active = queries.map { it.id }.toSet()
         val stale = dao.membershipsOf(collectionId).filter { it.queryId in active && !it.hidden && it.cardId !in refreshed }.map { it.cardId }
         if (stale.isNotEmpty()) dao.dropStaleMemberships(collectionId, stale)
-        refreshOtherCards(collectionId, refreshed)
+        val keptStale = if (stale.isEmpty()) emptyList() else dao.membershipsOf(collectionId).map { it.cardId }.filter { it in stale.toSet() }
+        val missingOthers = refreshOtherCards(collectionId, refreshed)
+        db.withTransaction {
+            dao.clearRemoved(collectionId)
+            (keptStale + missingOthers).distinct().chunked(MARK_CHUNK).forEach { dao.markRemoved(collectionId, it) }
+        }
         // Images only for this collection's cards: updating one collection must not download (or touch) those of the others.
         forgetMissingImageFiles(dao.visibleCardsOf(collectionId))
         val imagesSaved = downloadMissingImages(dao.visibleCardsOf(collectionId), progress)
+        dao.setCatalogVersion(collectionId, version)
         settings.setLastCatalogSync(System.currentTimeMillis())
         return SyncResult(saved, imagesSaved, 0, emptySets)
+    }
+
+    /**
+     * Text that records where the images of some cards come from in the installed database (see [CatalogUpdate.imageKey]).
+     * @param cards List<CatalogCard> - cards read from the database.
+     * @return Map<String, String> - key by card id.
+     */
+    private suspend fun imageKeys(cards: List<CatalogCard>): Map<String, String> {
+        val ids = cards.map { it.id }
+        val sites = store.use { cat -> CatalogImageSources.ALL.map { cat.imagePaths(it, ids) } }.orEmpty()
+        return cards.associate { c -> c.id to CatalogUpdate.imageKey(c.imageBaseUrl, sites.map { it[c.id] }) }
     }
 
     /**
@@ -190,13 +211,16 @@ class CatalogRepository(
      * removed searches), so every sync fixes the data saved by earlier versions, even if you own copies.
      * @param collectionId Long - collection.
      * @param refreshed Set<String> - ids of the cards already updated in this sync.
-     * @return Unit
+     * @return List<String> - ids of those the database no longer has (they stay in the collection, marked as removed).
      */
-    private suspend fun refreshOtherCards(collectionId: Long, refreshed: Set<String>) {
-        val others = dao.membershipsOf(collectionId).map { it.cardId }.filter { it !in refreshed }
-        if (others.isEmpty()) return
+    private suspend fun refreshOtherCards(collectionId: Long, refreshed: Set<String>): List<String> {
+        val others = dao.membershipsOf(collectionId).filter { !it.hidden }.map { it.cardId }.filter { it !in refreshed }
+        if (others.isEmpty()) return emptyList()
         val cards = store.use { cat -> others.mapNotNull { cat.card(it) } }.orEmpty()
-        for (card in cards) saveCard(card, dao.getCard(card.id)?.queryId ?: 0)
+        val keys = imageKeys(cards)
+        for (card in cards) saveCard(card, dao.getCard(card.id)?.queryId ?: 0, fresh = true, imageKey = keys[card.id])
+        val found = cards.map { it.id }.toSet()
+        return others.filter { it !in found }
     }
 
     /**
@@ -252,11 +276,16 @@ class CatalogRepository(
      * Saves a catalog card and its variants, keeping the image paths already present.
      * @param card CatalogCard - card read from the card database.
      * @param legacyQueryId Long - value of the historical queryId field.
+     * @param fresh Boolean - true for the update from the card database: what the database says replaces what was saved (a missing value does not
+     *   keep the old one), and the downloaded images are dropped if the database now points to others ([imageKey] changed). False for cards
+     *   imported from a file, which may lack data: what is already saved stays.
+     * @param imageKey String? - image sources of the card in the database now ([CatalogUpdate.imageKey]), only with [fresh].
      * @return Unit
      */
-    suspend fun saveCard(card: CatalogCard, legacyQueryId: Long) {
+    suspend fun saveCard(card: CatalogCard, legacyQueryId: Long, fresh: Boolean = false, imageKey: String? = null) {
         db.withTransaction {
             val existing = dao.getCard(card.id)
+            val dropImages = fresh && imageKey != null && CatalogUpdate.imagesChanged(existing?.imageKey, imageKey)
             dao.upsertCard(
                 CardEntity(
                     id = card.id,
@@ -271,30 +300,35 @@ class CatalogRepository(
                     localId = card.localId,
                     // Cards imported from a file may lack number and rarity: those already saved stay.
                     printedNumber = card.printedNumber.ifEmpty { existing?.printedNumber.orEmpty() },
-                    rarity = card.rarity ?: existing?.rarity,
+                    rarity = if (fresh) card.rarity else card.rarity ?: existing?.rarity,
                     releaseDate = card.releaseDate,
                     illustrator = card.illustrator,
-                    imageUrl = card.imageBaseUrl ?: existing?.imageUrl,
-                    imageLowPath = existing?.imageLowPath,
-                    imageHighPath = existing?.imageHighPath,
+                    imageUrl = if (fresh) card.imageBaseUrl else card.imageBaseUrl ?: existing?.imageUrl,
+                    imageLowPath = if (dropImages) null else existing?.imageLowPath,
+                    imageHighPath = if (dropImages) null else existing?.imageHighPath,
                     queryId = existing?.queryId ?: legacyQueryId,
                     catalogUpdatedAt = System.currentTimeMillis(),
-                    dexId = card.dexId ?: existing?.dexId,
+                    dexId = if (fresh) card.dexId else card.dexId ?: existing?.dexId,
                     cardTraderCondition = existing?.cardTraderCondition,
-                    cardmarketId = card.cardmarketId ?: existing?.cardmarketId,
-                    cardTraderBlueprintId = card.cardTraderBlueprintId ?: existing?.cardTraderBlueprintId,
-                    cardmarketExpansionId = card.cardmarketExpansionId ?: existing?.cardmarketExpansionId,
-                    cardmarketName = card.cardmarketName ?: existing?.cardmarketName,
-                    cardmarketProductHint = card.cardmarketProductHint ?: existing?.cardmarketProductHint,
-                    cardmarketProduct = card.cardmarketProduct ?: existing?.cardmarketProduct,
-                    cardTraderExpansionId = card.cardTraderExpansionId ?: existing?.cardTraderExpansionId,
+                    cardmarketId = if (fresh) card.cardmarketId else card.cardmarketId ?: existing?.cardmarketId,
+                    cardTraderBlueprintId = if (fresh) card.cardTraderBlueprintId else card.cardTraderBlueprintId ?: existing?.cardTraderBlueprintId,
+                    cardmarketExpansionId = if (fresh) card.cardmarketExpansionId else card.cardmarketExpansionId ?: existing?.cardmarketExpansionId,
+                    cardmarketName = if (fresh) card.cardmarketName else card.cardmarketName ?: existing?.cardmarketName,
+                    cardmarketProductHint = if (fresh) card.cardmarketProductHint else card.cardmarketProductHint ?: existing?.cardmarketProductHint,
+                    cardmarketProduct = if (fresh) card.cardmarketProduct else card.cardmarketProduct ?: existing?.cardmarketProduct,
+                    cardTraderExpansionId = if (fresh) card.cardTraderExpansionId else card.cardTraderExpansionId ?: existing?.cardTraderExpansionId,
+                    imageKey = imageKey ?: existing?.imageKey,
                 ),
             )
             val ids = card.variants.map { Ids.variantId(card.id, it.type, it.print) }
             dao.insertVariants(card.variants.zip(ids).map { (v, id) -> CardVariantEntity(id, card.id, v.type.name, v.cardmarketId, v.print, v.cardTraderBlueprintId) })
             card.variants.zip(ids).forEach { (v, id) ->
-                v.cardmarketId?.let { dao.setVariantProduct(id, it) }
-                v.cardTraderBlueprintId?.let { dao.setVariantBlueprint(id, it) }
+                if (fresh) {
+                    dao.setVariantRefs(id, v.cardmarketId, v.cardTraderBlueprintId)
+                } else {
+                    v.cardmarketId?.let { dao.setVariantProduct(id, it) }
+                    v.cardTraderBlueprintId?.let { dao.setVariantBlueprint(id, it) }
+                }
             }
             moveStaleVariants(card.id, card.variants.map { it.type })
             dao.deleteStaleVariants(card.id, ids)
@@ -384,6 +418,7 @@ class CatalogRepository(
     private companion object {
         const val MAX_SEARCH_RESULTS = 60
         const val PROGRESS_EVERY = 25
+        const val MARK_CHUNK = 500
         const val HTTP_NOT_FOUND = "HTTP 404"
 
         /** Images downloaded together: with only one at a time, thousands of cards take hours. */
