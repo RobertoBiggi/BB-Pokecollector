@@ -17,11 +17,13 @@ captures/
 .externalNativeBuild/
 .cxx/
 
-# Segreti: mai committare chiavi o keystore
+# Secrets: never commit keys or keystores
 *.jks
 *.keystore
-# Eccezione: keystore di debug con password pubbliche, serve solo a mantenere la stessa firma tra le build CI
+# Exception: debug keystore with public passwords, only used to keep the same signature across CI builds
 !app/signing/debug.keystore
-secrets.properties
 .env
 catalog-db/
+
+# Local architecture notes, not shared in the repository
+docs/ARCHITECTURE.md

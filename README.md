@@ -40,7 +40,6 @@ Requires Android 8.0 or later. Download the APK from the latest [Release](../../
 ```
 
 - `core/` is pure Kotlin. `app/` is Android: Compose, Room and WorkManager.
-- Architecture notes, in Italian, are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - CI tests every push.
 - Every push to `main` publishes a signed Release. Signing uses repository secrets; the key is never in the repo.
 - The README screenshots come from the `README screenshots` workflow, which runs the app on an emulator with real data.
