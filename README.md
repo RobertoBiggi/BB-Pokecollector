@@ -3,6 +3,12 @@
 An offline-first Android app to track your Pokémon card collection: every variant you own, what you are still missing, and what it is worth.
 
 <p align="center">
+  <img src="docs/badges/cards.svg" alt="Cards in the database">
+  <img src="docs/badges/tcg-no-image.svg" alt="TCG (English) cards without image">
+  <img src="docs/badges/ocg-no-image.svg" alt="OCG (Japanese) cards without image">
+</p>
+
+<p align="center">
   <img src="docs/screenshots/02-cards.png" width="230" alt="Card grid">
   &nbsp;
   <img src="docs/screenshots/06-card-detail.png" width="230" alt="Card detail">
