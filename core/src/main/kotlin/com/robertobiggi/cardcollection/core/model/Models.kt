@@ -14,6 +14,7 @@ enum class Language(val code: String, val asianSets: Boolean = false, val limite
     PT("pt"),
     JA("ja", asianSets = true),
     ZH_TW("zh-tw", asianSets = true, limitedData = true),
+    ZH_CN("zh-cn", asianSets = true, limitedData = true),
     TH("th", asianSets = true, limitedData = true),
     ID("id", asianSets = true, limitedData = true);
 
@@ -38,7 +39,7 @@ object CollectionLanguage {
     const val MIXED = "mixed"
 
     /** Languages that can be chosen as the fixed language of a collection. */
-    val FIXED: List<Language> = listOf(Language.EN, Language.JA, Language.ZH_TW)
+    val FIXED: List<Language> = listOf(Language.EN, Language.JA, Language.ZH_TW, Language.ZH_CN)
 
     /**
      * Gets the fixed language from the saved value.

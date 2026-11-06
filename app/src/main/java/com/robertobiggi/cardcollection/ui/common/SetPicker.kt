@@ -44,7 +44,7 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 private const val YEAR_LENGTH = 4
 
 /** Languages offered for set collections: the ones with complete sets in the card database. */
-val SET_LANGUAGES = listOf(Language.EN, Language.JA, Language.ZH_TW)
+val SET_LANGUAGES = listOf(Language.EN, Language.JA, Language.ZH_TW, Language.ZH_CN)
 
 /** Order of the set list in the picker dialog. */
 private enum class SetSort(val label: Int) {
