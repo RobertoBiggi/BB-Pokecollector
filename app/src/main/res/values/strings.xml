@@ -28,6 +28,7 @@
     <string name="lang_pt">Portuguese</string>
     <string name="lang_ja">Japanese</string>
     <string name="lang_zh_tw">Chinese (Traditional)</string>
+    <string name="lang_zh_cn">Chinese (Simplified)</string>
     <string name="lang_th">Thai</string>
     <string name="lang_id">Indonesian</string>
     <string name="lang_limited_hint">%1$s: limited data (few cards, almost no images or prices).</string>

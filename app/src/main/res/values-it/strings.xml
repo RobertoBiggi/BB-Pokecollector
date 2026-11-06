@@ -27,6 +27,7 @@
     <string name="lang_pt">Portoghese</string>
     <string name="lang_ja">Giapponese</string>
     <string name="lang_zh_tw">Cinese tradizionale</string>
+    <string name="lang_zh_cn">Cinese semplificato</string>
     <string name="lang_th">Thailandese</string>
     <string name="lang_id">Indonesiano</string>
     <string name="lang_limited_hint">%1$s: dati limitati (poche carte, quasi senza immagini né prezzi).</string>

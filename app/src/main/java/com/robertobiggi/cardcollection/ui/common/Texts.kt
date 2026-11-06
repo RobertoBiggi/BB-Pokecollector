@@ -74,6 +74,7 @@ fun Language.labelRes(): Int = when (this) {
     Language.PT -> R.string.lang_pt
     Language.JA -> R.string.lang_ja
     Language.ZH_TW -> R.string.lang_zh_tw
+    Language.ZH_CN -> R.string.lang_zh_cn
     Language.TH -> R.string.lang_th
     Language.ID -> R.string.lang_id
 }
