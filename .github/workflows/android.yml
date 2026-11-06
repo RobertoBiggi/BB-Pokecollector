@@ -84,16 +84,17 @@ jobs:
           mkdir -p dist
           cp "$apk" "dist/card-collection-$version.apk"
 
-      # Only for pushes to the repo: APKs of third-party pull requests are not published.
+      # Only for pushes to branches other than main (main already publishes a Release with the APK), never for
+      # third-party pull requests. Kept 3 days: each APK is about 30 MB (it bundles the card database).
       - name: Pubblica APK di prova
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           # archive: false uploads the single .apk as-is (no zip); the artifact takes the file's name.
           path: dist/*.apk
           archive: false
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
 
       - name: Pubblica report in caso di errore
         if: failure()
