@@ -29,7 +29,7 @@ An offline-first Android app to track your Pokémon card collection: every varia
 
 ## Install
 
-Requires Android 8.0 or later. Download the APK from the latest [Release](../../releases), or add this repository to [Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates.
+Requires Android 8.0 or later. Download the APK from the latest [Release](../../releases/latest), or add this repository to [Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates. Until signed releases are set up, the latest Release is **Test build**: the APK of the last push to `main`, replaced at every update.
 
 ## Development
 
@@ -41,7 +41,7 @@ Requires Android 8.0 or later. Download the APK from the latest [Release](../../
 
 - `core/` is pure Kotlin. `app/` is Android: Compose, Room and WorkManager.
 - CI tests every push.
-- Every push to `main` publishes a signed Release. Signing uses repository secrets; the key is never in the repo.
+- Every push to `main` publishes a signed Release when the release key is set in the repository secrets (the key is never in the repo). Without it, the APK of `main` goes to the fixed **Test build** Release (`test-build`), replaced at every push.
 - The README screenshots come from the `README screenshots` workflow, which runs the app on an emulator with real data.
 
 ## License and credits
