@@ -33,6 +33,18 @@ class CatalogImageSourceTest {
     }
 
     @Test
+    fun `keeps the extension of a path that already has one`() {
+        assertEquals(
+            "https://cdn6966.templcdn.com/wp-content/uploads/2026/03/SC_242SV-P.png",
+            CatalogImageSources.POKUMON.urlOf("2026/03/SC_242SV-P.png"),
+        )
+        assertEquals(
+            "https://cdn6966.templcdn.com/wp-content/uploads/2026/03/a.webp",
+            CatalogImageSources.POKUMON.urlOf("2026/03/a.webp"),
+        )
+    }
+
+    @Test
     fun `rebuilds a Pokoin address from the saved path`() {
         assertEquals(
             "https://cdn.pokoin.com/card-images/656670_bulbasaur_homepage.webp",
