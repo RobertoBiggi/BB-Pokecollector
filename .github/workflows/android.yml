@@ -87,10 +87,11 @@ jobs:
           mkdir -p dist
           cp "$apk" "dist/card-collection-$version.apk"
 
-      # Only for pushes, never for third-party pull requests. On main only while the release key is missing: with the
-      # key, main publishes a Release with the APK instead. Kept 3 days: each APK is about 30 MB (it bundles the card database).
+      # For pushes and manual runs ("Run workflow"), never for third-party pull requests. On main only while the release
+      # key is missing: with the key, main publishes a Release with the APK instead. Kept 3 days: each APK is about 30 MB
+      # (it bundles the card database).
       - name: Pubblica APK di prova
-        if: github.event_name == 'push' && (github.ref != 'refs/heads/main' || env.HAS_RELEASE_KEY != 'true')
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref != 'refs/heads/main' || env.HAS_RELEASE_KEY != 'true')
         uses: actions/upload-artifact@v7
         with:
           # archive: false uploads the single .apk as-is (no zip); the artifact takes the file's name.
