@@ -43,7 +43,7 @@ The card database ships with the app, so you can search and add cards right away
 
 If a card is no longer in the database (removed, replaced by another one, or given a new id), it is not lost: it moves to a section at the end of the collection, under a divider, called **No longer in the card database**, with whatever copies and notes you had on it. Each one has a label that says why: **Replaced by …** when the same card is in the database with a new id (for example after two sets were merged), or **No longer in the card database** when it is simply gone. These cards do not count as missing. Long press to remove the ones you do not need, or leave them.
 
-> **Test builds and releases.** Test builds (the APK attached to the GitHub Actions runs of branches other than `main`, kept for 3 days) are signed with a different key than releases, so Android won't install one over the other. To switch, export your collections, uninstall the app, install the other build and import them again. The same applies to versions up to 0.5.0.
+> **Test builds and releases.** Test builds (the APK attached to the GitHub Actions runs, kept for 3 days) are signed with a different key than releases, so Android won't install one over the other. To switch, export your collections, uninstall the app, install the other build and import them again. The same applies to versions up to 0.5.0.
 
 ## 2. Your first collection
 
