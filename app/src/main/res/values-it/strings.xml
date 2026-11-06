@@ -265,6 +265,11 @@
     <string name="card_dialog_pick_image">Scelta immagine</string>
     <string name="card_dialog_running">Operazione in corso…</string>
     <string name="action_ok">OK</string>
+    <string name="other_prints_title">Altre stampe</string>
+    <plurals name="other_prints_hint">
+        <item quantity="one">%d altra stampa: tocca per vederla</item>
+        <item quantity="other">%d altre stampe: tocca per vederle</item>
+    </plurals>
     <string name="action_pick_image">Scegli immagine</string>
     <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Se la carta non ha un\'immagine ufficiale (succede spesso con le carte giapponesi) l\'app la cerca su CardTrader; altrimenti puoi sceglierne una dalla galleria, che resta salvata finché non scarichi quella ufficiale.</string>
     <plurals name="msg_card_price_updated">

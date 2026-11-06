@@ -45,6 +45,14 @@ data class VariantUi(
     fun toSlotInput(): SlotInput = SlotInput(wanted, quantity, latestEur?.eur, latestCardTrader?.eur)
 }
 
+/**
+ * Another print of a card with its own image (e.g. the same card with a Staff stamp), shown on request.
+ * @property type VariantType - type of the variant.
+ * @property print String - stamp of the variant.
+ * @property url String - address of the image, on a host the app allows.
+ */
+data class VariantImage(val type: VariantType, val print: String, val url: String)
+
 /** Card ready for the UI with its variants. */
 data class CardUi(
     val card: CardEntity,

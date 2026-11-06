@@ -121,6 +121,21 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
+     * Downloads an image only to show it (nothing is saved).
+     * @param url String - address of the image.
+     * @param isAllowed (String) -> Boolean - tells whether the address is on the source's allowed host (checked before any request).
+     * @return ByteArray? - the image, or null if the address is not allowed or the download fails.
+     */
+    suspend fun preview(url: String, isAllowed: (String) -> Boolean): ByteArray? = withContext(Dispatchers.IO) {
+        if (!isAllowed(url)) return@withContext null
+        try {
+            downloadBytes(url, MAX_PICKED_BYTES)
+        } catch (e: IOException) {
+            null
+        }
+    }
+
+    /**
      * Downloads an image into memory, checking HTTP code, content type and maximum size.
      * @param url String - already validated URL.
      * @param limit Long - maximum bytes accepted.

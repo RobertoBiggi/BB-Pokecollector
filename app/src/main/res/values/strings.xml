@@ -269,6 +269,11 @@
     <string name="card_dialog_pick_image">Choosing image</string>
     <string name="card_dialog_running">Working…</string>
     <string name="action_ok">OK</string>
+    <string name="other_prints_title">Other prints</string>
+    <plurals name="other_prints_hint">
+        <item quantity="one">%d other print: tap to see it</item>
+        <item quantity="other">%d other prints: tap to see them</item>
+    </plurals>
     <string name="action_pick_image">Choose image</string>
     <string name="card_actions_hint">The price is updated for this card only. If the card has no official image (common for Japanese cards) the app looks for it on CardTrader; otherwise you can pick one from your gallery, which stays until you download the official one.</string>
     <plurals name="msg_card_price_updated">
