@@ -69,9 +69,9 @@ private fun sortSets(sets: List<SetChoice>, sort: SetSort): List<SetChoice> {
 }
 
 /**
- * Dialog to choose a set: language (EN/JP), search by name or code and the list of sets.
+ * Dialog to choose a set: language (EN/JP; none selected = all of them), search by name or code and the list of sets.
  * @param state SetPickerState - list of sets and loading state.
- * @param onLanguage (Language, Boolean) -> Unit - asks for the list of a language; the second parameter forces a new download.
+ * @param onLanguage (Language?, Boolean) -> Unit - asks for the list of a language (null = every language); the second parameter forces a new download.
  * @param onPick (Language, SetChoice) -> Unit - chosen set.
  * @param onDismiss () -> Unit - closes without choosing.
  * @return Unit
@@ -79,7 +79,7 @@ private fun sortSets(sets: List<SetChoice>, sort: SetSort): List<SetChoice> {
 @Composable
 fun SetPickerDialog(
     state: SetPickerState,
-    onLanguage: (Language, Boolean) -> Unit,
+    onLanguage: (Language?, Boolean) -> Unit,
     onPick: (Language, SetChoice) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -100,7 +100,7 @@ fun SetPickerDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SET_LANGUAGES.forEach { lang ->
-                        FilterChip(selected = state.language == lang, onClick = { onLanguage(lang, false) }, label = { Text(lang.shortLabel()) })
+                        FilterChip(selected = state.language == lang, onClick = { onLanguage(if (state.language == lang) null else lang, false) }, label = { Text(lang.shortLabel()) })
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -120,16 +120,17 @@ fun SetPickerDialog(
                     state.noCatalog -> Text(stringResource(R.string.msg_no_catalog), style = MaterialTheme.typography.bodySmall)
                     shown.isEmpty() -> Text(stringResource(R.string.set_pick_none), style = MaterialTheme.typography.bodySmall)
                     else -> LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                        items(shown, key = { it.id }) { set ->
+                        items(shown, key = { "${it.language?.code}:${it.id}" }) { set ->
                             Column(
                                 Modifier
                                     .fillMaxWidth()
-                                    .clickable { onPick(state.language, set) }
+                                    .clickable { onPick(set.language ?: state.language ?: Language.EN, set) }
                                     .padding(vertical = 8.dp),
                             ) {
                                 Text(set.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 set.nameEn?.let { Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                                 val details = buildList {
+                                    if (state.language == null) set.language?.let { add(it.shortLabel()) }
                                     add(set.code ?: set.id)
                                     set.releaseDate?.take(YEAR_LENGTH)?.let { add(it) }
                                     set.cards?.let { add(pluralStringResource(R.plurals.set_pick_cards, it, it)) }

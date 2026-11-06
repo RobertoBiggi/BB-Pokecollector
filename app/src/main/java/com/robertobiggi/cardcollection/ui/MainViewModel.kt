@@ -24,6 +24,7 @@ import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.SetListResult
 import com.robertobiggi.cardcollection.data.repo.VariantImage
 import com.robertobiggi.cardcollection.data.repo.SetChoice
+import com.robertobiggi.cardcollection.ui.common.SET_LANGUAGES
 import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.data.catalog.CardBrief
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
@@ -90,13 +91,13 @@ data class CollectionFilter(
 /** State of the search for cards to add by hand; [messageRes] is a notice to show, if any. */
 /**
  * State of the set picker for set collections.
- * @property language language of the sets shown.
+ * @property language language of the sets shown, null for all of them.
  * @property loading true while the list is downloading.
  * @property sets available sets.
  * @property noCatalog true if the card database is not installed.
  */
 data class SetPickerState(
-    val language: Language = Language.EN,
+    val language: Language? = null,
     val loading: Boolean = false,
     val sets: List<SetChoice> = emptyList(),
     val noCatalog: Boolean = false,
@@ -373,19 +374,27 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     /**
      * Downloads the list of sets of a language for the picker (if not already loaded).
-     * @param language Language - language of the sets.
+     * @param language Language? - language of the sets, null for the sets of every language together.
      * @param force Boolean - true to download it again even if present (e.g. after an error).
      * @return Unit
      */
-    fun loadSets(language: Language, force: Boolean = false) {
+    fun loadSets(language: Language?, force: Boolean = false) {
         val current = _setPicker.value
         if (!force && current.language == language && (current.loading || current.sets.isNotEmpty())) return
         _setPicker.value = SetPickerState(language = language, loading = true)
         viewModelScope.launch {
-            _setPicker.value = when (val result = container.catalog.setChoices(language)) {
-                is SetListResult.Found -> SetPickerState(language = language, sets = result.sets)
-                SetListResult.NoCatalog -> SetPickerState(language = language, noCatalog = true)
+            val languages = if (language == null) SET_LANGUAGES else listOf(language)
+            val sets = ArrayList<SetChoice>()
+            for (lang in languages) {
+                when (val result = container.catalog.setChoices(lang)) {
+                    is SetListResult.Found -> sets += result.sets.map { it.copy(language = lang) }
+                    SetListResult.NoCatalog -> {
+                        _setPicker.value = SetPickerState(language = language, noCatalog = true)
+                        return@launch
+                    }
+                }
             }
+            _setPicker.value = SetPickerState(language = language, sets = sets)
         }
     }
 
