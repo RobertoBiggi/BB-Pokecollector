@@ -24,6 +24,15 @@ class CatalogImageSourceTest {
     }
 
     @Test
+    fun `rebuilds a Pokumon address from the saved path`() {
+        assertEquals(
+            "https://cdn6966.templcdn.com/wp-content/uploads/2024/09/EN_U148Unnumbered-733x1024.jpg",
+            CatalogImageSources.POKUMON.urlOf("2024/09/EN_U148Unnumbered-733x1024"),
+        )
+        assertEquals(null, CatalogImageSources.POKUMON.urlOf("2024/../x"))
+    }
+
+    @Test
     fun `rebuilds a Pokoin address from the saved path`() {
         assertEquals(
             "https://cdn.pokoin.com/card-images/656670_bulbasaur_homepage.webp",
@@ -57,8 +66,8 @@ class CatalogImageSourceTest {
 
     @Test
     fun `hosts of all the sources are listed for the app's network filter`() {
-        assertEquals(setOf("cdn.pokoin.com", "den-cards.pokellector.com", "bills-archive.nyc3.cdn.digitaloceanspaces.com"), CatalogImageSources.hosts)
-        assertEquals(listOf("pokoin", "pokellector", "billsarchive"), CatalogImageSources.ALL.map { it.id })
+        assertEquals(setOf("cdn.pokoin.com", "den-cards.pokellector.com", "bills-archive.nyc3.cdn.digitaloceanspaces.com", "cdn6966.templcdn.com"), CatalogImageSources.hosts)
+        assertEquals(listOf("pokoin", "pokellector", "billsarchive", "pokumon"), CatalogImageSources.ALL.map { it.id })
         assertEquals(listOf("pokoin"), CatalogImageSources.BEFORE_CARDTRADER.map { it.id })
     }
 }

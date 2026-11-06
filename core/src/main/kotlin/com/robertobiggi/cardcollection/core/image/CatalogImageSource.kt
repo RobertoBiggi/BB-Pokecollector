@@ -65,11 +65,17 @@ object CatalogImageSources {
     /** pokoin.com: English and Japanese sets, 480 px wide WebP (the generator saves only cards it matched with no doubt). */
     val POKOIN = CatalogImageSource("pokoin", "pokoin", "https://cdn.pokoin.com/", ".webp", "Pokoin")
 
+    /**
+     * pokumon.com: promo cards, including the old unnumbered ones no other source has; JPEG, about 730 px wide (the generator saves only cards it
+     * matched with no doubt, from the file built by its `pokumon.py`). The image lives on the site's CDN.
+     */
+    val POKUMON = CatalogImageSource("pokumon", "pokumon", "https://cdn6966.templcdn.com/wp-content/uploads/", ".jpg", "Pokumon")
+
     /** Sources tried right after TCGdex and before CardTrader (which needs a token and an API call per card). */
     val BEFORE_CARDTRADER: List<CatalogImageSource> = listOf(POKOIN)
 
     /** Sources tried after CardTrader. */
-    val AFTER_CARDTRADER: List<CatalogImageSource> = listOf(POKELLECTOR, BILLS_ARCHIVE)
+    val AFTER_CARDTRADER: List<CatalogImageSource> = listOf(POKELLECTOR, BILLS_ARCHIVE, POKUMON)
 
     /** Every source, in the order they are tried (the first with an image that downloads wins). */
     val ALL: List<CatalogImageSource> = BEFORE_CARDTRADER + AFTER_CARDTRADER
