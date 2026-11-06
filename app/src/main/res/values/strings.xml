@@ -269,6 +269,7 @@
     <string name="card_dialog_pick_image">Choosing image</string>
     <string name="card_dialog_running">Working…</string>
     <string name="action_ok">OK</string>
+    <string name="other_prints_no_image">No image</string>
     <string name="other_prints_title">Other prints</string>
     <plurals name="other_prints_hint">
         <item quantity="one">%d other print: tap to see it</item>
