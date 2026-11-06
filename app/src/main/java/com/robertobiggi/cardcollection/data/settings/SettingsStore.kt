@@ -138,6 +138,30 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
         store.edit { it[PRICE_ALERT_CHANGE_PERCENT] = percent.coerceIn(PriceAlertRules.CHANGE_PERCENT_RANGE) }
     }
 
+    /** True if the anonymous usage counter is allowed (on by default; the user can turn it off in Settings). */
+    val analyticsEnabled: Flow<Boolean> = store.data.map { it[ANALYTICS_ENABLED] ?: true }
+
+    /**
+     * Turns the anonymous usage counter on or off.
+     * @param enabled Boolean - true to allow it.
+     * @return Unit
+     */
+    suspend fun setAnalyticsEnabled(enabled: Boolean) {
+        store.edit { it[ANALYTICS_ENABLED] = enabled }
+    }
+
+    /** Instant of the last usage event sent (0 = never). */
+    val lastAnalyticsPing: Flow<Long> = store.data.map { it[LAST_ANALYTICS_PING] ?: 0L }
+
+    /**
+     * Records when the last usage event was sent.
+     * @param timestamp Long - instant in milliseconds.
+     * @return Unit
+     */
+    suspend fun setLastAnalyticsPing(timestamp: Long) {
+        store.edit { it[LAST_ANALYTICS_PING] = timestamp }
+    }
+
     /** Prices shown in the app (all by default). */
     val priceVisibility: Flow<PriceVisibility> = store.data.map {
         PriceVisibility(it[SHOW_CARDMARKET] ?: true, it[SHOW_CARDTRADER] ?: true)
@@ -176,6 +200,8 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
         private val COUNT_FIRST_EDITION = booleanPreferencesKey("count_first_edition")
         private val SHOW_CARDTRADER = booleanPreferencesKey("show_price_cardtrader")
         private val LAST_CATALOG_SYNC = longPreferencesKey("last_catalog_sync")
+        private val ANALYTICS_ENABLED = booleanPreferencesKey("analytics_enabled")
+        private val LAST_ANALYTICS_PING = longPreferencesKey("last_analytics_ping")
         private val PRICE_ALERTS_ENABLED = booleanPreferencesKey("price_alerts_enabled")
         private val PRICE_ALERT_CHANGE_PERCENT = intPreferencesKey("price_alert_change_percent")
     }

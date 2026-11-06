@@ -1,6 +1,9 @@
 package com.robertobiggi.cardcollection
 
 import android.content.Context
+import android.os.Build
+import com.robertobiggi.cardcollection.core.analytics.AnalyticsContext
+import com.robertobiggi.cardcollection.core.analytics.AptabaseClient
 import com.robertobiggi.cardcollection.core.image.CatalogImageSources
 import com.robertobiggi.cardcollection.core.model.PokemonNames
 import com.robertobiggi.cardcollection.core.validation.Validators
@@ -71,6 +74,11 @@ class AppContainer(context: Context) {
     )
     val transfer = TransferRepository(database, appContext.contentResolver, catalog, collection, images)
     val work = WorkScheduler(appContext)
+    /** Anonymous usage counter: does nothing without a key in the build. */
+    private val analytics = AptabaseClient(http, BuildConfig.APTABASE_KEY)
+
+    /** True if this build has a counter, so Settings shows its switch. */
+    val analyticsAvailable: Boolean get() = analytics.configured
 
     init {
         // Reads the Pokémon names right away, so the first search does not block the UI.
@@ -78,16 +86,31 @@ class AppContainer(context: Context) {
         appScope.launch { catalogStore.load() }
         // Removes cards left over from deleted collections (the one-hour margin avoids those of a sync in progress).
         appScope.launch { collection.purgeOrphanCards(System.currentTimeMillis() - ORPHAN_GRACE_MS) }
+        // One anonymous "app_open" per day, only if the user did not turn it off. Failures are ignored and retried at the next opening.
+        appScope.launch { sendUsagePing() }
         // Reschedules the daily alert check if it was lost (e.g. app force-stopped).
         appScope.launch { if (settings.priceAlertsEnabled.first()) work.schedulePriceAlerts() }
     }
 
+    /**
+     * Sends the daily anonymous usage event if allowed and not already sent in the last 24 hours.
+     * @return Unit
+     */
+    private suspend fun sendUsagePing() {
+        if (!analytics.configured || !settings.analyticsEnabled.first()) return
+        val now = System.currentTimeMillis()
+        if (now - settings.lastAnalyticsPing.first() < PING_INTERVAL_MS) return
+        val info = AnalyticsContext(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString(), Build.VERSION.RELEASE, java.util.Locale.getDefault().toLanguageTag())
+        if (analytics.track("app_open", info)) settings.setLastAnalyticsPing(now)
+    }
+
     private companion object {
+        const val PING_INTERVAL_MS = 24 * 60 * 60 * 1000L
         const val ORPHAN_GRACE_MS = 60 * 60 * 1000L
         const val USER_AGENT = "CardCollection-Android (uso personale)"
 
-        /** Hosts reachable by the app: TCGdex images, Cardmarket price list, CardTrader API and images, the other image sources. */
-        val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com") + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS +
+        /** Hosts reachable by the app: TCGdex images, Cardmarket price list, CardTrader API and images, the other image sources, Aptabase (anonymous usage counter). */
+        val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com") + AptabaseClient.HOSTS + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS +
             CatalogImageSources.hosts
     }
 }

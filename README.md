@@ -31,6 +31,10 @@ An offline-first Android app to track your Pokémon card collection: every varia
 
 Requires Android 8.0 or later. Download the APK from the latest [Release](../../releases/latest), or add this repository to [Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates. Until signed releases are set up, the latest Release is **Test build**: the APK of the last push to `main`, replaced at every update.
 
+## Privacy
+
+The app talks only to the card, image and price sources it needs. If this build has an [Aptabase](https://aptabase.com) key, it also sends one anonymous `app_open` event per day with the app version, Android version and language: no device identifier, nothing about your collection. It is on by default and can be turned off in **Settings → Anonymous statistics**. Maintainers set the key in `gradle.properties` (`aptabaseKey`); empty means no counter at all.
+
 ## Development
 
 ```bash

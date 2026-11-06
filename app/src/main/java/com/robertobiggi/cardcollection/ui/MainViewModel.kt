@@ -167,6 +167,20 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val cardTraderToken: StateFlow<String> = container.settings.cardTraderToken.stateInVm("")
     val countFirstEdition: StateFlow<Boolean> = container.settings.countFirstEdition.stateInVm(true)
     val priceVisibility: StateFlow<PriceVisibility> = container.settings.priceVisibility.stateInVm(PriceVisibility())
+    /** True if the build has the anonymous usage counter (otherwise Settings does not mention it). */
+    val analyticsAvailable: Boolean get() = container.analyticsAvailable
+
+    val analyticsEnabled: StateFlow<Boolean> = container.settings.analyticsEnabled.stateInVm(true)
+
+    /**
+     * Allows or forbids the anonymous usage counter.
+     * @param enabled Boolean - true to allow it.
+     * @return Unit
+     */
+    fun setAnalyticsEnabled(enabled: Boolean) {
+        viewModelScope.launch { container.settings.setAnalyticsEnabled(enabled) }
+    }
+
     val priceAlertsEnabled: StateFlow<Boolean> = container.settings.priceAlertsEnabled.stateInVm(false)
     val priceAlertChangePercent: StateFlow<Int> = container.settings.priceAlertChangePercent.stateInVm(PriceAlertRules.DEFAULT_CHANGE_PERCENT)
 

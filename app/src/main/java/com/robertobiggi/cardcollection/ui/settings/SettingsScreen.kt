@@ -82,6 +82,7 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val countFirstEdition by vm.countFirstEdition.collectAsStateWithLifecycle()
     var tokenInput by remember(savedToken) { mutableStateOf(savedToken) }
     val alertsEnabled by vm.priceAlertsEnabled.collectAsStateWithLifecycle()
+    val analyticsEnabled by vm.analyticsEnabled.collectAsStateWithLifecycle()
     val alertPercent by vm.priceAlertChangePercent.collectAsStateWithLifecycle()
     var percentDraft by remember(alertPercent) { mutableFloatStateOf(alertPercent.toFloat()) }
     val context = LocalContext.current
@@ -179,6 +180,15 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                         if (alertCheckRunning) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
                     }
                     Text(stringResource(R.string.settings_alerts_check_now_hint), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (vm.analyticsAvailable) {
+                item {
+                    Section(stringResource(R.string.settings_analytics)) {
+                        PriceSwitch(stringResource(R.string.settings_analytics_switch), stringResource(R.string.settings_analytics_text), analyticsEnabled) {
+                            vm.setAnalyticsEnabled(it)
+                        }
+                    }
                 }
             }
             item {
