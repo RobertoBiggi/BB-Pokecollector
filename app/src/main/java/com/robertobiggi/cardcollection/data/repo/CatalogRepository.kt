@@ -65,7 +65,7 @@ data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int
  * @property cards cards of the set, declared or in the database.
  * @property releaseDate release date (ISO, e.g. "2003-07-18"), if known.
  */
-data class SetChoice(val id: String, val name: String, val cards: Int?, val releaseDate: String? = null, val code: String? = null)
+data class SetChoice(val id: String, val name: String, val cards: Int?, val releaseDate: String? = null, val code: String? = null, val nameEn: String? = null)
 
 /** Outcome of reading the list of sets. */
 sealed interface SetListResult {
@@ -189,6 +189,14 @@ class CatalogRepository(
         }
 
     /**
+     * English name of a set of the installed database (Japanese sets).
+     * @param language Language - catalog language of the card.
+     * @param setId String - id of the set.
+     * @return String? - the name, or null if there is none.
+     */
+    suspend fun setNameEn(language: Language, setId: String): String? = store.use { it.setNameEn(language, setId) }
+
+    /**
      * Downloads the image of a print just to show it.
      * @param url String - address from [variantImages].
      * @return ByteArray? - the image, or null if it cannot be downloaded.
@@ -232,7 +240,7 @@ class CatalogRepository(
      */
     suspend fun setChoices(language: Language): SetListResult {
         val sets = store.use { it.sets(language) } ?: return SetListResult.NoCatalog
-        return SetListResult.Found(sets.filter { Validators.isValidRemoteId(it.id) }.map { SetChoice(it.id, it.name, it.declared ?: it.cards, it.releaseDate, it.code) })
+        return SetListResult.Found(sets.filter { Validators.isValidRemoteId(it.id) }.map { SetChoice(it.id, it.name, it.declared ?: it.cards, it.releaseDate, it.code, it.nameEn) })
     }
 
     /**

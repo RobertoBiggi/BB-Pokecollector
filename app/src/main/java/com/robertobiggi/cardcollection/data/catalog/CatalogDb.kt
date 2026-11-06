@@ -20,8 +20,9 @@ class InvalidCatalogException(message: String, cause: Throwable? = null) : Excep
  * @property name name of the set.
  * @property cards cards of the set in the catalog.
  * @property declared cards declared by the set (official or total number), if known.
+ * @property nameEn English name of a Japanese set, null if the set has none or it equals [name].
  */
-data class CatalogSet(val id: String, val name: String, val cards: Int, val declared: Int?, val releaseDate: String?, val code: String? = null)
+data class CatalogSet(val id: String, val name: String, val cards: Int, val declared: Int?, val releaseDate: String?, val code: String? = null, val nameEn: String? = null)
 
 /** Card found by a search, with what is needed to show it in the list. */
 data class CardBrief(val id: String, val localId: String, val name: String, val setName: String, val imageUrl: String?)
@@ -38,6 +39,13 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
     /** Columns of the `card` table: those added after the first version (nameEn, image paths) may be missing from files generated earlier, which stay valid. */
     private val cardColumns: Set<String> = db.rawQuery("PRAGMA table_info(card)", null).use { c ->
         buildSet { while (c.moveToNext()) add(c.getString(1)) }
+    }
+
+    /** True if `card_set` has the English name of the sets (added after the first version, may be missing from older files). */
+    private val hasSetNameEn: Boolean = db.rawQuery("PRAGMA table_info(card_set)", null).use { c ->
+        var found = false
+        while (c.moveToNext()) if (c.getString(1) == "nameEn") found = true
+        found
     }
 
     /** Columns of the `card_variant` table (the image paths of the variants were added after the first version). */
@@ -96,13 +104,28 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
      * @param language Language - catalog language.
      * @return List<CatalogSet> - available sets.
      */
-    fun sets(language: Language): List<CatalogSet> =
-        db.rawQuery(
-            """SELECT s.setId, s.name, COUNT(c.n), COALESCE(s.cardCountTotal, s.cardCountOfficial), s.releaseDate, s.setCode
+    fun sets(language: Language): List<CatalogSet> {
+        val nameEn = if (hasSetNameEn) "s.nameEn" else "NULL"
+        return db.rawQuery(
+            """SELECT s.setId, s.name, COUNT(c.n), COALESCE(s.cardCountTotal, s.cardCountOfficial), s.releaseDate, s.setCode, $nameEn
                FROM card_set s JOIN card c ON c.s = s.s WHERE s.language = ?
                GROUP BY s.s ORDER BY s.releaseDate IS NULL, s.releaseDate DESC, s.name""",
             arrayOf(language.code),
-        ).use { c -> buildList { while (c.moveToNext()) add(CatalogSet(c.getString(0), c.getString(1), c.getInt(2), if (c.isNull(3)) null else c.getInt(3), c.getString(4), c.getString(5)?.takeIf { it.isNotBlank() })) } }
+        ).use { c -> buildList { while (c.moveToNext()) add(CatalogSet(c.getString(0), c.getString(1), c.getInt(2), if (c.isNull(3)) null else c.getInt(3), c.getString(4), c.getString(5)?.takeIf { it.isNotBlank() }, c.getString(6)?.takeIf { it.isNotBlank() })) } }
+    }
+
+    /**
+     * English name of a set, shown next to the original one of Japanese sets.
+     * @param language Language - catalog language.
+     * @param setId String - id of the set.
+     * @return String? - the name, or null if the set has none or this file has no such column.
+     */
+    fun setNameEn(language: Language, setId: String): String? {
+        if (!hasSetNameEn) return null
+        return db.rawQuery("SELECT nameEn FROM card_set WHERE language = ? AND setId = ?", arrayOf(language.code, setId)).use { c ->
+            if (c.moveToFirst()) c.getString(0)?.takeIf { it.isNotBlank() } else null
+        }
+    }
 
     /**
      * All the cards of a set.
