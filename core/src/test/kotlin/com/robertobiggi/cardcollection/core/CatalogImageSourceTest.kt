@@ -18,8 +18,8 @@ class CatalogImageSourceTest {
             CatalogImageSources.POKELLECTOR.urlOf("316/Brocks-Zubat.B05.1.38325"),
         )
         assertEquals(
-            "https://bills-archive.nyc3.cdn.digitaloceanspaces.com/tcgdex_cards_jp/e1/e1-18_abra.webp",
-            CatalogImageSources.BILLS_ARCHIVE.urlOf("e1/e1-18_abra"),
+            "https://cdn.pokoin.com/e1/e1-18.webp",
+            CatalogImageSources.POKOIN.urlOf("e1/e1-18"),
         )
     }
 
@@ -78,8 +78,8 @@ class CatalogImageSourceTest {
 
     @Test
     fun `hosts of all the sources are listed for the app's network filter`() {
-        assertEquals(setOf("cdn.pokoin.com", "den-cards.pokellector.com", "bills-archive.nyc3.cdn.digitaloceanspaces.com", "cdn6966.templcdn.com"), CatalogImageSources.hosts)
-        assertEquals(listOf("pokoin", "pokellector", "billsarchive", "pokumon"), CatalogImageSources.ALL.map { it.id })
+        assertEquals(setOf("cdn.pokoin.com", "den-cards.pokellector.com", "cdn6966.templcdn.com"), CatalogImageSources.hosts)
+        assertEquals(listOf("pokoin", "pokellector", "pokumon"), CatalogImageSources.ALL.map { it.id })
         assertEquals(listOf("pokoin"), CatalogImageSources.BEFORE_CARDTRADER.map { it.id })
     }
 }
