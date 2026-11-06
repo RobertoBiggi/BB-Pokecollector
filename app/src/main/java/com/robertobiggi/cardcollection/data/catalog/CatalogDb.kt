@@ -48,6 +48,9 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
         found
     }
 
+    /** True if the file has `card_promo`, the date and event of the Japanese promos without a number (added after the first version). */
+    private val hasCardPromo: Boolean = db.rawQuery("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_promo'", null).use { it.moveToFirst() }
+
     /** Columns of the `card_variant` table (the image paths of the variants were added after the first version). */
     private val variantColumns: Set<String> = db.rawQuery("PRAGMA table_info(card_variant)", null).use { c ->
         buildSet { while (c.moveToNext()) add(c.getString(1)) }
@@ -106,12 +109,25 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
      */
     fun sets(language: Language): List<CatalogSet> {
         val nameEn = if (hasSetNameEn) "s.nameEn" else "NULL"
+        val date = if (hasCardPromo) "COALESCE(s.releaseDate, MIN(p.releaseDate))" else "s.releaseDate"
         return db.rawQuery(
-            """SELECT s.setId, s.name, COUNT(c.n), COALESCE(s.cardCountTotal, s.cardCountOfficial), s.releaseDate, s.setCode, $nameEn
-               FROM card_set s JOIN card c ON c.s = s.s WHERE s.language = ?
-               GROUP BY s.s ORDER BY s.releaseDate IS NULL, s.releaseDate DESC, s.name""",
+            """SELECT s.setId, s.name, COUNT(c.n), COALESCE(s.cardCountTotal, s.cardCountOfficial), $date, s.setCode, $nameEn
+               FROM card_set s JOIN card c ON c.s = s.s ${if (hasCardPromo) "LEFT JOIN card_promo p ON p.n = c.n" else ""} WHERE s.language = ?
+               GROUP BY s.s ORDER BY $date IS NULL, $date DESC, s.name""",
             arrayOf(language.code),
         ).use { c -> buildList { while (c.moveToNext()) add(CatalogSet(c.getString(0), c.getString(1), c.getInt(2), if (c.isNull(3)) null else c.getInt(3), c.getString(4), c.getString(5)?.takeIf { it.isNotBlank() }, c.getString(6)?.takeIf { it.isNotBlank() })) } }
+    }
+
+    /**
+     * Occasion on which a promo without a number was given out (e.g. "Communication Evolution Campaign").
+     * @param cardId String - local id of the card.
+     * @return String? - the event, or null if the database does not know it or has no such table.
+     */
+    fun promoEvent(cardId: String): String? {
+        if (!hasCardPromo) return null
+        return db.rawQuery("SELECT p.event FROM card_promo p JOIN card c ON c.n = p.n WHERE c.id = ?", arrayOf(cardId)).use { c ->
+            if (c.moveToFirst()) c.getString(0)?.takeIf { it.isNotBlank() } else null
+        }
     }
 
     /**
@@ -200,9 +216,9 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
     private fun query(where: String, args: Array<String>): List<CatalogCard> {
         val rows = db.rawQuery(
             """SELECT c.n, c.id, s.language, c.name, s.setId, s.name, s.setCode, s.serieId, s.serieName, c.localId, c.printedNumber, c.rarity,
-                      s.releaseDate, c.illustrator, c.dexId, c.cardmarketId, c.cardmarketExpansionId, c.cardmarketName, c.cardmarketProductHint,
+                      ${if (hasCardPromo) "COALESCE(p.releaseDate, s.releaseDate)" else "s.releaseDate"}, c.illustrator, c.dexId, c.cardmarketId, c.cardmarketExpansionId, c.cardmarketName, c.cardmarketProductHint,
                       c.cmProduct, c.cardTraderBlueprintId, s.cardTraderExpansionId, c.origin, ${if (hasNameEn) "c.nameEn" else "NULL"}
-               FROM card c JOIN card_set s ON s.s = c.s $where ORDER BY s.setId, c.localId""",
+               FROM card c JOIN card_set s ON s.s = c.s ${if (hasCardPromo) "LEFT JOIN card_promo p ON p.n = c.n" else ""} $where ORDER BY s.setId, c.localId""",
             args,
         ).use { c -> buildList { while (c.moveToNext()) add(Row(c)) } }
         val variants = HashMap<Long, MutableList<CatalogVariant>>()

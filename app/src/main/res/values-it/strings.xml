@@ -129,6 +129,7 @@
     <string name="meta_code">Codice</string>
     <string name="meta_set">Set</string>
     <string name="meta_set_en">Set (EN)</string>
+    <string name="meta_event">Evento</string>
     <string name="meta_serie">Serie</string>
     <string name="meta_rarity">Rarità</string>
     <string name="meta_language">Lingua</string>
