@@ -59,11 +59,6 @@ object CatalogImageSources {
     /** jp.pokellector.com: most Japanese sets, full-size PNG. */
     val POKELLECTOR = CatalogImageSource("pokellector", "pokellector", "https://den-cards.pokellector.com/", ".png", "Pokellector")
 
-    /** billsarchive.com: older Japanese sets (Neo, PMCG, e-Card, PCG), WebP. */
-    val BILLS_ARCHIVE = CatalogImageSource(
-        "billsarchive", "billsarchive", "https://bills-archive.nyc3.cdn.digitaloceanspaces.com/tcgdex_cards_jp/", ".webp", "Bill's Archive",
-    )
-
     /** pokoin.com: English and Japanese sets, 480 px wide WebP (the generator saves only cards it matched with no doubt). */
     val POKOIN = CatalogImageSource("pokoin", "pokoin", "https://cdn.pokoin.com/", ".webp", "Pokoin")
 
@@ -77,7 +72,7 @@ object CatalogImageSources {
     val BEFORE_CARDTRADER: List<CatalogImageSource> = listOf(POKOIN)
 
     /** Sources tried after CardTrader. */
-    val AFTER_CARDTRADER: List<CatalogImageSource> = listOf(POKELLECTOR, BILLS_ARCHIVE, POKUMON)
+    val AFTER_CARDTRADER: List<CatalogImageSource> = listOf(POKELLECTOR, POKUMON)
 
     /** Every source, in the order they are tried (the first with an image that downloads wins). */
     val ALL: List<CatalogImageSource> = BEFORE_CARDTRADER + AFTER_CARDTRADER
