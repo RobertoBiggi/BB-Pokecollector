@@ -322,7 +322,7 @@ private const val CREATE_PATTERN_MAX = 400
  * - by Pokémon: name, languages (EN, JP or others, also together) and an optional first search;
  * - by set: an entire set to pick from the list, as base set or master set.
  * @param setPicker SetPickerState - list of sets for the "by set" mode.
- * @param onLoadSets (Language, Boolean) -> Unit - asks for the list of sets of a language.
+ * @param onLoadSets (Language?, Boolean) -> Unit - asks for the list of sets of a language (null = every language).
  * @param onDismiss () -> Unit - closes.
  * @param onCreate (String, List<Language>, String, (Int) -> Unit) -> Unit - creates by Pokémon; the last parameter shows an error (string resource).
  * @param onCreateSet (String, Language, SetChoice, QueryKind, (Int) -> Unit) -> Unit - creates by set; the last parameter shows an error.
@@ -331,7 +331,7 @@ private const val CREATE_PATTERN_MAX = 400
 @Composable
 private fun CreateCollectionDialog(
     setPicker: SetPickerState,
-    onLoadSets: (Language, Boolean) -> Unit,
+    onLoadSets: (Language?, Boolean) -> Unit,
     onDismiss: () -> Unit,
     onCreate: (String, List<Language>, String, (Int) -> Unit) -> Unit,
     onCreateSet: (String, Language, SetChoice, QueryKind, (Int) -> Unit) -> Unit,

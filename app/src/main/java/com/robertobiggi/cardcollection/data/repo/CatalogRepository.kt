@@ -64,8 +64,13 @@ data class SyncResult(val cardsSaved: Int, val imagesSaved: Int, val errors: Int
  * @property name name of the set.
  * @property cards cards of the set, declared or in the database.
  * @property releaseDate release date (ISO, e.g. "2003-07-18"), if known.
+ * @property nameEn English name of a Japanese set, if known.
+ * @property language language of the set; filled when the picker lists the sets of several languages together.
  */
-data class SetChoice(val id: String, val name: String, val cards: Int?, val releaseDate: String? = null, val code: String? = null, val nameEn: String? = null)
+data class SetChoice(
+    val id: String, val name: String, val cards: Int?, val releaseDate: String? = null, val code: String? = null, val nameEn: String? = null,
+    val language: Language? = null,
+)
 
 /** Outcome of reading the list of sets. */
 sealed interface SetListResult {
