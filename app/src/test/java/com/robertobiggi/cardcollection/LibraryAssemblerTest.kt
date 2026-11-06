@@ -50,6 +50,15 @@ class LibraryAssemblerTest {
     }
 
     @Test
+    fun `i timbri e i prodotti Cardmarket in piu non contano come mancanti finche non li si vuole`() {
+        val c = card("en:pl3-60", "Garchomp C", "SV")
+        val types = listOf(VariantType.NORMAL, VariantType.STAMPED, VariantType.CARDMARKET_PRINT)
+        val variants = types.map { CardVariantEntity("${c.id}|${it.name}", c.id, it.name) }
+        val ui = LibraryAssembler.assemble(listOf(c), variants, emptyList(), emptyList()).single()
+        assertEquals(listOf(true, false, false), ui.variants.sortedBy { it.type.ordinal }.map { it.wanted })
+    }
+
+    @Test
     fun `lo spostamento di una variante somma le copie e unisce le note`() {
         val reverse = CollectionEntryEntity(1, "c|REVERSE", quantity = 1, wanted = false, notes = "da vendere")
         assertEquals(CollectionEntryEntity(1, "c|HOLO", quantity = 1, wanted = false, notes = "da vendere"), EntryMerge.move(reverse, "c|HOLO", null))
