@@ -40,6 +40,31 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
         buildSet { while (c.moveToNext()) add(c.getString(1)) }
     }
 
+    /** Columns of the `card_variant` table (the image paths of the variants were added after the first version). */
+    private val variantColumns: Set<String> = db.rawQuery("PRAGMA table_info(card_variant)", null).use { c ->
+        buildSet { while (c.moveToNext()) add(c.getString(1)) }
+    }
+
+    /**
+     * Images that the database has for some variants of a card (prints with a stamp, from pokumon.com), apart from the card's own image.
+     * @param cardId String - local id of the card.
+     * @return List<CatalogVariantImage> - one per variant with an image; empty if there are none or this file has no such column.
+     */
+    fun variantImages(cardId: String): List<CatalogVariantImage> {
+        if ("pokumon" !in variantColumns) return emptyList()
+        db.rawQuery(
+            "SELECT v.type, v.print, v.pokumon FROM card_variant v JOIN card c ON c.n = v.n WHERE c.id = ? AND v.pokumon IS NOT NULL ORDER BY v.type, v.print",
+            arrayOf(cardId),
+        ).use { c ->
+            val found = ArrayList<CatalogVariantImage>()
+            while (c.moveToNext()) {
+                val type = variantTypes[c.getInt(0)] ?: continue
+                found += CatalogVariantImage(type, c.getString(1), c.getString(2))
+            }
+            return found
+        }
+    }
+
     /** True if the database has the `card.nameEn` column (it shows the original names otherwise). */
     private val hasNameEn: Boolean = "nameEn" in cardColumns
 
@@ -252,3 +277,11 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
         private fun <T> List<T>.narrow(predicate: (T) -> Boolean): List<T> = filter(predicate).ifEmpty { this }
     }
 }
+
+/**
+ * Image of a variant in the card database.
+ * @property type VariantType - type of the variant.
+ * @property print String - stamp that tells it apart from the others of the same type.
+ * @property path String - path of the image on the site of its source (rebuilt into an address by the source's [com.robertobiggi.cardcollection.core.image.CatalogImageSource]).
+ */
+data class CatalogVariantImage(val type: VariantType, val print: String, val path: String)

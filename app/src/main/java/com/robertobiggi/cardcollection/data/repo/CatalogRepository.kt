@@ -179,6 +179,23 @@ class CatalogRepository(
     }
 
     /**
+     * Images of the other prints of a card (variants with their own image), from the card database.
+     * @param cardId String - local id of the card.
+     * @return List<VariantImage> - empty if the database has none.
+     */
+    suspend fun variantImages(cardId: String): List<VariantImage> =
+        store.use { cat -> cat.variantImages(cardId) }.orEmpty().mapNotNull { v ->
+            CatalogImageSources.POKUMON.urlOf(v.path)?.let { VariantImage(v.type, v.print, it) }
+        }
+
+    /**
+     * Downloads the image of a print just to show it.
+     * @param url String - address from [variantImages].
+     * @return ByteArray? - the image, or null if it cannot be downloaded.
+     */
+    suspend fun previewImage(url: String): ByteArray? = images.preview(url, CatalogImageSources.POKUMON::isAllowedUrl)
+
+    /**
      * Text that records where the images of some cards come from in the installed database (see [CatalogUpdate.imageKey]).
      * @param cards List<CatalogCard> - cards read from the database.
      * @return Map<String, String> - key by card id.

@@ -2,6 +2,14 @@
 
 package com.robertobiggi.cardcollection.ui.detail
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import coil3.compose.AsyncImage
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.layout.aspectRatio
+import com.robertobiggi.cardcollection.ui.common.stampName
+import com.robertobiggi.cardcollection.data.repo.VariantImage
 import androidx.compose.ui.res.pluralStringResource
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.ui.common.imageSourceLabel
@@ -119,6 +127,9 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     val cardTraderToken by vm.cardTraderToken.collectAsStateWithLifecycle()
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     var manualFor by remember { mutableStateOf<VariantUi?>(null) }
+    var others by remember(cardId) { mutableStateOf<List<VariantImage>>(emptyList()) }
+    var showOthers by remember { mutableStateOf(false) }
+    LaunchedEffect(cardId) { others = vm.variantImages(cardId) }
     val alerts by vm.priceAlerts.collectAsStateWithLifecycle()
     val alertsEnabled by vm.priceAlertsEnabled.collectAsStateWithLifecycle()
     val alertPercent by vm.priceAlertChangePercent.collectAsStateWithLifecycle()
@@ -142,7 +153,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            item { Header(card) }
+            item { Header(card, others.size) { showOthers = true } }
             item {
                 CardActions(
                     action = action,
@@ -187,6 +198,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
 
     report?.let { CardActionDialog(it, onDismiss = vm::dismissCardReport) }
 
+    if (showOthers && card != null) OtherPrintsDialog(vm, card, others) { showOthers = false }
     manualFor?.let { variant ->
         val owner = card ?: return@let
         ManualPriceDialog(
@@ -239,12 +251,21 @@ private fun CardActionDialog(report: CardActionReport, onDismiss: () -> Unit) {
  * @return Unit
  */
 @Composable
-private fun Header(card: CardUi) {
+private fun Header(card: CardUi, otherPrints: Int, onOtherPrints: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         val imagePath = card.card.imageHighPath ?: card.card.imageLowPath
         Column(Modifier.width(160.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            CardImage(card, imagePath, Modifier.fillMaxWidth())
+            // The base card's image is always the one shown; tapping it (when the database has images of other prints) lists them with their prices.
+            CardImage(card, imagePath, Modifier.fillMaxWidth().then(if (otherPrints > 0) Modifier.clickable(onClick = onOtherPrints) else Modifier))
             imageSourceLabel(imagePath)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (otherPrints > 0) {
+                Text(
+                    pluralStringResource(R.plurals.other_prints_hint, otherPrints, otherPrints),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable(onClick = onOtherPrints),
+                )
+            }
         }
         Column(Modifier.weight(1f)) {
             MetaRow(stringResource(R.string.meta_code), card.printedCode, mono = true)
@@ -626,4 +647,66 @@ private fun sourceLabel(source: String): String = when (source) {
     CollectionFiles.MANUAL_SOURCE -> stringResource(R.string.source_manual)
     CollectionFiles.IMPORTED_SOURCE -> stringResource(R.string.source_imported)
     else -> source
+}
+
+/**
+ * Other prints of a card (e.g. with a stamp) with their image and prices; the image is downloaded only to be shown.
+ * @param vm MainViewModel - downloads the images.
+ * @param card CardUi - card, for the variants and their prices.
+ * @param images List<VariantImage> - prints with an image.
+ * @param onDismiss () -> Unit - closes the dialog.
+ * @return Unit
+ */
+@Composable
+private fun OtherPrintsDialog(vm: MainViewModel, card: CardUi, images: List<VariantImage>, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.other_prints_title)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                images.forEach { image ->
+                    val variant = card.variants.firstOrNull { it.type == image.type && it.print == image.print }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        PrintImage(vm, image.url, card.card.name)
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(variant?.let { variantLabel(card, it) } ?: stampName(image.print), fontWeight = FontWeight.Bold)
+                            Text(
+                                stringResource(R.string.price_cardmarket) + ": " + Format.eur(variant?.latestEur?.eur),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            variant?.latestCardTrader?.eur?.let {
+                                Text(stringResource(R.string.price_cardtrader) + ": " + Format.eur(it), style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
+    )
+}
+
+/**
+ * Image of a print, downloaded when shown.
+ * @param vm MainViewModel - downloads the image.
+ * @param url String - address of the image.
+ * @param description String - description for accessibility.
+ * @return Unit
+ */
+@Composable
+private fun PrintImage(vm: MainViewModel, url: String, description: String) {
+    var bytes by remember(url) { mutableStateOf<ByteArray?>(null) }
+    var done by remember(url) { mutableStateOf(false) }
+    LaunchedEffect(url) {
+        bytes = vm.previewImage(url)
+        done = true
+    }
+    Box(Modifier.width(96.dp).aspectRatio(63f / 88f), contentAlignment = Alignment.Center) {
+        val data = bytes
+        when {
+            data != null -> AsyncImage(model = data, contentDescription = description, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            !done -> CircularProgressIndicator(Modifier.size(24.dp))
+            else -> Text("—", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }

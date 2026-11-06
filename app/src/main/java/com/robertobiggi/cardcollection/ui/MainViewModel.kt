@@ -22,6 +22,7 @@ import com.robertobiggi.cardcollection.core.model.Condition
 import com.robertobiggi.cardcollection.core.model.CatalogUpdate
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.SetListResult
+import com.robertobiggi.cardcollection.data.repo.VariantImage
 import com.robertobiggi.cardcollection.data.repo.SetChoice
 import com.robertobiggi.cardcollection.core.model.QueryKind
 import com.robertobiggi.cardcollection.data.catalog.CardBrief
@@ -713,6 +714,20 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     fun downloadCardImage(cardId: String) = runCardAction(CardAction.DOWNLOAD_IMAGE) {
         report(container.imageDownloader.download(cardId).messageRes())
     }
+
+    /**
+     * Images of the other prints of a card.
+     * @param cardId String - card.
+     * @return List<VariantImage> - empty if there are none.
+     */
+    suspend fun variantImages(cardId: String): List<VariantImage> = container.catalog.variantImages(cardId)
+
+    /**
+     * Downloads the image of a print just to show it.
+     * @param url String - address of the image.
+     * @return ByteArray? - the image, or null if it cannot be downloaded.
+     */
+    suspend fun previewImage(url: String): ByteArray? = container.catalog.previewImage(url)
 
     /**
      * Uses an image chosen by the user for a card.
