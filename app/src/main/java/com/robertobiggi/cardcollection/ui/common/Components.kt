@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalLayoutApi::class)
+
 package com.robertobiggi.cardcollection.ui.common
 
 import androidx.compose.foundation.BorderStroke
@@ -7,6 +9,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -229,7 +233,7 @@ fun LanguagePicker(selected: Language, onSelect: (Language) -> Unit) {
     val main = listOf(Language.EN, Language.JA, Language.ZH_TW)
     Column {
         Text(stringResource(R.string.label_card_language), style = MaterialTheme.typography.labelMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             main.forEach { lang ->
                 FilterChip(
                     selected = selected == lang,
@@ -282,7 +286,7 @@ fun LanguageMultiPicker(selected: List<Language>, onChange: (List<Language>) -> 
     }
     Column {
         Text(stringResource(R.string.label_card_languages), style = MaterialTheme.typography.labelMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             main.forEach { lang ->
                 FilterChip(
                     selected = lang in selected,
