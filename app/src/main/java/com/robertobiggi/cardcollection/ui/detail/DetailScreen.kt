@@ -2,6 +2,10 @@
 
 package com.robertobiggi.cardcollection.ui.detail
 
+import com.robertobiggi.cardcollection.core.model.VariantType
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import coil3.compose.AsyncImage
@@ -153,7 +157,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            item { Header(card, others.size) { showOthers = true } }
+            item { Header(card, printEntries(card, others).size) { showOthers = true } }
             item {
                 CardActions(
                     action = action,
@@ -198,7 +202,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
 
     report?.let { CardActionDialog(it, onDismiss = vm::dismissCardReport) }
 
-    if (showOthers && card != null) OtherPrintsDialog(vm, card, others) { showOthers = false }
+    if (showOthers && card != null) OtherPrintsDialog(vm, card, printEntries(card, others)) { showOthers = false }
     manualFor?.let { variant ->
         val owner = card ?: return@let
         ManualPriceDialog(
@@ -650,26 +654,48 @@ private fun sourceLabel(source: String): String = when (source) {
 }
 
 /**
- * Other prints of a card (e.g. with a stamp) with their image and prices; the image is downloaded only to be shown.
+ * A print of a card shown in the dialog of the other prints.
+ * @property type VariantType - type of the variant.
+ * @property print String - stamp that tells it apart from the others of the same type.
+ * @property url String? - address of its image, null if no source has one (a placeholder is shown).
+ */
+private data class PrintEntry(val type: VariantType, val print: String, val url: String?)
+
+/**
+ * The other prints of a card: those with an image in the card database, then the stamped variants of the card that have none.
+ * @param card CardUi - card.
+ * @param images List<VariantImage> - prints with an image.
+ * @return List<PrintEntry> - what the dialog lists.
+ */
+private fun printEntries(card: CardUi, images: List<VariantImage>): List<PrintEntry> {
+    val withImage = images.map { PrintEntry(it.type, it.print, it.url) }
+    val without = card.variants
+        .filter { v -> v.type == VariantType.STAMPED && withImage.none { it.type == v.type && it.print == v.print } }
+        .map { PrintEntry(it.type, it.print, null) }
+    return withImage + without
+}
+
+/**
+ * Other prints of a card (e.g. with a stamp) with their image (or a placeholder) and prices; the image is downloaded only to be shown.
  * @param vm MainViewModel - downloads the images.
  * @param card CardUi - card, for the variants and their prices.
- * @param images List<VariantImage> - prints with an image.
+ * @param entries List<PrintEntry> - prints to list.
  * @param onDismiss () -> Unit - closes the dialog.
  * @return Unit
  */
 @Composable
-private fun OtherPrintsDialog(vm: MainViewModel, card: CardUi, images: List<VariantImage>, onDismiss: () -> Unit) {
+private fun OtherPrintsDialog(vm: MainViewModel, card: CardUi, entries: List<PrintEntry>, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.other_prints_title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                images.forEach { image ->
-                    val variant = card.variants.firstOrNull { it.type == image.type && it.print == image.print }
+                entries.forEach { entry ->
+                    val variant = card.variants.firstOrNull { it.type == entry.type && it.print == entry.print }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        PrintImage(vm, image.url, card.card.name)
+                        PrintImage(vm, entry.url, card.card.name)
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(variant?.let { variantLabel(card, it) } ?: stampName(image.print), fontWeight = FontWeight.Bold)
+                            Text(variant?.let { variantLabel(card, it) } ?: stampName(entry.print), fontWeight = FontWeight.Bold)
                             Text(
                                 stringResource(R.string.price_cardmarket) + ": " + Format.eur(variant?.latestEur?.eur),
                                 style = MaterialTheme.typography.bodySmall,
@@ -687,23 +713,27 @@ private fun OtherPrintsDialog(vm: MainViewModel, card: CardUi, images: List<Vari
 }
 
 /**
- * Image of a print, downloaded when shown.
+ * Image of a print, downloaded when shown; a placeholder if the print has none.
  * @param vm MainViewModel - downloads the image.
- * @param url String - address of the image.
+ * @param url String? - address of the image, null if there is none.
  * @param description String - description for accessibility.
  * @return Unit
  */
 @Composable
-private fun PrintImage(vm: MainViewModel, url: String, description: String) {
+private fun PrintImage(vm: MainViewModel, url: String?, description: String) {
     var bytes by remember(url) { mutableStateOf<ByteArray?>(null) }
     var done by remember(url) { mutableStateOf(false) }
     LaunchedEffect(url) {
-        bytes = vm.previewImage(url)
+        bytes = url?.let { vm.previewImage(it) }
         done = true
     }
     Box(Modifier.width(96.dp).aspectRatio(63f / 88f), contentAlignment = Alignment.Center) {
         val data = bytes
         when {
+            url == null -> Box(
+                Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) { Text(stringResource(R.string.other_prints_no_image), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             data != null -> AsyncImage(model = data, contentDescription = description, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
             !done -> CircularProgressIndicator(Modifier.size(24.dp))
             else -> Text("—", color = MaterialTheme.colorScheme.onSurfaceVariant)
