@@ -24,6 +24,8 @@ android {
         resourceConfigurations += listOf("en", "it")
         // Only used by the screenshots of the README (app/src/androidTest, workflow screenshots.yml).
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Aptabase app key (gradle.properties): empty disables the anonymous usage counter.
+        buildConfigField("String", "APTABASE_KEY", "\"${providers.gradleProperty("aptabaseKey").orElse("").get().trim()}\"")
     }
 
     signingConfigs {
@@ -64,6 +66,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     lint {

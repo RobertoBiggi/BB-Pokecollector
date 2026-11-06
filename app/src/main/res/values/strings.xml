@@ -361,6 +361,9 @@
     <string name="alert_price_up">%1$s: up %2$s%% to %3$s (was %4$s)</string>
     <string name="alert_price_down">%1$s: down %2$s%% to %3$s (was %4$s)</string>
     <string name="alert_price_target">%1$s: %2$s, close to or below your price of %3$s</string>
+    <string name="settings_analytics">Anonymous statistics</string>
+    <string name="settings_analytics_switch">Send anonymous usage statistics</string>
+    <string name="settings_analytics_text">Once a day the app tells Aptabase that it was opened, with the app version, the Android version and the language. Nothing about your collection, no device identifier, no personal data. Turn it off and nothing is sent.</string>
     <string name="settings_alerts">Price alerts</string>
     <string name="settings_alerts_switch">Daily price check</string>
     <string name="settings_alerts_text">Every morning around 4:30, after the Cardmarket price guide is updated, refreshes the prices of cards with an alert (bell in the card detail) and sends you a notification. When off, nothing is downloaded.</string>

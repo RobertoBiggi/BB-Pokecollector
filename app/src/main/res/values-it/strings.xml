@@ -363,6 +363,9 @@
     <string name="alert_price_up">%1$s: salito del %2$s%% a %3$s (era %4$s)</string>
     <string name="alert_price_down">%1$s: sceso del %2$s%% a %3$s (era %4$s)</string>
     <string name="alert_price_target">%1$s: %2$s, vicino o sotto il tuo prezzo di %3$s</string>
+    <string name="settings_analytics">Statistiche anonime</string>
+    <string name="settings_analytics_switch">Invia statistiche d\'uso anonime</string>
+    <string name="settings_analytics_text">Una volta al giorno l\'app comunica ad Aptabase di essere stata aperta, con versione dell\'app, versione di Android e lingua. Niente sulla tua collezione, nessun identificativo del dispositivo, nessun dato personale. Se la spegni non viene inviato nulla.</string>
     <string name="settings_alerts">Avvisi di prezzo</string>
     <string name="settings_alerts_switch">Controllo giornaliero dei prezzi</string>
     <string name="settings_alerts_text">Ogni mattina verso le 4:30, dopo l\'aggiornamento del listino Cardmarket, aggiorna i prezzi delle carte con un avviso (campanella nel dettaglio della carta) e ti manda una notifica. Spento non scarica nulla.</string>
