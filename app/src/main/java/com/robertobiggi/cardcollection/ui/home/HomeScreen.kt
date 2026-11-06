@@ -361,7 +361,7 @@ private fun CreateCollectionDialog(
                 )
                 if (bySet) {
                     OutlinedButton(onClick = { picking = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text(chosen?.let { (lang, set) -> "${set.name} (${lang.shortLabel()})" } ?: stringResource(R.string.set_pick_button), maxLines = 2)
+                        Text(chosen?.let { (lang, set) -> "${set.name}${set.nameEn?.let { " / $it" }.orEmpty()} (${lang.shortLabel()})" } ?: stringResource(R.string.set_pick_button), maxLines = 2)
                     }
                     SetLevelPicker(level) { level = it }
                     error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

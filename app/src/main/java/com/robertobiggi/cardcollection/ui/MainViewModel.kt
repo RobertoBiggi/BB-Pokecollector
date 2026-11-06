@@ -720,6 +720,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @param cardId String - card.
      * @return List<VariantImage> - empty if there are none.
      */
+    suspend fun setNameEn(language: Language, setId: String): String? = container.catalog.setNameEn(language, setId)
+
     suspend fun variantImages(cardId: String): List<VariantImage> = container.catalog.variantImages(cardId)
 
     /**

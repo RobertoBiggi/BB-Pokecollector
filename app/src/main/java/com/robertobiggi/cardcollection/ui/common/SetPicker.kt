@@ -90,7 +90,7 @@ fun SetPickerDialog(
     val needle = PokemonNames.normalize(query)
     val shown = remember(state.sets, needle, sort) {
         val found = if (needle.isEmpty()) state.sets
-        else state.sets.filter { PokemonNames.normalize(it.name).contains(needle) || PokemonNames.normalize(it.id).contains(needle) || it.code?.let { c -> PokemonNames.normalize(c).contains(needle) } == true }
+        else state.sets.filter { PokemonNames.normalize(it.name).contains(needle) || it.nameEn?.let { n -> PokemonNames.normalize(n).contains(needle) } == true || PokemonNames.normalize(it.id).contains(needle) || it.code?.let { c -> PokemonNames.normalize(c).contains(needle) } == true }
         sortSets(found, sort)
     }
     AlertDialog(
@@ -128,6 +128,7 @@ fun SetPickerDialog(
                                     .padding(vertical = 8.dp),
                             ) {
                                 Text(set.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                set.nameEn?.let { Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                                 val details = buildList {
                                     add(set.code ?: set.id)
                                     set.releaseDate?.take(YEAR_LENGTH)?.let { add(it) }

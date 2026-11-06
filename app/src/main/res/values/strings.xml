@@ -130,6 +130,7 @@
     <string name="remove_from_collection">Remove from collection</string>
     <string name="meta_code">Code</string>
     <string name="meta_set">Set</string>
+    <string name="meta_set_en">Set (EN)</string>
     <string name="meta_serie">Series</string>
     <string name="meta_rarity">Rarity</string>
     <string name="meta_language">Language</string>
