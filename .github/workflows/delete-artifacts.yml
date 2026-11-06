@@ -1,0 +1,29 @@
+# Deletes every artifact of the repository (test APKs and failure reports), to free the Actions storage.
+# Started by hand from Actions → "Delete test APKs" → Run workflow. Releases are not touched.
+name: Delete test APKs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Delete artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Ids collected first, then deleted: deleting while paging would skip entries.
+          ids=$(gh api "repos/$REPO/actions/artifacts?per_page=100" --paginate -q '.artifacts[].id')
+          count=0
+          for id in $ids; do
+            gh api -X DELETE "repos/$REPO/actions/artifacts/$id"
+            count=$((count + 1))
+          done
+          echo "Deleted artifacts: $count" | tee -a "$GITHUB_STEP_SUMMARY"
