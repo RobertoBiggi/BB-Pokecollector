@@ -217,7 +217,7 @@ fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 /**
- * Choice of the cards' language: EN and JP chips, plus "Other" with the menu of the other languages.
+ * Choice of the cards' language: EN, JP and ZH-TW chips, plus "Other" with the menu of the other languages.
  * If another language is chosen, the third chip shows its name. Warns for languages with little data.
  * @param selected Language - selected language.
  * @param onSelect (Language) -> Unit - new choice.
@@ -226,7 +226,7 @@ fun Section(title: String, content: @Composable () -> Unit) {
 @Composable
 fun LanguagePicker(selected: Language, onSelect: (Language) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    val main = listOf(Language.EN, Language.JA)
+    val main = listOf(Language.EN, Language.JA, Language.ZH_TW)
     Column {
         Text(stringResource(R.string.label_card_language), style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -275,7 +275,7 @@ fun LanguagePicker(selected: Language, onSelect: (Language) -> Unit) {
 @Composable
 fun LanguageMultiPicker(selected: List<Language>, onChange: (List<Language>) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    val main = listOf(Language.EN, Language.JA)
+    val main = listOf(Language.EN, Language.JA, Language.ZH_TW)
     fun toggle(lang: Language) {
         val next = if (lang in selected) selected - lang else selected + lang
         if (next.isNotEmpty()) onChange(Language.entries.filter { it in next })

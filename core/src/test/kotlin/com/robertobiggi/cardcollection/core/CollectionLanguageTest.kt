@@ -15,6 +15,8 @@ class CollectionLanguageTest {
         assertEquals(CollectionLanguage.MIXED, CollectionLanguage.codeOf(null))
         assertEquals(CollectionLanguage.MIXED, CollectionLanguage.codeOf(Language.IT))
         assertEquals(Language.JA, CollectionLanguage.fixedLanguage("ja"))
+        assertEquals("zh-tw", CollectionLanguage.codeOf(Language.ZH_TW))
+        assertEquals(Language.ZH_TW, CollectionLanguage.fixedLanguage("zh-tw"))
         assertNull(CollectionLanguage.fixedLanguage(CollectionLanguage.MIXED))
         assertNull(CollectionLanguage.fixedLanguage("fr"))
     }

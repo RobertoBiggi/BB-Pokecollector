@@ -43,8 +43,8 @@ import com.robertobiggi.cardcollection.ui.theme.MonoStyle
 /** Year digits in an ISO date ("2003-07-18"). */
 private const val YEAR_LENGTH = 4
 
-/** Languages offered for set collections: the only ones with complete sets on TCGdex or in the list of missing sets. */
-val SET_LANGUAGES = listOf(Language.EN, Language.JA)
+/** Languages offered for set collections: the ones with complete sets in the card database. */
+val SET_LANGUAGES = listOf(Language.EN, Language.JA, Language.ZH_TW)
 
 /** Order of the set list in the picker dialog. */
 private enum class SetSort(val label: Int) {

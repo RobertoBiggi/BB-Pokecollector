@@ -38,7 +38,7 @@ object CollectionLanguage {
     const val MIXED = "mixed"
 
     /** Languages that can be chosen as the fixed language of a collection. */
-    val FIXED: List<Language> = listOf(Language.EN, Language.JA)
+    val FIXED: List<Language> = listOf(Language.EN, Language.JA, Language.ZH_TW)
 
     /**
      * Gets the fixed language from the saved value.
