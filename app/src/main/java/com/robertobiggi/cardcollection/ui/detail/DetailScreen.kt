@@ -135,6 +135,8 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
     var showOthers by remember { mutableStateOf(false) }
     LaunchedEffect(cardId) { others = vm.variantImages(cardId) }
     var setNameEn by remember(cardId) { mutableStateOf<String?>(null) }
+    var promoEvent by remember(cardId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(cardId) { promoEvent = vm.promoEvent(cardId) }
     LaunchedEffect(cardId) { card?.let { setNameEn = vm.setNameEn(it.language, it.card.setId) } }
     val alerts by vm.priceAlerts.collectAsStateWithLifecycle()
     val alertsEnabled by vm.priceAlertsEnabled.collectAsStateWithLifecycle()
@@ -159,7 +161,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            item { Header(card, setNameEn, printEntries(card, others).size) { showOthers = true } }
+            item { Header(card, setNameEn, promoEvent, printEntries(card, others).size) { showOthers = true } }
             item {
                 CardActions(
                     action = action,
@@ -255,10 +257,11 @@ private fun CardActionDialog(report: CardActionReport, onDismiss: () -> Unit) {
  * Large image and metadata of the card.
  * @param card CardUi - card.
  * @param setNameEn String? - English name of the set (Japanese sets), null if none.
+ * @param promoEvent String? - occasion of a promo without a number, null if unknown.
  * @return Unit
  */
 @Composable
-private fun Header(card: CardUi, setNameEn: String?, otherPrints: Int, onOtherPrints: () -> Unit) {
+private fun Header(card: CardUi, setNameEn: String?, promoEvent: String?, otherPrints: Int, onOtherPrints: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         val imagePath = card.card.imageHighPath ?: card.card.imageLowPath
         Column(Modifier.width(160.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -282,6 +285,7 @@ private fun Header(card: CardUi, setNameEn: String?, otherPrints: Int, onOtherPr
             card.card.rarity?.let { MetaRow(stringResource(R.string.meta_rarity), it) }
             MetaRow(stringResource(R.string.meta_language), stringResource(card.language.labelRes()))
             card.card.releaseDate?.let { MetaRow(stringResource(R.string.meta_release), it) }
+            promoEvent?.let { MetaRow(stringResource(R.string.meta_event), it) }
             card.card.illustrator?.let { MetaRow(stringResource(R.string.meta_illustrator), it) }
         }
     }

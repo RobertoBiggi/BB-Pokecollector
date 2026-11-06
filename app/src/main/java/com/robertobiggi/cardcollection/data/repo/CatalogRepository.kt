@@ -189,6 +189,13 @@ class CatalogRepository(
         }
 
     /**
+     * Occasion on which a promo without a number was given out, from the installed database.
+     * @param cardId String - local id of the card.
+     * @return String? - the event, or null if unknown.
+     */
+    suspend fun promoEvent(cardId: String): String? = store.use { it.promoEvent(cardId) }
+
+    /**
      * English name of a set of the installed database (Japanese sets).
      * @param language Language - catalog language of the card.
      * @param setId String - id of the set.
