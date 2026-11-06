@@ -18,6 +18,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Without the release key main publishes no Release: its test APK is then the only one available.
+      HAS_RELEASE_KEY: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -84,10 +87,10 @@ jobs:
           mkdir -p dist
           cp "$apk" "dist/card-collection-$version.apk"
 
-      # Only for pushes to branches other than main (main already publishes a Release with the APK), never for
-      # third-party pull requests. Kept 3 days: each APK is about 30 MB (it bundles the card database).
+      # Only for pushes, never for third-party pull requests. On main only while the release key is missing: with the
+      # key, main publishes a Release with the APK instead. Kept 3 days: each APK is about 30 MB (it bundles the card database).
       - name: Pubblica APK di prova
-        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref != 'refs/heads/main' || env.HAS_RELEASE_KEY != 'true')
         uses: actions/upload-artifact@v7
         with:
           # archive: false uploads the single .apk as-is (no zip); the artifact takes the file's name.
