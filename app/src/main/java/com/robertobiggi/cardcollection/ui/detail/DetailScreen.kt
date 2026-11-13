@@ -186,6 +186,7 @@ fun DetailScreen(vm: MainViewModel, cardId: String, onBack: () -> Unit) {
                     onSaveAlert = { changes, percent, target -> vm.savePriceAlert(variant.id, changes, percent, target) },
                     onDeleteAlert = { vm.deletePriceAlert(variant.id) },
                     showCardmarket = visibility.cardmarket,
+                    showTcgplayer = visibility.tcgplayer,
                     showCardTrader = visibility.cardTrader && cardTraderToken.isNotEmpty(),
                 )
             }
@@ -397,6 +398,7 @@ private fun UriHandler.openSafely(url: String) {
  * @param onSaveAlert (Boolean, Int, String) -> Boolean - saves the alert (rises or falls, threshold, written target price); false if the price is not valid.
  * @param onDeleteAlert () -> Unit - removes the alert.
  * @param showCardmarket Boolean - false if the user hid the Cardmarket prices.
+ * @param showTcgplayer Boolean - false if the user hid the TCGplayer prices.
  * @param showCardTrader Boolean - true if there is a CardTrader token and the price is not hidden: shows the tile next to the other markets.
  * @return Unit
  */
@@ -414,6 +416,7 @@ private fun VariantCard(
     onSaveAlert: (Boolean, Int, String) -> Boolean,
     onDeleteAlert: () -> Unit,
     showCardmarket: Boolean,
+    showTcgplayer: Boolean,
     showCardTrader: Boolean,
 ) {
     var conditionOpen by remember { mutableStateOf(false) }
@@ -461,6 +464,14 @@ private fun VariantCard(
                 if (showCardmarket) {
                     PriceBox(stringResource(R.string.price_cardmarket), variant.latestEur?.eur?.let { Format.eur(it) }, Modifier.weight(1f))
                 }
+                if (showTcgplayer) {
+                    PriceBox(
+                        stringResource(R.string.price_tcgplayer),
+                        variant.latestUsd?.usd?.let { Format.usd(it) },
+                        Modifier.weight(1f),
+                        emptyText = stringResource(if (card.language == Language.EN || card.language == Language.JA) R.string.no_price else R.string.not_sold),
+                    )
+                }
                 if (showCardTrader) {
                     PriceBox(stringResource(R.string.price_cardtrader), variant.latestCardTrader?.eur?.let { Format.eur(it) }, Modifier.weight(1f))
                 }
@@ -471,6 +482,9 @@ private fun VariantCard(
                     last?.let { stringResource(R.string.price_source_date, Format.date(it.fetchedAt), sourceLabel(it.source)) } ?: stringResource(R.string.no_price_hint),
                     last, variant.eurHistory,
                 )
+            }
+            if (showTcgplayer) {
+                variant.latestUsd?.let { SourceStatusRow(stringResource(R.string.price_source_date, Format.date(it.fetchedAt), "TCGplayer"), it, variant.usdHistory) }
             }
             if (showCardTrader) {
                 variant.latestCardTrader?.let { SourceStatusRow(stringResource(R.string.price_source_date, Format.date(it.fetchedAt), "CardTrader"), it, variant.cardTraderHistory) }
@@ -504,14 +518,15 @@ private fun SourceStatusRow(text: String, snapshot: PriceSnapshotEntity?, histor
  * @param label String - name of the market.
  * @param value String? - formatted price, null if absent.
  * @param modifier Modifier - layout modifier.
+ * @param emptyText String? - text when the price is missing (null = "no price").
  * @return Unit
  */
 @Composable
-private fun PriceBox(label: String, value: String?, modifier: Modifier = Modifier) {
+private fun PriceBox(label: String, value: String?, modifier: Modifier = Modifier, emptyText: String? = null) {
     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium, modifier = modifier) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value ?: stringResource(R.string.no_price), style = if (value != null) MonoStyle else MaterialTheme.typography.bodySmall)
+            Text(value ?: emptyText ?: stringResource(R.string.no_price), style = if (value != null) MonoStyle else MaterialTheme.typography.bodySmall)
         }
     }
 }

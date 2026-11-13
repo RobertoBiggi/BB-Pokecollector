@@ -152,7 +152,10 @@
     </plurals>
     <string name="price_cardmarket" translatable="false">Cardmarket · trend</string>
     <string name="price_cardtrader" translatable="false">CardTrader · lowest</string>
+    <string name="price_tcgplayer" translatable="false">TCGplayer · market</string>
     <string name="no_price">no price</string>
+    <string name="not_sold">not sold</string>
+    <string name="stats_currency_note">EUR and USD stay separate: the app does not convert currencies.</string>
     <string name="source_manual">Manual</string>
     <string name="price_source_date" translatable="false">%1$s · %2$s</string>
     <string name="no_price_hint">No price: update or enter it manually</string>
@@ -292,6 +295,7 @@
     <string name="source_imported">Imported</string>
     <string name="source_cardmarket_text">EUR prices (including ones you enter by hand).</string>
     <string name="source_cardtrader_text">Lowest EUR listing per variant; needs the API token below.</string>
+    <string name="source_tcgplayer_text">USD market price for English and Japanese cards, from TCGCSV (a daily copy of TCGplayer).</string>
     <string name="stats_value">Collection value</string>
     <string name="stats_priced">Owned variants with a price: %1$d / %2$d</string>
     <string name="stats_missing_hint">variants you want but don\'t own</string>

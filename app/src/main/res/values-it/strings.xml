@@ -147,6 +147,8 @@
         <item quantity="other">%1$d doppioni</item>
     </plurals>
     <string name="no_price">nessun prezzo</string>
+    <string name="not_sold">non venduta</string>
+    <string name="stats_currency_note">EUR e USD restano separati: l\'app non converte le valute.</string>
     <string name="source_manual">Manuale</string>
     <string name="no_price_hint">Nessun prezzo: aggiorna o inseriscilo a mano</string>
     <string name="manual_price_button">Inserisci prezzo manuale</string>
@@ -289,6 +291,7 @@
     <string name="source_imported">Importato</string>
     <string name="source_cardmarket_text">Prezzi in EUR (compresi quelli inseriti a mano).</string>
     <string name="source_cardtrader_text">Prezzo più basso in EUR per variante; serve il token API qui sotto.</string>
+    <string name="source_tcgplayer_text">Prezzo market in USD per le carte inglesi e giapponesi, da TCGCSV (copia giornaliera di TCGplayer).</string>
     <string name="stats_value">Valore della collezione</string>
     <string name="stats_priced">Varianti possedute con un prezzo: %1$d / %2$d</string>
     <string name="stats_missing_hint">varianti che vuoi e non hai</string>

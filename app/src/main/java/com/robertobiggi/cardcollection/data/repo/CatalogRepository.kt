@@ -376,6 +376,7 @@ class CatalogRepository(
                     cardmarketProduct = if (fresh) card.cardmarketProduct else card.cardmarketProduct ?: existing?.cardmarketProduct,
                     cardTraderExpansionId = if (fresh) card.cardTraderExpansionId else card.cardTraderExpansionId ?: existing?.cardTraderExpansionId,
                     imageKey = imageKey ?: existing?.imageKey,
+                    tcgplayerRef = if (fresh) card.tcgplayerRef else card.tcgplayerRef ?: existing?.tcgplayerRef,
                 ),
             )
             val ids = card.variants.map { Ids.variantId(card.id, it.type, it.print) }

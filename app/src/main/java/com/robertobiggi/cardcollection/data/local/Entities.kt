@@ -92,6 +92,8 @@ data class CardEntity(
      * database changes them, the downloaded images are dropped and downloaded again. Null if never recorded (images already downloaded stay).
      */
     val imageKey: String? = null,
+    /** TCGplayer product of the card ("<group>/<product>", from the card database): the price in dollars is read from there. English and Japanese cards only. */
+    val tcgplayerRef: String? = null,
 )
 
 /** Print variant of a card: each row is a slot. */
@@ -163,7 +165,7 @@ data class CollectionEntryEntity(
 
 /**
  * Price saved for a variant (shared among collections); the last 10 are kept.
- * [usd] and [usdLow] (old TCGplayer prices) are no longer written or shown: they stay for old data and backups.
+ * [usd] and [usdLow] are the TCGplayer prices in dollars (source "TCGplayer"); the other sources only have euros.
  */
 @Entity(tableName = "price_snapshot", indices = [Index(value = ["variantId", "fetchedAt"])])
 data class PriceSnapshotEntity(

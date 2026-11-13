@@ -84,7 +84,7 @@ class LibraryAssemblerTest {
     }
 
     @Test
-    fun `assembla varianti, quantita e ultimo prezzo in euro`() {
+    fun `assembla varianti, quantita e ultimo prezzo per valuta`() {
         val c = card("en:me03-032", "Mawile", "POR")
         val normal = "en:me03-032|NORMAL"
         val reverse = "en:me03-032|REVERSE"
@@ -99,6 +99,7 @@ class LibraryAssemblerTest {
         assertEquals(1, result.slots)
         assertEquals(1, result.ownedSlots)
         assertEquals(0.05, result.variants[0].latestEur?.eur)
+        assertEquals(0.11, result.variants[0].latestUsd?.usd)
         assertNull(result.variants[1].latestEur)
     }
 

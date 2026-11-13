@@ -18,6 +18,7 @@ import com.robertobiggi.cardcollection.core.model.VariantType
  * @property cardTraderCondition worst condition accepted for CardTrader (that of the variant), null = Near Mint.
  * @property cardmarketId Cardmarket product id, if the card comes from the Cardmarket catalog: CardTrader finds it from this, without the number.
  * @property printProductId Cardmarket product of the requested print, if [variant] is a separate print ([VariantType.isPrint]).
+ * @property tcgplayerRef TCGplayer product of the card as "<group>/<product>" (card database), null if the generator found none.
  * @property printFinish finish (normal or holo) of the requested print: needed to read the right price of its product.
  */
 data class PriceRequest(
@@ -32,6 +33,7 @@ data class PriceRequest(
     val cardmarketId: Int? = null,
     val printProductId: Int? = null,
     val printFinish: VariantType = VariantType.NORMAL,
+    val tcgplayerRef: String? = null,
     val cardTraderBlueprintId: Int? = null,
     /** CardTrader blueprint of the variant alone (oversized card without a Cardmarket product): if present it is used instead of the card's. */
     val variantBlueprintId: Int? = null,

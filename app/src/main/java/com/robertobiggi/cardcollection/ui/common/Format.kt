@@ -10,7 +10,7 @@ import java.util.Locale
 
 /**
  * Formatting of prices and dates in the app's current language (changes with the choice in Settings).
- * Prices are in euros (Cardmarket, CardTrader, manual).
+ * EUR and USD are never converted.
  */
 object Format {
 
@@ -33,6 +33,13 @@ object Format {
      * @return String - e.g. "2,50 €" in Italian, "€2.50" in English; "—" if absent.
      */
     fun eur(value: Double?): String = money(value, "EUR")
+
+    /**
+     * Formats an amount in dollars.
+     * @param value Double? - amount.
+     * @return String - formatted amount, or "—" if absent.
+     */
+    fun usd(value: Double?): String = money(value, "USD")
 
     /**
      * Formats date and time.

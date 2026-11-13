@@ -22,6 +22,8 @@ import com.robertobiggi.cardcollection.data.local.TrackedQueryEntity
  *
  * @property latestEur latest snapshot with a price in euros.
  * @property latestCardTrader latest CardTrader snapshot (kept separate from Cardmarket).
+ * @property latestUsd latest snapshot with a price in dollars (TCGplayer).
+ * @property usdHistory prices in dollars from oldest to most recent.
  * @property eurHistory prices in euros from oldest to most recent (for the sparkline).
  * @property cardTraderHistory CardTrader prices from oldest to most recent.
  */
@@ -34,6 +36,8 @@ data class VariantUi(
     val condition: Condition,
     val latestEur: PriceSnapshotEntity?,
     val latestCardTrader: PriceSnapshotEntity? = null,
+    val latestUsd: PriceSnapshotEntity? = null,
+    val usdHistory: List<Double> = emptyList(),
     val lastSnapshot: PriceSnapshotEntity?,
     val eurHistory: List<Double>,
     val cardTraderHistory: List<Double> = emptyList(),
@@ -42,7 +46,7 @@ data class VariantUi(
      * Converts the variant into the input of the statistics computation.
      * @return SlotInput - minimal data for [com.robertobiggi.cardcollection.core.stats.CollectionStats].
      */
-    fun toSlotInput(): SlotInput = SlotInput(wanted, quantity, latestEur?.eur, latestCardTrader?.eur)
+    fun toSlotInput(): SlotInput = SlotInput(wanted, quantity, latestEur?.eur, latestUsd?.usd, latestCardTrader?.eur)
 }
 
 /**
@@ -271,6 +275,8 @@ object LibraryAssembler {
                     condition = Condition.entries.firstOrNull { it.name == entry?.condition } ?: Condition.NM,
                     latestEur = snaps.lastOrNull { it.eur != null && !it.isCardTrader() },
                     latestCardTrader = snaps.lastOrNull { it.eur != null && it.isCardTrader() },
+                    latestUsd = snaps.lastOrNull { it.usd != null },
+                    usdHistory = snaps.mapNotNull { it.usd },
                     lastSnapshot = snaps.lastOrNull { !it.isCardTrader() } ?: snaps.lastOrNull(),
                     eurHistory = snaps.filter { !it.isCardTrader() }.mapNotNull { it.eur },
                     cardTraderHistory = snaps.filter { it.isCardTrader() }.mapNotNull { it.eur },

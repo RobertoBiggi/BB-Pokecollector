@@ -21,7 +21,7 @@ An offline-first Android app to track your Pokémon card collection: every varia
 
 - Collections by Pokémon, by set (base or master set) or hand-picked cards, in many card languages.
 - Copies and condition tracked for every variant (normal, holo, reverse, 1st Edition, Poké Ball…).
-- Cardmarket prices, optional CardTrader prices, and price alerts by notification.
+- Cardmarket prices, TCGplayer prices (USD, English and Japanese cards), optional CardTrader prices, and price alerts by notification.
 - Missing cards with cost to complete, collection value and progress statistics.
 - Works offline. Backups go to a JSON file. English and Italian UI.
 
@@ -59,7 +59,7 @@ The code is released under the [MIT](LICENSE) license.
 Data sources, each with its own license or trademarks:
 - card data and images: [TCGdex](https://tcgdex.dev);
 - extra card images, for sets TCGdex lacks (mostly Japanese ones and promos): [Pokellector](https://jp.pokellector.com), [Pokoin](https://pokoin.com) and [Pokumon](https://pokumon.com), the last one also for the old unnumbered promos;
-- prices: [Cardmarket](https://www.cardmarket.com) and [CardTrader](https://www.cardtrader.com), plus a search link to [TCGplayer](https://www.tcgplayer.com) in the card detail;
+- prices: [Cardmarket](https://www.cardmarket.com), [CardTrader](https://www.cardtrader.com) and [TCGplayer](https://www.tcgplayer.com), the last one through [TCGCSV](https://tcgcsv.com), a free daily copy of its data;
 - rarities, promo dates and events, used when the database is built: [Bulbapedia](https://bulbapedia.bulbagarden.net);
 - Pokémon names: [PokeAPI](https://pokeapi.co);
 - anonymous usage counter (optional, see above): [Aptabase](https://aptabase.com).

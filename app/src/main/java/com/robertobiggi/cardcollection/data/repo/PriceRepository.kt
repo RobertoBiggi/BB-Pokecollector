@@ -23,6 +23,9 @@ import com.robertobiggi.cardcollection.core.price.PriceRequest
 import com.robertobiggi.cardcollection.core.price.ProviderSlot
 import com.robertobiggi.cardcollection.core.price.RateLimiter
 import com.robertobiggi.cardcollection.core.price.StepOutcome
+import com.robertobiggi.cardcollection.core.price.TcgplayerPriceProvider
+import com.robertobiggi.cardcollection.core.price.UsdQuote
+import com.robertobiggi.cardcollection.core.tcgcsv.TcgcsvClient
 import com.robertobiggi.cardcollection.data.local.AppDatabase
 import com.robertobiggi.cardcollection.data.local.CardEntity
 import com.robertobiggi.cardcollection.data.local.CardVariantEntity
@@ -77,7 +80,8 @@ data class AlertCheckResult(val notices: List<PriceAlertNotice>, val checked: In
  * Updates the prices of the wanted or owned variants and saves the latest result locally.
  * The Cardmarket product and CardTrader blueprint of each card come from the card database: the price in euros comes from the public
  * Cardmarket price list. If the user entered the CardTrader token, each variant also gets the CardTrader price, in a
- * separate chain: it does not replace Cardmarket and its errors do not count as errors of the update.
+ * separate chain: it does not replace Cardmarket and its errors do not count as errors of the update. The TCGplayer price in dollars comes from TCGCSV,
+ * through the product the card database matched to the card (only English and Japanese cards), and works the same way.
  * If a variant has no new data the previously saved price stays valid.
  */
 class PriceRepository(
@@ -225,6 +229,7 @@ class PriceRepository(
             printFinish = if (VariantType.HOLO.name in types && VariantType.NORMAL.name !in types) VariantType.HOLO else VariantType.NORMAL,
             cardTraderBlueprintId = card.cardTraderBlueprintId,
             variantBlueprintId = variant.cardTraderBlueprintId,
+            tcgplayerRef = card.tcgplayerRef,
         )
         val outcome = sources.cardmarketGuide.fetch(request)
         // CardTrader does not tell separate prints apart (shadowless, jumbo…), except those with their own blueprint (oversized without a Cardmarket product).
@@ -236,12 +241,13 @@ class PriceRepository(
         ) {
             priceDao.deleteSnapshotsOf(variant.id, CardTraderPriceProvider.DISPLAY_NAME)
         }
+        val tcgplayerSaved = saveTcgplayer(sources, request, variant.id)
         val quote = outcome.quote
         if (quote != null) {
             saveQuote(variant.id, quote)
             return VariantCheck.OK
         }
-        if (cardTraderSaved) return VariantCheck.OK
+        if (cardTraderSaved || tcgplayerSaved) return VariantCheck.OK
         return if (outcome.steps.any { it.outcome == StepOutcome.NETWORK_ERROR }) VariantCheck.NETWORK_ERROR else VariantCheck.FAILED
     }
 
@@ -282,8 +288,47 @@ class PriceRepository(
         }
     }
 
-    /** Sources of the update: the Cardmarket price list (always) and CardTrader (only with the token). */
-    private class PriceSources(val cardTrader: PriceChain?, val cardmarketGuide: PriceChain)
+    /**
+     * Looks up the TCGplayer price (dollars, from TCGCSV) of a variant and saves it as a snapshot of its own. It never fails the update: if TCGCSV
+     * cannot be reached, TCGplayer is skipped for the rest of the run and the saved price stays.
+     * @param sources PriceSources - sources of the update.
+     * @param request PriceRequest - card and variant.
+     * @param variantId String - variant.
+     * @return Boolean - true if a price was saved.
+     */
+    private suspend fun saveTcgplayer(sources: PriceSources, request: PriceRequest, variantId: String): Boolean {
+        val provider = sources.tcgplayer ?: return false
+        if (sources.tcgplayerDown || request.tcgplayerRef == null) return false
+        val quote: UsdQuote = try {
+            provider.fetch(request)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            sources.tcgplayerDown = true
+            null
+        } ?: return false
+        saveSnapshot(
+            PriceSnapshotEntity(
+                variantId = variantId,
+                source = TCGPLAYER_SOURCE,
+                eur = null,
+                eurLow = null,
+                eurAvg30 = null,
+                usd = quote.market,
+                usdLow = quote.low,
+                sourceUpdatedAt = null,
+                fetchedAt = System.currentTimeMillis(),
+                confidence = Confidence.HIGH.name,
+            ),
+        )
+        return true
+    }
+
+    /** Sources of the update: the Cardmarket price list (always), CardTrader (only with the token) and TCGplayer (only if its prices are shown). */
+    private class PriceSources(val cardTrader: PriceChain?, val cardmarketGuide: PriceChain, val tcgplayer: TcgplayerPriceProvider? = null) {
+        /** True after a TCGCSV error: the other variants of the run do not try again. */
+        var tcgplayerDown = false
+    }
 
     /**
      * Creates the sources of a price update.
@@ -296,9 +341,11 @@ class PriceRepository(
         val guide = CardmarketGuidePriceProvider(
             CardmarketPriceGuide(http, File(cacheDir, GUIDE_FILE), onDownload = { onStep(PriceStep.DOWNLOAD_GUIDE) }, onRead = { onStep(PriceStep.READ_GUIDE) }),
         )
+        val tcgplayer = if (settings.priceVisibility.first().tcgplayer) TcgplayerPriceProvider(TcgcsvClient(http)) else null
         return PriceSources(
             cardTrader = cardTrader?.let { PriceChain(listOf(ProviderSlot(it, RateLimiter(REQUEST_INTERVAL_MS), CircuitBreaker()))) },
             cardmarketGuide = PriceChain(listOf(ProviderSlot(guide, RateLimiter(0), CircuitBreaker()))),
+            tcgplayer = tcgplayer,
         )
     }
 
@@ -410,13 +457,16 @@ class PriceRepository(
 
     /**
      * Prices usable by alerts: the latest of each source, excluding manually entered ones. CardTrader euros
-     * count as CardTrader, the others as their source (Cardmarket price list).
+     * count as CardTrader, the others as their source (Cardmarket price list); dollars as TCGplayer.
      * @param snapshots List<PriceSnapshotEntity> - saved prices of the variant.
      * @return List<PricePoint> - one price per source and currency.
      */
     private fun pointsOf(snapshots: List<PriceSnapshotEntity>): List<PricePoint> =
         snapshots.filter { it.source != CollectionFiles.MANUAL_SOURCE }.sortedByDescending { it.fetchedAt }.flatMap { s ->
-            listOfNotNull(s.eur?.let { PricePoint(s.source, PricePoint.EUR, it) })
+            listOfNotNull(
+                s.eur?.let { PricePoint(s.source, PricePoint.EUR, it) },
+                s.usd?.let { PricePoint(TCGPLAYER_SOURCE, PricePoint.USD, it) },
+            )
         }.distinctBy { it.key }
 
     /**
@@ -456,5 +506,8 @@ class PriceRepository(
         private const val GUIDE_FILE = "cardmarket-price-guide.json"
         private const val MAX_NETWORK_ERRORS = 5
         private const val SQL_CHUNK = 500
+
+        /** Name under which alerts refer to dollar prices (TCGplayer), as in the card detail. */
+        const val TCGPLAYER_SOURCE = "TCGplayer"
     }
 }
