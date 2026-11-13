@@ -275,7 +275,7 @@
         <item quantity="other">%d altre stampe: tocca per vederle</item>
     </plurals>
     <string name="action_pick_image">Scegli immagine</string>
-    <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Se la carta non ha un\'immagine ufficiale (succede spesso con le carte giapponesi) l\'app la cerca su CardTrader; altrimenti puoi sceglierne una dalla galleria, che resta salvata finché non scarichi quella ufficiale.</string>
+    <string name="card_actions_hint">Il prezzo si aggiorna solo per questa carta. Scarica immagine prova tutte le fonti di immagini una dopo l\'altra; se nessuna ha la carta puoi sceglierne una dalla galleria, che resta salvata finché non ne scarichi una ufficiale.</string>
     <plurals name="msg_card_price_updated">
         <item quantity="one">Prezzi scaricati (%1$d variante).</item>
         <item quantity="many">Prezzi scaricati (%1$d varianti).</item>

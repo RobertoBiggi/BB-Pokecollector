@@ -37,20 +37,11 @@ Requires Android 8.0 or later. The button above always downloads the latest vers
 
 ## Privacy
 
-The app talks only to the card, image and price sources it needs. If this build has an [Aptabase](https://aptabase.com) key, it also sends one anonymous `app_open` event per day with the app version, Android version and language: no device identifier, nothing about your collection. It is on by default and can be turned off in **Settings → Anonymous statistics**. Maintainers set the key in `gradle.properties` (`aptabaseKey`); empty means no counter at all.
-
-## Development
-
-```bash
-./gradlew -PcoreOnly :core:test     # logic tests (JDK only)
-./gradlew :app:testDebugUnitTest    # app tests (Android SDK)
-./gradlew :app:assembleDebug        # test APK
-```
-
-- `core/` is pure Kotlin. `app/` is Android: Compose, Room and WorkManager.
-- CI tests every push.
-- Every push to `main` publishes a signed Release when the release key is set in the repository secrets (the key is never in the repo). Without it, the APK of `main` goes to the fixed **Test build** Release (`test-build`), replaced at every push.
-- The README screenshots come from the `README screenshots` workflow, which runs the app on an emulator with real data.
+- **No account and no server**: your collections stay on your phone.
+- **Only the addresses it needs**: the app contacts only the image sources, Cardmarket's price-list file, the card database download, the anonymous counter below and, if you set a token, the CardTrader API. Every other address is blocked.
+- **CardTrader token**: encrypted with an Android Keystore key that never leaves the phone, and excluded from Android backups.
+- **Images you choose**: re-encoded without metadata, so location and camera details are not kept.
+- **Anonymous statistics**: once a day the app sends one `app_open` event to [Aptabase](https://aptabase.com) with the app version, the Android version and the language. No device identifier, nothing about your collection. It is on by default; turn it off in **Settings → Anonymous statistics** and nothing is sent.
 
 ## License and credits
 
