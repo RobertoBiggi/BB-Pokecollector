@@ -12,7 +12,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.robertobiggi.cardcollection"
+        applicationId = "com.robertobiggi.bbpokecollector"
         minSdk = 26
         targetSdk = 35
         // In CI versionCode = number of commits on main and versionName = "<appVersion>.<versionCode>",

@@ -194,7 +194,7 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
 
     companion object {
         /** Where the published card database is (release with fixed tag `catalog` of the repository, separate from the APK releases). */
-        const val DEFAULT_CATALOG_URL = "https://github.com/RobertoBiggi/Card-collection/releases/download/catalog/cards.sqlite"
+        const val DEFAULT_CATALOG_URL = "https://github.com/RobertoBiggi/BB-Pokecollector/releases/download/catalog/cards.sqlite"
 
         private val CATALOG_URL = stringPreferencesKey("catalog_url")
         private val CARDTRADER_TOKEN_ENCRYPTED = stringPreferencesKey("cardtrader_token_v1")

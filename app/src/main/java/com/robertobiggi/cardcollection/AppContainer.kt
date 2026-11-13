@@ -107,7 +107,7 @@ class AppContainer(context: Context) {
     private companion object {
         const val PING_INTERVAL_MS = 24 * 60 * 60 * 1000L
         const val ORPHAN_GRACE_MS = 60 * 60 * 1000L
-        const val USER_AGENT = "CardCollection-Android (personal use)"
+        const val USER_AGENT = "BBPokeCollector-Android (personal use)"
 
         /** Hosts reachable by the app: TCGdex images, Cardmarket price list, CardTrader API and images, the other image sources, Aptabase (anonymous usage counter). */
         val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com", "tcgcsv.com") + AptabaseClient.HOSTS + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS +

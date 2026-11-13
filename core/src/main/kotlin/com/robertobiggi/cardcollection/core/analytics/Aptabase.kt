@@ -94,7 +94,7 @@ class AptabaseClient(
             put("appBuildNumber", context.buildNumber)
             put("engineName", "")
             put("engineVersion", "")
-            put("sdkVersion", "cardcollection@1")
+            put("sdkVersion", "bbpokecollector@1")
         })
         put("props", buildJsonObject { })
     }

@@ -26,7 +26,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CardCollection"
+rootProject.name = "BBPokeCollector"
 
 include(":core")
 // With -PcoreOnly only the pure Kotlin logic is built and tested, without the Android SDK.

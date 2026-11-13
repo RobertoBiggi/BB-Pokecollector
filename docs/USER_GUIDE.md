@@ -1,4 +1,4 @@
-# Card Collection: user guide
+# BB PokeCollector: user guide
 
 This guide covers every feature of the app, from installation to backups. The screenshots come from a real collection; prices change every day.
 
@@ -28,21 +28,21 @@ The app is not on the Play Store. It needs Android 8.0 or later.
 **With automatic updates (recommended)**
 
 1. Install [Obtainium](https://github.com/ImranR98/Obtainium).
-2. Tap **Add app** and paste `https://github.com/RobertoBiggi/Card-collection`.
-3. Before confirming, set **Filter links by regex** to `^card-collection\.apk$`: each Release has the same APK twice (with and without the version in its name), and this way Obtainium takes one without asking.
+2. Tap **Add app** and paste `https://github.com/RobertoBiggi/BB-Pokecollector`.
+3. Before confirming, set **Filter links by regex** to `^bb-pokecollector\.apk$`: each Release has the same APK twice (with and without the version in its name), and this way Obtainium takes one without asking.
 4. Confirm. Obtainium installs the app, checks for new versions in the background, notifies you and installs them with one tap.
 
 A GitHub access token in Obtainium's settings is optional: it only avoids GitHub's limit on anonymous requests.
 
 **Manually**
 
-1. Tap **Download latest APK** in the [README](../README.md#install) (or download `card-collection.apk` from the latest Release).
+1. Tap **Download latest APK** in the [README](../README.md#install) (or download `bb-pokecollector.apk` from the latest Release).
 2. Open the file on your phone.
 3. If Android asks, allow installs from unknown sources.
 
 To update, do the same again: the new version installs over the old one and keeps your collections.
 
-The card database ships with the app, so you can search and add cards right away, even offline.
+On first launch, download the card database once: **Settings → Card database → Download** (about 35 MB). After that, searching and adding cards work offline.
 
 **After an app update.** When an update brings a newer card database, every collection shows **Needs update** on the home list. Each one updates by itself the first time you open it: the app reads its cards again from the database, from scratch, so cards that were added, removed or corrected there are applied. Your copies, conditions, notes, wanted slots, removed cards and the cards you added by hand are kept exactly as before. Images that were already downloaded stay unless the database now points to a different source for that card.
 

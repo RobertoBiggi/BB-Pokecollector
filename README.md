@@ -1,4 +1,4 @@
-# Card Collection
+# BB PokeCollector
 
 An offline-first Android app to track your Pokémon card collection: every variant you own, what you are still missing, and what it is worth.
 
@@ -30,7 +30,7 @@ An offline-first Android app to track your Pokémon card collection: every varia
 ## Install
 
 <p>
-  <a href="../../releases/latest/download/card-collection.apk"><img src="docs/badges/download-apk.svg" alt="Download the latest APK"></a>
+  <a href="../../releases/latest/download/bb-pokecollector.apk"><img src="docs/badges/download-apk.svg" alt="Download the latest APK"></a>
 </p>
 
 Requires Android 8.0 or later. The button above always downloads the latest version: open the file on the phone and Android installs it over the previous one, keeping your data. You can also pick the APK from the latest [Release](../../releases/latest), or add this repository to [Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates. Every update of `main` publishes a new signed Release.

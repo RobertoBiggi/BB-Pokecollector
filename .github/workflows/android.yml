@@ -59,7 +59,7 @@ jobs:
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           apk=$(ls app/build/outputs/apk/debug/*.apk)
           "$tools/aapt" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-debuggable)" || true
-          "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.robertobiggi.cardcollection'"
+          "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.robertobiggi.bbpokecollector'"
           # The release build (minified by R8) must contain the Pokémon names.
           unzip -l app/build/outputs/apk/release/*.apk | grep -q "com/robertobiggi/cardcollection/core/model/pokemon-names.tsv"
 
@@ -70,7 +70,7 @@ jobs:
           apk=$(ls app/build/outputs/apk/debug/*.apk)
           version=$("$tools/aapt" dump badging "$apk" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
           mkdir -p dist
-          cp "$apk" "dist/card-collection-$version.apk"
+          cp "$apk" "dist/bb-pokecollector-$version.apk"
 
       # Branches other than main, for pushes and manual runs ("Run workflow"), never for third-party pull requests.
       # Kept 3 days. Test APKs are signed with the runner's
@@ -164,8 +164,8 @@ jobs:
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             echo "Release $tag already exists"; exit 0
           fi
-          cp app/build/outputs/apk/release/app-release.apk "card-collection-$VERSION.apk"
-          # Fixed name: the README download link (releases/latest/download/card-collection.apk) always points to the latest Release.
-          cp app/build/outputs/apk/release/app-release.apk card-collection.apk
-          gh release create "$tag" "card-collection-$VERSION.apk" card-collection.apk --repo "$GITHUB_REPOSITORY" \
+          cp app/build/outputs/apk/release/app-release.apk "bb-pokecollector-$VERSION.apk"
+          # Fixed name: the README download link (releases/latest/download/bb-pokecollector.apk) always points to the latest Release.
+          cp app/build/outputs/apk/release/app-release.apk bb-pokecollector.apk
+          gh release create "$tag" "bb-pokecollector-$VERSION.apk" bb-pokecollector.apk --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --title "$VERSION" --generate-notes --latest

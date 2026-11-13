@@ -3,7 +3,9 @@
 # screenshots of the README (ReadmeScreenshots) and copies them to docs/screenshots.
 set -euo pipefail
 
-PKG=com.robertobiggi.cardcollection
+# Application id of the APK; the test classes keep the code's package (namespace).
+PKG=com.robertobiggi.bbpokecollector
+CODE_PKG=com.robertobiggi.cardcollection
 OUT=docs/screenshots
 
 adb install -r app/build/outputs/apk/debug/*.apk
@@ -11,7 +13,7 @@ adb install -r app/build/outputs/apk/androidTest/debug/*.apk
 # Avoids the system dialog asking for notifications on top of the first screenshot.
 adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS
 
-adb shell am instrument -w -e class "$PKG.ReadmeScreenshots" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee instrument.log
+adb shell am instrument -w -e class "$CODE_PKG.ReadmeScreenshots" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee instrument.log
 
 mkdir -p "$OUT"
 for f in $(adb shell run-as "$PKG" ls files/screenshots | tr -d '\r'); do
