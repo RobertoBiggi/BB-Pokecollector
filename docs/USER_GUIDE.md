@@ -161,6 +161,8 @@ At the bottom, **Remove from collection** hides the card. You can bring it back 
 
 ## 6. Prices
 
+<img src="screenshots/09-price-sources.png" width="260" align="right" alt="Price sources and CardTrader token in Settings">
+
 Prices are only downloaded when you ask for them: the **Prices** button, **Update price** on a card, or the daily alert check.
 
 | Source | Currency | Notes |
@@ -189,6 +191,8 @@ Euros and dollars are never converted.
 - **old**: the price is more than 30 days old.
 
 If a source rejects too many requests, the app waits and retries. After repeated blocks it pauses that source for a few hours; prices you already have stay valid.
+
+<br clear="right">
 
 ## 7. Price alerts
 
