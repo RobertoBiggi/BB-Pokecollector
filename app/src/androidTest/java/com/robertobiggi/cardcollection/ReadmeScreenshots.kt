@@ -134,13 +134,13 @@ class ReadmeScreenshots {
         container.catalogStore.info.filterNotNull().first()
         val id = when (val created = container.collection.createCollection(COLLECTION_NAME, listOf(Language.EN), COLLECTION_NAME)) {
             is CreateResult.Created -> created.id
-            is CreateResult.Invalid -> error("Collezione non creata: ${created.error}")
+            is CreateResult.Invalid -> error("Collection not created: ${created.error}")
         }
         container.catalog.sync(id) { }
         container.prices.runPriceCheck(id) { }
 
         val library = container.collection.library(id).first().sortedBy { it.printedCode }
-        check(library.isNotEmpty()) { "Catalogo vuoto: il database delle carte non è nell'APK?" }
+        check(library.isNotEmpty()) { "Empty catalog: is the card database missing from the APK?" }
         library.forEachIndexed { i, card ->
             card.variants.forEachIndexed { j, variant ->
                 if ((i + j) % 3 != 0) container.collection.changeQuantity(id, variant.id, if ((i + j) % 7 == 0) 2 else 1)
