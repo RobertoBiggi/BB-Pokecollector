@@ -2,6 +2,7 @@
 
 package com.robertobiggi.cardcollection.ui.manage
 
+import com.robertobiggi.cardcollection.ui.common.AppSwitch
 import com.robertobiggi.cardcollection.ui.common.shortLabel
 import com.robertobiggi.cardcollection.ui.common.queryLabel
 import com.robertobiggi.cardcollection.ui.common.SetPickerDialog
@@ -38,7 +39,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -110,7 +110,7 @@ fun ManageScreen(vm: MainViewModel) {
                                 val lang = Language.fromCode(q.language)
                                 Text(lang?.let { stringResource(it.labelRes()) } ?: q.language, style = MaterialTheme.typography.bodySmall)
                             }
-                            Switch(checked = q.enabled, onCheckedChange = { vm.setQueryEnabled(q.id, it) })
+                            AppSwitch(checked = q.enabled, onCheckedChange = { vm.setQueryEnabled(q.id, it) })
                             IconButton(onClick = { vm.deleteQuery(q.id) }) { Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete_search)) }
                         }
                     }

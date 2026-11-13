@@ -12,6 +12,7 @@ import coil3.compose.AsyncImage
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.aspectRatio
+import com.robertobiggi.cardcollection.ui.common.AppSwitch
 import com.robertobiggi.cardcollection.ui.common.stampName
 import com.robertobiggi.cardcollection.data.repo.VariantImage
 import androidx.compose.ui.res.pluralStringResource
@@ -33,7 +34,6 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.outlined.NotificationsNone
-import androidx.compose.material3.Switch
 import com.robertobiggi.cardcollection.core.price.PriceAlertRules
 import com.robertobiggi.cardcollection.data.local.PriceAlertEntity
 import kotlin.math.roundToInt
@@ -606,7 +606,7 @@ private fun PriceAlertPanel(
             if (!open) return@Column
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.alert_changes_switch), modifier = Modifier.weight(1f))
-                Switch(checked = changes, onCheckedChange = { changes = it })
+                AppSwitch(checked = changes, onCheckedChange = { changes = it })
             }
             if (changes) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

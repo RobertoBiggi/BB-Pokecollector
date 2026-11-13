@@ -326,3 +326,23 @@ fun LanguageMultiPicker(selected: List<Language>, onChange: (List<Language>) -> 
         }
     }
 }
+
+/**
+ * Switch whose off state stays visible in dark mode (the Material default blends into the surface).
+ * @param checked Boolean - current state.
+ * @param onCheckedChange (Boolean) -> Unit - state change callback.
+ * @return Unit
+ */
+@Composable
+fun AppSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val c = MaterialTheme.colorScheme
+    androidx.compose.material3.Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        colors = androidx.compose.material3.SwitchDefaults.colors(
+            uncheckedThumbColor = c.onSurfaceVariant,
+            uncheckedTrackColor = c.surfaceVariant,
+            uncheckedBorderColor = c.onSurfaceVariant,
+        ),
+    )
+}

@@ -28,7 +28,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -51,6 +50,7 @@ import com.robertobiggi.cardcollection.core.price.PriceAlertRules
 import com.robertobiggi.cardcollection.work.Notifications
 import com.robertobiggi.cardcollection.data.settings.PriceKind
 import com.robertobiggi.cardcollection.ui.MainViewModel
+import com.robertobiggi.cardcollection.ui.common.AppSwitch
 import com.robertobiggi.cardcollection.ui.common.Format
 import com.robertobiggi.cardcollection.ui.common.Section
 import kotlin.math.roundToInt
@@ -259,6 +259,6 @@ private fun PriceSwitch(title: String, description: String, checked: Boolean, on
             Text(title, style = MaterialTheme.typography.titleSmall)
             Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onChange)
+        AppSwitch(checked = checked, onCheckedChange = onChange)
     }
 }
