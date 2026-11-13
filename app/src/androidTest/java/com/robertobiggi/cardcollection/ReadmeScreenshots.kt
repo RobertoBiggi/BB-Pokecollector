@@ -27,11 +27,12 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.robertobiggi.cardcollection.core.model.Language
+import com.robertobiggi.cardcollection.data.catalog.CatalogDownloadResult
 import com.robertobiggi.cardcollection.data.repo.CardUi
 import com.robertobiggi.cardcollection.data.repo.CreateResult
 import com.robertobiggi.cardcollection.data.settings.PriceKind
+import com.robertobiggi.cardcollection.data.settings.SettingsStore
 import com.robertobiggi.cardcollection.ui.MainActivity
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -130,8 +131,8 @@ class ReadmeScreenshots {
      * @return Seeded - collection and card to show.
      */
     private suspend fun seed(): Seeded {
-        container.catalogStore.load()
-        container.catalogStore.info.filterNotNull().first()
+        val downloaded = container.catalogStore.download(SettingsStore.DEFAULT_CATALOG_URL)
+        check(downloaded is CatalogDownloadResult.Installed) { "Card database not downloaded: $downloaded" }
         val id = when (val created = container.collection.createCollection(COLLECTION_NAME, listOf(Language.EN), COLLECTION_NAME)) {
             is CreateResult.Created -> created.id
             is CreateResult.Invalid -> error("Collection not created: ${created.error}")
@@ -140,7 +141,7 @@ class ReadmeScreenshots {
         container.prices.runPriceCheck(id) { }
 
         val library = container.collection.library(id).first().sortedBy { it.printedCode }
-        check(library.isNotEmpty()) { "Empty catalog: is the card database missing from the APK?" }
+        check(library.isNotEmpty()) { "Empty catalog: was the card database downloaded?" }
         library.forEachIndexed { i, card ->
             card.variants.forEachIndexed { j, variant ->
                 if ((i + j) % 3 != 0) container.collection.changeQuantity(id, variant.id, if ((i + j) % 7 == 0) 2 else 1)

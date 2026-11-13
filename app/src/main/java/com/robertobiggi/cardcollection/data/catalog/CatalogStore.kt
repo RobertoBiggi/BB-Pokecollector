@@ -36,15 +36,13 @@ sealed interface CatalogDownloadResult {
 }
 
 /**
- * Keeps the `cards.sqlite` file in the app's storage: starts from the one included in the APK (asset), then downloads it from an address chosen
- * by the user, checks it and replaces it in one go, so an interrupted or wrong download does not remove what was working.
+ * Keeps the `cards.sqlite` file in the app's storage: downloads it from an address (by default the GitHub release), checks it and replaces it in one go, so an interrupted or wrong download does not remove what was working.
  * Reads go through [use].
  *
  * @param context application context.
  * @param http client without a list of allowed hosts: the address is chosen by the user (HTTPS only).
  */
 class CatalogStore(context: Context, private val http: OkHttpClient) {
-    private val appContext = context.applicationContext
     private val dir = File(context.applicationContext.filesDir, "catalog")
     private val file = File(dir, FILE_NAME)
     private val mutex = Mutex()
@@ -55,57 +53,9 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
     /** The installed database, or null if missing (or not valid). Updated after every installation. */
     val info: StateFlow<CatalogInfo?> = _info
 
-    /** Installs the database included in the APK if needed, then reads the information of the present file, at app start. */
+    /** Reads the information of the installed file, if any, at app start. */
     suspend fun load() {
-        installBundled()
         _info.value = use { CatalogInfo(it.generatedAt, it.languages) }
-    }
-
-    /**
-     * Copies the database included in the APK (asset [ASSET_NAME]) if it is missing, not valid or older than the included one. The most recently
-     * downloaded one stays. The copy happens once per app installation: the choice is remembered in a marker file.
-     * Without an asset (APK built without a database) it does nothing.
-     * @return Unit
-     */
-    private suspend fun installBundled() = withContext(Dispatchers.IO) {
-        val stamp = try {
-            appContext.packageManager.getPackageInfo(appContext.packageName, 0).lastUpdateTime.toString()
-        } catch (e: Exception) {
-            return@withContext
-        }
-        val marker = File(dir, MARKER_NAME)
-        if (marker.exists() && marker.readText() == stamp && file.exists()) return@withContext
-        val part = File(dir, "$FILE_NAME.bundled")
-        try {
-            dir.mkdirs()
-            try {
-                appContext.assets.open(ASSET_NAME).use { input -> part.outputStream().use { input.copyTo(it) } }
-            } catch (e: IOException) {
-                return@withContext
-            }
-            val bundled = try {
-                CatalogDb.open(part).use { CatalogInfo(it.generatedAt, it.languages) }
-            } catch (e: InvalidCatalogException) {
-                return@withContext
-            }
-            mutex.withLock {
-                open?.close()
-                open = null
-                val installed = if (file.exists()) {
-                    try {
-                        CatalogDb.open(file).use { CatalogInfo(it.generatedAt, it.languages) }
-                    } catch (e: InvalidCatalogException) {
-                        null
-                    }
-                } else {
-                    null
-                }
-                if ((installed == null || installed.generatedAt < bundled.generatedAt) && !part.renameTo(file)) return@withContext
-                marker.writeText(stamp)
-            }
-        } finally {
-            part.delete()
-        }
     }
 
     /**
@@ -187,8 +137,6 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
 
     private companion object {
         const val FILE_NAME = "cards.sqlite"
-        const val ASSET_NAME = "cards.sqlite"
-        const val MARKER_NAME = "bundled.marker"
         const val BUFFER = 64 * 1024
         const val MAX_BYTES = 400L * 1024 * 1024
     }

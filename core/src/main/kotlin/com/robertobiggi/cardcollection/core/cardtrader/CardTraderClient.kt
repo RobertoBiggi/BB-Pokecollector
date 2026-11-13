@@ -96,7 +96,7 @@ class CardTraderClient(
         const val DEFAULT_BASE_URL = "https://api.cardtrader.com/api/v2/"
 
         /** Minimum pause between two requests to CardTrader, in ms: below the threshold beyond which the IP is blocked. */
-        const val MIN_INTERVAL_MS = 500L
+        const val MIN_INTERVAL_MS = 300L
 
         /** Single limiter for the whole process, because clients are created in several places and can work in parallel. */
         val SHARED_LIMITER = RateLimiter(MIN_INTERVAL_MS)

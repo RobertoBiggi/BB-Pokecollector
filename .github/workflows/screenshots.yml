@@ -33,14 +33,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Database delle carte
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p catalog-db
-          gh release download catalog -p cards.sqlite -D catalog-db
-          echo "CATALOG_DB=$PWD/catalog-db/cards.sqlite" >> "$GITHUB_ENV"
-
       - name: APK dell'app e del test
         run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace --console=plain
 

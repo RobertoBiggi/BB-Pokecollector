@@ -4,7 +4,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * Migrations of the local database, from the oldest supported version to the current one.
+ * Migrations of the local database, from the oldest supported version to the current one. Version 1 is the first released schema: there are none yet.
  *
  * Rule for every schema change (entities, columns, indices):
  * 1. increase `version` in [AppDatabase];
@@ -13,35 +13,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  *
  * Without step 2 the app would close at startup on every phone that updates. `SchemaMigrationTest` fails if a saved schema
  * has no migration path to the current version, and CI fails if the schema changed without its file being committed.
- * Versions older than 17 are not supported (their schemas and migrations were removed on purpose).
  */
 object Migrations {
-    /**
-     * 17 → 18: update of the collections from the card database. `collection.catalogVersion` (null = never updated, so the first open updates it),
-     * `collection_card.removed` (card kept after a database update no longer lists it) and `card.imageKey` (image sources at the last update).
-     */
-    private val MIGRATION_17_18 = object : Migration(17, 18) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE collection ADD COLUMN catalogVersion TEXT")
-            db.execSQL("ALTER TABLE collection_card ADD COLUMN removed INTEGER NOT NULL DEFAULT 0")
-            db.execSQL("ALTER TABLE card ADD COLUMN imageKey TEXT")
-        }
-    }
-
-    /** 18 → 19: `collection_card.removedNote`, the reason a card is in the "no longer in the card database" section. */
-    private val MIGRATION_18_19 = object : Migration(18, 19) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE collection_card ADD COLUMN removedNote TEXT")
-        }
-    }
-
-    /** 19 → 20: `card.tcgplayerRef`, the TCGplayer product of the card (null until the next card database update fills it). */
-    private val MIGRATION_19_20 = object : Migration(19, 20) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE card ADD COLUMN tcgplayerRef TEXT")
-        }
-    }
-
     /** All migrations, passed to the database builder. */
-    val ALL: Array<Migration> = arrayOf(MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
+    val ALL: Array<Migration> = emptyArray()
 }
