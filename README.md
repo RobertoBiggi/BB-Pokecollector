@@ -58,7 +58,10 @@ The code is released under the [MIT](LICENSE) license.
 
 Data sources, each with its own license or trademarks:
 - card data and images: [TCGdex](https://tcgdex.dev);
-- prices: [Cardmarket](https://www.cardmarket.com) and [CardTrader](https://www.cardtrader.com);
-- Pokémon names: [PokeAPI](https://pokeapi.co).
+- extra card images, for sets TCGdex lacks (mostly Japanese ones and promos): [Pokellector](https://jp.pokellector.com), [Pokoin](https://pokoin.com) and [Pokumon](https://pokumon.com), the last one also for the old unnumbered promos;
+- prices: [Cardmarket](https://www.cardmarket.com) and [CardTrader](https://www.cardtrader.com), plus a search link to [TCGplayer](https://www.tcgplayer.com) in the card detail;
+- rarities, promo dates and events, used when the database is built: [Bulbapedia](https://bulbapedia.bulbagarden.net);
+- Pokémon names: [PokeAPI](https://pokeapi.co);
+- anonymous usage counter (optional, see above): [Aptabase](https://aptabase.com).
 
 Pokémon is a trademark of Nintendo, Creatures and GAME FREAK. This app is not affiliated with The Pokémon Company.
