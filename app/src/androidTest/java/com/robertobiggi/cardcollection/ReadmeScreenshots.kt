@@ -44,7 +44,7 @@ import kotlin.time.Duration.Companion.minutes
 
 /**
  * Takes the screenshots of the README on a real device or emulator: creates a "Mawile" collection with the real
- * catalog, images and prices (network needed), marks some cards as owned and hides CardTrader (no token),
+ * catalog, images and prices (network needed), marks some cards as owned and hides the price sources without data,
  * then opens the main screens in English.
  * The PNG files end up in the app's files/screenshots, from where the workflow screenshots.yml copies them to docs/screenshots.
  * It is not part of the normal CI: it only runs from that workflow.
@@ -150,7 +150,8 @@ class ReadmeScreenshots {
         val shown = library.filter { it.card.imageHighPath != null || it.card.imageLowPath != null }
             .maxByOrNull { bestEur(it) } ?: library.first()
         container.settings.setPriceAlertsEnabled(true)
-        // Without a CardTrader token those boxes would only say "no price".
+        // Without a CardTrader token and without dollar prices those boxes would only say "no price".
+        container.settings.setPriceShown(PriceKind.TCGPLAYER, false)
         container.settings.setPriceShown(PriceKind.CARDTRADER, false)
         val variant = shown.variants.last()
         val target = bestEur(shown).takeIf { it > 0 }?.let { (it * 0.8).toInt().coerceAtLeast(1).toDouble() }

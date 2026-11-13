@@ -100,6 +100,9 @@ fun StatsScreen(vm: MainViewModel) {
                         if (visibility.cardmarket) {
                             ValueRow(stringResource(R.string.price_cardmarket), Format.eur(total.valueEur), total.pricedEur, total.owned)
                         }
+                        if (visibility.tcgplayer) {
+                            ValueRow(stringResource(R.string.price_tcgplayer), Format.usd(total.valueUsd), total.pricedUsd, total.owned)
+                        }
                         if (visibility.cardTrader) {
                             ValueRow(stringResource(R.string.price_cardtrader), Format.eur(total.valueCardTrader), total.pricedCardTrader, total.owned)
                         }
@@ -130,6 +133,13 @@ fun StatsScreen(vm: MainViewModel) {
                         }
                     }
                 }
+            }
+            item {
+                Text(
+                    stringResource(R.string.stats_currency_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

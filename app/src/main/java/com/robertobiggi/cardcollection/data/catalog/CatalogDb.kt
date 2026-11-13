@@ -79,6 +79,9 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
     /** True if the database has the `card.nameEn` column (it shows the original names otherwise). */
     private val hasNameEn: Boolean = "nameEn" in cardColumns
 
+    /** True if the database has the `card.tcgplayer` column (TCGplayer products, "<group>/<product>"); older files have none and so no TCGplayer prices. */
+    private val hasTcgplayer: Boolean = "tcgplayer" in cardColumns
+
     /**
      * Paths of the images that an image source has for some cards, from the source's column of the database.
      * @param source CatalogImageSource - image source.
@@ -217,7 +220,8 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
         val rows = db.rawQuery(
             """SELECT c.n, c.id, s.language, c.name, s.setId, s.name, s.setCode, s.serieId, s.serieName, c.localId, c.printedNumber, c.rarity,
                       ${if (hasCardPromo) "COALESCE(p.releaseDate, s.releaseDate)" else "s.releaseDate"}, c.illustrator, c.dexId, c.cardmarketId, c.cardmarketExpansionId, c.cardmarketName, c.cardmarketProductHint,
-                      c.cmProduct, c.cardTraderBlueprintId, s.cardTraderExpansionId, c.origin, ${if (hasNameEn) "c.nameEn" else "NULL"}
+                      c.cmProduct, c.cardTraderBlueprintId, s.cardTraderExpansionId, c.origin, ${if (hasNameEn) "c.nameEn" else "NULL"},
+                      ${if (hasTcgplayer) "c.tcgplayer" else "NULL"}
                FROM card c JOIN card_set s ON s.s = c.s ${if (hasCardPromo) "LEFT JOIN card_promo p ON p.n = c.n" else ""} $where ORDER BY s.setId, c.localId""",
             args,
         ).use { c -> buildList { while (c.moveToNext()) add(Row(c)) } }
@@ -261,6 +265,7 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
         val blueprint = if (c.isNull(20)) null else c.getInt(20)
         val ctExpansion = if (c.isNull(21)) null else c.getInt(21)
         val fromTcgdex = c.getInt(22) == ORIGIN_TCGDEX
+        val tcgplayerRef: String? = c.getString(24)
 
         fun toCard(variants: List<CatalogVariant>): CatalogCard? {
             val lang = Language.fromCode(language) ?: return null
@@ -272,7 +277,7 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
                 imageBaseUrl = if (fromTcgdex && serieId != null) "$IMAGE_HOST/$language/$serieId/$setId/$localId" else null,
                 variants = variants.ifEmpty { listOf(CatalogVariant(VariantType.NORMAL)) }, dexId = dexId, cardmarketId = cardmarketId,
                 cardmarketExpansionId = cardmarketExpansionId, cardmarketName = cardmarketName, cardmarketProductHint = productHint,
-                cardmarketProduct = product, cardTraderBlueprintId = blueprint, cardTraderExpansionId = ctExpansion,
+                cardmarketProduct = product, cardTraderBlueprintId = blueprint, cardTraderExpansionId = ctExpansion, tcgplayerRef = tcgplayerRef,
             )
         }
     }

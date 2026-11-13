@@ -156,6 +156,7 @@ data class CatalogVariant(
  * @property cardmarketProduct Cardmarket product of the card, however found by the database generator (the price is read from there).
  * @property cardTraderBlueprintId CardTrader blueprint of the card, if the generator matched it.
  * @property cardTraderExpansionId CardTrader expansion of the card's set (needed to find the blueprint for the image).
+ * @property tcgplayerRef TCGplayer product as "<group>/<product>" (TCGCSV), only for English and Japanese cards the generator matched.
  */
 data class CatalogCard(
     val id: String,
@@ -182,6 +183,7 @@ data class CatalogCard(
     val cardmarketProduct: Int? = null,
     val cardTraderBlueprintId: Int? = null,
     val cardTraderExpansionId: Int? = null,
+    val tcgplayerRef: String? = null,
 )
 
 /**

@@ -35,6 +35,13 @@ object Migrations {
         }
     }
 
+    /** 19 → 20: `card.tcgplayerRef`, the TCGplayer product of the card (null until the next card database update fills it). */
+    private val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE card ADD COLUMN tcgplayerRef TEXT")
+        }
+    }
+
     /** All migrations, passed to the database builder. */
-    val ALL: Array<Migration> = arrayOf(MIGRATION_17_18, MIGRATION_18_19)
+    val ALL: Array<Migration> = arrayOf(MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
 }

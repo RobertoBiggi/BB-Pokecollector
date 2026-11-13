@@ -135,6 +135,7 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
         if (visibility.showsAll) return this
         val visible = snapshots.mapNotNull { snap ->
             if (snap.source == CardTraderPriceProvider.DISPLAY_NAME) return@mapNotNull snap.takeIf { visibility.cardTrader }
+            if (snap.source == PriceRepository.TCGPLAYER_SOURCE) return@mapNotNull snap.takeIf { visibility.tcgplayer }
             var shown = snap
             if (!visibility.cardmarket) shown = shown.copy(eur = null, eurLow = null, eurAvg30 = null)
             shown

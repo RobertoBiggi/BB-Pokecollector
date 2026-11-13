@@ -145,7 +145,7 @@ Tap a card to open its detail: the large image, then its code, set, series, rari
 - **Download image**: tries the image sources one after another: TCGdex, Pokoin, CardTrader (if you set a token), Pokellector, Pokumon (promo cards, including the old unnumbered ones). The detail shows which source the image comes from.
 - **Other prints**: when the card has other prints (the same card with a Staff or Winner stamp, for example), a line under the image says how many. Tap the image to see them, each with its name and prices; prints without a picture have a placeholder. The card's own image always stays the one shown.
 - **Choose image**: pick a picture from your gallery, handy for cards that no source has. It is resized and saved without metadata, and stays until you download an official one.
-- **Cardmarket / TCGplayer / CardTrader**: open the card on those websites. TCGplayer is only a link: the app doesn't download its prices.
+- **Cardmarket / TCGplayer / CardTrader**: open the card on those websites.
 
 **Variants**
 
@@ -170,7 +170,10 @@ Prices are only downloaded when you ask for them: the **Prices** button, **Updat
 |---|---|---|
 | **Cardmarket** | EUR | Trend price from Cardmarket's official price list, refreshed every night. The app downloads the list and never opens cardmarket.com. |
 | **CardTrader** | EUR | Optional, needs your API token (see [section 11](#11-settings)). Lowest listing per variant, filtered by language and condition. Graded cards are excluded. |
+| **TCGplayer** | USD | Market price for English and Japanese cards, read from [TCGCSV](https://tcgcsv.com), a free daily copy of TCGplayer's data. Needs a card database that has the TCGplayer products; cards without one show no price. Only the normal, holo, reverse holo and 1st Edition prints have a price: separate prints such as shadowless or jumbo don't. |
 | **Manual** | EUR | Entered by you from the card detail. |
+
+Euros and dollars are never converted.
 
 **CardTrader and conditions.** A listing counts if its condition is the one you set on the variant or a better one:
 
@@ -204,7 +207,7 @@ Go to **Settings → Price alerts** and turn on **Daily price check**. It is off
 
 Open a card, find the variant and tap **Price alert** under its prices. You can turn on one or both of these alerts:
 
-- **Alert me if it goes up or down by at least N%.** Choose the percentage with **−** and **+**, from 1% to 50%. Each card can have its own value; new alerts start from the default set in Settings.
+- **Alert me if it goes up or down by at least N%.** Choose the percentage with **−** and **+**, from 1% to 50%. Each card can have its own value; new alerts start from the default set in Settings. It also watches the TCGplayer price in dollars.
 - **Alert me when it reaches €X.** Type the price you would pay. The alert fires when the lowest euro price (Cardmarket or CardTrader) is within 5% of that amount, or below it.
 
 Tap **Save**. The bell turns red and the panel shows a summary, e.g. "±10% · at €33.00 or less". **Remove alert** deletes it.
@@ -241,7 +244,7 @@ Tap a row to open the card. Variants without "want it" are not listed.
 The **Stats** tab shows:
 
 - **Completion**: variants you own out of those you want.
-- **Collection value** per price source (Cardmarket and, if enabled, CardTrader), with how many owned variants have a price.
+- **Collection value** per price source (Cardmarket, TCGplayer and, if enabled, CardTrader), with how many owned variants have a price. Euros and dollars stay separate and are never converted.
 - **Copies** (duplicates included) and the **cost of the missing** cards.
 - **Progress by language** and **by series**.
 - The **latest price updates**, with how many prices were found.
@@ -295,7 +298,7 @@ Open Settings from the gear icon on the start screen.
 - **Card database**: shows when the installed database was built and which card languages it has. **Update** downloads a newer one.
 - **Count 1st Editions**: when off, 1st Edition variants don't count as missing or in the totals. Copies you own are always counted.
 - **Price alerts**: the daily check (see [section 7](#7-price-alerts)), the default threshold for new alerts, and **Check now** to run the check right away. A warning appears if Android blocks the app's notifications.
-- **Price sources**: choose which prices to show. Hidden prices disappear from cards, grids and totals, but are still downloaded, so turning them back on restores them.
+- **Price sources**: choose which prices to show. Hidden prices disappear from cards, grids and totals, but Cardmarket and CardTrader prices are still downloaded, so turning them back on restores them. TCGplayer prices are only downloaded while they are shown.
 - **CardTrader**: paste your API token, found on CardTrader under *Settings → API*. From then on, price updates also fetch CardTrader prices, and CardTrader becomes an image source.
 - **Anonymous statistics**: once a day the app tells [Aptabase](https://aptabase.com) that it was opened (see [section 13](#13-privacy)). Turn it off and nothing is sent.
 
@@ -327,7 +330,7 @@ Backups from the first version of the app are accepted too.
 ## 13. Privacy
 
 - **No account and no server**: your collections stay on your phone.
-- **Only the addresses it needs**: the app contacts only the image sources, Cardmarket's price-list file, the card database download, the anonymous counter below and, if you set a token, the CardTrader API. Every other address is blocked.
+- **Only the addresses it needs**: the app contacts only the image sources, Cardmarket's price-list file, TCGCSV (TCGplayer prices), the card database download, the anonymous counter below and, if you set a token, the CardTrader API. Every other address is blocked.
 - **CardTrader token**: encrypted with an Android Keystore key that never leaves the phone, and excluded from Android backups.
 - **Images you choose**: re-encoded without metadata, so location and camera details are not kept.
 - **Anonymous statistics**: once a day the app sends one `app_open` event to [Aptabase](https://aptabase.com) with the app version, the Android version and the language. No device identifier, nothing about your collection. It is on by default; turn it off in **Settings → Anonymous statistics** and nothing is sent.

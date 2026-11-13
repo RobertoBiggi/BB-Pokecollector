@@ -16,6 +16,7 @@ class PriceAlertsTest {
 
     private fun cm(value: Double) = PricePoint("Cardmarket", PricePoint.EUR, value)
     private fun ct(value: Double) = PricePoint("CardTrader", PricePoint.EUR, value)
+    private fun tp(value: Double) = PricePoint("TCGplayer", PricePoint.USD, value)
 
     private val changes = AlertConfig(notifyChanges = true, targetEur = null)
 
@@ -28,17 +29,14 @@ class PriceAlertsTest {
 
     @Test
     fun `sale o scende oltre la soglia per ogni fonte`() {
-        val state = AlertState(mapOf("Cardmarket|EUR" to 10.0, "CardTrader|EUR" to 9.0))
-        val up = PriceAlertRules.evaluate(changes, state, listOf(cm(10.6), ct(9.2)), 5)
-        val moved = up.events.filterIsInstance<AlertEvent.Change>().single()
-        assertEquals("Cardmarket", moved.point.source)
-        assertEquals(6.0, moved.percent, 1e-9)
+        val state = AlertState(mapOf("Cardmarket|EUR" to 10.0, "CardTrader|EUR" to 9.0, "TCGplayer|USD" to 12.0))
+        val result = PriceAlertRules.evaluate(changes, state, listOf(cm(10.6), ct(8.5), tp(12.2)), 5)
+        val moved = result.events.filterIsInstance<AlertEvent.Change>()
+        assertEquals(listOf("Cardmarket", "CardTrader"), moved.map { it.point.source })
+        assertEquals(6.0, moved[0].percent, 1e-9)
+        assertTrue(moved[1].percent < 0)
         // The reference moves only for the sources that sent an alert.
-        assertEquals(mapOf("Cardmarket|EUR" to 10.6, "CardTrader|EUR" to 9.0), up.state.baselines)
-        val down = PriceAlertRules.evaluate(changes, up.state, listOf(ct(8.5)), 5)
-        val fell = down.events.filterIsInstance<AlertEvent.Change>().single()
-        assertEquals("CardTrader", fell.point.source)
-        assertTrue(fell.percent < 0)
+        assertEquals(mapOf("Cardmarket|EUR" to 10.6, "CardTrader|EUR" to 8.5, "TCGplayer|USD" to 12.0), result.state.baselines)
     }
 
     @Test
@@ -85,9 +83,9 @@ class PriceAlertsTest {
     }
 
     @Test
-    fun `il prezzo obiettivo guarda la fonte piu economica`() {
+    fun `il prezzo obiettivo guarda la fonte in euro piu economica e ignora i dollari`() {
         val target = AlertConfig(notifyChanges = false, targetEur = 50.0)
-        val result = PriceAlertRules.evaluate(target, AlertState(), listOf(cm(70.0), ct(51.0)), 5)
+        val result = PriceAlertRules.evaluate(target, AlertState(), listOf(cm(70.0), ct(51.0), tp(10.0)), 5)
         val reached = result.events.filterIsInstance<AlertEvent.TargetReached>().single()
         assertEquals("CardTrader", reached.point.source)
     }
@@ -127,7 +125,7 @@ class PriceAlertsTest {
 
     @Test
     fun `i riferimenti si salvano e si rileggono, scartando i testi malformati`() {
-        val baselines = mapOf("Cardmarket|EUR" to 12.5, "CardTrader|EUR" to 14.0)
+        val baselines = mapOf("Cardmarket|EUR" to 12.5, "TCGplayer|USD" to 14.0)
         assertEquals(baselines, PriceAlertRules.decodeBaselines(PriceAlertRules.encodeBaselines(baselines)))
         assertEquals(
             mapOf("Cardmarket|EUR" to 1.0, "CardTrader|EUR" to 2.0),

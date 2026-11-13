@@ -21,7 +21,7 @@ An offline-first Android app to track your Pokémon card collection: every varia
 
 - Collections by Pokémon, by set (base or master set) or hand-picked cards, in many card languages.
 - Copies and condition tracked for every variant (normal, holo, reverse, 1st Edition, Poké Ball…).
-- Cardmarket prices, optional CardTrader prices, and price alerts by notification.
+- Cardmarket prices, TCGplayer prices (USD, English and Japanese cards), optional CardTrader prices, and price alerts by notification.
 - Missing cards with cost to complete, collection value and progress statistics.
 - Works offline. Backups go to a JSON file. English and Italian UI.
 
@@ -38,7 +38,7 @@ Requires Android 8.0 or later. The button above always downloads the latest vers
 ## Privacy
 
 - **No account and no server**: your collections stay on your phone.
-- **Only the addresses it needs**: the app contacts only the image sources, Cardmarket's price-list file, the card database download, the anonymous counter below and, if you set a token, the CardTrader API. Every other address is blocked.
+- **Only the addresses it needs**: the app contacts only the image sources, Cardmarket's price-list file, TCGCSV (TCGplayer prices), the card database download, the anonymous counter below and, if you set a token, the CardTrader API. Every other address is blocked.
 - **CardTrader token**: encrypted with an Android Keystore key that never leaves the phone, and excluded from Android backups.
 - **Images you choose**: re-encoded without metadata, so location and camera details are not kept.
 - **Anonymous statistics**: once a day the app sends one `app_open` event to [Aptabase](https://aptabase.com) with the app version, the Android version and the language. No device identifier, nothing about your collection. It is on by default; turn it off in **Settings → Anonymous statistics** and nothing is sent.
@@ -50,7 +50,7 @@ The code is released under the [MIT](LICENSE) license.
 Data sources, each with its own license or trademarks:
 - card data and images: [TCGdex](https://tcgdex.dev);
 - extra card images, for sets TCGdex lacks (mostly Japanese ones and promos): [Pokellector](https://jp.pokellector.com), [Pokoin](https://pokoin.com) and [Pokumon](https://pokumon.com), the last one also for the old unnumbered promos;
-- prices: [Cardmarket](https://www.cardmarket.com) and [CardTrader](https://www.cardtrader.com), plus a search link to [TCGplayer](https://www.tcgplayer.com) in the card detail;
+- prices: [Cardmarket](https://www.cardmarket.com), [CardTrader](https://www.cardtrader.com) and [TCGplayer](https://www.tcgplayer.com), the last one through [TCGCSV](https://tcgcsv.com), a free daily copy of its data;
 - rarities, promo dates and events, used when the database is built: [Bulbapedia](https://bulbapedia.bulbagarden.net);
 - Pokémon names: [PokeAPI](https://pokeapi.co);
 - anonymous usage counter (optional, see above): [Aptabase](https://aptabase.com).

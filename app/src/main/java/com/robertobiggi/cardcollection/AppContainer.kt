@@ -110,7 +110,7 @@ class AppContainer(context: Context) {
         const val USER_AGENT = "CardCollection-Android (uso personale)"
 
         /** Hosts reachable by the app: TCGdex images, Cardmarket price list, CardTrader API and images, the other image sources, Aptabase (anonymous usage counter). */
-        val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com") + AptabaseClient.HOSTS + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS +
+        val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com", "tcgcsv.com") + AptabaseClient.HOSTS + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS +
             CatalogImageSources.hosts
     }
 }
