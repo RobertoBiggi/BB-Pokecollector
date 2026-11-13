@@ -270,13 +270,6 @@ class ImageStore(context: Context, private val http: OkHttpClient) {
     }
 
     /**
-     * Tells whether a path is an image manually chosen by the user.
-     * @param path String? - path saved in the database.
-     * @return Boolean - true if it is a manual file.
-     */
-    fun isManual(path: String?): Boolean = path != null && File(path).name.contains(MANUAL_MARKER)
-
-    /**
      * Checks that a path saved in the database really matches an image on disk.
      * To be called off the main thread (accesses the disk).
      * @param path String? - absolute path saved in the database.

@@ -100,17 +100,6 @@ object PokemonNames {
     }
 
     /**
-     * Finds the Pokémon whose name, in any language, appears in the text ("Brock's Golem" → Golem; "Farfetch'd" → Farfetch'd).
-     * @param text String - name of a card.
-     * @return Set<Int> - Pokédex numbers of the names found (empty if none appears).
-     */
-    fun dexIdsInName(text: String): Set<Int> {
-        val t = normalize(text)
-        if (t.isEmpty()) return emptySet()
-        return namesByDex.filterValues { names -> names.any { it.length >= (if (it.any(::isCjk)) 2 else MIN_QUERY_LENGTH) && t.contains(it) } }.keys
-    }
-
-    /**
      * Tells whether a character is Chinese, Japanese or Korean (a single character counts as a syllable).
      * @param c Char - character to check.
      * @return Boolean - true for ideograms, kana and hangul.

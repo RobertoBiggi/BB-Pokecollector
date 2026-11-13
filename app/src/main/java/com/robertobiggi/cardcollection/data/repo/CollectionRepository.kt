@@ -105,16 +105,25 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
         .shareIn(scope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), replay = 1)
 
     /**
+     * Snapshot with the user's price visibility and 1st Edition choice applied. It is computed once and shared by all
+     * the derived flows (summaries, library, searches...), instead of once per observer at every database change.
+     */
+    private val visibleState: Flow<DbState> =
+        combine(state, settings.priceVisibility, settings.countFirstEdition) { s, visibility, countFirstEdition ->
+            s.withVisiblePrices(visibility).copy(countFirstEdition = countFirstEdition)
+        }
+            .conflate()
+            .flowOn(Dispatchers.Default)
+            .shareIn(scope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), replay = 1)
+
+    /**
      * Derives a value from the database snapshot off the UI thread, emitting only
      * when it changes.
      * @param transform (DbState) -> T - computation to run.
      * @return Flow<T> - updated result.
      */
     private fun <T> derive(transform: (DbState) -> T): Flow<T> =
-        combine(state, settings.priceVisibility, settings.countFirstEdition) { s, visibility, countFirstEdition ->
-            transform(s.withVisiblePrices(visibility).copy(countFirstEdition = countFirstEdition))
-        }
-            .distinctUntilChanged().flowOn(Dispatchers.Default)
+        visibleState.map(transform).distinctUntilChanged().flowOn(Dispatchers.Default)
 
     /**
      * Removes from the snapshot the prices the user has hidden: CardTrader disappears entirely, euros
@@ -175,13 +184,6 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
     fun name(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.name }
 
     /**
-     * Language of a collection.
-     * @param collectionId Long - collection.
-     * @return Flow<String?> - value of [CollectionLanguage] ("en", "ja" or "mixed"), or null if the collection no longer exists.
-     */
-    fun language(collectionId: Long): Flow<String?> = derive { s -> s.collections.firstOrNull { it.id == collectionId }?.language }
-
-    /**
      * Card database a collection was last updated from.
      * @param collectionId Long - collection.
      * @return Flow<String?> - `generatedAt` of that database, or null if never updated (or the collection no longer exists).
@@ -212,15 +214,6 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
         }
         return CreateResult.Created(id)
     }
-
-    /**
-     * Changes the language of a collection. Searches already saved stay as they were.
-     * @param collectionId Long - collection.
-     * @param language Language? - fixed language, or null for a mixed collection.
-     * @return Unit
-     */
-    suspend fun setLanguage(collectionId: Long, language: Language?) =
-        catalogDao.setCollectionLanguage(collectionId, CollectionLanguage.codeOf(language))
 
     /**
      * Reads the editable settings of a collection.
@@ -430,6 +423,16 @@ class CollectionRepository(private val db: AppDatabase, scope: CoroutineScope, p
      * @return Unit
      */
     suspend fun hideCard(collectionId: Long, cardId: String) = catalogDao.setHidden(collectionId, cardId, true)
+
+    /**
+     * Removes several cards from the collection in a single transaction, so the screens are recomputed once and not once per card.
+     * @param collectionId Long - collection.
+     * @param cardIds Collection<String> - cards.
+     * @return Unit
+     */
+    suspend fun hideCards(collectionId: Long, cardIds: Collection<String>) {
+        db.withTransaction { cardIds.forEach { catalogDao.setHidden(collectionId, it, true) } }
+    }
 
     /**
      * Puts back in the collection a previously removed card.
