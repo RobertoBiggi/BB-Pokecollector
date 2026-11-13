@@ -281,7 +281,7 @@
         <item quantity="other">%d other prints: tap to see them</item>
     </plurals>
     <string name="action_pick_image">Choose image</string>
-    <string name="card_actions_hint">The price is updated for this card only. If the card has no official image (common for Japanese cards) the app looks for it on CardTrader; otherwise you can pick one from your gallery, which stays until you download the official one.</string>
+    <string name="card_actions_hint">The price is updated for this card only. Download image tries every image source in turn; if none has the card, you can pick a picture from your gallery, which stays until you download an official one.</string>
     <plurals name="msg_card_price_updated">
         <item quantity="one">Prices fetched (%1$d variant).</item>
         <item quantity="other">Prices fetched (%1$d variants).</item>

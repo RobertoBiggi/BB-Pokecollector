@@ -28,8 +28,14 @@ The app is not on the Play Store. It needs Android 8.0 or later.
 **With automatic updates (recommended)**
 
 1. Install [Obtainium](https://github.com/ImranR98/Obtainium).
-2. In Obtainium, add the address of this repository.
-3. Obtainium tells you about new versions and installs them.
+2. Tap **Add app** and paste `https://github.com/RobertoBiggi/Card-collection`.
+3. Before confirming, set these options of the GitHub source. They are needed while the latest Release is the **Test build**, which keeps the same tag at every update:
+   - **Use release title as version string**: on;
+   - **Version string extraction regular expression**: `\d+\.\d+\.\d+`;
+   - **Filter links by regex**: `^card-collection\.apk$`.
+4. Confirm. Obtainium installs the app, checks for new versions in the background, notifies you and installs them with one tap.
+
+A GitHub access token in Obtainium's settings is optional: it only avoids GitHub's limit on anonymous requests.
 
 **Manually**
 
@@ -50,10 +56,13 @@ If a card is no longer in the database (removed, replaced by another one, or giv
 ## 2. Your first collection
 
 1. Tap **New collection**.
-2. Give it a name and type the Pokémon you want to follow: one name (`Mawile`) or several separated by commas (`Moltres, Zapdos`).
-3. The app adds every card of those Pokémon and downloads the images. A progress bar and a notification show how it is going.
-4. Tap **Prices** to download up-to-date prices.
-5. Open a card and record the copies you own with **+** and **−**.
+2. Choose how to build it:
+   - **By Pokémon**: give it a name and type the Pokémon you want to follow, one name (`Mawile`) or several separated by commas (`Moltres, Zapdos`);
+   - **By set**: pick a whole set, as a base set or a master set (see [section 10](#10-managing-a-collection)).
+3. Choose the card languages. English, Italian, French, German, Spanish, Portuguese and Japanese have full data; **Other** shows Chinese (Traditional and Simplified), Thai and Indonesian, which have few cards and almost no images or prices yet.
+4. The app adds the cards and downloads the images. A progress bar and a notification show how it is going.
+5. Tap **Prices** to download up-to-date prices.
+6. Open a card and record the copies you own with **+** and **−**.
 
 Everything is now on your phone. Come back to **Prices** whenever you want fresh prices.
 
@@ -128,13 +137,13 @@ Removed cards are not added back by later updates. You can restore them from **M
 
 <img src="screenshots/06-card-detail.png" width="260" align="right" alt="Card detail">
 
-Tap a card to open its detail: the large image, then its code, set, series, rarity, language, release date and illustrator.
+Tap a card to open its detail: the large image, then its code, set, series, rarity, language, release date and illustrator. Japanese sets also show their English name (**Set (EN)**), and promos without a number show the **Event** they were given out at, with its date.
 
 **Card actions**
 
 - **Update price**: refreshes the prices of this card only.
 - **Download image**: tries the image sources one after another: TCGdex, Pokoin, CardTrader (if you set a token), Pokellector, Pokumon (promo cards, including the old unnumbered ones). The detail shows which source the image comes from.
-- **Other prints**: when the card database has images of other prints of the card (the same card with a Staff or Winner stamp, for example), a line under the image says so. Tap the image to see them, each with its name and prices; the card's own image always stays the one shown.
+- **Other prints**: when the card has other prints (the same card with a Staff or Winner stamp, for example), a line under the image says how many. Tap the image to see them, each with its name and prices; prints without a picture have a placeholder. The card's own image always stays the one shown.
 - **Choose image**: pick a picture from your gallery, handy for cards that no source has. It is resized and saved without metadata, and stays until you download an official one.
 - **Cardmarket / TCGplayer / CardTrader**: open the card on those websites.
 
@@ -144,7 +153,7 @@ Each variant (normal, holo, reverse holo, 1st Edition, Poké Ball, Master Ball�
 
 - set the **copies** you own with **+** and **−**;
 - set the **condition**: NM, LP, MP, HP or DMG. It also decides which CardTrader listings count (see [section 6](#6-prices));
-- untick **want it** if you don't care about that variant: it won't count as missing or in the completion;
+- untick **want it** if you don't care about that variant: it won't count as missing or in the completion. Stamps and the extra Cardmarket products of a card start unticked, since a card can have many of them: tick the ones you collect;
 - see its **prices**, with the date of the last update and a trend;
 - **enter a manual price**, in euros, when no source has one;
 - set a **price alert** (see [section 7](#7-price-alerts)).
@@ -258,7 +267,7 @@ The **Manage** tab decides which cards belong to the collection.
 
 **Whole sets**
 
-Tap **Choose set…**, search by name or set code (e.g. `ex8` or `DX`), then pick how to collect it:
+Tap **Choose set…** and search by name or set code (e.g. `ex8` or `DX`). The list covers every language at once; tap a language chip to show only that one, and tap it again to go back to all of them. Japanese sets also show their English name, and the list can be sorted by newest, oldest or name. Then pick how to collect the set:
 
 - **Base set**: one slot per card, for its main version.
 - **Master set**: every variant (normal, holo, reverse holo, Poké Ball and Master Ball). 1st Edition and special prints (Shadowless, Jumbo, stamps…) don't count, but you can tick "want it" on them.
@@ -291,6 +300,7 @@ Open Settings from the gear icon on the start screen.
 - **Price alerts**: the daily check (see [section 7](#7-price-alerts)), the default threshold for new alerts, and **Check now** to run the check right away. A warning appears if Android blocks the app's notifications.
 - **Price sources**: choose which prices to show. Hidden prices disappear from cards, grids and totals, but Cardmarket and CardTrader prices are still downloaded, so turning them back on restores them. TCGplayer prices are only downloaded while they are shown.
 - **CardTrader**: paste your API token, found on CardTrader under *Settings → API*. From then on, price updates also fetch CardTrader prices, and CardTrader becomes an image source.
+- **Anonymous statistics**: once a day the app tells [Aptabase](https://aptabase.com) that it was opened (see [section 13](#13-privacy)). Turn it off and nothing is sent.
 
 <br clear="right">
 
@@ -319,10 +329,11 @@ Backups from the first version of the app are accepted too.
 
 ## 13. Privacy
 
-- **No account and no server**: your data stays on your phone.
-- **Only a few addresses**: the app contacts only the image sources, Cardmarket's price-list file, TCGCSV (TCGplayer prices) and, if you set a token, the CardTrader API. Other addresses are blocked.
-- **CardTrader token**: it is encrypted with an Android Keystore key that never leaves the phone, and it is excluded from Android backups.
-- **Images you choose**: they are re-encoded without metadata, so location and camera details are not kept.
+- **No account and no server**: your collections stay on your phone.
+- **Only the addresses it needs**: the app contacts only the image sources, Cardmarket's price-list file, TCGCSV (TCGplayer prices), the card database download, the anonymous counter below and, if you set a token, the CardTrader API. Every other address is blocked.
+- **CardTrader token**: encrypted with an Android Keystore key that never leaves the phone, and excluded from Android backups.
+- **Images you choose**: re-encoded without metadata, so location and camera details are not kept.
+- **Anonymous statistics**: once a day the app sends one `app_open` event to [Aptabase](https://aptabase.com) with the app version, the Android version and the language. No device identifier, nothing about your collection. It is on by default; turn it off in **Settings → Anonymous statistics** and nothing is sent.
 
 ## 14. Troubleshooting
 
@@ -345,3 +356,6 @@ Check your connection. Cards and prices you already have stay available offline.
 
 **The app says the card database is missing.**
 Go to **Settings → Card database** and tap **Update**.
+
+**Obtainium never finds an update, or always shows one.**
+Check the three options of [section 1](#1-installing-and-updating): with the Test build, Obtainium must read the version from the release title, not from the tag.
