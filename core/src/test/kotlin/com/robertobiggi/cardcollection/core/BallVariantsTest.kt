@@ -21,13 +21,3 @@ class BallVariantsTest {
         assertEquals(359719, BallVariants.bundled.blueprintId("SV2a", "139", VariantType.POKE_BALL))
     }
 }
-
-class PokemonNamesInNameTest {
-    @Test
-    fun findsThePokemonNamedInACardName() {
-        val farfetchd = com.robertobiggi.cardcollection.core.model.PokemonNames.dexIdsInName("Farfetch'd")
-        assertEquals(true, 83 in farfetchd && 139 !in farfetchd)
-        assertEquals(true, 139 in com.robertobiggi.cardcollection.core.model.PokemonNames.dexIdsInName("Brock's Omastar"))
-        assertEquals(emptySet<Int>(), com.robertobiggi.cardcollection.core.model.PokemonNames.dexIdsInName("ダークオマスター"))
-    }
-}

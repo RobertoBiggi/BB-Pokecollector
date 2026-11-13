@@ -143,14 +143,19 @@ class CatalogRepository(
             } ?: return SyncResult(saved, 0, 0, noCatalog = true)
             if (kind.isSet && cards.isEmpty()) emptySets++
             val keys = imageKeys(cards)
-            for ((i, card) in cards.withIndex()) {
-                if (i % PROGRESS_EVERY == 0) progress(SyncProgress(SyncPhase.CARD, card.name, i, cards.size))
-                saveCard(card, legacyQueryId = query.id, fresh = true, imageKey = keys[card.id])
-                refreshed += card.id
-                byKey.getOrPut(CatalogUpdate.replacementKey(card.language.code, card.name, card.localId)) { mutableListOf() } += card.id
-                dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
-                if (kind.isSet) applySetPolicy(collectionId, card, kind)
-                saved++
+            for ((chunkIndex, chunk) in cards.chunked(SAVE_CHUNK).withIndex()) {
+                progress(SyncProgress(SyncPhase.CARD, chunk.first().name, chunkIndex * SAVE_CHUNK, cards.size))
+                // One transaction per group of cards: the screens observing the database are recomputed once per group, not once per card.
+                db.withTransaction {
+                    for (card in chunk) {
+                        saveCard(card, legacyQueryId = query.id, fresh = true, imageKey = keys[card.id])
+                        refreshed += card.id
+                        byKey.getOrPut(CatalogUpdate.replacementKey(card.language.code, card.name, card.localId)) { mutableListOf() } += card.id
+                        dao.insertMembership(CollectionCardEntity(collectionId, card.id, query.id))
+                        if (kind.isSet) applySetPolicy(collectionId, card, kind)
+                        saved++
+                    }
+                }
             }
         }
         // Cards found by an active search and no longer in the database (removed sets, corrections, changed ids) stay in the collection, marked as
@@ -267,7 +272,11 @@ class CatalogRepository(
         if (others.isEmpty()) return emptyList()
         val cards = store.use { cat -> others.mapNotNull { cat.card(it) } }.orEmpty()
         val keys = imageKeys(cards)
-        for (card in cards) saveCard(card, dao.getCard(card.id)?.queryId ?: 0, fresh = true, imageKey = keys[card.id])
+        for (chunk in cards.chunked(SAVE_CHUNK)) {
+            db.withTransaction {
+                for (card in chunk) saveCard(card, dao.getCard(card.id)?.queryId ?: 0, fresh = true, imageKey = keys[card.id])
+            }
+        }
         val found = cards.map { it.id }.toSet()
         return others.filter { it !in found }
     }
@@ -466,7 +475,9 @@ class CatalogRepository(
 
     private companion object {
         const val MAX_SEARCH_RESULTS = 60
-        const val PROGRESS_EVERY = 25
+
+        /** Cards saved in a single transaction during the sync (also the progress step). */
+        const val SAVE_CHUNK = 50
         const val HTTP_NOT_FOUND = "HTTP 404"
 
         /** Images downloaded together: with only one at a time, thousands of cards take hours. */
