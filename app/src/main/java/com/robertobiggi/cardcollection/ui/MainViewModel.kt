@@ -88,7 +88,6 @@ data class CollectionFilter(
     val sort: SortMode = SortMode.RELEASE,
 )
 
-/** State of the search for cards to add by hand; [messageRes] is a notice to show, if any. */
 /**
  * State of the set picker for set collections.
  * @property language language of the sets shown, null for all of them.
@@ -106,6 +105,7 @@ data class SetPickerState(
 /** Download of the card database: bytes read and total (null if the server does not declare them). */
 data class CatalogDownload(val done: Long, val total: Long?)
 
+/** State of the search for cards to add by hand; [messageRes] is a notice to show, if any. */
 data class CardSearchState(
     val loading: Boolean = false,
     val results: List<CardBrief> = emptyList(),
@@ -137,8 +137,6 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     val collectionName: StateFlow<String?> = perCollection { container.collection.name(it) }.stateInVm(null)
 
-    /** Language of the open collection: value of CollectionLanguage, null until loaded. */
-    val collectionLanguage: StateFlow<String?> = perCollection { container.collection.language(it) }.stateInVm(null)
     val library: StateFlow<List<CardUi>?> = perCollection { container.collection.library(it) }.stateInVm(null)
 
     /** Card database the open collection was last updated from, null if never. */
@@ -462,13 +460,6 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Changes the language of the open collection.
-     * @param language Language? - fixed language, or null for a mixed collection.
-     * @return Unit
-     */
-    fun setCollectionLanguage(language: Language?) = withSelected { id -> container.collection.setLanguage(id, language) }
-
-    /**
      * Reads the settings of a collection to show them in the dialog.
      * @param collectionId Long - collection.
      * @param onResult (CollectionSettings?) -> Unit - settings, or null if the collection no longer exists.
@@ -739,14 +730,25 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
+     * Occasion on which a promo without a number was given out.
+     * @param cardId String - card.
+     * @return String? - the event, or null if unknown.
+     */
+    suspend fun promoEvent(cardId: String): String? = container.catalog.promoEvent(cardId)
+
+    /**
+     * English name of a set (Japanese sets).
+     * @param language Language - catalog language of the card.
+     * @param setId String - id of the set.
+     * @return String? - the name, or null if there is none.
+     */
+    suspend fun setNameEn(language: Language, setId: String): String? = container.catalog.setNameEn(language, setId)
+
+    /**
      * Images of the other prints of a card.
      * @param cardId String - card.
      * @return List<VariantImage> - empty if there are none.
      */
-    suspend fun promoEvent(cardId: String): String? = container.catalog.promoEvent(cardId)
-
-    suspend fun setNameEn(language: Language, setId: String): String? = container.catalog.setNameEn(language, setId)
-
     suspend fun variantImages(cardId: String): List<VariantImage> = container.catalog.variantImages(cardId)
 
     /**
@@ -873,7 +875,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * @return Unit
      */
     fun hideCards(cardIds: Set<String>) = withSelected { id ->
-        cardIds.forEach { container.collection.hideCard(id, it) }
+        container.collection.hideCards(id, cardIds)
         sayPlural(R.plurals.msg_cards_removed, cardIds.size, cardIds.size)
     }
 

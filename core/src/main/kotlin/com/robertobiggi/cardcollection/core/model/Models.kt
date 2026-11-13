@@ -244,15 +244,6 @@ object Ids {
     }
 
     /**
-     * Tells whether a card comes from the Cardmarket catalog without a number (id "en:s-p-Cardmarket786632").
-     * @param cardId String - local id of the card.
-     * @return Boolean - true if it is a card without a number identified by the Cardmarket product.
-     */
-    fun isUnnumberedCardmarket(cardId: String): Boolean = UNNUMBERED.containsMatchIn(cardId)
-
-    private val UNNUMBERED = Regex("-Cardmarket\\d+$")
-
-    /**
      * Checks the format of a variant id coming from a backup.
      * @param id String - id to check.
      * @return Boolean - true if the id has the expected format and a known variant.
