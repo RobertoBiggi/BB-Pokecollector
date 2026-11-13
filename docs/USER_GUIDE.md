@@ -33,9 +33,11 @@ The app is not on the Play Store. It needs Android 8.0 or later.
 
 **Manually**
 
-1. Download the APK from the latest Release. Until signed releases are set up, it is **Test build** (`card-collection-test.apk`), the build of the last update, replaced every time.
+1. Tap **Download latest APK** in the [README](../README.md#install) (or download `card-collection.apk` from the latest Release). Until signed releases are set up, it is the **Test build**, the build of the last update, replaced every time.
 2. Open the file on your phone.
 3. If Android asks, allow installs from unknown sources.
+
+To update, do the same again: the new version installs over the old one and keeps your collections. The only exception will be the first signed release: it has a different signature from the test builds, so that one time Android asks to uninstall the test build first. Export your collections before (see Backup).
 
 The card database ships with the app, so you can search and add cards right away, even offline.
 
