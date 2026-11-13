@@ -33,22 +33,22 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: APK dell'app e del test
+      - name: App and test APKs
         run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace --console=plain
 
       # The emulator needs a few GB for its data partition: removes SDKs the runner has and this job does not use.
-      - name: Libera spazio
+      - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
           df -h /
 
-      - name: Abilita KVM
+      - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Screenshot sull'emulatore
+      - name: Screenshots on the emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -62,12 +62,12 @@ jobs:
           script: bash .github/scripts/readme-screenshots.sh
 
       # Also after a failed test: the screenshots taken until then help to see where it stopped.
-      - name: Commit degli screenshot
+      - name: Commit the screenshots
         if: ${{ !cancelled() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/screenshots
-          if git diff --cached --quiet; then echo "Screenshot invariati"; exit 0; fi
+          if git diff --cached --quiet; then echo "Screenshots unchanged"; exit 0; fi
           git commit -m "README screenshots updated"
           git push origin "HEAD:${GITHUB_REF_NAME}"

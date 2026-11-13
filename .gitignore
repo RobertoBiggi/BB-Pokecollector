@@ -20,8 +20,6 @@ captures/
 # Secrets: never commit keys or keystores
 *.jks
 *.keystore
-# Exception: debug keystore with public passwords, only used to keep the same signature across CI builds
-!app/signing/debug.keystore
 .env
 catalog-db/
 
