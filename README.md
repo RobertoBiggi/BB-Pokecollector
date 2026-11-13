@@ -9,13 +9,20 @@ An offline-first Android app to track your Pokémon card collection: every varia
   <img src="docs/badges/chinese-images.svg" alt="Chinese cards with image">
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/02-cards.png" width="230" alt="Card grid">
-  &nbsp;
-  <img src="docs/screenshots/06-card-detail.png" width="230" alt="Card detail">
-  &nbsp;
-  <img src="docs/screenshots/04-stats.png" width="230" alt="Statistics">
-</p>
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/screenshots/01-collections.png" width="190" alt="Collections"><br><sub>Collections</sub></td>
+    <td align="center"><img src="docs/screenshots/02-cards.png" width="190" alt="Card grid"><br><sub>Cards</sub></td>
+    <td align="center"><img src="docs/screenshots/06-card-detail.png" width="190" alt="Card detail"><br><sub>Card detail</sub></td>
+    <td align="center"><img src="docs/screenshots/07-price-alert.png" width="190" alt="Price alert"><br><sub>Price alert</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/03-missing.png" width="190" alt="Missing cards"><br><sub>Missing</sub></td>
+    <td align="center"><img src="docs/screenshots/04-stats.png" width="190" alt="Statistics"><br><sub>Statistics</sub></td>
+    <td align="center"><img src="docs/screenshots/05-manage.png" width="190" alt="Manage"><br><sub>Manage</sub></td>
+    <td align="center"><img src="docs/screenshots/08-settings.png" width="190" alt="Settings"><br><sub>Settings</sub></td>
+  </tr>
+</table>
 
 ## Features
 

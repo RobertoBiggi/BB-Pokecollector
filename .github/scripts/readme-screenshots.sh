@@ -10,6 +10,9 @@ OUT=docs/screenshots
 
 adb install -r app/build/outputs/apk/debug/*.apk
 adb install -r app/build/outputs/apk/androidTest/debug/*.apk
+# Card database downloaded by the workflow: placed where the app keeps it, so the test does not have to download it.
+adb push catalog-db/cards.sqlite /data/local/tmp/cards.sqlite
+adb shell run-as "$PKG" sh -c 'mkdir -p files/catalog && cp /data/local/tmp/cards.sqlite files/catalog/cards.sqlite'
 # Avoids the system dialog asking for notifications on top of the first screenshot.
 adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS
 

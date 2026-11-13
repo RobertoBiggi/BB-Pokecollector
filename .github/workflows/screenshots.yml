@@ -33,6 +33,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # The workflow's token can read the release even while the repository is private; the script copies the file into the app.
+      - name: Card database
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download catalog -p cards.sqlite -D catalog-db
+
       - name: App and test APKs
         run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace --console=plain
 

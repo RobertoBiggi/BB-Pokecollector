@@ -116,12 +116,21 @@ class ReadmeScreenshots {
             shot("07-price-alert")
         }
 
+        // The settings show every price source on, as after a fresh install.
+        runBlocking {
+            container.settings.setPriceShown(PriceKind.TCGPLAYER, true)
+            container.settings.setPriceShown(PriceKind.CARDTRADER, true)
+        }
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activityResources = it.resources }
             settle()
             compose.onNode(hasContentDescription(text(R.string.home_settings))).performClick()
             settle()
             shot("08-settings")
+            // Price sources and the CardTrader token field, right above the save button.
+            compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText(text(R.string.settings_cardtrader_save)))
+            settle()
+            shot("09-price-sources")
         }
     }
 
@@ -131,8 +140,12 @@ class ReadmeScreenshots {
      * @return Seeded - collection and card to show.
      */
     private suspend fun seed(): Seeded {
-        val downloaded = container.catalogStore.download(SettingsStore.DEFAULT_CATALOG_URL)
-        check(downloaded is CatalogDownloadResult.Installed) { "Card database not downloaded: $downloaded" }
+        // The workflow puts the card database in place before the test; otherwise it is downloaded like the app does.
+        container.catalogStore.load()
+        if (container.catalogStore.info.value == null) {
+            val downloaded = container.catalogStore.download(SettingsStore.DEFAULT_CATALOG_URL)
+            check(downloaded is CatalogDownloadResult.Installed) { "Card database not downloaded: $downloaded" }
+        }
         val id = when (val created = container.collection.createCollection(COLLECTION_NAME, listOf(Language.EN), COLLECTION_NAME)) {
             is CreateResult.Created -> created.id
             is CreateResult.Invalid -> error("Collection not created: ${created.error}")
