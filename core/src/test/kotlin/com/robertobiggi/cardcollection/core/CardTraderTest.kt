@@ -192,7 +192,7 @@ class CardTraderTest {
 
     private fun request(variant: VariantType) = PriceRequest(
         Language.EN, "base6-39", variant, false,
-        setId = "base6", setName = "Legendary Collection", setCode = null, localId = "039", cardTraderBlueprintId = 300,
+        setId = "base6", localId = "039", cardTraderBlueprintId = 300,
     )
 
     @Test

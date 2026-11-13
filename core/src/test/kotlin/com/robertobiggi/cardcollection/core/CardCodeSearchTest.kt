@@ -27,14 +27,6 @@ class CardCodeSearchTest {
         assertNull(CardCodeSearch.parse("../../117"))
     }
 
-    @Test
-    fun `numero confrontato senza zeri iniziali`() {
-        assertTrue(CardCodeSearch.matchesNumber("046", 46))
-        assertTrue(CardCodeSearch.matchesNumber("46", 46))
-        assertFalse(CardCodeSearch.matchesNumber("146", 46))
-        assertFalse(CardCodeSearch.matchesNumber("XY46", 46))
-    }
-
 
 
 

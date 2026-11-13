@@ -208,24 +208,6 @@ interface CatalogDao {
     suspend fun setImagePaths(id: String, low: String?, high: String?)
 
     /**
-     * Drops the downloaded images of a card (they are downloaded again) and records the image sources they now have to come from.
-     * @param id String - card.
-     * @param imageKey String - image sources in the card database now.
-     * @return Unit
-     */
-    @Query("UPDATE card SET imageLowPath = NULL, imageHighPath = NULL, imageKey = :imageKey WHERE id = :id")
-    suspend fun resetImages(id: String, imageKey: String)
-
-    /**
-     * Records the image sources of a card in the card database (without touching the images).
-     * @param id String - card.
-     * @param imageKey String - image sources in the card database now.
-     * @return Unit
-     */
-    @Query("UPDATE card SET imageKey = :imageKey WHERE id = :id")
-    suspend fun setImageKey(id: String, imageKey: String)
-
-    /**
      * Fills in the missing image paths without touching those already saved (even by another job in the meantime).
      * @param id String - row id.
      * @param low String? - path of the small image just downloaded.

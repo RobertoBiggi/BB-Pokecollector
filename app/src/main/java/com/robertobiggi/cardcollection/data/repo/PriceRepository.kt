@@ -1,5 +1,6 @@
 package com.robertobiggi.cardcollection.data.repo
 
+import androidx.room.withTransaction
 import com.robertobiggi.cardcollection.core.backup.CollectionFiles
 import com.robertobiggi.cardcollection.core.cardmarket.CardmarketPriceGuide
 import com.robertobiggi.cardcollection.core.cardtrader.CardTraderClient
@@ -217,11 +218,7 @@ class PriceRepository(
             cardHasNormalAndHolo = VariantType.NORMAL.name in types && VariantType.HOLO.name in types,
             cardHasFirstEdition = VariantType.FIRST_EDITION.name in types,
             setId = card.setId,
-            setName = card.setName,
-            setCode = card.setCode,
             localId = card.localId,
-            name = card.name,
-            dexId = card.dexId,
             cardTraderCondition = CtCondition.fromCondition(condition),
             cardmarketId = card.cardmarketProduct ?: card.cardmarketId,
             printProductId = variant.cardmarketId,
@@ -255,7 +252,7 @@ class PriceRepository(
      * @return Boolean - always true (handy for chaining).
      */
     private suspend fun saveQuote(variantId: String, quote: PriceQuote): Boolean {
-        priceDao.insertSnapshot(
+        saveSnapshot(
             PriceSnapshotEntity(
                 variantId = variantId,
                 source = quote.source,
@@ -270,8 +267,19 @@ class PriceRepository(
                 confidence = quote.confidence.name,
             ),
         )
-        priceDao.pruneSnapshots(variantId, KEEP_SNAPSHOTS)
         return true
+    }
+
+    /**
+     * Saves a price and drops the oldest of its variant in one transaction: the screens see a single change instead of two.
+     * @param snapshot PriceSnapshotEntity - price to save.
+     * @return Unit
+     */
+    private suspend fun saveSnapshot(snapshot: PriceSnapshotEntity) {
+        db.withTransaction {
+            priceDao.insertSnapshot(snapshot)
+            priceDao.pruneSnapshots(snapshot.variantId, KEEP_SNAPSHOTS)
+        }
     }
 
     /** Sources of the update: the Cardmarket price list (always) and CardTrader (only with the token). */
@@ -418,7 +426,7 @@ class PriceRepository(
      * @return Unit
      */
     suspend fun addManualPrice(variantId: String, eur: Double) {
-        priceDao.insertSnapshot(
+        saveSnapshot(
             PriceSnapshotEntity(
                 variantId = variantId,
                 source = CollectionFiles.MANUAL_SOURCE,
@@ -432,7 +440,6 @@ class PriceRepository(
                 confidence = Confidence.MANUAL.name,
             ),
         )
-        priceDao.pruneSnapshots(variantId, KEEP_SNAPSHOTS)
     }
 
     companion object {

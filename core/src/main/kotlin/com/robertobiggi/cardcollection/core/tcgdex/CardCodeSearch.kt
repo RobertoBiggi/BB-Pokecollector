@@ -28,9 +28,6 @@ object CardCodeSearch {
     /** Maximum number of additional words considered. */
     private const val MAX_TOKENS = 4
 
-    /** Maximum number of sets whose detail is downloaded to compare the code. */
-    private const val MAX_SET_DETAILS = 6
-
     /**
      * Recognizes a text that contains a card number.
      * @param text String - text entered by the user.
@@ -61,13 +58,4 @@ object CardCodeSearch {
         val found = number ?: return null
         return CardCodeQuery(found, total, tokens.take(MAX_TOKENS))
     }
-
-    /**
-     * Compares the number of a card ignoring leading zeros ("046" and "46" match).
-     * @param localId String - number of the card according to TCGdex.
-     * @param number Int - number searched.
-     * @return Boolean - true if the number is only digits and equals [number].
-     */
-    fun matchesNumber(localId: String, number: Int): Boolean =
-        localId.isNotEmpty() && localId.length <= 6 && localId.all { it.isDigit() } && localId.toInt() == number
 }
