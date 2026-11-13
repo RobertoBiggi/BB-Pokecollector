@@ -1,4 +1,4 @@
-# Card Collection: user guide
+# BB PokeCollector: user guide
 
 This guide covers every feature of the app, from installation to backups. The screenshots come from a real collection; prices change every day.
 
@@ -28,30 +28,27 @@ The app is not on the Play Store. It needs Android 8.0 or later.
 **With automatic updates (recommended)**
 
 1. Install [Obtainium](https://github.com/ImranR98/Obtainium).
-2. Tap **Add app** and paste `https://github.com/RobertoBiggi/Card-collection`.
-3. Before confirming, set these options of the GitHub source. They are needed while the latest Release is the **Test build**, which keeps the same tag at every update:
-   - **Use release title as version string**: on;
-   - **Version string extraction regular expression**: `\d+\.\d+\.\d+`;
-   - **Filter links by regex**: `^card-collection\.apk$`.
+2. Tap **Add app** and paste `https://github.com/RobertoBiggi/BB-Pokecollector`.
+3. Before confirming, set **Filter links by regex** to `^bb-pokecollector\.apk$`: each Release has the same APK twice (with and without the version in its name), and this way Obtainium takes one without asking.
 4. Confirm. Obtainium installs the app, checks for new versions in the background, notifies you and installs them with one tap.
 
 A GitHub access token in Obtainium's settings is optional: it only avoids GitHub's limit on anonymous requests.
 
 **Manually**
 
-1. Tap **Download latest APK** in the [README](../README.md#install) (or download `card-collection.apk` from the latest Release). Until signed releases are set up, it is the **Test build**, the build of the last update, replaced every time.
+1. Tap **Download latest APK** in the [README](../README.md#install) (or download `bb-pokecollector.apk` from the latest Release).
 2. Open the file on your phone.
 3. If Android asks, allow installs from unknown sources.
 
-To update, do the same again: the new version installs over the old one and keeps your collections. The only exception will be the first signed release: it has a different signature from the test builds, so that one time Android asks to uninstall the test build first. Export your collections before (see Backup).
+To update, do the same again: the new version installs over the old one and keeps your collections.
 
-The card database ships with the app, so you can search and add cards right away, even offline.
+On first launch, download the card database once: **Settings → Card database → Download** (about 35 MB). After that, searching and adding cards work offline.
 
 **After an app update.** When an update brings a newer card database, every collection shows **Needs update** on the home list. Each one updates by itself the first time you open it: the app reads its cards again from the database, from scratch, so cards that were added, removed or corrected there are applied. Your copies, conditions, notes, wanted slots, removed cards and the cards you added by hand are kept exactly as before. Images that were already downloaded stay unless the database now points to a different source for that card.
 
 If a card is no longer in the database (removed, replaced by another one, or given a new id), it is not lost: it moves to a section at the end of the collection, under a divider, called **No longer in the card database**, with whatever copies and notes you had on it. Each one has a label that says why: **Replaced by …** when the same card is in the database with a new id (for example after two sets were merged), or **No longer in the card database** when it is simply gone. These cards do not count as missing. Long press to remove the ones you do not need, or leave them.
 
-> **Test builds and releases.** Test builds (the **Test build** Release and the APK attached to the GitHub Actions runs of other branches, kept for 3 days) are signed with a different key than releases, so Android won't install one over the other. To switch, export your collections, uninstall the app, install the other build and import them again. The same applies to versions up to 0.5.0.
+> **Coming from a test build.** Releases are signed with their own key. If you installed an older **Test build**, or an APK from the GitHub Actions runs of a development branch, Android won't install a release over it: export your collections (see [section 12](#12-backup-and-moving-to-a-new-phone)), uninstall the app, install the release and import them again. You only need to do this once.
 
 ## 2. Your first collection
 
@@ -164,6 +161,8 @@ At the bottom, **Remove from collection** hides the card. You can bring it back 
 
 ## 6. Prices
 
+<img src="screenshots/09-price-sources.png" width="260" align="right" alt="Price sources and CardTrader token in Settings">
+
 Prices are only downloaded when you ask for them: the **Prices** button, **Update price** on a card, or the daily alert check.
 
 | Source | Currency | Notes |
@@ -192,6 +191,8 @@ Euros and dollars are never converted.
 - **old**: the price is more than 30 days old.
 
 If a source rejects too many requests, the app waits and retries. After repeated blocks it pauses that source for a few hours; prices you already have stay valid.
+
+<br clear="right">
 
 ## 7. Price alerts
 
@@ -357,5 +358,5 @@ Check your connection. Cards and prices you already have stay available offline.
 **The app says the card database is missing.**
 Go to **Settings → Card database** and tap **Update**.
 
-**Obtainium never finds an update, or always shows one.**
-Check the three options of [section 1](#1-installing-and-updating): with the Test build, Obtainium must read the version from the release title, not from the tag.
+**Obtainium can't install an update ("signature" or "conflict" error).**
+The installed app is an old test build, signed with a different key: see the note at the end of [section 1](#1-installing-and-updating).

@@ -115,6 +115,6 @@ fun ConfirmDialog(title: String, text: String, confirmLabel: String, onDismiss: 
  * @return String - e.g. "mawile.json" (only letters, digits and hyphens).
  */
 fun exportFileName(name: String): String {
-    val slug = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40).ifEmpty { "card-collection" }
+    val slug = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40).ifEmpty { "bb-pokecollector" }
     return "$slug.json"
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Testi in inglese (lingua di base). Ogni chiave traducibile va aggiunta anche in values-it/strings.xml. -->
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="app_name" translatable="false">Card Collection</string>
+    <string name="app_name" translatable="false">BB PokeCollector</string>
     <string name="notification_channel_name">Updates</string>
     <string name="notification_channel_description">Catalog and price progress</string>
     <string name="notification_catalog_title">Updating catalog</string>
@@ -259,7 +259,7 @@
     <string name="search_no_results">No cards found.</string>
     <string name="err_import_too_large">The file is too large (max 40 MB).</string>
     <string name="err_import_invalid">The file is not a valid collection JSON.</string>
-    <string name="err_import_other_app">The file was not created by Card Collection.</string>
+    <string name="err_import_other_app">The file was not created by BB PokeCollector.</string>
     <string name="err_import_version">This file version is not supported.</string>
     <string name="err_import_too_many">The file contains too many entries.</string>
     <string name="err_file_open">Can\'t open the file.</string>

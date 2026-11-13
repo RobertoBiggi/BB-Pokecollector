@@ -168,6 +168,7 @@ enum class ImageExport { NONE, LOW, LOW_AND_HIGH }
 /** Reading and writing of collection files. */
 @OptIn(ExperimentalSerializationApi::class)
 object CollectionFiles {
+    /** Marker of the files written by this app. It keeps the app's first name ("card-collection") so older backups still import. */
     const val APP_ID = "card-collection"
     const val SCHEMA_V1 = 1
     const val SCHEMA_COLLECTION = 2

@@ -1,4 +1,4 @@
-# Card Collection
+# BB PokeCollector
 
 An offline-first Android app to track your Pokémon card collection: every variant you own, what you are still missing, and what it is worth.
 
@@ -9,13 +9,23 @@ An offline-first Android app to track your Pokémon card collection: every varia
   <img src="docs/badges/chinese-images.svg" alt="Chinese cards with image">
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/02-cards.png" width="230" alt="Card grid">
-  &nbsp;
-  <img src="docs/screenshots/06-card-detail.png" width="230" alt="Card detail">
-  &nbsp;
-  <img src="docs/screenshots/04-stats.png" width="230" alt="Statistics">
-</p>
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/screenshots/01-collections.png" width="230" alt="Collections"><br><sub>Collections</sub></td>
+    <td align="center"><img src="docs/screenshots/02-cards.png" width="230" alt="Cards"><br><sub>Cards</sub></td>
+    <td align="center"><img src="docs/screenshots/06-card-detail.png" width="230" alt="Card detail"><br><sub>Card detail</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/07-price-alert.png" width="230" alt="Price alert"><br><sub>Price alert</sub></td>
+    <td align="center"><img src="docs/screenshots/03-missing.png" width="230" alt="Missing"><br><sub>Missing</sub></td>
+    <td align="center"><img src="docs/screenshots/04-stats.png" width="230" alt="Statistics"><br><sub>Statistics</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/05-manage.png" width="230" alt="Manage"><br><sub>Manage</sub></td>
+    <td align="center"><img src="docs/screenshots/08-settings.png" width="230" alt="Settings"><br><sub>Settings</sub></td>
+    <td align="center"><img src="docs/screenshots/09-price-sources.png" width="230" alt="Price sources and CardTrader token"><br><sub>Price sources and CardTrader token</sub></td>
+  </tr>
+</table>
 
 ## Features
 
@@ -30,10 +40,10 @@ An offline-first Android app to track your Pokémon card collection: every varia
 ## Install
 
 <p>
-  <a href="../../releases/latest/download/card-collection.apk"><img src="docs/badges/download-apk.svg" alt="Download the latest APK"></a>
+  <a href="../../releases/latest/download/bb-pokecollector.apk"><img src="docs/badges/download-apk.svg" alt="Download the latest APK"></a>
 </p>
 
-Requires Android 8.0 or later. The button above always downloads the latest version: open the file on the phone and Android installs it over the previous one, keeping your data. You can also pick the APK from the latest [Release](../../releases/latest), or add this repository to [Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates. Until signed releases are set up, the latest Release is **Test build**: the APK of the last push to `main`, replaced at every update.
+Requires Android 8.0 or later. The button above always downloads the latest version: open the file on the phone and Android installs it over the previous one, keeping your data. You can also pick the APK from the latest [Release](../../releases/latest), or add this repository to [Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates. Every update of `main` publishes a new signed Release.
 
 ## Privacy
 

@@ -254,7 +254,7 @@
     <string name="search_no_results">Nessuna carta trovata.</string>
     <string name="err_import_too_large">Il file è troppo grande (massimo 40 MB).</string>
     <string name="err_import_invalid">Il file non è un JSON di collezione valido.</string>
-    <string name="err_import_other_app">Il file non è stato creato da Card Collection.</string>
+    <string name="err_import_other_app">Il file non è stato creato da BB PokeCollector.</string>
     <string name="err_import_version">Versione del file non supportata.</string>
     <string name="err_import_too_many">Il file contiene troppe voci.</string>
     <string name="err_file_open">Impossibile aprire il file.</string>

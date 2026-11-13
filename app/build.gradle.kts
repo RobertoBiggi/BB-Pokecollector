@@ -12,7 +12,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.robertobiggi.cardcollection"
+        applicationId = "com.robertobiggi.bbpokecollector"
         minSdk = 26
         targetSdk = 35
         // In CI versionCode = number of commits on main and versionName = "<appVersion>.<versionCode>",
@@ -29,14 +29,7 @@ android {
     }
 
     signingConfigs {
-        // Debug keystore fixed in the repo, with public passwords: test builds signed this way update
-        // each other (same id and same signature on every build), but cannot replace the release signed with the real key.
-        getByName("debug") {
-            storeFile = file("signing/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
+        // Debug builds use the standard Android debug key of the machine that builds them (no key in the repo).
         // Release key: comes only from GitHub Actions secrets, never from the repo.
         val releaseKeystore = System.getenv("RELEASE_KEYSTORE_PATH")
         if (releaseKeystore != null) {

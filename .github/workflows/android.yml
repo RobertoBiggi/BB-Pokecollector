@@ -1,5 +1,6 @@
-# Builds and tests the app. On every push to main it also publishes a GitHub Release with the APK signed
-# with the release key (repo secret), which Obtainium uses for updates.
+# Builds and tests the app on every push and pull request. On every push to main it also publishes a GitHub Release
+# with the APK signed with the release key (repository secrets, never in the repo), which the README download button
+# and Obtainium use for updates.
 name: Android CI
 
 on:
@@ -18,9 +19,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      # Without the release key main publishes no Release: its test APK is then the only one available.
-      HAS_RELEASE_KEY: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -35,52 +33,49 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Numero di build
+      - name: Build number
         run: echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
 
       # assembleRelease without a key produces an unsigned APK: it serves to verify R8 on every push.
-      - name: Test, lint e build
+      - name: Test, lint and build
         run: >
           ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
           -PversionCode="$BUILD_NUMBER" --stacktrace --console=plain
 
       # Room rewrites app/schemas while compiling: a difference means the database schema changed without a new version,
       # or the new version's file was not committed (see data/local/Migrations.kt).
-      - name: Schema del database committato
+      - name: Database schema committed
         run: |
           changes=$(git status --porcelain -- app/schemas)
           if [ -n "$changes" ]; then
             echo "$changes"
-            echo "::error::Lo schema del database è cambiato: aumenta version in AppDatabase, aggiungi la migrazione in Migrations.kt e committa il file in app/schemas."
+            echo "::error::The database schema changed: raise version in AppDatabase, add the migration to Migrations.kt and commit the file in app/schemas."
             exit 1
           fi
 
-      - name: Verifica firma e pacchetto dell'APK debug
+      - name: Check the APK package
         run: |
           set -euo pipefail
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           apk=$(ls app/build/outputs/apk/debug/*.apk)
           "$tools/aapt" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-debuggable)" || true
-          # Test builds use the repo's debug keystore.
-          expected="b66e03971fb82eef2a2af8bcd4b64ecec1cdbc3fb18569d9ad612ba9e26e9589"
-          actual=$("$tools/apksigner" verify --print-certs "$apk" | grep -m1 "SHA-256 digest" | awk '{print $NF}')
-          test "$actual" = "$expected"
-          "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.robertobiggi.cardcollection'"
+          "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.robertobiggi.bbpokecollector'"
           # The release build (minified by R8) must contain the Pokémon names.
           unzip -l app/build/outputs/apk/release/*.apk | grep -q "com/robertobiggi/cardcollection/core/model/pokemon-names.tsv"
 
-      - name: Rinomina APK di prova
+      - name: Rename the test APK
         run: |
           set -euo pipefail
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           apk=$(ls app/build/outputs/apk/debug/*.apk)
           version=$("$tools/aapt" dump badging "$apk" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
           mkdir -p dist
-          cp "$apk" "dist/card-collection-$version.apk"
+          cp "$apk" "dist/bb-pokecollector-$version.apk"
 
       # Branches other than main, for pushes and manual runs ("Run workflow"), never for third-party pull requests.
-      # Kept 3 days: each APK is about 30 MB (it bundles the card database). Main has the "test-build" Release instead.
-      - name: Pubblica APK di prova
+      # Kept 3 days. Test APKs are signed with the runner's
+      # own debug key, so each one has to be installed on a clean phone (it can't update another build).
+      - name: Upload the test APK
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref != 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
@@ -90,18 +85,7 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-      # On main, while the release key is missing, the APK goes to the test-release job (which publishes the "test-build"
-      # Release): this artifact only hands it over and expires after a day.
-      - name: APK per la release di prova
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && env.HAS_RELEASE_KEY != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-apk
-          path: dist/*.apk
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Pubblica report in caso di errore
+      - name: Upload reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -111,49 +95,6 @@ jobs:
             core/build/reports/
           if-no-files-found: ignore
           retention-days: 7
-
-  # While the release key is missing, main's test APK is published in a fixed "test-build" Release that is replaced at
-  # every push: it never expires, does not use the Actions storage and Obtainium can follow it. Separate job so that
-  # only these steps get the write permission.
-  test-release:
-    needs: build
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    concurrency:
-      group: test-release
-      cancel-in-progress: false
-    env:
-      HAS_KEY: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
-    steps:
-      - uses: actions/download-artifact@v4
-        if: env.HAS_KEY != 'true'
-        with:
-          name: test-apk
-          path: dist
-
-      - name: Pubblica la build di prova
-        if: env.HAS_KEY != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          src=$(ls dist/card-collection-*.apk)
-          version=$(basename "$src" .apk | sed 's/^card-collection-//')
-          tag="test-build"
-          # Fixed file names: the download links (README: releases/latest/download/card-collection.apk) stay the same at every update.
-          cp "$src" card-collection.apk
-          notes="Test build $version of main ($GITHUB_SHA), signed with the debug key. Replaced at every push to main."
-          if gh release view "$tag" --repo "$REPO" > /dev/null 2>&1; then
-            gh release upload "$tag" card-collection.apk --repo "$REPO" --clobber
-            gh release edit "$tag" --repo "$REPO" --title "Test build $version" --notes "$notes" --latest
-          else
-            gh release create "$tag" card-collection.apk --repo "$REPO" --target "$GITHUB_SHA" \
-              --title "Test build $version" --notes "$notes" --latest
-          fi
 
   release:
     needs: build
@@ -168,28 +109,26 @@ jobs:
     env:
       HAS_KEY: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
     steps:
-      - name: Chiave di release assente
+      # Without the key nothing is published: failing makes it visible on main instead of passing silently.
+      - name: Release key present
         if: env.HAS_KEY != 'true'
         run: |
-          echo "::warning::Secret RELEASE_KEYSTORE_BASE64 non impostato, nessuna release pubblicata."
+          echo "::error::The RELEASE_KEYSTORE_BASE64 secret is not set: no release published."
+          exit 1
 
       - uses: actions/checkout@v4
-        if: env.HAS_KEY == 'true'
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - uses: actions/setup-java@v4
-        if: env.HAS_KEY == 'true'
         with:
           distribution: temurin
           java-version: "17"
 
       - uses: gradle/actions/setup-gradle@v4
-        if: env.HAS_KEY == 'true'
 
-      - name: Build release firmata
-        if: env.HAS_KEY == 'true'
+      - name: Signed release build
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
@@ -198,38 +137,35 @@ jobs:
         run: |
           set -euo pipefail
           export RELEASE_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          trap 'rm -f "$RELEASE_KEYSTORE_PATH"' EXIT
           echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RELEASE_KEYSTORE_PATH"
-          build=$(git rev-list --count HEAD)
-          ./gradlew :app:assembleRelease -PversionCode="$build" --console=plain
-          rm -f "$RELEASE_KEYSTORE_PATH"
-          echo "BUILD_NUMBER=$build" >> "$GITHUB_ENV"
+          ./gradlew :app:assembleRelease -PversionCode="$(git rev-list --count HEAD)" --console=plain
 
-      - name: Verifica firma release
-        if: env.HAS_KEY == 'true'
+      # The certificate must be the expected one: a wrong key in the secrets would publish an APK that can't update the installed app.
+      - name: Check the release signature
         run: |
           set -euo pipefail
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           apk=app/build/outputs/apk/release/app-release.apk
-          expected="a48f249096edae297c98b8e05f99eecea99e61948e6e510c6b49fd6d0271e2ab"
+          expected="7b9385ed9d9eb9ce96974eef3e36e148548dc1e565658a6ce1d8951977d46b3f"
           actual=$("$tools/apksigner" verify --print-certs "$apk" | grep -m1 "SHA-256 digest" | awk '{print $NF}')
-          echo "SHA-256 firma: $actual"
+          echo "Signing certificate SHA-256: $actual"
           test "$actual" = "$expected"
-          if "$tools/aapt" dump badging "$apk" | grep -q "application-debuggable"; then echo "APK release debuggable"; exit 1; fi
+          if "$tools/aapt" dump badging "$apk" | grep -q "application-debuggable"; then echo "::error::The release APK is debuggable"; exit 1; fi
           version=$("$tools/aapt" dump badging "$apk" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
-      - name: Pubblica GitHub Release
-        if: env.HAS_KEY == 'true'
+      - name: Publish the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           tag="v$VERSION"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            echo "Release $tag già presente"; exit 0
+            echo "Release $tag already exists"; exit 0
           fi
-          cp app/build/outputs/apk/release/app-release.apk "card-collection-$VERSION.apk"
-          # Same fixed name as the test build: the README download link always points to the latest Release.
-          cp app/build/outputs/apk/release/app-release.apk card-collection.apk
-          gh release create "$tag" "card-collection-$VERSION.apk" card-collection.apk --repo "$GITHUB_REPOSITORY" \
+          cp app/build/outputs/apk/release/app-release.apk "bb-pokecollector-$VERSION.apk"
+          # Fixed name: the README download link (releases/latest/download/bb-pokecollector.apk) always points to the latest Release.
+          cp app/build/outputs/apk/release/app-release.apk bb-pokecollector.apk
+          gh release create "$tag" "bb-pokecollector-$VERSION.apk" bb-pokecollector.apk --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --title "$VERSION" --generate-notes --latest
