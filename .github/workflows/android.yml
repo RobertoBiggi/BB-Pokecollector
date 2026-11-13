@@ -153,14 +153,15 @@ jobs:
           src=$(ls dist/card-collection-*.apk)
           version=$(basename "$src" .apk | sed 's/^card-collection-//')
           tag="test-build"
-          # Fixed file name: the download link stays the same at every update.
+          # Fixed file names: the download links (README: releases/latest/download/card-collection.apk) stay the same at every update.
           cp "$src" card-collection-test.apk
+          cp "$src" card-collection.apk
           notes="Test build $version of main ($GITHUB_SHA), signed with the debug key. Replaced at every push to main."
           if gh release view "$tag" --repo "$REPO" > /dev/null 2>&1; then
-            gh release upload "$tag" card-collection-test.apk --repo "$REPO" --clobber
+            gh release upload "$tag" card-collection-test.apk card-collection.apk --repo "$REPO" --clobber
             gh release edit "$tag" --repo "$REPO" --title "Test build $version" --notes "$notes" --latest
           else
-            gh release create "$tag" card-collection-test.apk --repo "$REPO" --target "$GITHUB_SHA" \
+            gh release create "$tag" card-collection-test.apk card-collection.apk --repo "$REPO" --target "$GITHUB_SHA" \
               --title "Test build $version" --notes "$notes" --latest
           fi
 
@@ -248,5 +249,7 @@ jobs:
             echo "Release $tag già presente"; exit 0
           fi
           cp app/build/outputs/apk/release/app-release.apk "card-collection-$VERSION.apk"
-          gh release create "$tag" "card-collection-$VERSION.apk" --repo "$GITHUB_REPOSITORY" \
+          # Same fixed name as the test build: the README download link always points to the latest Release.
+          cp app/build/outputs/apk/release/app-release.apk card-collection.apk
+          gh release create "$tag" "card-collection-$VERSION.apk" card-collection.apk --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --title "$VERSION" --generate-notes --latest
