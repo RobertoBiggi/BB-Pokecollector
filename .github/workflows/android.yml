@@ -145,14 +145,13 @@ jobs:
           version=$(basename "$src" .apk | sed 's/^card-collection-//')
           tag="test-build"
           # Fixed file names: the download links (README: releases/latest/download/card-collection.apk) stay the same at every update.
-          cp "$src" card-collection-test.apk
           cp "$src" card-collection.apk
           notes="Test build $version of main ($GITHUB_SHA), signed with the debug key. Replaced at every push to main."
           if gh release view "$tag" --repo "$REPO" > /dev/null 2>&1; then
-            gh release upload "$tag" card-collection-test.apk card-collection.apk --repo "$REPO" --clobber
+            gh release upload "$tag" card-collection.apk --repo "$REPO" --clobber
             gh release edit "$tag" --repo "$REPO" --title "Test build $version" --notes "$notes" --latest
           else
-            gh release create "$tag" card-collection-test.apk card-collection.apk --repo "$REPO" --target "$GITHUB_SHA" \
+            gh release create "$tag" card-collection.apk --repo "$REPO" --target "$GITHUB_SHA" \
               --title "Test build $version" --notes "$notes" --latest
           fi
 
