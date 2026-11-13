@@ -147,7 +147,7 @@ jobs:
           set -euo pipefail
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           apk=app/build/outputs/apk/release/app-release.apk
-          expected="a48f249096edae297c98b8e05f99eecea99e61948e6e510c6b49fd6d0271e2ab"
+          expected="7b9385ed9d9eb9ce96974eef3e36e148548dc1e565658a6ce1d8951977d46b3f"
           actual=$("$tools/apksigner" verify --print-certs "$apk" | grep -m1 "SHA-256 digest" | awk '{print $NF}')
           echo "Signing certificate SHA-256: $actual"
           test "$actual" = "$expected"
