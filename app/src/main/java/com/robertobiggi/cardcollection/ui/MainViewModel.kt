@@ -155,7 +155,6 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         id != null && CatalogUpdate.needsUpdate(version, info?.generatedAt)
     }.stateInVm(false)
 
-    val catalogUrl: StateFlow<String> = container.settings.catalogUrl.stateInVm(SettingsStore.DEFAULT_CATALOG_URL)
 
     private val _catalogDownload = MutableStateFlow<CatalogDownload?>(null)
 
@@ -333,26 +332,31 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     /**
-     * Downloads (or updates) the card database from the address given in the settings.
-     * @param url String - HTTPS address; if different from the saved one it is remembered for the next updates.
+     * Downloads (or updates) the card database from the fixed address [SettingsStore.DEFAULT_CATALOG_URL].
      * @return Unit
      */
-    fun downloadCatalog(url: String) {
+    fun downloadCatalog() {
         if (_catalogDownload.value != null) return
         viewModelScope.launch {
-            val clean = url.trim()
             _catalogDownload.value = CatalogDownload(0, null)
-            val result = container.catalogStore.download(clean) { done, total -> _catalogDownload.value = CatalogDownload(done, total) }
+            val result = container.catalogStore.download(SettingsStore.DEFAULT_CATALOG_URL) { done, total -> _catalogDownload.value = CatalogDownload(done, total) }
             _catalogDownload.value = null
             when (result) {
                 is CatalogDownloadResult.Installed -> {
-                    container.settings.setCatalogUrl(clean)
                     say(R.string.msg_catalog_installed)
                 }
                 CatalogDownloadResult.InvalidUrl -> say(R.string.msg_catalog_invalid_url)
                 CatalogDownloadResult.NetworkError -> say(R.string.msg_network_error)
                 CatalogDownloadResult.InvalidFile -> say(R.string.msg_catalog_invalid_file)
             }
+        }
+    }
+
+    /** First run (or database missing): downloads the card database without waiting for the user to ask. */
+    init {
+        viewModelScope.launch {
+            container.catalogStore.load()
+            if (container.catalogStore.info.value == null) downloadCatalog()
         }
     }
 

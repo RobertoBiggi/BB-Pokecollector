@@ -72,10 +72,8 @@ private enum class AppLanguage(val tag: String, val labelRes: Int) {
 @Composable
 fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val catalogInfo by vm.catalogInfo.collectAsStateWithLifecycle()
-    val savedUrl by vm.catalogUrl.collectAsStateWithLifecycle()
     val download by vm.catalogDownload.collectAsStateWithLifecycle()
     val alertCheckRunning by vm.alertCheckRunning.collectAsStateWithLifecycle()
-    var urlInput by remember(savedUrl) { mutableStateOf(savedUrl) }
     val lastSync by vm.lastCatalogSync.collectAsStateWithLifecycle()
     val savedToken by vm.cardTraderToken.collectAsStateWithLifecycle()
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
@@ -124,15 +122,8 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                             ?: stringResource(R.string.settings_catalog_missing),
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    OutlinedTextField(
-                        value = urlInput,
-                        onValueChange = { urlInput = it.take(300) },
-                        label = { Text(stringResource(R.string.settings_catalog_url)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { vm.downloadCatalog(urlInput) }, enabled = download == null) {
+                        Button(onClick = { vm.downloadCatalog() }, enabled = download == null) {
                             Text(stringResource(if (catalogInfo == null) R.string.settings_catalog_download else R.string.settings_catalog_update))
                         }
                         download?.let { d ->

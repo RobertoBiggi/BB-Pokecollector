@@ -354,7 +354,6 @@
     <string name="settings_catalog_text">Tutte le carte vengono da un file database (SQLite) scaricato una volta e tenuto su questo telefono: ricerche e collezioni funzionano offline. Prezzi e immagini si scaricano ancora quando lo chiedi.</string>
     <string name="settings_catalog_installed">Installato: generato il %1$s · lingue: %2$s</string>
     <string name="settings_catalog_missing">Non installato: scaricalo per cercare e aggiungere carte.</string>
-    <string name="settings_catalog_url">Indirizzo di download (HTTPS)</string>
     <string name="settings_catalog_download">Scarica</string>
     <string name="settings_catalog_update">Aggiorna</string>
     <string name="msg_no_catalog">Il database delle carte non è installato: scaricalo in Impostazioni.</string>

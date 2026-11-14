@@ -59,18 +59,6 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
     private val store = context.applicationContext.settingsDataStore
     private val secrets = context.applicationContext.secretsDataStore
 
-    /** Address from which to download the card database (see [DEFAULT_CATALOG_URL]). */
-    val catalogUrl: Flow<String> = store.data.map { it[CATALOG_URL] ?: DEFAULT_CATALOG_URL }
-
-    /**
-     * Saves the address of the card database; an empty text restores the default.
-     * @param url String - HTTPS address already checked.
-     * @return Unit
-     */
-    suspend fun setCatalogUrl(url: String) {
-        store.edit { if (url.isEmpty() || url == DEFAULT_CATALOG_URL) it.remove(CATALOG_URL) else it[CATALOG_URL] = url }
-    }
-
     /** Last successful catalog update (0 = never). */
     val lastCatalogSync: Flow<Long> = store.data.map { it[LAST_CATALOG_SYNC] ?: 0L }
 
@@ -195,8 +183,6 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
     companion object {
         /** Where the published card database is (release with fixed tag `catalog` of the repository, separate from the APK releases). */
         const val DEFAULT_CATALOG_URL = "https://github.com/RobertoBiggi/BB-Pokecollector/releases/download/catalog/cards.sqlite"
-
-        private val CATALOG_URL = stringPreferencesKey("catalog_url")
         private val CARDTRADER_TOKEN_ENCRYPTED = stringPreferencesKey("cardtrader_token_v1")
         private val SHOW_CARDMARKET = booleanPreferencesKey("show_price_cardmarket")
         private val SHOW_TCGPLAYER = booleanPreferencesKey("show_price_tcgplayer")

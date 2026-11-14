@@ -353,7 +353,6 @@
     <string name="settings_catalog_text">All cards come from a database file (SQLite) downloaded once and kept on this phone: searches and collections work offline. Prices and images are still downloaded when you ask.</string>
     <string name="settings_catalog_installed">Installed: generated on %1$s · languages: %2$s</string>
     <string name="settings_catalog_missing">Not installed: download it to search and add cards.</string>
-    <string name="settings_catalog_url">Download address (HTTPS)</string>
     <string name="settings_catalog_download">Download</string>
     <string name="settings_catalog_update">Update</string>
     <string name="msg_no_catalog">The card database is not installed: download it in Settings.</string>

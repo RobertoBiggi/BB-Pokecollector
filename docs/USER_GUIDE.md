@@ -43,7 +43,7 @@ A GitHub access token in Obtainium's settings is optional: it only avoids GitHub
 
 To update, do the same again: the new version installs over the old one and keeps your collections.
 
-On first launch, download the card database once: **Settings → Card database → Download** (about 35 MB). After that, searching and adding cards work offline.
+On first launch the app downloads the card database by itself (about 35 MB), so keep an internet connection on. After that, searching and adding cards work offline. If the download fails, the app tries again the next time you open it, or you can start it from **Settings → Card database → Download**.
 
 **After an app update.** When an update brings a newer card database, every collection shows **Needs update** on the home list. Each one updates by itself the first time you open it: the app reads its cards again from the database, from scratch, so cards that were added, removed or corrected there are applied. Your copies, conditions, notes, wanted slots, removed cards and the cards you added by hand are kept exactly as before. Images that were already downloaded stay unless the database now points to a different source for that card.
 

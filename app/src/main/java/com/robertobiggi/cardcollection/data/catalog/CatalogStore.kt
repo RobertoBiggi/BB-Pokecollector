@@ -36,11 +36,11 @@ sealed interface CatalogDownloadResult {
 }
 
 /**
- * Keeps the `cards.sqlite` file in the app's storage: downloads it from an address (by default the GitHub release), checks it and replaces it in one go, so an interrupted or wrong download does not remove what was working.
+ * Keeps the `cards.sqlite` file in the app's storage: downloads it from an address (the GitHub release), checks it and replaces it in one go, so an interrupted or wrong download does not remove what was working.
  * Reads go through [use].
  *
  * @param context application context.
- * @param http client without a list of allowed hosts: the address is chosen by the user (HTTPS only).
+ * @param http client for the download (HTTPS only).
  */
 class CatalogStore(context: Context, private val http: OkHttpClient) {
     private val dir = File(context.applicationContext.filesDir, "catalog")
