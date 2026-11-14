@@ -28,9 +28,10 @@ The app is not on the Play Store. It needs Android 8.0 or later.
 **With automatic updates (recommended)**
 
 1. Install [Obtainium](https://github.com/ImranR98/Obtainium).
-2. Tap **Add app** and paste `https://github.com/RobertoBiggi/BB-Pokecollector`.
-3. Before confirming, set **Filter links by regex** to `^bb-pokecollector\.apk$`: each Release has the same APK twice (with and without the version in its name), and this way Obtainium takes one without asking.
-4. Confirm. Obtainium installs the app, checks for new versions in the background, notifies you and installs them with one tap.
+2. Open the [README](../README.md#install) on your phone and tap **Get it on Obtainium**. The app is added with the right settings already filled in.
+3. Confirm. Obtainium installs the app, checks for new versions in the background, notifies you and installs them with one tap.
+
+If you prefer to add it by hand: tap **Add app**, paste `https://github.com/RobertoBiggi/BB-Pokecollector` and set **Filter links by regex** to `^bb-pokecollector\.apk$`. Each Release has the same APK twice (with and without the version in its name), and this filter makes Obtainium take one without asking.
 
 A GitHub access token in Obtainium's settings is optional: it only avoids GitHub's limit on anonymous requests.
 
