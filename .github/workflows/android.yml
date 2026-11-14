@@ -3,9 +3,12 @@
 # and Obtainium use for updates.
 name: Android CI
 
+# Changes that only touch the README, the docs or other Markdown files do not build or publish anything.
 on:
   push:
+    paths-ignore: ['**.md', 'docs/**']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
 
 permissions:
