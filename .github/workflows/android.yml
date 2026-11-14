@@ -164,8 +164,7 @@ jobs:
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             echo "Release $tag already exists"; exit 0
           fi
-          cp app/build/outputs/apk/release/app-release.apk "bb-pokecollector-$VERSION.apk"
-          # Fixed name: the README download link (releases/latest/download/bb-pokecollector.apk) always points to the latest Release.
+          # One APK per Release, with a fixed name: the README download link (releases/latest/download/bb-pokecollector.apk) always points to the latest Release.
           cp app/build/outputs/apk/release/app-release.apk bb-pokecollector.apk
-          gh release create "$tag" "bb-pokecollector-$VERSION.apk" bb-pokecollector.apk --repo "$GITHUB_REPOSITORY" \
+          gh release create "$tag" bb-pokecollector.apk --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --title "$VERSION" --generate-notes --latest
