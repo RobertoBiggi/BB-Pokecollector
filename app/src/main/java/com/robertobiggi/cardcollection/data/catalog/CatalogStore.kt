@@ -37,7 +37,7 @@ sealed interface CatalogDownloadResult {
 
 /**
  * Keeps the `cards.sqlite` file in the app's storage: downloads it from an address (the GitHub release), checks it and replaces it in one go, so an interrupted or wrong download does not remove what was working.
- * Reads go through [use].
+ * Reads go through [use]. The file is downloaded automatically at first run (see MainViewModel).
  *
  * @param context application context.
  * @param http client for the download (HTTPS only).
