@@ -113,7 +113,8 @@ object Notifications {
             putExtra(MainActivity.EXTRA_INSTALL_UPDATE, true)
         }
         val pending = PendingIntent.getActivity(context, UPDATE_NOTIFICATION_ID, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        return notifyUpdate(context, context.getString(R.string.update_available_title, version), context.getString(R.string.update_available_text), pending)
+        // It stays until the update starts: a first tap may only lead to the system setting that allows installing apps.
+        return notifyUpdate(context, context.getString(R.string.update_available_title, version), context.getString(R.string.update_available_text), pending, autoCancel = false)
     }
 
     /**
@@ -146,7 +147,7 @@ object Notifications {
         NotificationManagerCompat.from(context).cancel(UPDATE_NOTIFICATION_ID)
     }
 
-    private fun notifyUpdate(context: Context, title: String, text: String, pending: PendingIntent): Boolean {
+    private fun notifyUpdate(context: Context, title: String, text: String, pending: PendingIntent, autoCancel: Boolean = true): Boolean {
         val notification = NotificationCompat.Builder(context, UPDATE_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_card)
             .setContentTitle(title)
@@ -154,7 +155,7 @@ object Notifications {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(pending)
             .setOnlyAlertOnce(true)
-            .setAutoCancel(true)
+            .setAutoCancel(autoCancel)
             .build()
         return try {
             NotificationManagerCompat.from(context).notify(UPDATE_NOTIFICATION_ID, notification)

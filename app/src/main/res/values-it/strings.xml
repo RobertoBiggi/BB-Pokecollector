@@ -413,4 +413,5 @@
     <string name="settings_update_switch">Cerca una nuova versione a ogni apertura</string>
     <string name="settings_update_text">L\'app chiede a GitHub l\'ultima versione pubblicata. Se ce n\'è una più recente mostra una notifica: toccandola scarica la nuova versione e ti chiede di installarla. Se la spegni non viene chiesto nulla.</string>
     <string name="search_truncated">Troppi risultati, l\'elenco è tagliato (%1$d su %2$d). Aggiungi il nome del set o l\'anno per restringere la ricerca (per esempio “pikachu 2010”).</string>
+    <string name="update_install_incompatible">Questa versione è firmata con una chiave diversa da quella della release, quindi Android non la sostituisce. Disinstallala e installa l\'APK della release.</string>
 </resources>

@@ -32,6 +32,9 @@ class UpdateInstallReceiver : BroadcastReceiver() {
             }
             PackageInstaller.STATUS_SUCCESS -> Notifications.cancelUpdate(context)
             PackageInstaller.STATUS_FAILURE_ABORTED -> Notifications.cancelUpdate(context) // the user said no
+            // The release is signed with another key than this build (a test build from CI or Android Studio): Android refuses to replace it.
+            PackageInstaller.STATUS_FAILURE_CONFLICT, PackageInstaller.STATUS_FAILURE_INCOMPATIBLE ->
+                Notifications.showUpdateProblem(context, context.getString(com.robertobiggi.cardcollection.R.string.update_install_incompatible))
             else -> Notifications.showUpdateProblem(context, context.getString(com.robertobiggi.cardcollection.R.string.update_install_failed))
         }
     }

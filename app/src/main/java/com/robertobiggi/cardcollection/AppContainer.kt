@@ -103,7 +103,10 @@ class AppContainer(context: Context) {
      * Starts the download and installation of the newer version of the app (the "update available" notification was tapped).
      * @return Unit
      */
-    fun startAppUpdate() = work.startAppUpdate()
+    fun startAppUpdate() {
+        Notifications.cancelUpdate(appContext)
+        work.startAppUpdate()
+    }
 
     /**
      * Looks for a newer release at most once an hour, if the user did not turn it off. A newer one leaves a notification (without the notification permission nothing is shown).

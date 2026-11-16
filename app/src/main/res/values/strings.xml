@@ -412,4 +412,5 @@
     <string name="settings_update_switch">Check for a new version at every opening</string>
     <string name="settings_update_text">The app asks GitHub for the latest release. If there is a newer one it shows a notification: tapping it downloads the new version and asks you to install it. Turn it off and nothing is asked.</string>
     <string name="search_truncated">Too many matches, the list is cut (%1$d of %2$d). Add the set name or the year to narrow the search (for example “pikachu 2010”).</string>
+    <string name="update_install_incompatible">This build is signed with a different key than the release, so Android refuses to replace it. Uninstall it and install the release APK.</string>
 </resources>
