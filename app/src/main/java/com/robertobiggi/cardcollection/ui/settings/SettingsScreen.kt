@@ -117,11 +117,19 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
             item {
                 Section(stringResource(R.string.settings_catalog)) {
                     Text(stringResource(R.string.settings_catalog_text), style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        catalogInfo?.let { stringResource(R.string.settings_catalog_installed, it.generatedAt.substringBefore('T'), it.languages.sorted().joinToString(", ")) }
-                            ?: stringResource(R.string.settings_catalog_missing),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    val info = catalogInfo
+                    if (info == null) {
+                        Text(stringResource(R.string.settings_catalog_missing), style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        val number = java.text.NumberFormat.getIntegerInstance()
+                        Text(stringResource(R.string.settings_catalog_cards, number.format(info.cards)), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.settings_catalog_sets, number.format(info.sets)), style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            stringResource(R.string.settings_catalog_languages, info.languages.size, info.languages.sorted().joinToString(", ")),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(stringResource(R.string.settings_catalog_updated, info.generatedAt.substringBefore('T')), style = MaterialTheme.typography.bodySmall)
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = { vm.downloadCatalog() }, enabled = download == null) {
                             Text(stringResource(if (catalogInfo == null) R.string.settings_catalog_download else R.string.settings_catalog_update))

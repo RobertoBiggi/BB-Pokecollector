@@ -32,7 +32,15 @@ data class CardBrief(val id: String, val localId: String, val name: String, val 
  * The file contains the cards of all Pokémon, already matched to Cardmarket and CardTrader: the app no longer queries any remote catalog.
  * An instance must be closed with [close]; queries are synchronous, so they must be called off the UI thread.
  */
-class CatalogDb private constructor(private val db: SQLiteDatabase, val generatedAt: String, val languages: Set<String>) : Closeable {
+class CatalogDb private constructor(
+    private val db: SQLiteDatabase,
+    val generatedAt: String,
+    val languages: Set<String>,
+    /** Number of cards in the file. */
+    val cards: Int,
+    /** Number of sets in the file. */
+    val sets: Int,
+) : Closeable {
 
     private val variantTypes: Map<Int, VariantType> = readEnum("variantType").mapNotNull { (code, name) -> VariantType.fromName(name)?.let { code to it } }.toMap()
 
@@ -306,7 +314,9 @@ class CatalogDb private constructor(private val db: SQLiteDatabase, val generate
             try {
                 val meta = db.rawQuery("SELECT key, value FROM meta", null).use { c -> buildMap { while (c.moveToNext()) put(c.getString(0), c.getString(1)) } }
                 if (meta["schemaVersion"]?.toIntOrNull() != SCHEMA_VERSION) throw InvalidCatalogException("Versione del database non supportata: ${meta["schemaVersion"]}")
-                return CatalogDb(db, meta["generatedAt"].orEmpty(), meta["languages"].orEmpty().split(',').filter { it.isNotEmpty() }.toSet())
+                val cards = db.rawQuery("SELECT COUNT(*) FROM card", null).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+                val sets = db.rawQuery("SELECT COUNT(*) FROM card_set", null).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+                return CatalogDb(db, meta["generatedAt"].orEmpty(), meta["languages"].orEmpty().split(',').filter { it.isNotEmpty() }.toSet(), cards, sets)
             } catch (e: InvalidCatalogException) {
                 db.close()
                 throw e
