@@ -17,8 +17,10 @@ import java.io.IOException
  * Card database installed on the phone.
  * @property generatedAt generation date of the file (ISO-8601).
  * @property languages languages contained.
+ * @property cards number of cards.
+ * @property sets number of sets.
  */
-data class CatalogInfo(val generatedAt: String, val languages: Set<String>)
+data class CatalogInfo(val generatedAt: String, val languages: Set<String>, val cards: Int, val sets: Int)
 
 /** Outcome of downloading the card database. */
 sealed interface CatalogDownloadResult {
@@ -37,7 +39,7 @@ sealed interface CatalogDownloadResult {
 
 /**
  * Keeps the `cards.sqlite` file in the app's storage: downloads it from an address (the GitHub release), checks it and replaces it in one go, so an interrupted or wrong download does not remove what was working.
- * Reads go through [use]. The file is downloaded automatically at first run (see MainViewModel).
+ * Reads go through [use]. The file is downloaded automatically at first run and again when the server has a newer one ([isUpdateAvailable], see MainViewModel).
  *
  * @param context application context.
  * @param http client for the download (HTTPS only).
@@ -45,6 +47,7 @@ sealed interface CatalogDownloadResult {
 class CatalogStore(context: Context, private val http: OkHttpClient) {
     private val dir = File(context.applicationContext.filesDir, "catalog")
     private val file = File(dir, FILE_NAME)
+    private val etagFile = File(dir, "$FILE_NAME.etag")
     private val mutex = Mutex()
     private var open: CatalogDb? = null
 
@@ -55,7 +58,7 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
 
     /** Reads the information of the installed file, if any, at app start. */
     suspend fun load() {
-        _info.value = use { CatalogInfo(it.generatedAt, it.languages) }
+        _info.value = use { CatalogInfo(it.generatedAt, it.languages, it.cards, it.sets) }
     }
 
     /**
@@ -93,9 +96,11 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
         }
         dir.mkdirs()
         val part = File(dir, "$FILE_NAME.part")
+        var etag: String? = null
         try {
             http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext CatalogDownloadResult.NetworkError
+                etag = response.header("ETag")
                 val body = response.body ?: return@withContext CatalogDownloadResult.NetworkError
                 val total = body.contentLength().takeIf { it > 0 }
                 var done = 0L
@@ -114,7 +119,7 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
                 }
             }
             val info = try {
-                CatalogDb.open(part).use { CatalogInfo(it.generatedAt, it.languages) }
+                CatalogDb.open(part).use { CatalogInfo(it.generatedAt, it.languages, it.cards, it.sets) }
             } catch (e: InvalidCatalogException) {
                 return@withContext CatalogDownloadResult.InvalidFile
             }
@@ -122,6 +127,8 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
                 open?.close()
                 open = null
                 if (!part.renameTo(file)) return@withContext CatalogDownloadResult.NetworkError
+                etagFile.delete()
+                etag?.let { runCatching { etagFile.writeText(it) } }
             }
             _info.value = info
             CatalogDownloadResult.Installed(info)
@@ -129,6 +136,33 @@ class CatalogStore(context: Context, private val http: OkHttpClient) {
             CatalogDownloadResult.NetworkError
         } finally {
             part.delete()
+        }
+    }
+
+    /**
+     * Asks the server (without downloading the file) whether it has a newer database than the installed one.
+     * Compares the ETag saved at the last download; for a file installed before that was saved, the server's modification date with the date the file was written.
+     * @param url String - HTTPS address of the file.
+     * @return Boolean - true if a newer file is available; false if not, or if the server cannot be reached (it will be asked again at the next opening).
+     */
+    suspend fun isUpdateAvailable(url: String): Boolean = withContext(Dispatchers.IO) {
+        if (!url.startsWith("https://") || !file.exists()) return@withContext false
+        try {
+            val request = Request.Builder().url(url).head().build()
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext false
+                val remoteEtag = response.header("ETag")
+                val saved = runCatching { etagFile.readText() }.getOrNull()
+                when {
+                    remoteEtag != null && saved != null -> remoteEtag != saved
+                    else -> {
+                        val modified = response.headers.getDate("Last-Modified")?.time ?: return@withContext false
+                        modified > file.lastModified()
+                    }
+                }
+            }
+        } catch (e: IOException) {
+            false
         }
     }
 

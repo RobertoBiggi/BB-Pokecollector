@@ -351,8 +351,11 @@
         <item quantity="other">%1$d carte tolte dalla collezione. Puoi ripristinarle da Gestione.</item>
     </plurals>
     <string name="settings_catalog">Database delle carte</string>
-    <string name="settings_catalog_text">Tutte le carte vengono da un file database (SQLite) scaricato una volta e tenuto su questo telefono: ricerche e collezioni funzionano offline. Prezzi e immagini si scaricano ancora quando lo chiedi.</string>
-    <string name="settings_catalog_installed">Installato: generato il %1$s · lingue: %2$s</string>
+    <string name="settings_catalog_text">Salvato su questo telefono, così le ricerche funzionano offline. Cerca aggiornamenti a ogni apertura dell\'app.</string>
+    <string name="settings_catalog_cards">Carte: %1$s</string>
+    <string name="settings_catalog_sets">Set: %1$s</string>
+    <string name="settings_catalog_languages">Lingue (%1$d): %2$s</string>
+    <string name="settings_catalog_updated">Database del %1$s</string>
     <string name="settings_catalog_missing">Non installato: scaricalo per cercare e aggiungere carte.</string>
     <string name="settings_catalog_download">Scarica</string>
     <string name="settings_catalog_update">Aggiorna</string>

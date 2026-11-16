@@ -77,9 +77,18 @@ class CatalogImageSourceTest {
     }
 
     @Test
+    fun `rebuilds a Malie address from the saved path, which already has its extension`() {
+        assertEquals(
+            "https://cdn.malie.io/file/malie-io/art/cards/jpg/es_ES/HGSS/HGSS1-HS/es_ES-HGSS1-001-arcanine.jpg",
+            CatalogImageSources.MALIE.urlOf("jpg/es_ES/HGSS/HGSS1-HS/es_ES-HGSS1-001-arcanine.jpg"),
+        )
+        assertEquals(null, CatalogImageSources.MALIE.urlOf("jpg/../x.jpg"))
+    }
+
+    @Test
     fun `hosts of all the sources are listed for the app's network filter`() {
-        assertEquals(setOf("cdn.pokoin.com", "den-cards.pokellector.com", "cdn6966.templcdn.com"), CatalogImageSources.hosts)
-        assertEquals(listOf("pokoin", "pokellector", "pokumon"), CatalogImageSources.ALL.map { it.id })
+        assertEquals(setOf("cdn.pokoin.com", "den-cards.pokellector.com", "cdn6966.templcdn.com", "cdn.malie.io"), CatalogImageSources.hosts)
+        assertEquals(listOf("pokoin", "pokellector", "pokumon", "malie"), CatalogImageSources.ALL.map { it.id })
         assertEquals(listOf("pokoin"), CatalogImageSources.BEFORE_CARDTRADER.map { it.id })
     }
 }

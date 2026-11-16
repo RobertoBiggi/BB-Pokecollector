@@ -352,11 +352,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    /** First run (or database missing): downloads the card database without waiting for the user to ask. */
+    /** First run (or database missing): downloads the card database without waiting for the user to ask. At every opening, downloads it again if the server has a newer one. */
     init {
         viewModelScope.launch {
             container.catalogStore.load()
-            if (container.catalogStore.info.value == null) downloadCatalog()
+            if (container.catalogStore.info.value == null || container.catalogStore.isUpdateAvailable(SettingsStore.DEFAULT_CATALOG_URL)) downloadCatalog()
         }
     }
 

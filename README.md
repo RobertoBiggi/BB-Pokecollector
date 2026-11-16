@@ -52,6 +52,7 @@ The code is released under the [MIT](LICENSE) license.
 Data sources, each with its own license or trademarks:
 - card data and images: [TCGdex](https://tcgdex.dev);
 - extra card images, for sets TCGdex lacks (mostly Japanese ones and promos): [Pokellector](https://jp.pokellector.com), [Pokoin](https://pokoin.com) and [Pokumon](https://pokumon.com), the last one also for the old unnumbered promos;
+- localized prints (Spanish, Italian, German, Portuguese and others) that TCGdex lacks, mostly promos and old sets: the card art of the Pokémon TCG Online/Live games, from [Malie Library](https://malie.io/static/);
 - prices: [Cardmarket](https://www.cardmarket.com), [CardTrader](https://www.cardtrader.com) and [TCGplayer](https://www.tcgplayer.com), the last one through [TCGCSV](https://tcgcsv.com), a free daily copy of its data;
 - rarities, promo dates and events, used when the database is built: [Bulbapedia](https://bulbapedia.bulbagarden.net);
 - Pokémon names: [PokeAPI](https://pokeapi.co);
