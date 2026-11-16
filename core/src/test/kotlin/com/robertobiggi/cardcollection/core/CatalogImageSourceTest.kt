@@ -86,9 +86,17 @@ class CatalogImageSourceTest {
     }
 
     @Test
+    fun `rebuilds a pcg-search address from the series folder and the page code`() {
+        assertEquals("https://pcg-search.com/img/adv/adv3021.png", CatalogImageSources.PCGSEARCH.urlOf("adv/adv3021"))
+        assertEquals(null, CatalogImageSources.PCGSEARCH.urlOf("adv/../adv3021"))
+        assertEquals(true, CatalogImageSources.PCGSEARCH.isAllowedUrl("https://pcg-search.com/img/adv/adv3021.png"))
+        assertEquals(false, CatalogImageSources.PCGSEARCH.isAllowedUrl("http://pcg-search.com/img/adv/adv3021.png"))
+    }
+
+    @Test
     fun `hosts of all the sources are listed for the app's network filter`() {
-        assertEquals(setOf("cdn.pokoin.com", "den-cards.pokellector.com", "cdn6966.templcdn.com", "cdn.malie.io"), CatalogImageSources.hosts)
-        assertEquals(listOf("pokoin", "pokellector", "pokumon", "malie"), CatalogImageSources.ALL.map { it.id })
+        assertEquals(setOf("cdn.pokoin.com", "den-cards.pokellector.com", "cdn6966.templcdn.com", "cdn.malie.io", "pcg-search.com"), CatalogImageSources.hosts)
+        assertEquals(listOf("pokoin", "pokellector", "pokumon", "malie", "pcgsearch"), CatalogImageSources.ALL.map { it.id })
         assertEquals(listOf("pokoin"), CatalogImageSources.BEFORE_CARDTRADER.map { it.id })
     }
 }

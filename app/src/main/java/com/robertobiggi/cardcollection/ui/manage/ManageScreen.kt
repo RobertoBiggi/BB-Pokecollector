@@ -176,6 +176,7 @@ fun ManageScreen(vm: MainViewModel) {
                     }
                     if (search.loading) CircularProgressIndicator()
                     search.messageRes?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall) }
+                    search.total?.let { Text(stringResource(R.string.search_truncated, search.results.size, it), style = MaterialTheme.typography.bodySmall) }
                     search.results.forEach { card ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {

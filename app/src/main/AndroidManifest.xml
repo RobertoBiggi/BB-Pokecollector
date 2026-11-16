@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Installs the newer version of the app that it downloads itself (the user still has to allow it in the system settings and confirm). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
@@ -39,6 +41,11 @@
                 android:name="autoStoreLocales"
                 android:value="true" />
         </service>
+
+        <!-- Outcome of the installation of an update (the system asks the user to confirm it). -->
+        <receiver
+            android:name=".work.UpdateInstallReceiver"
+            android:exported="false" />
 
         <!-- WorkManager expedited workers run as a foreground service of type dataSync. -->
         <service

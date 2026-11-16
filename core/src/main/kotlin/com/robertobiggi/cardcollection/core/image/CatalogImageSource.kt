@@ -75,11 +75,17 @@ object CatalogImageSources {
      */
     val MALIE = CatalogImageSource("malie", "malie", "https://cdn.malie.io/file/malie-io/art/cards/", ".jpg", "Malie")
 
+    /**
+     * pcg-search.com: a fan archive of the first Japanese sets (1996-2006: PMCG, neo, e, ADV, PCG, VS, web) with their promos and decks; PNG, about 0.6 MB each.
+     * The saved path is the series folder and the page code (e.g. "adv/adv3021"). The generator matches by set and number, or by Japanese name inside a mapped set.
+     */
+    val PCGSEARCH = CatalogImageSource("pcgsearch", "pcgsearch", "https://pcg-search.com/img/", ".png", "pcg-search")
+
     /** Sources tried right after TCGdex and before CardTrader (which needs a token and an API call per card). */
     val BEFORE_CARDTRADER: List<CatalogImageSource> = listOf(POKOIN)
 
     /** Sources tried after CardTrader. */
-    val AFTER_CARDTRADER: List<CatalogImageSource> = listOf(POKELLECTOR, POKUMON, MALIE)
+    val AFTER_CARDTRADER: List<CatalogImageSource> = listOf(POKELLECTOR, POKUMON, MALIE, PCGSEARCH)
 
     /** Every source, in the order they are tried (the first with an image that downloads wins). */
     val ALL: List<CatalogImageSource> = BEFORE_CARDTRADER + AFTER_CARDTRADER

@@ -6,6 +6,7 @@ import com.robertobiggi.cardcollection.core.analytics.AnalyticsContext
 import com.robertobiggi.cardcollection.core.analytics.AptabaseClient
 import com.robertobiggi.cardcollection.core.image.CatalogImageSources
 import com.robertobiggi.cardcollection.core.model.PokemonNames
+import com.robertobiggi.cardcollection.core.update.AppUpdate
 import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.catalog.CatalogStore
 import com.robertobiggi.cardcollection.data.image.ImageStore
@@ -19,6 +20,8 @@ import com.robertobiggi.cardcollection.data.repo.CollectionRepository
 import com.robertobiggi.cardcollection.data.repo.PriceRepository
 import com.robertobiggi.cardcollection.data.repo.TransferRepository
 import com.robertobiggi.cardcollection.data.settings.SettingsStore
+import com.robertobiggi.cardcollection.data.update.AppUpdater
+import com.robertobiggi.cardcollection.work.Notifications
 import com.robertobiggi.cardcollection.work.WorkScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +64,8 @@ class AppContainer(context: Context) {
     /** Client to download the card database: the address is chosen by the user (HTTPS), so it has no list of allowed hosts. */
     private val downloadHttp = http.newBuilder().apply { networkInterceptors().clear() }.readTimeout(120, TimeUnit.SECONDS).callTimeout(0, TimeUnit.SECONDS).build()
     val catalogStore = CatalogStore(appContext, downloadHttp)
+    /** Looks for newer versions of the app and installs them (see [checkAppUpdate]). */
+    val appUpdater = AppUpdater(appContext, http, downloadHttp)
     val images = ImageStore(appContext, http)
 
     val collection = CollectionRepository(database, appScope, settings, images)
@@ -88,8 +93,30 @@ class AppContainer(context: Context) {
         appScope.launch { collection.purgeOrphanCards(System.currentTimeMillis() - ORPHAN_GRACE_MS) }
         // One anonymous "app_open" per day, only if the user did not turn it off. Failures are ignored and retried at the next opening.
         appScope.launch { sendUsagePing() }
+        // Looks for a newer version of the app and, if there is one, leaves a notification that downloads and installs it when tapped.
+        appScope.launch { checkAppUpdate() }
         // Reschedules the daily alert check if it was lost (e.g. app force-stopped).
         appScope.launch { if (settings.priceAlertsEnabled.first()) work.schedulePriceAlerts() }
+    }
+
+    /**
+     * Starts the download and installation of the newer version of the app (the "update available" notification was tapped).
+     * @return Unit
+     */
+    fun startAppUpdate() = work.startAppUpdate()
+
+    /**
+     * Looks for a newer release at most once an hour, if the user did not turn it off. A newer one leaves a notification (without the notification permission nothing is shown).
+     * An older or equal one removes the notification of an update already installed.
+     * @return Unit
+     */
+    private suspend fun checkAppUpdate() {
+        if (!settings.appUpdateCheckEnabled.first()) return
+        val now = System.currentTimeMillis()
+        if (now - settings.lastAppUpdateCheck.first() < UPDATE_CHECK_INTERVAL_MS) return
+        settings.setLastAppUpdateCheck(now)
+        val release = appUpdater.newerRelease()
+        if (release != null) Notifications.showUpdateAvailable(appContext, release.version) else Notifications.cancelUpdate(appContext)
     }
 
     /**
@@ -106,11 +133,12 @@ class AppContainer(context: Context) {
 
     private companion object {
         const val PING_INTERVAL_MS = 24 * 60 * 60 * 1000L
+        const val UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000L
         const val ORPHAN_GRACE_MS = 60 * 60 * 1000L
         const val USER_AGENT = "BBPokeCollector-Android (personal use)"
 
-        /** Hosts reachable by the app: TCGdex images, Cardmarket price list, CardTrader API and images, the other image sources, Aptabase (anonymous usage counter). */
-        val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com", "tcgcsv.com") + AptabaseClient.HOSTS + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS +
+        /** Hosts reachable by the app: TCGdex images, Cardmarket price list, CardTrader API and images, the other image sources, Aptabase (anonymous usage counter), GitHub (latest release of the app). */
+        val ALLOWED_HOSTS = setOf("downloads.s3.cardmarket.com", "api.cardtrader.com", "tcgcsv.com") + AptabaseClient.HOSTS + AppUpdate.API_HOST + Validators.ALLOWED_IMAGE_HOSTS + Validators.ALLOWED_CARDTRADER_IMAGE_HOSTS +
             CatalogImageSources.hosts
     }
 }

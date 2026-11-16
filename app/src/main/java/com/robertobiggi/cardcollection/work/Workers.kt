@@ -149,6 +149,51 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
     }
 }
 
+/** Downloads the newer version of the app and gives it to the system installer. Started by tapping the "update available" notification. */
+class AppUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    /**
+     * Looks again for the latest release (the process may be new), downloads its APK with the progress in the notification and starts the installation.
+     * @return Result - success if the installer took the file (or there is nothing newer), failure with a notification saying why otherwise.
+     */
+    override suspend fun doWork(): Result {
+        val context = applicationContext
+        val updater = (context as CardCollectionApp).container.appUpdater
+        promoteToForeground()
+        val release = updater.newerRelease() ?: return Result.success()
+        val manager = context.getSystemService(NotificationManager::class.java)
+        var lastNotified = 0L
+        val apk = updater.download(release) { done, total ->
+            val now = System.currentTimeMillis()
+            if (now - lastNotified >= NOTIFY_EVERY_MS) {
+                lastNotified = now
+                manager.notify(NOTIFICATION_ID, Notifications.progress(context, context.getString(R.string.update_downloading_title, release.version), null, (done / 1024).toInt(), (total / 1024).toInt()))
+            }
+        }
+        if (apk == null) {
+            Notifications.showUpdateProblem(context, context.getString(R.string.update_download_failed))
+            return Result.failure()
+        }
+        if (!updater.install(apk)) {
+            Notifications.showUpdateProblem(context, context.getString(R.string.update_install_failed))
+            return Result.failure()
+        }
+        return Result.success()
+    }
+
+    /**
+     * Notification shown when the job runs as a foreground service (Android 11 and earlier).
+     * @return ForegroundInfo - progress notification.
+     */
+    override suspend fun getForegroundInfo(): ForegroundInfo =
+        foregroundInfo(NOTIFICATION_ID, Notifications.progress(applicationContext, applicationContext.getString(R.string.update_downloading_title, "")))
+
+    private companion object {
+        const val NOTIFICATION_ID = 1004
+        const val NOTIFY_EVERY_MS = 1_000L
+    }
+}
+
 /**
  * Tail of the image progress text: repeated attempts, images not downloaded and last error. Empty if there is nothing to say.
  * @param context Context - context for the translated texts.

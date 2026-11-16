@@ -139,6 +139,30 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
         store.edit { it[ANALYTICS_ENABLED] = enabled }
     }
 
+    /** True if the app looks for a newer version of itself at every opening (on by default; the user can turn it off in Settings). */
+    val appUpdateCheckEnabled: Flow<Boolean> = store.data.map { it[APP_UPDATE_CHECK_ENABLED] ?: true }
+
+    /**
+     * Turns the check for a newer version of the app on or off.
+     * @param enabled Boolean - true to check.
+     * @return Unit
+     */
+    suspend fun setAppUpdateCheckEnabled(enabled: Boolean) {
+        store.edit { it[APP_UPDATE_CHECK_ENABLED] = enabled }
+    }
+
+    /** Instant of the last check for a newer version of the app (0 = never). */
+    val lastAppUpdateCheck: Flow<Long> = store.data.map { it[LAST_APP_UPDATE_CHECK] ?: 0L }
+
+    /**
+     * Records when the app last looked for a newer version of itself.
+     * @param timestamp Long - instant in milliseconds.
+     * @return Unit
+     */
+    suspend fun setLastAppUpdateCheck(timestamp: Long) {
+        store.edit { it[LAST_APP_UPDATE_CHECK] = timestamp }
+    }
+
     /** Instant of the last usage event sent (0 = never). */
     val lastAnalyticsPing: Flow<Long> = store.data.map { it[LAST_ANALYTICS_PING] ?: 0L }
 
@@ -191,6 +215,8 @@ class SettingsStore(context: Context, private val cipher: TokenCipher = TokenCip
         private val LAST_CATALOG_SYNC = longPreferencesKey("last_catalog_sync")
         private val ANALYTICS_ENABLED = booleanPreferencesKey("analytics_enabled")
         private val LAST_ANALYTICS_PING = longPreferencesKey("last_analytics_ping")
+        private val APP_UPDATE_CHECK_ENABLED = booleanPreferencesKey("app_update_check_enabled")
+        private val LAST_APP_UPDATE_CHECK = longPreferencesKey("last_app_update_check")
         private val PRICE_ALERTS_ENABLED = booleanPreferencesKey("price_alerts_enabled")
         private val PRICE_ALERT_CHANGE_PERCENT = intPreferencesKey("price_alert_change_percent")
     }

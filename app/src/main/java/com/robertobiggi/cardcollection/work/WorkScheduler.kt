@@ -90,6 +90,18 @@ class WorkScheduler(context: Context) {
     }
 
     /**
+     * Starts the download and installation of the newer version of the app, if not already running.
+     * @return Unit
+     */
+    fun startAppUpdate() {
+        val request = OneTimeWorkRequestBuilder<AppUpdateWorker>()
+            .setConstraints(network)
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .build()
+        workManager.enqueueUniqueWork(APP_UPDATE, ExistingWorkPolicy.KEEP, request)
+    }
+
+    /**
      * Schedules the daily price alert check at the next [PriceAlertRules.DAILY_RUN_TIME], if not
      * already scheduled. Safe to call at every app opening and when the user enables alerts.
      * @return Unit
@@ -170,6 +182,9 @@ class WorkScheduler(context: Context) {
     private companion object {
         /** Name of the unique job for the daily price alert check. */
         const val PRICE_ALERTS = "price-alerts"
+
+        /** Name of the unique job that downloads and installs the newer version of the app. */
+        const val APP_UPDATE = "app-update"
 
         /** Initial wait before retrying the alert check (then it grows). */
         const val ALERT_RETRY_MINUTES = 15L

@@ -35,6 +35,10 @@ If you prefer to add it by hand: tap **Add app** and paste `https://github.com/R
 
 A GitHub access token in Obtainium's settings is optional: it only avoids GitHub's limit on anonymous requests.
 
+**By the app itself**
+
+Every time you open the app (at most once an hour) it asks GitHub for the latest Release. If there is a newer version it leaves a notification: tap it and the app downloads the new version and asks Android to install it over the old one. The first time Android also asks you to allow this app to install apps (a switch for the app; the notification stays, tap it again afterwards). Turn the check off in **Settings → App updates**.
+
 **Manually**
 
 1. Tap **Download latest APK** in the [README](../README.md#install) (or download `bb-pokecollector.apk` from the latest Release).
@@ -140,7 +144,7 @@ Tap a card to open its detail: the large image, then its code, set, series, rari
 **Card actions**
 
 - **Update price**: refreshes the prices of this card only.
-- **Download image**: tries the image sources one after another: TCGdex, Pokoin, CardTrader (if you set a token), Pokellector, Pokumon (promo cards, including the old unnumbered ones), Malie (localized prints of some sets and promos). The detail shows which source the image comes from.
+- **Download image**: tries the image sources one after another: TCGdex, Pokoin, CardTrader (if you set a token), Pokellector, Pokumon (promo cards, including the old unnumbered ones), Malie (localized prints of some sets and promos), pcg-search (the first Japanese sets, 1996-2006). The detail shows which source the image comes from.
 - **Other prints**: when the card has other prints (the same card with a Staff or Winner stamp, for example), a line under the image says how many. Tap the image to see them, each with its name and prices; prints without a picture have a placeholder. The card's own image always stays the one shown.
 - **Choose image**: pick a picture from your gallery, handy for cards that no source has. It is resized and saved without metadata, and stays until you download an official one.
 - **Cardmarket / TCGplayer / CardTrader**: open the card on those websites.
@@ -283,6 +287,7 @@ For promos or cards no search finds. Search by name or by the code printed on th
 | Set code and number | `M3 117/080`, `DX 107` |
 | Number only | `117/080` (extra words like the rarity are fine: `117/080 MUR`) |
 | Card id | `M3-117`, `ex8-107` |
+| Pokémon and a set word or year | `pikachu 2010`, `pikachu world collection` (a Pokémon alone lists up to 200 cards: the extra words narrow it to the sets that fit) |
 
 **Removed cards**: cards you removed from the grid or the detail. Tap **Restore** to bring one back.
 
@@ -302,6 +307,7 @@ Open Settings from the gear icon on the start screen.
 - **Price alerts**: the daily check (see [section 7](#7-price-alerts)), the default threshold for new alerts, and **Check now** to run the check right away. A warning appears if Android blocks the app's notifications.
 - **Price sources**: choose which prices to show. Hidden prices disappear from cards, grids and totals, but Cardmarket and CardTrader prices are still downloaded, so turning them back on restores them. TCGplayer prices are only downloaded while they are shown.
 - **CardTrader**: paste your API token, found on CardTrader under *Settings → API*. From then on, price updates also fetch CardTrader prices, and CardTrader becomes an image source.
+- **App updates**: whether the app looks for a new version at every opening (see [section 1](#1-installing-and-updating)).
 - **Anonymous statistics**: once a day the app tells [Aptabase](https://aptabase.com) that it was opened (see [section 13](#13-privacy)). Turn it off and nothing is sent.
 
 <br clear="right">

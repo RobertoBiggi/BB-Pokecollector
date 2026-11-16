@@ -3,6 +3,7 @@ package com.robertobiggi.cardcollection.data.catalog
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import com.robertobiggi.cardcollection.core.image.CatalogImageSource
+import com.robertobiggi.cardcollection.core.model.CardSearchWords
 import com.robertobiggi.cardcollection.core.model.CatalogCard
 import com.robertobiggi.cardcollection.core.model.CatalogVariant
 import com.robertobiggi.cardcollection.core.model.Language
@@ -180,7 +181,7 @@ class CatalogDb private constructor(
 
     /**
      * The cards matching a name: if the text is the name of one or more Pokémon (in any language)
-     * the cards of those Pokémon, otherwise the cards whose name (or English name) contains the text.
+     * the cards of those Pokémon (with more words, the Pokémon plus words of the set: only the sets that fit), otherwise the cards whose name (or English name) contains the text.
      * @param language Language - catalog language.
      * @param text String - searched text.
      * @return List<CatalogCard> - cards found.
@@ -188,6 +189,13 @@ class CatalogDb private constructor(
     fun cardsByName(language: Language, text: String): List<CatalogCard> {
         val dex = PokemonNames.dexIdsMatching(text)
         if (dex.isNotEmpty()) return cardsOfPokemon(language, dex)
+        // A Pokémon with words about the set ("pikachu 2010", "pikachu world collection"): its cards, only in the sets that fit.
+        CardSearchWords.split(text.split(' ').filter { it.isNotEmpty() }) { PokemonNames.dexIdsMatching(it).isNotEmpty() }?.let { (pokemon, words) ->
+            val inSets = cardsOfPokemon(language, PokemonNames.dexIdsMatching(pokemon)).filter {
+                CardSearchWords.matchesSet(words, it.setName, it.setId, it.setCode, it.serieName, it.releaseDate)
+            }
+            if (inSets.isNotEmpty()) return inSets
+        }
         val pattern = "%" + like(text) + "%"
         // Also the English name, so "Unidentified Fossil" finds the Japanese or German cards (なぞの化石, Unbekanntes Fossil).
         if (hasNameEn) {

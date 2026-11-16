@@ -29,6 +29,11 @@ object Notifications {
     /** Price alerts channel: separate, so one can be muted without the other. */
     const val ALERTS_CHANNEL_ID = "price_alerts"
 
+    /** App updates channel: one notification when a newer version is published. */
+    const val UPDATE_CHANNEL_ID = "app_update"
+
+    private const val UPDATE_NOTIFICATION_ID = 0x75D47E
+
     /**
      * Creates the notification channel (required from Android 8).
      * @param context Context - application context.
@@ -45,7 +50,12 @@ object Notifications {
             context.getString(R.string.notification_alerts_channel_name),
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply { description = context.getString(R.string.notification_alerts_channel_description) }
-        context.getSystemService(NotificationManager::class.java).createNotificationChannels(listOf(channel, alerts))
+        val update = NotificationChannel(
+            UPDATE_CHANNEL_ID,
+            context.getString(R.string.notification_update_channel_name),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply { description = context.getString(R.string.notification_update_channel_description) }
+        context.getSystemService(NotificationManager::class.java).createNotificationChannels(listOf(channel, alerts, update))
     }
 
     /**
@@ -88,6 +98,70 @@ object Notifications {
             return false
         }
         return true
+    }
+
+    /**
+     * Shows that a newer version of the app is available; tapping it opens the app, which downloads and installs it.
+     * @param context Context - application context.
+     * @param version String - version found.
+     * @return Boolean - true if the notification was shown (false without the notification permission).
+     */
+    fun showUpdateAvailable(context: Context, version: String): Boolean {
+        if (!canNotify(context)) return false
+        val open = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_INSTALL_UPDATE, true)
+        }
+        val pending = PendingIntent.getActivity(context, UPDATE_NOTIFICATION_ID, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return notifyUpdate(context, context.getString(R.string.update_available_title, version), context.getString(R.string.update_available_text), pending)
+    }
+
+    /**
+     * Shows that the downloaded update waits for the user's confirmation (the system asks it); tapping it opens the system's installer.
+     * @param context Context - application context.
+     * @param confirm Intent - the installer's confirmation screen.
+     * @return Boolean - true if the notification was shown.
+     */
+    fun showUpdateReady(context: Context, confirm: Intent): Boolean {
+        if (!canNotify(context)) return false
+        val pending = PendingIntent.getActivity(context, UPDATE_NOTIFICATION_ID + 1, confirm, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return notifyUpdate(context, context.getString(R.string.update_ready_title), context.getString(R.string.update_ready_text), pending)
+    }
+
+    /**
+     * Shows that the update failed or cannot start.
+     * @param context Context - application context.
+     * @param message String - already translated reason.
+     * @return Boolean - true if the notification was shown.
+     */
+    fun showUpdateProblem(context: Context, message: String): Boolean {
+        if (!canNotify(context)) return false
+        val open = Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP }
+        val pending = PendingIntent.getActivity(context, UPDATE_NOTIFICATION_ID + 2, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return notifyUpdate(context, context.getString(R.string.update_problem_title), message, pending)
+    }
+
+    /** Removes the update notification (installation started or done). */
+    fun cancelUpdate(context: Context) {
+        NotificationManagerCompat.from(context).cancel(UPDATE_NOTIFICATION_ID)
+    }
+
+    private fun notifyUpdate(context: Context, title: String, text: String, pending: PendingIntent): Boolean {
+        val notification = NotificationCompat.Builder(context, UPDATE_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_card)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(pending)
+            .setOnlyAlertOnce(true)
+            .setAutoCancel(true)
+            .build()
+        return try {
+            NotificationManagerCompat.from(context).notify(UPDATE_NOTIFICATION_ID, notification)
+            true
+        } catch (e: SecurityException) {
+            false
+        }
     }
 
     /**

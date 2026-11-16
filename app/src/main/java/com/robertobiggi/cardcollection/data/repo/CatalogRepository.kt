@@ -86,8 +86,8 @@ enum class ImageResult { DOWNLOADED, SAVED, NOT_AVAILABLE, NETWORK_ERROR, INVALI
 
 /** Outcome of the search for cards to add by hand. */
 sealed interface SearchResult {
-    /** Cards found (possibly an empty list). */
-    data class Found(val cards: List<CardBrief>) : SearchResult
+    /** Cards found (possibly an empty list); [total] is how many there were before the list was cut to the maximum. */
+    data class Found(val cards: List<CardBrief>, val total: Int = cards.size) : SearchResult
 
     /** Invalid search text. */
     data object InvalidQuery : SearchResult
@@ -242,12 +242,12 @@ class CatalogRepository(
         val code = CardCodeSearch.parse(text)
         if (code == null && !Validators.isValidQueryPattern(text)) return SearchResult.InvalidQuery
         val found = store.use { cat ->
-            if (code != null) cat.cardsByCode(language, code.number, code.total, code.tokens) else cat.cardsByName(language, text.trim())
+            // A number in the text is not always a card number ("pikachu 2010" is a year): without a card with that number, the text is searched by name.
+            if (code != null) cat.cardsByCode(language, code.number, code.total, code.tokens).ifEmpty { cat.cardsByName(language, text.trim()) }
+            else cat.cardsByName(language, text.trim())
         } ?: return SearchResult.NoCatalog
-        return SearchResult.Found(
-            found.filter { Validators.isValidRemoteId(it.tcgdexId) }.take(MAX_SEARCH_RESULTS)
-                .map { CardBrief(it.tcgdexId, it.localId, it.name, it.setName, it.imageBaseUrl) },
-        )
+        val valid = found.filter { Validators.isValidRemoteId(it.tcgdexId) }
+        return SearchResult.Found(valid.take(MAX_SEARCH_RESULTS).map { CardBrief(it.tcgdexId, it.localId, it.name, it.setName, it.imageBaseUrl) }, valid.size)
     }
 
     /**
@@ -475,7 +475,7 @@ class CatalogRepository(
     }
 
     private companion object {
-        const val MAX_SEARCH_RESULTS = 60
+        const val MAX_SEARCH_RESULTS = 200
 
         /** Cards saved in a single transaction during the sync (also the progress step). */
         const val SAVE_CHUNK = 50

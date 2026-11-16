@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.appcompat.app.AppCompatActivity
@@ -46,6 +48,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.robertobiggi.cardcollection.CardCollectionApp
 import com.robertobiggi.cardcollection.R
 import com.robertobiggi.cardcollection.ui.collection.CollectionScreen
 import com.robertobiggi.cardcollection.ui.detail.DetailScreen
@@ -75,7 +78,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // After a rotation the intent is the same: the card has already been opened.
-        if (savedInstanceState == null) cardRequest.value = cardRequestOf(intent)
+        if (savedInstanceState == null) {
+            cardRequest.value = cardRequestOf(intent)
+            installUpdateIfAsked(intent)
+        }
         setContent { CardCollectionTheme { AppRoot(cardRequest) } }
     }
 
@@ -88,11 +94,33 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         cardRequestOf(intent)?.let { cardRequest.value = it }
+        installUpdateIfAsked(intent)
+    }
+
+    /**
+     * The "update available" notification was tapped: starts the download and installation, after asking for the system permission to install apps if it is missing.
+     * @param intent Intent? - intent received.
+     * @return Unit
+     */
+    private fun installUpdateIfAsked(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_INSTALL_UPDATE, false) != true) return
+        intent.removeExtra(EXTRA_INSTALL_UPDATE)
+        val container = (application as CardCollectionApp).container
+        if (!container.appUpdater.canInstall()) {
+            // The user turns the switch on and taps the notification again.
+            Toast.makeText(this, R.string.update_allow_install, Toast.LENGTH_LONG).show()
+            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            return
+        }
+        container.startAppUpdate()
     }
 
     companion object {
         /** Id of the card to open (price alerts). */
         const val EXTRA_CARD_ID = "com.robertobiggi.cardcollection.CARD_ID"
+
+        /** Set by the "update available" notification: the app downloads and installs the new version. */
+        const val EXTRA_INSTALL_UPDATE = "com.robertobiggi.cardcollection.INSTALL_UPDATE"
 
         /** Collection in which to open the card. */
         const val EXTRA_COLLECTION_ID = "com.robertobiggi.cardcollection.COLLECTION_ID"

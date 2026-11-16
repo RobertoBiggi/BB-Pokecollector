@@ -111,6 +111,8 @@ data class CardSearchState(
     val results: List<CardBrief> = emptyList(),
     val language: Language = Language.EN,
     @StringRes val messageRes: Int? = null,
+    /** Cards found when the list was cut (null if it was not): the screen suggests narrowing the search. */
+    val total: Int? = null,
 )
 
 /** Action in progress in the detail of a card. */
@@ -168,6 +170,18 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val analyticsAvailable: Boolean get() = container.analyticsAvailable
 
     val analyticsEnabled: StateFlow<Boolean> = container.settings.analyticsEnabled.stateInVm(true)
+
+    /** True if the app looks for a newer version of itself at every opening. */
+    val appUpdateCheckEnabled: StateFlow<Boolean> = container.settings.appUpdateCheckEnabled.stateInVm(true)
+
+    /**
+     * Turns the check for a newer version of the app on or off.
+     * @param enabled Boolean - true to check.
+     * @return Unit
+     */
+    fun setAppUpdateCheckEnabled(enabled: Boolean) {
+        viewModelScope.launch { container.settings.setAppUpdateCheckEnabled(enabled) }
+    }
 
     /**
      * Allows or forbids the anonymous usage counter.
@@ -839,6 +853,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                     results = result.cards,
                     language = language,
                     messageRes = if (result.cards.isEmpty()) R.string.search_no_results else null,
+                    total = result.total.takeIf { it > result.cards.size },
                 )
                 SearchResult.InvalidQuery -> CardSearchState(language = language, messageRes = R.string.err_query_invalid)
                 SearchResult.NoCatalog -> CardSearchState(language = language, messageRes = R.string.msg_no_catalog)
