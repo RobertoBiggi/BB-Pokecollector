@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -30,6 +31,7 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -41,6 +43,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -78,11 +81,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // After a rotation the intent is the same: the card has already been opened.
-        if (savedInstanceState == null) {
-            cardRequest.value = cardRequestOf(intent)
-            installUpdateIfAsked(intent)
-        }
-        setContent { CardCollectionTheme { AppRoot(cardRequest) } }
+        if (savedInstanceState == null) cardRequest.value = cardRequestOf(intent)
+        setContent { CardCollectionTheme { AppRoot(cardRequest, onUpdate = ::startUpdate) } }
     }
 
     /**
@@ -94,20 +94,16 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         cardRequestOf(intent)?.let { cardRequest.value = it }
-        installUpdateIfAsked(intent)
     }
 
     /**
-     * The "update available" notification was tapped: starts the download and installation, after asking for the system permission to install apps if it is missing.
-     * @param intent Intent? - intent received.
+     * The user tapped Update in the dialog: starts the download and installation, after sending them to the system setting that allows installing apps if it is off.
      * @return Unit
      */
-    private fun installUpdateIfAsked(intent: Intent?) {
-        if (intent?.getBooleanExtra(EXTRA_INSTALL_UPDATE, false) != true) return
-        intent.removeExtra(EXTRA_INSTALL_UPDATE)
+    private fun startUpdate() {
         val container = (application as CardCollectionApp).container
         if (!container.appUpdater.canInstall()) {
-            // The user turns the switch on and taps the notification again.
+            // The offer stays in the app: the user turns the switch on, comes back and taps Update again.
             Toast.makeText(this, R.string.update_allow_install, Toast.LENGTH_LONG).show()
             startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
             return
@@ -118,9 +114,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         /** Id of the card to open (price alerts). */
         const val EXTRA_CARD_ID = "com.robertobiggi.cardcollection.CARD_ID"
-
-        /** Set by the "update available" notification: the app downloads and installs the new version. */
-        const val EXTRA_INSTALL_UPDATE = "com.robertobiggi.cardcollection.INSTALL_UPDATE"
 
         /** Collection in which to open the card. */
         const val EXTRA_COLLECTION_ID = "com.robertobiggi.cardcollection.COLLECTION_ID"
@@ -154,10 +147,11 @@ private enum class Tab(val segment: String, @StringRes val labelRes: Int, val ic
 /**
  * Root of the interface: list of collections, tabs of the open collection, snackbar.
  * @param cardRequest MutableState<CardRequest?> - card to open requested by a notification; reset after opening.
+ * @param onUpdate () -> Unit - the user accepted the offer of a newer version of the app.
  * @return Unit
  */
 @Composable
-private fun AppRoot(cardRequest: MutableState<CardRequest?>) {
+private fun AppRoot(cardRequest: MutableState<CardRequest?>, onUpdate: () -> Unit) {
     val vm: MainViewModel = viewModel(factory = MainViewModel.Factory)
     val nav = rememberNavController()
     // Notification of a price alert: opens the card in its collection.
@@ -177,6 +171,17 @@ private fun AppRoot(cardRequest: MutableState<CardRequest?>) {
     val currentCid = backStack?.arguments?.getLong("cid")
 
     val context = LocalContext.current
+    val container = (context.applicationContext as CardCollectionApp).container
+    val update by container.availableUpdate.collectAsStateWithLifecycle()
+    update?.let { release ->
+        AlertDialog(
+            onDismissRequest = container::dismissAppUpdate,
+            title = { Text(stringResource(R.string.update_available_title, release.version)) },
+            text = { Text(stringResource(R.string.update_available_text)) },
+            confirmButton = { TextButton(onClick = onUpdate) { Text(stringResource(R.string.update_action)) } },
+            dismissButton = { TextButton(onClick = container::dismissAppUpdate) { Text(stringResource(R.string.update_later)) } },
+        )
+    }
     RequestNotificationPermission()
     LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it.resolve(context)) } }
 

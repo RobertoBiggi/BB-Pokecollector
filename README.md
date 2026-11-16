@@ -40,7 +40,7 @@ Requires Android 8.0 or later. The button above always downloads the latest vers
 ## Privacy
 
 - **No account and no server**: your collections stay on your phone.
-- **Only the addresses it needs**: the app contacts only the image sources, Cardmarket's price-list file, TCGCSV (TCGplayer prices), the card database download, GitHub (to see whether a newer version of the app exists, and to download it when you tap the notification), the anonymous counter below and, if you set a token, the CardTrader API. Every other address is blocked.
+- **Only the addresses it needs**: the app contacts only the image sources, Cardmarket's price-list file, TCGCSV (TCGplayer prices), the card database download, GitHub (to see whether a newer version of the app exists, and to download it when you tap Update), the anonymous counter below and, if you set a token, the CardTrader API. Every other address is blocked.
 - **CardTrader token**: encrypted with an Android Keystore key that never leaves the phone, and excluded from Android backups.
 - **Images you choose**: re-encoded without metadata, so location and camera details are not kept.
 - **Anonymous statistics**: once a day the app sends one `app_open` event to [Aptabase](https://aptabase.com) with the app version, the Android version and the language. No device identifier, nothing about your collection. It is on by default; turn it off in **Settings → Anonymous statistics** and nothing is sent.

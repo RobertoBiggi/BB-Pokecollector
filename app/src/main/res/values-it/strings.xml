@@ -399,19 +399,21 @@
     <string name="alert_summary_target">a %1$s o meno</string>
     <string name="msg_token_not_saved">Il token non è stato salvato: la cifratura del telefono non ha risposto. Riprova.</string>
     <string name="notification_update_channel_name">Aggiornamenti dell\'app</string>
-    <string name="notification_update_channel_description">Una notifica quando c\'è una versione più recente dell\'app</string>
+    <string name="notification_update_channel_description">Aggiornamento in attesa di conferma, o non riuscito</string>
     <string name="update_available_title">Aggiornamento disponibile: %1$s</string>
-    <string name="update_available_text">Tocca per scaricare e installare la nuova versione.</string>
+    <string name="update_available_text">Scaricare e installare ora la nuova versione?</string>
     <string name="update_downloading_title">Scarico la versione %1$s</string>
     <string name="update_ready_title">Aggiornamento pronto</string>
     <string name="update_ready_text">Tocca per confermare l\'installazione.</string>
     <string name="update_problem_title">Aggiornamento non riuscito</string>
     <string name="update_download_failed">Non è stato possibile scaricare la nuova versione. Riprova più tardi.</string>
     <string name="update_install_failed">Non è stato possibile installare la nuova versione.</string>
-    <string name="update_allow_install">Consenti a questa app di installare aggiornamenti, poi tocca di nuovo la notifica.</string>
+    <string name="update_allow_install">Consenti a questa app di installare aggiornamenti, poi torna qui e tocca di nuovo Aggiorna.</string>
     <string name="settings_update">Aggiornamenti dell\'app</string>
     <string name="settings_update_switch">Cerca una nuova versione a ogni apertura</string>
-    <string name="settings_update_text">L\'app chiede a GitHub l\'ultima versione pubblicata. Se ce n\'è una più recente mostra una notifica: toccandola scarica la nuova versione e ti chiede di installarla. Se la spegni non viene chiesto nulla.</string>
+    <string name="settings_update_text">L\'app chiede a GitHub l\'ultima versione pubblicata. Se ce n\'è una più recente la propone in una finestra: Aggiorna scarica la nuova versione e ti chiede di installarla. Se la spegni non viene chiesto nulla.</string>
     <string name="search_truncated">Troppi risultati, l\'elenco è tagliato (%1$d su %2$d). Aggiungi il nome del set o l\'anno per restringere la ricerca (per esempio “pikachu 2010”).</string>
     <string name="update_install_incompatible">Questa versione è firmata con una chiave diversa da quella della release, quindi Android non la sostituisce. Disinstallala e installa l\'APK della release.</string>
+    <string name="update_action">Aggiorna</string>
+    <string name="update_later">Più tardi</string>
 </resources>

@@ -6,6 +6,7 @@ import com.robertobiggi.cardcollection.core.analytics.AnalyticsContext
 import com.robertobiggi.cardcollection.core.analytics.AptabaseClient
 import com.robertobiggi.cardcollection.core.image.CatalogImageSources
 import com.robertobiggi.cardcollection.core.model.PokemonNames
+import com.robertobiggi.cardcollection.core.update.AppRelease
 import com.robertobiggi.cardcollection.core.update.AppUpdate
 import com.robertobiggi.cardcollection.core.validation.Validators
 import com.robertobiggi.cardcollection.data.catalog.CatalogStore
@@ -26,6 +27,9 @@ import com.robertobiggi.cardcollection.work.WorkScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -66,6 +70,10 @@ class AppContainer(context: Context) {
     val catalogStore = CatalogStore(appContext, downloadHttp)
     /** Looks for newer versions of the app and installs them (see [checkAppUpdate]). */
     val appUpdater = AppUpdater(appContext, http, downloadHttp)
+    private val _availableUpdate = MutableStateFlow<AppRelease?>(null)
+
+    /** The newer version found at this opening, offered by the app in a dialog (null if none, or the user said "later"). */
+    val availableUpdate: StateFlow<AppRelease?> = _availableUpdate.asStateFlow()
     val images = ImageStore(appContext, http)
 
     val collection = CollectionRepository(database, appScope, settings, images)
@@ -93,24 +101,32 @@ class AppContainer(context: Context) {
         appScope.launch { collection.purgeOrphanCards(System.currentTimeMillis() - ORPHAN_GRACE_MS) }
         // One anonymous "app_open" per day, only if the user did not turn it off. Failures are ignored and retried at the next opening.
         appScope.launch { sendUsagePing() }
-        // Looks for a newer version of the app and, if there is one, leaves a notification that downloads and installs it when tapped.
+        // Looks for a newer version of the app and, if there is one, offers it in the app: the user taps Update and it is downloaded and installed.
         appScope.launch { checkAppUpdate() }
         // Reschedules the daily alert check if it was lost (e.g. app force-stopped).
         appScope.launch { if (settings.priceAlertsEnabled.first()) work.schedulePriceAlerts() }
     }
 
     /**
-     * Starts the download and installation of the newer version of the app (the "update available" notification was tapped).
+     * Starts the download and installation of the newer version of the app (the user tapped Update).
      * @return Unit
      */
     fun startAppUpdate() {
+        _availableUpdate.value = null
         Notifications.cancelUpdate(appContext)
         work.startAppUpdate()
     }
 
     /**
-     * Looks for a newer release at most once an hour, if the user did not turn it off. A newer one leaves a notification (without the notification permission nothing is shown).
-     * An older or equal one removes the notification of an update already installed.
+     * The user said "later": the offer is not shown again until the next opening.
+     * @return Unit
+     */
+    fun dismissAppUpdate() {
+        _availableUpdate.value = null
+    }
+
+    /**
+     * Looks for a newer release at most once an hour, if the user did not turn it off, and offers it.
      * @return Unit
      */
     private suspend fun checkAppUpdate() {
@@ -118,8 +134,7 @@ class AppContainer(context: Context) {
         val now = System.currentTimeMillis()
         if (now - settings.lastAppUpdateCheck.first() < UPDATE_CHECK_INTERVAL_MS) return
         settings.setLastAppUpdateCheck(now)
-        val release = appUpdater.newerRelease()
-        if (release != null) Notifications.showUpdateAvailable(appContext, release.version) else Notifications.cancelUpdate(appContext)
+        _availableUpdate.value = appUpdater.newerRelease()
     }
 
     /**

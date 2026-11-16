@@ -37,7 +37,7 @@ A GitHub access token in Obtainium's settings is optional: it only avoids GitHub
 
 **By the app itself**
 
-Every time you open the app (at most once an hour) it asks GitHub for the latest Release. If there is a newer version it leaves a notification: tap it and the app downloads the new version and asks Android to install it over the old one. The first time Android also asks you to allow this app to install apps (a switch for the app; the notification stays, tap it again afterwards). Turn the check off in **Settings → App updates**.
+Every time you open the app (at most once an hour) it asks GitHub for the latest Release. If there is a newer version a window offers it: tap **Update** and the app downloads the new version and asks Android to install it over the old one. The first time Android also asks you to allow this app to install apps (a switch for the app; come back and tap **Update** again). Turn the check off in **Settings → App updates**.
 
 **Manually**
 

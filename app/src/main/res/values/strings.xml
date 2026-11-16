@@ -398,19 +398,21 @@
     <string name="alert_summary_target">at %1$s or less</string>
     <string name="msg_token_not_saved">The token was not saved: the phone\'s encryption did not respond. Try again.</string>
     <string name="notification_update_channel_name">App updates</string>
-    <string name="notification_update_channel_description">A notification when a newer version of the app is available</string>
+    <string name="notification_update_channel_description">Update waiting for your confirmation, or failed</string>
     <string name="update_available_title">Update available: %1$s</string>
-    <string name="update_available_text">Tap to download and install the new version.</string>
+    <string name="update_available_text">Download and install the new version now?</string>
     <string name="update_downloading_title">Downloading version %1$s</string>
     <string name="update_ready_title">Update ready</string>
     <string name="update_ready_text">Tap to confirm the installation.</string>
     <string name="update_problem_title">Update failed</string>
     <string name="update_download_failed">The new version could not be downloaded. Try again later.</string>
     <string name="update_install_failed">The new version could not be installed.</string>
-    <string name="update_allow_install">Allow this app to install updates, then tap the notification again.</string>
+    <string name="update_allow_install">Allow this app to install updates, then come back and tap Update again.</string>
     <string name="settings_update">App updates</string>
     <string name="settings_update_switch">Check for a new version at every opening</string>
-    <string name="settings_update_text">The app asks GitHub for the latest release. If there is a newer one it shows a notification: tapping it downloads the new version and asks you to install it. Turn it off and nothing is asked.</string>
+    <string name="settings_update_text">The app asks GitHub for the latest release. If there is a newer one it offers it in a dialog: Update downloads the new version and asks you to install it. Turn it off and nothing is asked.</string>
     <string name="search_truncated">Too many matches, the list is cut (%1$d of %2$d). Add the set name or the year to narrow the search (for example “pikachu 2010”).</string>
     <string name="update_install_incompatible">This build is signed with a different key than the release, so Android refuses to replace it. Uninstall it and install the release APK.</string>
+    <string name="update_action">Update</string>
+    <string name="update_later">Later</string>
 </resources>
