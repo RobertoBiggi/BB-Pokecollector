@@ -140,7 +140,7 @@ Tap a card to open its detail: the large image, then its code, set, series, rari
 **Card actions**
 
 - **Update price**: refreshes the prices of this card only.
-- **Download image**: tries the image sources one after another: TCGdex, Pokoin, CardTrader (if you set a token), Pokellector, Pokumon (promo cards, including the old unnumbered ones). The detail shows which source the image comes from.
+- **Download image**: tries the image sources one after another: TCGdex, Pokoin, CardTrader (if you set a token), Pokellector, Pokumon (promo cards, including the old unnumbered ones), Malie (localized prints of some sets and promos). The detail shows which source the image comes from.
 - **Other prints**: when the card has other prints (the same card with a Staff or Winner stamp, for example), a line under the image says how many. Tap the image to see them, each with its name and prices; prints without a picture have a placeholder. The card's own image always stays the one shown.
 - **Choose image**: pick a picture from your gallery, handy for cards that no source has. It is resized and saved without metadata, and stays until you download an official one.
 - **Cardmarket / TCGplayer / CardTrader**: open the card on those websites.

@@ -68,11 +68,18 @@ object CatalogImageSources {
      */
     val POKUMON = CatalogImageSource("pokumon", "pokumon", "https://cdn6966.templcdn.com/wp-content/uploads/", ".jpg", "Pokumon")
 
+    /**
+     * malie.io: the card art of the Pokémon TCG Online / Live games, for sets in English, French, Italian, German, Spanish and Portuguese (the
+     * localized prints other sources lack); JPEG. The saved path includes the folder and the file name with its extension, because the file name has
+     * the card's localized name in it (e.g. "jpg/es_ES/HGSS/HGSS1-HS/es_ES-HGSS1-001-arcanine.jpg"). The generator takes them from the site's listings.
+     */
+    val MALIE = CatalogImageSource("malie", "malie", "https://cdn.malie.io/file/malie-io/art/cards/", ".jpg", "Malie")
+
     /** Sources tried right after TCGdex and before CardTrader (which needs a token and an API call per card). */
     val BEFORE_CARDTRADER: List<CatalogImageSource> = listOf(POKOIN)
 
     /** Sources tried after CardTrader. */
-    val AFTER_CARDTRADER: List<CatalogImageSource> = listOf(POKELLECTOR, POKUMON)
+    val AFTER_CARDTRADER: List<CatalogImageSource> = listOf(POKELLECTOR, POKUMON, MALIE)
 
     /** Every source, in the order they are tried (the first with an image that downloads wins). */
     val ALL: List<CatalogImageSource> = BEFORE_CARDTRADER + AFTER_CARDTRADER
