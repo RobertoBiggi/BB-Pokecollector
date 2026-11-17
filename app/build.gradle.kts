@@ -17,7 +17,11 @@ android {
         targetSdk = 35
         // In CI versionCode = number of commits on main and versionName = "<appVersion>.<versionCode>",
         // so every release gets an increasing number without manual edits (see .github/workflows/android.yml).
-        val buildNumber = providers.gradleProperty("versionCode").orNull?.toIntOrNull() ?: 1
+        // Local builds use the same number (commits so far), so they are not older than the latest release; 1 without git.
+        val commitCount = runCatching {
+            providers.exec { commandLine("git", "rev-list", "--count", "HEAD"); isIgnoreExitValue = true }.standardOutput.asText.get().trim().toIntOrNull()
+        }.getOrNull()
+        val buildNumber = providers.gradleProperty("versionCode").orNull?.toIntOrNull() ?: commitCount ?: 1
         versionCode = buildNumber
         versionName = "${providers.gradleProperty("appVersion").get()}.$buildNumber"
         // UI languages: English (base) and Italian. Drops the libraries' translations in other languages.

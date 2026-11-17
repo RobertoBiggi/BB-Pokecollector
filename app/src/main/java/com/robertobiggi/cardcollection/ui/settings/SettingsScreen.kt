@@ -4,6 +4,7 @@ package com.robertobiggi.cardcollection.ui.settings
 
 import android.Manifest
 import android.os.Build
+import com.robertobiggi.cardcollection.BuildConfig
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
@@ -246,6 +247,13 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            }
+            item {
+                Text(
+                    stringResource(R.string.settings_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
