@@ -4,8 +4,6 @@ What changed in the card database (`cards.sqlite`, the `catalog` release) and ho
 
 ## 2026-11-17
 
-- **More rarity corrections from Bulbapedia** (Japanese codes and card pages): 104 Japanese cards that had no rarity (SR and UR of the Scarlet & Violet and Sword & Shield sets, CHR, K, RRR, Uncommon), the 125 Shiny Treasure ex (`ja:SV4a`) cards as Shiny rare, 4 Pokémon VS cards as Holo Rare, and 70 Common, Uncommon or Rare fixes (6 English cards, their copies in the other languages, 40 Japanese cards).
-- **Rarity corrections**: Enhanced Hammer (`sm2-124`), Kiawe (`sm3-116`) and Rescue Stretcher (`sm2-130`) are Uncommon, not Rare, in all six European languages (18 cards). 32 Japanese cards from S10P to SV10 (e.g. `ja:S10a-099`, `ja:SV8-136`) that were wrongly Mega Hyper Rare are now Hyper rare, since Mega Hyper Rare only exists from the M1 sets.
 - **Pikachu World Collection 2000 and 2010**: the 19 cards now have their Cardmarket product, so they show Cardmarket prices. The 2010 set is one card per country (USA, DE, ES, FR, IT, PL, PT, KR, two JPN), each with its own CardTrader blueprint.
 - Published as a patch of the 2026-11-16 database (only `cardmarketId`, `cmProduct` and `cmHow` of those cards changed).
 - **Special Deck Set MEGA** (`ja:mgds`, official code MG, released 2026-11-13, 38 cards: the Mega Feraligatr ex, Mega Dragonite ex and Mega Gengar ex decks): new set from Cardmarket expansion 6963, with the card numbers (001/038–038/038) and each card's Cardmarket product. It is not on CardTrader yet, so it has no blueprints or images.
@@ -14,6 +12,11 @@ What changed in the card database (`cards.sqlite`, the `catalog` release) and ho
   - 36 Japanese cards wrongly labelled Mega Hyper Rare (35 of them in Storm Emeralda) now have Illustration rare, Special illustration rare or Ultra Rare.
   - 44 English cards stored as Rare are now Secret Rare (32) or ACE SPEC Rare (12).
   - 253 Japanese Scarlet & Violet cards that had no rarity now have Illustration rare, Special illustration rare or ACE SPEC Rare.
+  - 104 more Japanese cards that had no rarity, from Bulbapedia's Japanese codes: SR becomes Ultra Rare (72), UR becomes Hyper rare (19), CHR Character Rare (6), K Radiant Rare (3), RRR Triple Rare (1), Uncommon (3).
+  - 125 Shiny Treasure ex (`ja:SV4a`) cards coded S are Shiny rare; 4 Pokémon VS cards (Steelix ×2, Murkrow, Sneasel) are Holo Rare.
+  - 70 Common, Uncommon or Rare fixes: 6 English cards with their copies in the other languages, and 40 Japanese cards.
+  - Enhanced Hammer (`sm2-124`), Kiawe (`sm3-116`) and Rescue Stretcher (`sm2-130`) are Uncommon, not Rare, in all six European languages (18 cards).
+  - The 32 Japanese cards from S10P to SV10 (e.g. `ja:S10a-099`) that were wrongly Mega Hyper Rare are Hyper rare, since Mega Hyper Rare only exists from the M1 sets.
 
 ## 2026-11-16
 
