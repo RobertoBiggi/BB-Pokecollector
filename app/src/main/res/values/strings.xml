@@ -356,6 +356,8 @@
     <string name="settings_catalog_languages">Languages (%1$d): %2$s</string>
     <string name="settings_catalog_updated">Database of %1$s</string>
     <string name="settings_catalog_missing">Not installed: download it to search and add cards.</string>
+    <string name="home_catalog_downloading">Downloading card database… %1$d MB</string>
+    <string name="home_catalog_downloading_total">Downloading card database… %1$d / %2$d MB (%3$d%%)</string>
     <string name="settings_catalog_download">Download</string>
     <string name="settings_catalog_update">Update</string>
     <string name="msg_no_catalog">The card database is not installed: download it in Settings.</string>

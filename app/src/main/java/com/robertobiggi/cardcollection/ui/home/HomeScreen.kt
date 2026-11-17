@@ -75,6 +75,7 @@ import com.robertobiggi.cardcollection.core.model.CollectionLanguage
 import com.robertobiggi.cardcollection.core.model.Language
 import com.robertobiggi.cardcollection.data.repo.CollectionSettings
 import com.robertobiggi.cardcollection.data.repo.CollectionSummary
+import com.robertobiggi.cardcollection.ui.CatalogDownload
 import com.robertobiggi.cardcollection.ui.MainViewModel
 import com.robertobiggi.cardcollection.ui.common.CollectionSettingsDialog
 import com.robertobiggi.cardcollection.ui.common.ConfirmDialog
@@ -97,6 +98,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
     val summaries by vm.summaries.collectAsStateWithLifecycle()
     val visibility by vm.priceVisibility.collectAsStateWithLifecycle()
     val catalogInfo by vm.catalogInfo.collectAsStateWithLifecycle()
+    val catalogDownload by vm.catalogDownload.collectAsStateWithLifecycle()
     val defaultImportName = stringResource(R.string.import_default_name)
     var creating by rememberSaveable { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<CollectionSummary?>(null) }
@@ -118,6 +120,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
 
     Scaffold(
         topBar = {
+          Column {
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
                 actions = {
@@ -127,6 +130,8 @@ fun HomeScreen(vm: MainViewModel, onOpen: (Long) -> Unit, onSettings: () -> Unit
                     IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.home_settings)) }
                 },
             )
+            catalogDownload?.let { CatalogDownloadBar(it) }
+          }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
@@ -398,5 +403,29 @@ private fun CreateCollectionDialog(
             onPick = { lang, set -> chosen = lang to set; picking = false; error = null },
             onDismiss = { picking = false },
         )
+    }
+}
+
+
+/**
+ * Progress bar of the card database download shown under the top bar (determinate if the server declares the size).
+ * @param download CatalogDownload - bytes read and total.
+ * @return Unit
+ */
+@Composable
+private fun CatalogDownloadBar(download: CatalogDownload) {
+    val total = download.total
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        val mb = download.done / (1024 * 1024)
+        Text(
+            if (total != null) stringResource(R.string.home_catalog_downloading_total, mb, total / (1024 * 1024), (download.done * 100 / total).toInt())
+            else stringResource(R.string.home_catalog_downloading, mb),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        if (total != null) {
+            LinearProgressIndicator(progress = { (download.done.toFloat() / total).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+        } else {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+        }
     }
 }
