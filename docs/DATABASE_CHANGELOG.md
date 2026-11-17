@@ -4,6 +4,7 @@ What changed in the card database (`cards.sqlite`, the `catalog` release) and ho
 
 ## 2026-11-17
 
+- **More rarity corrections from Bulbapedia** (Japanese codes and card pages): 104 Japanese cards that had no rarity (SR and UR of the Scarlet & Violet and Sword & Shield sets, CHR, K, RRR, Uncommon), the 125 Shiny Treasure ex (`ja:SV4a`) cards as Shiny rare, 4 Pokémon VS cards as Holo Rare, and 70 Common, Uncommon or Rare fixes (6 English cards, their copies in the other languages, 40 Japanese cards).
 - **Rarity corrections**: Enhanced Hammer (`sm2-124`), Kiawe (`sm3-116`) and Rescue Stretcher (`sm2-130`) are Uncommon, not Rare, in all six European languages (18 cards). 32 Japanese cards from S10P to SV10 (e.g. `ja:S10a-099`, `ja:SV8-136`) that were wrongly Mega Hyper Rare are now Hyper rare, since Mega Hyper Rare only exists from the M1 sets.
 - **Pikachu World Collection 2000 and 2010**: the 19 cards now have their Cardmarket product, so they show Cardmarket prices. The 2010 set is one card per country (USA, DE, ES, FR, IT, PL, PT, KR, two JPN), each with its own CardTrader blueprint.
 - Published as a patch of the 2026-11-16 database (only `cardmarketId`, `cmProduct` and `cmHow` of those cards changed).
