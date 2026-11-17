@@ -252,6 +252,18 @@ class PriceRepository(
     }
 
     /**
+     * Cardmarket product of a card the catalog did not match to Cardmarket (e.g. Pikachu World Collection 2010): CardTrader knows it.
+     * @return Int? - the product, or null if the card has no blueprint, the variant is a separate print, or CardTrader does not know it.
+     */
+    private suspend fun cardmarketProductFromCardTrader(sources: PriceSources, card: CardEntity, type: VariantType): Int? {
+        val provider = sources.cardTraderProvider ?: return null
+        val expansion = card.cardTraderExpansionId ?: return null
+        val blueprint = card.cardTraderBlueprintId ?: return null
+        if (type.isBall || type.isPrint) return null
+        return provider.cardmarketProductOf(expansion, blueprint)
+    }
+
+    /**
      * Saves a found price as the latest snapshot of the variant.
      * @param variantId String - variant.
      * @param quote PriceQuote - price to save.
@@ -325,7 +337,7 @@ class PriceRepository(
     }
 
     /** Sources of the update: the Cardmarket price list (always), CardTrader (only with the token) and TCGplayer (only if its prices are shown). */
-    private class PriceSources(val cardTrader: PriceChain?, val cardmarketGuide: PriceChain, val tcgplayer: TcgplayerPriceProvider? = null) {
+    private class PriceSources(val cardTrader: PriceChain?, val cardTraderProvider: CardTraderPriceProvider?, val cardmarketGuide: PriceChain, val tcgplayer: TcgplayerPriceProvider? = null) {
         /** True after a TCGCSV error: the other variants of the run do not try again. */
         var tcgplayerDown = false
     }
@@ -343,6 +355,7 @@ class PriceRepository(
         )
         val tcgplayer = if (settings.priceVisibility.first().tcgplayer) TcgplayerPriceProvider(TcgcsvClient(http)) else null
         return PriceSources(
+            cardTraderProvider = cardTrader,
             cardTrader = cardTrader?.let { PriceChain(listOf(ProviderSlot(it, RateLimiter(REQUEST_INTERVAL_MS), CircuitBreaker()))) },
             cardmarketGuide = PriceChain(listOf(ProviderSlot(guide, RateLimiter(0), CircuitBreaker()))),
             tcgplayer = tcgplayer,

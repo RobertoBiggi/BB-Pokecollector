@@ -39,7 +39,9 @@ class CardTraderPriceProvider(
      * @return PriceQuote? - price in euros, or null if CardTrader has no such card or no listings for the variant.
      */
     override suspend fun fetch(request: PriceRequest): PriceQuote? = mutex.withLock {
-        val languageCode = languageParam(request.language)
+        // Each card of these sets has its own blueprint with listings only in that country's language, while the card is catalogued in English.
+        val anyLanguage = request.setId in ANY_LANGUAGE_SETS
+        val languageCode = if (anyLanguage) null else languageParam(request.language)
         // The blueprint comes from the card database (already matched by the generator); Poké Ball and Master Ball have a separate one.
         // Separate prints have a blueprint only if the database gives one for the variant: the card's one belongs to the normal card.
         val blueprint = when {
@@ -49,7 +51,7 @@ class CardTraderPriceProvider(
         } ?: return null
         val listings = productsOf(blueprint, languageCode)
         val pick = CardTraderPicker.lowest(
-            listings, request.variant, pickerLanguage(request.language), request.cardTraderCondition ?: worstCondition,
+            listings, request.variant, if (anyLanguage) null else pickerLanguage(request.language), request.cardTraderCondition ?: worstCondition,
             firstEditionFallback = request.language == Language.JA && !request.cardHasFirstEdition,
             lowerCondition = true,
             splitHolo = request.cardHasNormalAndHolo,
@@ -67,6 +69,20 @@ class CardTraderPriceProvider(
      */
     suspend fun imageUrl(expansionId: Int, blueprintId: Int): String? = mutex.withLock {
         blueprintsOf(expansionId).firstOrNull { it.id == blueprintId }?.let { imageOf(it) }
+    }
+
+    /**
+     * Cardmarket product of a blueprint, for cards the catalog could not match to Cardmarket (CardTrader lists it in `card_market_ids`).
+     * @param expansionId Int - CardTrader expansion of the card's set.
+     * @param blueprintId Int - blueprint of the card.
+     * @return Int? - the product, or null if the blueprint has none or more than one (ambiguous), or CardTrader cannot be reached.
+     */
+    suspend fun cardmarketProductOf(expansionId: Int, blueprintId: Int): Int? = mutex.withLock {
+        try {
+            blueprintsOf(expansionId).firstOrNull { it.id == blueprintId }?.cardMarketIds?.singleOrNull()
+        } catch (e: java.io.IOException) {
+            null
+        }
     }
 
     private fun imageOf(blueprint: CtBlueprintDto): String? {
@@ -100,6 +116,9 @@ class CardTraderPriceProvider(
     companion object {
         const val ID = "cardtrader"
         const val DISPLAY_NAME = "CardTrader"
+
+        /** Sets whose cards are one per country (Pikachu World Collection 2010: KR, PT, DE…): their listings are not filtered by language. */
+        private val ANY_LANGUAGE_SETS = setOf("wc2010")
         private const val SITE = "https://www.cardtrader.com"
     }
 }
