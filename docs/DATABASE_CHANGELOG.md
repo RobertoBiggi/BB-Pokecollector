@@ -2,13 +2,9 @@
 
 What changed in the card database (`cards.sqlite`, the `catalog` release) and how it is built, newest first. The generator lives in the separate `Card-collector-db-gen` repository; every entry comes from its history. Add an entry here whenever a new database is published.
 
-## 2026-11-17 (later)
-
-- **Rarity corrections**: Enhanced Hammer (`sm2-124`), Kiawe (`sm3-116`) and Rescue Stretcher (`sm2-130`) are Uncommon, not Rare, in all six European languages (18 cards). 32 Japanese cards from S10P to SV10 (e.g. `ja:S10a-099`, `ja:SV8-136`) that were wrongly Mega Hyper Rare are now Hyper rare, since Mega Hyper Rare only exists from the M1 sets.
-- Published as a patch of the earlier 2026-11-17 database (only `rarity` of those cards changed).
-
 ## 2026-11-17
 
+- **Rarity corrections**: Enhanced Hammer (`sm2-124`), Kiawe (`sm3-116`) and Rescue Stretcher (`sm2-130`) are Uncommon, not Rare, in all six European languages (18 cards). 32 Japanese cards from S10P to SV10 (e.g. `ja:S10a-099`, `ja:SV8-136`) that were wrongly Mega Hyper Rare are now Hyper rare, since Mega Hyper Rare only exists from the M1 sets.
 - **Pikachu World Collection 2000 and 2010**: the 19 cards now have their Cardmarket product, so they show Cardmarket prices. The 2010 set is one card per country (USA, DE, ES, FR, IT, PL, PT, KR, two JPN), each with its own CardTrader blueprint.
 - Published as a patch of the 2026-11-16 database (only `cardmarketId`, `cmProduct` and `cmHow` of those cards changed).
 - **Special Deck Set MEGA** (`ja:mgds`, official code MG, released 2026-11-13, 38 cards: the Mega Feraligatr ex, Mega Dragonite ex and Mega Gengar ex decks): new set from Cardmarket expansion 6963, with the card numbers (001/038–038/038) and each card's Cardmarket product. It is not on CardTrader yet, so it has no blueprints or images.
