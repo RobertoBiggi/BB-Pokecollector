@@ -1,5 +1,5 @@
 # Builds and tests the app on every push and pull request. On every push to main it also publishes a GitHub Release
-# with the APK signed with the release key (repository secrets, never in the repo), which the README download button
+# with the APK signed with the release key (only the latest release is kept) (repository secrets, never in the repo), which the README download button
 # and Obtainium use for updates.
 # Actions are pinned to a full commit SHA (the tag in the comment); Dependabot proposes the updates.
 name: Android CI
@@ -213,3 +213,19 @@ jobs:
           # One APK per Release, with a fixed name: the README download link (releases/latest/download/bb-pokecollector.apk) always points to the latest Release.
           gh release create "$tag" bb-pokecollector.apk --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --title "$VERSION" --generate-notes --latest
+
+      # Only the latest release is kept: older version releases and their tags are deleted. Only tags like v1.2.3 are touched
+      # (the "catalog" release with the card database stays), and only after the new release was published successfully.
+      - name: Delete the older releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' \
+            | grep -E '^v[0-9]+(\.[0-9]+)+$' | grep -vxF "$tag" \
+            | while read -r old; do
+                echo "Deleting $old"
+                gh release delete "$old" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+              done
