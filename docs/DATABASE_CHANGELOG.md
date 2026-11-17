@@ -6,6 +6,7 @@ What changed in the card database (`cards.sqlite`, the `catalog` release) and ho
 
 - **Pikachu World Collection 2000 and 2010**: the 19 cards now have their Cardmarket product, so they show Cardmarket prices. The 2010 set is one card per country (USA, DE, ES, FR, IT, PL, PT, KR, two JPN), each with its own CardTrader blueprint.
 - Published as a patch of the 2026-11-16 database (only `cardmarketId`, `cmProduct` and `cmHow` of those cards changed).
+- **Special Deck Set MEGA** (`ja:mgds`, official code MG, released 2026-11-13, 38 cards: the Mega Feraligatr ex, Mega Dragonite ex and Mega Gengar ex decks): new set from Cardmarket expansion 6963, with the card numbers (001/038–038/038) and each card's Cardmarket product. It is not on CardTrader yet, so it has no blueprints or images.
 
 ## 2026-11-16
 
