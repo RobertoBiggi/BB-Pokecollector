@@ -8,6 +8,7 @@ An offline-first Android app to track your Pokémon card collection: every varia
   <img src="docs/badges/ocg-images.svg" alt="OCG cards (Japanese and Korean) with image">
   <img src="docs/badges/chinese-images.svg" alt="Chinese cards with image">
   <img src="docs/badges/seasia-images.svg" alt="Thai and Indonesian cards with image">
+  <br><sub>Image coverage counts the CardTrader images too; those need your own CardTrader token in Settings.</sub>
 </p>
 
 <table align="center">
