@@ -2,6 +2,12 @@
 
 What changed in the card database (`cards.sqlite`, the `catalog` release) and how it is built, newest first. The generator lives in the separate `Card-collector-db-gen` repository; every entry comes from its history. Add an entry here whenever a new database is published.
 
+## 2026-11-19
+
+- **Rarities for Chinese, Thai and Indonesian cards** (1,830 cards that had none): 1,142 copied from the Japanese card with the same set, number and name (same-card agreement where both have a rarity: 99.9%), plus 688 for Terastal Festival ex (`SV8a`) from Bulbapedia's Simplified Chinese Terastal Gathering list, matched by card name and only where every print of the name has the same rarity (130 each in ja, zh-tw and zh-cn, 122 in th, 176 in id from the Japanese card).
+- **English set names for non-Japanese sets** (`card_set.nameEn`, so they can be searched in English): 137 sets (zh-tw 81, th 29, id 17, zh-cn 10). Most reuse the CardTrader name of the Japanese set with the same id; the Taiwanese, Thai and Indonesian exclusives use Bulbapedia titles (Black Shine, Paradox Encounters, ex Compact Deck, Sword & Shield V Starter Deck, ...) or a translation of the Chinese name.
+- **Four Simplified Chinese sets** (`zh-cn`, 990 cards, no rarity yet): Chasing Glory CSV10 (287), Stellar Crystal CSV9 (266), Bright Fantasy CSV8 (264) and 30th Anniversary 30thC (173), with number, English name and finishes from the pokipair.com card lists (one image per finish: Normal, Poké Ball, Master Ball). No images from that site are used. The Chinese image badge drops from 80.7% to 73.6% because these cards have none yet.
+
 ## 2026-11-17
 
 - **Pikachu World Collection 2000 and 2010**: the 19 cards now have their Cardmarket product, so they show Cardmarket prices. The 2010 set is one card per country (USA, DE, ES, FR, IT, PL, PT, KR, two JPN), each with its own CardTrader blueprint.
