@@ -223,7 +223,9 @@ jobs:
           {
             echo "## What's changed"
             echo
-            echo "$commits" | jq -r '.[] | select(.commit.message | startswith("Merge") | not)
+            # Merge commits and the database changelog commits (docs/DATABASE_CHANGELOG.md and badges) are left out: they
+            # describe the card database, which is published on its own and not with the app.
+            echo "$commits" | jq -r '.[] | select(.commit.message | (startswith("Merge") or startswith("Database changelog")) | not)
               | "- " + (.commit.message | split("\n")[0]) + " (" + .sha[0:7] + ")"'
           } > notes.md
           # One APK per Release, with a fixed name: the README download link (releases/latest/download/bb-pokecollector.apk) always points to the latest Release.
