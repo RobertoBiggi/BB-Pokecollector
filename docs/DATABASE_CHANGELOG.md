@@ -22,6 +22,13 @@ The database now has 156,688 cards. It was rebuilt in full from the sources (all
 **Corrections**
 - 56 wrong card links in the Taiwan and Thai Scarlet & Violet promos (`zh-tw:SV-P` 55 cards, `th:SV-P-001`): their Cardmarket product, CardTrader blueprint, English name and Pokédex number belonged to another card, because Taiwan promo numbers differ from the English `SVP` ones (`zh-tw:SV-P-008` Miraidon was linked to Oinkologne). The links are removed, so they show no wrong price or image; the English name and Pokédex number now come from the pokumon.com list.
 - Rarities from the 2026-11-17 corrections that a rebuild would have lost are now in the data files.
+- Jumbo promos from the collection sheet in `ja:unpromo`, checked against Bulbapedia:
+  - Pokérun (`jumbo-pokerun`) is Pokérun Channel's Pikachu & Friends, given out by Pokémon Center Japan from May to August 2021 (illustrator Toki-chan); it showed the placeholder date of the set, 1996, and the name Pikachu.
+  - Toys "R" Us Pokémon Christmas Fair (`jumbo-toysrus-christmas-fair`) gets its date, 14 November 2014, its illustrator (Naoki Saito) and the five Pokémon on the card.
+  - Removed: the PokéPark Kanto Pikachu (a photo cutout at the park, not a collectible card, with no source) and the Team Up Pikachu & Zekrom-GX (its unnumbered jumbos are Korean, a language the database does not have; no Japanese one is confirmed).
+- PokéPark's Pikachu 2005: the Premium File card (`ja:pp-f-004`) is holographic with illustrator Kanako Eo, and both it and the PCG-P promo (`ja:pcgpromo-043`) have the year 2005.
+- Twelve Japanese promo sets that had no set code now have the code printed on their cards (`XY-P`, `SM-P`, `S-P`, `BW-P`, `DP-P`, `DPt-P`, `ADV-P`, `PCG-P`, `L-P`, `P`, `T`, `J`); the app showed N/A.
+- Three Pikachu promos have their pokumon.com image, matched by hand because the name Pikachu is not unique among the promos: the Toyota campaign and the World Hobby Fair Special Sheet (1997) and the CoroCoro 1996 insert (`ja:corocoro-025`, the wrong-illustrator print).
 
 **World Championship Decks**
 - 147 more cards (2004-2025): the same card is printed in several decks and the generator dropped the extra copies of a number. They are now separate cards (the id carries the Cardmarket product, e.g. `en:wcd2006-090-869561`), all with a Cardmarket product (price) and 145 with a CardTrader blueprint (image). Live Code Cards are left out on purpose.

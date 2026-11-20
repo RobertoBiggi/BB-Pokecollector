@@ -21,7 +21,7 @@
 <text x="664.0" y="101" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#fff" text-anchor="middle">99.7%</text>
 <text x="18" y="135" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#24292f">OCG</text>
 <text x="76" y="135" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="10" fill="#57606a">ja, ko</text>
-<text x="236" y="135" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#24292f" text-anchor="end">27,708</text>
+<text x="236" y="135" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#24292f" text-anchor="end">27,706</text>
 <rect x="250" y="118" width="108" height="26" rx="4" fill="#4c1"/>
 <text x="304.0" y="135" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#fff" text-anchor="middle">99.7%</text>
 <rect x="370" y="118" width="108" height="26" rx="4" fill="#fe7d37"/>
@@ -54,7 +54,7 @@
 <text x="664.0" y="203" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#fff" text-anchor="middle">100.0%</text>
 <line x1="14" x2="724" y1="216" y2="216" stroke="#d0d7de"/>
 <text x="18" y="237" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#24292f" font-weight="bold">All</text>
-<text x="236" y="237" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#24292f" text-anchor="end" font-weight="bold">156,688</text>
+<text x="236" y="237" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#24292f" text-anchor="end" font-weight="bold">156,686</text>
 <rect x="250" y="220" width="108" height="26" rx="4" fill="#dfb317"/>
 <text x="304.0" y="237" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="12" fill="#fff" text-anchor="middle" font-weight="bold">96.4%</text>
 <rect x="370" y="220" width="108" height="26" rx="4" fill="#dfb317"/>
