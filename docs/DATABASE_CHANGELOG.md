@@ -4,20 +4,35 @@ What changed in the card database (`cards.sqlite`, the `catalog` release) and ho
 
 ## 2026-11-20
 
-- **Traditional Chinese sets completed from Bulbapedia's Traditional Chinese set lists** (`zh-tw`):
-  - 750 rarities filled for Sword & Shield (`SC1b`, `SC2a`, `SC2b`) and Amazing Volt Tackle / Shiny Star V (`S4`, `S4a`), which had none. 7 conflicts in `SC1a` follow Bulbapedia: six VMAX cards are Triple Rare instead of Rare, one card is Common instead of Uncommon.
-  - 245 cards that TCGdex lacks (secret and shiny rares past the official count): S4a 140, S4 21, SC1a 15, SC1b 16, SC2a 25, SC2b 28. Every set now has the card count Bulbapedia gives (e.g. Shiny Star V 330, was 190). S4 and S4a cards take the CardTrader blueprint of the Japanese card with the same number; the others have no images. Pokémon have their Chinese name; trainers stay in English.
-  - `S4` English name is Amazing Volt Tackle (Bulbapedia), not Shocking Volt Tackle (the Japanese set).
-- **Four Sun & Moon catch-up sets** (`zh-tw`, 1,779 cards, no images or Cardmarket ids): All Stars Collection `AC1a`/`AC1b` (182 + 182), Dreams Come True Collection `AC2a`/`AC2b` (226 + 225), Double Burst `AS5a`/`AS5b` (230 + 230), Legendary Clash `AS6a`/`AS6b` (252 + 252). Number, English name and rarity come from Bulbapedia; Trainer Rare and Prism Star cards are written as Rare Holo because the database has no better name.
-- **Promo cards for Traditional Chinese, Thai and Indonesian** (2,269 cards, `zh-tw`, `th`, `id`): the Sun & Moon (`sm-p`), Sword & Shield (`s-p`), Scarlet & Violet (`SV-P`) and Mega (`M-P`) promo sets only had the few Pikachu cards from the collection sheet.
-  - 2,175 cards from the pokumon.com list (card name and promo number; Hong Kong and Taiwan copies of the same number are one card), 2,136 of them with its image. The three Mega promo sets `M-P` (`zh-tw` 199 cards, `th` 147, `id` 171) are new.
-  - 94 more from the Elite Fourum collector's guide to the Asia Championship Series (Part 1, 2019-2024, and Part 2, 2024-25), including the three Victory Proof trophy cards per language (number N/A).
-  - All have rarity Promo. Pokémon in Traditional Chinese have their Chinese name; Thai and Indonesian cards and trainers keep the English name.
-  - The English-region prizes of the Asia Championship Series are stamped copies of existing English cards and are not added.
-- **56 wrong card links in the Taiwan and Thai Scarlet & Violet promos** (`zh-tw:SV-P` 55 cards, `th:SV-P-001`): their Cardmarket product, CardTrader blueprint, English name and Pokédex number belonged to another card (Taiwan promo numbers differ from the English `SVP` ones, e.g. `zh-tw:SV-P-008` Miraidon was linked to Oinkologne). The links are removed, so they show no wrong price or image, and the English name and Pokédex number come from the pokumon.com list. Their Pokumon image was already right.
-- **Full regeneration**: the database was rebuilt from the sources (all languages) instead of patched, and checked against the patched one: same 156,541 cards, same rarities, Cardmarket and CardTrader links. It adds 697 Pokoin and 27 Pokellector images (Simplified Chinese CSV8-10, Shiny Treasure ex) and the Pokédex number of 2,818 cards, which the patch had only in the search table. The Chinese image coverage is now 69.9%, SE Asia 84.7%.
-- **147 more World Championship Decks cards** (2004-2025): decks print the same card in several decks, and the generator dropped the extra copies of a number. They are now added as separate cards (id with the Cardmarket product, e.g. `en:wcd2006-090-869561`), all with their Cardmarket product (price), 145 of them with a CardTrader blueprint (image). Live Code Cards are left out on purpose.
-- **Release dates for 33 English sets** that had none (1,866 cards, down to 312): Pikachu World Collection 2000 (2000-09-12) and 2010 (2010-07-08), the 20 World Championship Decks sets (2004-2019, 2022-2025, 1,535 cards) with the release date of the decks from Bulbapedia's deck pages (day 01 where only the month is known); nine promo sets (BREAKpoint, Cosmic Eclipse, Dragon Majesty, HeartGold & SoulSilver, Lost Thunder, Plasma Storm, Shining Legends, Rising Rivals and Ultra Prism Promos) take the date of their main set; Play! Pokémon Prize Pack (2022-11-09) and Trick or Trade (2022-09-01) the first release from Bulbapedia.
+The database now has 156,688 cards. It was rebuilt in full from the sources (all languages) instead of patched, and compared with the previous one before publishing: nothing else changed except what is listed here.
+
+**Traditional Chinese (`zh-tw`), from Bulbapedia's Traditional Chinese set lists**
+- 750 rarities filled for Sword & Shield (`SC1b`, `SC2a`, `SC2b`) and Amazing Volt Tackle / Shiny Star V (`S4`, `S4a`), which had none. Seven conflicts in `SC1a` follow Bulbapedia: six VMAX cards are Triple Rare instead of Rare, one card is Common instead of Uncommon.
+- 245 cards that TCGdex lacks (secret and shiny rares past the official count): `S4a` 140, `S4` 21, `SC1a` 15, `SC1b` 16, `SC2a` 25, `SC2b` 28. Every set now has the card count Bulbapedia gives (Shiny Star V 330, was 190). `S4` and `S4a` cards take the CardTrader blueprint of the Japanese card with the same number; the others have no images.
+- Four Sun & Moon catch-up sets (1,779 cards, no images or Cardmarket ids): All Stars Collection `AC1a`/`AC1b`, Dreams Come True Collection `AC2a`/`AC2b`, Double Burst `AS5a`/`AS5b` and Legendary Clash `AS6a`/`AS6b`. Trainer Rare and Prism Star cards are written as Rare Holo because the database has no better name.
+- `S4` is named Amazing Volt Tackle (Bulbapedia), not Shocking Volt Tackle (the Japanese set).
+- On these cards Pokémon have their Chinese name and trainers keep the English one.
+
+**Promo cards for Traditional Chinese, Thai and Indonesian** (2,269 cards in `zh-tw`, `th`, `id`)
+- The Sun & Moon (`sm-p`), Sword & Shield (`s-p`), Scarlet & Violet (`SV-P`) and Mega (`M-P`) promo sets only had the few Pikachu cards from the collection sheet. The three Mega sets (`zh-tw` 199 cards, `th` 147, `id` 171) are new.
+- 2,175 cards come from the pokumon.com list (name and promo number; the Hong Kong and Taiwan copies of a number are one card), 2,136 of them with its image.
+- 94 more come from the Elite Fourum guide to the Asia Championship Series (2019-2025), including three Victory Proof trophy cards per language (number N/A). The English-region prizes of that series are stamped copies of existing English cards and are not added.
+- All have rarity Promo. Pokémon in Traditional Chinese have their Chinese name; Thai and Indonesian cards and trainers keep the English name.
+
+**Corrections**
+- 56 wrong card links in the Taiwan and Thai Scarlet & Violet promos (`zh-tw:SV-P` 55 cards, `th:SV-P-001`): their Cardmarket product, CardTrader blueprint, English name and Pokédex number belonged to another card, because Taiwan promo numbers differ from the English `SVP` ones (`zh-tw:SV-P-008` Miraidon was linked to Oinkologne). The links are removed, so they show no wrong price or image; the English name and Pokédex number now come from the pokumon.com list.
+- Rarities from the 2026-11-17 corrections that a rebuild would have lost are now in the data files.
+
+**World Championship Decks**
+- 147 more cards (2004-2025): the same card is printed in several decks and the generator dropped the extra copies of a number. They are now separate cards (the id carries the Cardmarket product, e.g. `en:wcd2006-090-869561`), all with a Cardmarket product (price) and 145 with a CardTrader blueprint (image). Live Code Cards are left out on purpose.
+- All 20 sets have a release date (2004-2019, 2022-2025), the date the decks came out, from Bulbapedia's deck pages (day 01 where only the month is known).
+
+**Release dates for other English sets that had none** (13 sets; 312 English cards are still without one)
+- Pikachu World Collection 2000 (2000-09-12) and 2010 (2010-07-08).
+- Nine promo sets (BREAKpoint, Cosmic Eclipse, Dragon Majesty, HeartGold & SoulSilver, Lost Thunder, Plasma Storm, Shining Legends, Rising Rivals and Ultra Prism Promos) take the date of their main set.
+- Play! Pokémon Prize Pack (2022-11-09) and Trick or Trade (2022-09-01) take their first release, from Bulbapedia.
+
+**Images**: the rebuild adds 697 Pokoin and 27 Pokellector images (Simplified Chinese CSV8-10, Shiny Treasure ex) and the Pokédex number of 2,818 cards. Chinese image coverage is now 69.9% and Southeast Asia 84.7%.
 
 ## 2026-11-19
 
