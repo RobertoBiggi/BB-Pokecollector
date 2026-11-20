@@ -2,6 +2,14 @@
 
 What changed in the card database (`cards.sqlite`, the `catalog` release) and how it is built, newest first. The generator lives in the separate `Card-collector-db-gen` repository; every entry comes from its history. Add an entry here whenever a new database is published.
 
+## 2026-11-20
+
+- **Traditional Chinese sets completed from Bulbapedia's Traditional Chinese set lists** (`zh-tw`):
+  - 750 rarities filled for Sword & Shield (`SC1b`, `SC2a`, `SC2b`) and Amazing Volt Tackle / Shiny Star V (`S4`, `S4a`), which had none. 7 conflicts in `SC1a` follow Bulbapedia: six VMAX cards are Triple Rare instead of Rare, one card is Common instead of Uncommon.
+  - 245 cards that TCGdex lacks (secret and shiny rares past the official count): S4a 140, S4 21, SC1a 15, SC1b 16, SC2a 25, SC2b 28. Every set now has the card count Bulbapedia gives (e.g. Shiny Star V 330, was 190). S4 and S4a cards take the CardTrader blueprint of the Japanese card with the same number; the others have no images. Pokémon have their Chinese name; trainers stay in English.
+  - `S4` English name is Amazing Volt Tackle (Bulbapedia), not Shocking Volt Tackle (the Japanese set).
+- **Four Sun & Moon catch-up sets** (`zh-tw`, 1,779 cards, no images or Cardmarket ids): All Stars Collection `AC1a`/`AC1b` (182 + 182), Dreams Come True Collection `AC2a`/`AC2b` (226 + 225), Double Burst `AS5a`/`AS5b` (230 + 230), Legendary Clash `AS6a`/`AS6b` (252 + 252). Number, English name and rarity come from Bulbapedia; Trainer Rare and Prism Star cards are written as Rare Holo because the database has no better name.
+
 ## 2026-11-19
 
 - **Rarities for Chinese, Thai and Indonesian cards** (1,830 cards that had none): 1,142 copied from the Japanese card with the same set, number and name (same-card agreement where both have a rarity: 99.9%), plus 688 for Terastal Festival ex (`SV8a`) from Bulbapedia's Simplified Chinese Terastal Gathering list, matched by card name and only where every print of the name has the same rarity (130 each in ja, zh-tw and zh-cn, 122 in th, 176 in id from the Japanese card).
