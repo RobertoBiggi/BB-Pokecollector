@@ -3,11 +3,7 @@
 An offline-first Android app to track your Pokémon card collection: every variant you own, what you are still missing, and what it is worth.
 
 <p align="center">
-  <img src="docs/badges/cards.svg" alt="Cards in the database">
-  <img src="docs/badges/tcg-images.svg" alt="TCG cards (all languages except Japanese, Korean, Chinese, Thai and Indonesian) with image">
-  <img src="docs/badges/ocg-images.svg" alt="OCG cards (Japanese and Korean) with image">
-  <img src="docs/badges/chinese-images.svg" alt="Chinese cards with image">
-  <img src="docs/badges/seasia-images.svg" alt="Thai and Indonesian cards with image">
+  <img src="docs/badges/coverage.svg" alt="Card database coverage: cards with image, rarity, illustrator and release date, by language group">
   <br><sub>Image coverage counts the CardTrader images too; those need your own CardTrader token in Settings.</sub>
 </p>
 
